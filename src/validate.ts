@@ -48,6 +48,9 @@ export function parseGenParams(
     sampler: cleanName(r.sampler, 'euler'),
     scheduler: cleanName(r.scheduler, 'normal'),
     denoise: clampNum(r.denoise, 0.05, 1, 1),
+    kind: r.kind === 'video' ? 'video' : 'image',
+    durationSec: clampNum(r.durationSec, 1, 12, 4),
+    fps: Math.round(clampNum(r.fps, 4, 30, 16)),
   }
   return { ok: true, params }
 }

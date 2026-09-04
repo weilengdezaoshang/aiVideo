@@ -23,4 +23,6 @@ export interface GenerationProvider {
   listSamplerOptions(): Promise<SamplerOptions>
   /** initImage 存在且 denoise < 1 时按图生图处理。 */
   generate(params: GenParams, ctx: GenContext, initImage?: InitImage): Promise<GeneratedImage>
+  /** 图生视频:initImage 作为首帧(未提供时按文生视频)。 */
+  generateVideo(params: GenParams, ctx: GenContext, initImage?: InitImage): Promise<GeneratedImage>
 }

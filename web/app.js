@@ -54,6 +54,9 @@ function readParams() {
     sampler: $('#sampler').value || 'euler',
     scheduler: $('#scheduler').value || 'normal',
     denoise: Number($('#denoise').value) || 1,
+    kind: $('#kind').value === 'video' ? 'video' : 'image',
+    durationSec: Number($('#duration').value) || 4,
+    fps: Number($('#fps').value) || 16,
   }
 }
 
@@ -72,6 +75,10 @@ function fillParams(p) {
   setSelectValue('#sampler', p.sampler)
   setSelectValue('#scheduler', p.scheduler)
   $('#denoise').value = p.denoise ?? 1
+  $('#kind').value = p.kind === 'video' ? 'video' : 'image'
+  $('#duration').value = p.durationSec ?? 4
+  $('#fps').value = p.fps ?? 16
+  updateModeUI()
   syncSliderLabels()
 }
 
@@ -94,6 +101,20 @@ function syncSliderLabels() {
   $('#steps-val').textContent = $('#steps').value
   $('#cfg-val').textContent = $('#cfg').value
   $('#denoise-val').textContent = $('#denoise').value
+  $('#duration-val').textContent = $('#duration').value
+  $('#fps-val').textContent = $('#fps').value
+}
+
+/** 按生成模式切换参数区:视频隐藏采样参数、显示时长/帧率。 */
+function updateModeUI() {
+  const isVideo = $('#kind').value === 'video'
+  for (const el of document.querySelectorAll('.image-only')) {
+    el.classList.toggle('hidden', isVideo)
+  }
+  for (const el of document.querySelectorAll('.video-only')) {
+    el.classList.toggle('hidden', !isVideo)
+  }
+  $('#generate').textContent = isVideo ? '🎬 生成视频' : '✨ 生成'
 }
 
 async function loadModels() {
@@ -152,7 +173,7 @@ async function loadInitFile(file) {
     $('#init-preview').classList.remove('hidden')
     $('#drop-hint').classList.add('hidden')
     $('#init-clear').classList.remove('hidden')
-    if (Number($('#denoise').value) >= 1) {
+    if ($('#kind').value === 'image' && Number($('#denoise').value) >= 1) {
       $('#denoise').value = 0.6
       syncSliderLabels()
       toast('已载入参考图,重绘幅度设为 0.6,可自行调整')
@@ -227,27 +248,41 @@ function renderPresetSelect() {
 
 /* ---------- 渲染 ---------- */
 
+/** 网格单元的媒体元素:视频记录渲染 <video>(动画 SVG 除外),其余渲染 <img>。 */
+function createCellMedia(record) {
+  if (record.params.kind === 'video' && !record.url.endsWith('.svg')) {
+    const v = document.createElement('video')
+    v.src = record.url
+    v.muted = true
+    v.loop = true
+    v.playsInline = true
+    v.autoplay = true
+    return v
+  }
+  const im = document.createElement('img')
+  im.loading = 'lazy'
+  im.src = record.url
+  im.alt = record.params.prompt
+  return im
+}
+
 function renderGrid() {
   const grid = $('#grid')
   grid.replaceChildren()
   for (const img of state.history) {
     const cell = document.createElement('div')
     cell.className = 'cell'
-    const im = document.createElement('img')
-    im.loading = 'lazy'
-    im.src = img.url
-    im.alt = img.params.prompt
+    const media = createCellMedia(img)
     const overlay = document.createElement('div')
     overlay.className = 'cell-overlay'
     const seedSpan = document.createElement('span')
     seedSpan.textContent = `#${img.params.seed}`
     const sizeSpan = document.createElement('span')
-    sizeSpan.textContent =
-      img.params.denoise < 1
-        ? `${img.params.width}×${img.params.height} · img2img`
-        : `${img.params.width}×${img.params.height}`
+    const kindLabel =
+      img.params.kind === 'video' ? ' · 视频' : img.params.denoise < 1 ? ' · img2img' : ''
+    sizeSpan.textContent = `${img.params.width}×${img.params.height}${kindLabel}`
     overlay.append(seedSpan, sizeSpan)
-    cell.append(im, overlay)
+    cell.append(media, overlay)
     cell.addEventListener('click', () => openLightbox(img.id))
     grid.appendChild(cell)
   }
@@ -268,7 +303,12 @@ function renderJobs() {
     promptEl.className = 'job-prompt'
     promptEl.textContent = job.params.prompt
     info.append(promptEl)
-    if (job.hasInitImage) {
+    if (job.params.kind === 'video') {
+      const tag = document.createElement('span')
+      tag.className = 'mode-tag'
+      tag.textContent = '视频'
+      info.appendChild(tag)
+    } else if (job.hasInitImage) {
       const tag = document.createElement('span')
       tag.className = 'mode-tag'
       tag.textContent = '图生图'
@@ -317,6 +357,10 @@ function openLightbox(id) {
 }
 
 function closeLightbox() {
+  const v = $('#lb-video')
+  if (v) {
+    v.pause()
+  }
   $('#lightbox').classList.add('hidden')
   state.lbIndex = -1
 }
@@ -326,17 +370,33 @@ function renderLightbox() {
   if (!img) {
     return closeLightbox()
   }
-  $('#lb-img').src = img.url
+  // 视频记录用 <video> 播放;动画 SVG 占位产物仍用 <img>(自身会动)
+  const isVideo = img.params.kind === 'video' && !img.url.endsWith('.svg')
+  const videoEl = $('#lb-video')
+  videoEl.classList.toggle('hidden', !isVideo)
+  $('#lb-img').classList.toggle('hidden', isVideo)
+  if (isVideo) {
+    videoEl.src = img.url
+  } else {
+    videoEl.pause()
+    videoEl.removeAttribute('src')
+    $('#lb-img').src = img.url
+  }
   $('#lb-caption').textContent = img.params.prompt
   const p = img.params
   const rows = [
+    ['类型', p.kind === 'video' ? `视频 · ${p.durationSec ?? 4}s / ${p.fps ?? 16}fps` : '图像'],
     ['模型', p.model],
     ['尺寸', `${p.width} × ${p.height}`],
-    ['步数', String(p.steps)],
-    ['CFG', String(p.cfgScale)],
-    ['采样器', p.sampler ? `${p.sampler} / ${p.scheduler ?? ''}` : '—'],
+    ...(p.kind === 'video'
+      ? []
+      : [
+          ['步数', String(p.steps)],
+          ['CFG', String(p.cfgScale)],
+          ['采样器', p.sampler ? `${p.sampler} / ${p.scheduler ?? ''}` : '—'],
+          ['重绘幅度', p.denoise != null ? `${p.denoise}${p.denoise < 1 ? '(图生图)' : ''}` : '—'],
+        ]),
     ['种子', String(p.seed)],
-    ['重绘幅度', p.denoise != null ? `${p.denoise}${p.denoise < 1 ? '(图生图)' : ''}` : '—'],
     ['反向提示词', p.negativePrompt || '—'],
     ['后端', img.provider],
     ['时间', new Date(img.createdAt).toLocaleString()],
@@ -476,6 +536,9 @@ function bindUI() {
   $('#steps').addEventListener('input', syncSliderLabels)
   $('#cfg').addEventListener('input', syncSliderLabels)
   $('#denoise').addEventListener('input', syncSliderLabels)
+  $('#duration').addEventListener('input', syncSliderLabels)
+  $('#fps').addEventListener('input', syncSliderLabels)
+  $('#kind').addEventListener('change', updateModeUI)
 
   $('#size-preset').addEventListener('change', (e) => {
     if (!e.target.value) {
@@ -589,6 +652,7 @@ function bindUI() {
 async function init() {
   bindUI()
   syncSliderLabels()
+  updateModeUI()
   renderPresetSelect()
   await Promise.all([loadModels(), loadSamplers(), pollHealth()])
   try {

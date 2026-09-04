@@ -86,3 +86,29 @@ test('parseInitImage:拒绝非法类型与过大内容', () => {
   const big = Buffer.alloc(8 * 1024 * 1024 + 1).toString('base64')
   assert.equal(parseInitImage(`data:image/png;base64,${big}`).ok, false)
 })
+
+test('parseGenParams:kind 与视频参数默认值及夹紧', () => {
+  const d = parseGenParams(validBase)
+  assert.equal(d.ok, true)
+  if (!d.ok) {
+    return
+  }
+  assert.equal(d.params.kind, 'image')
+  assert.equal(d.params.durationSec, 4)
+  assert.equal(d.params.fps, 16)
+
+  const v = parseGenParams({ ...validBase, kind: 'video', durationSec: 99, fps: 2 })
+  assert.equal(v.ok, true)
+  if (!v.ok) {
+    return
+  }
+  assert.equal(v.params.kind, 'video')
+  assert.equal(v.params.durationSec, 12)
+  assert.equal(v.params.fps, 4)
+
+  const bad = parseGenParams({ ...validBase, kind: 'audio' })
+  assert.equal(bad.ok, true)
+  if (bad.ok) {
+    assert.equal(bad.params.kind, 'image')
+  }
+})

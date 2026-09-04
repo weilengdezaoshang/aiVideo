@@ -16,6 +16,9 @@ const params: GenParams = {
   sampler: 'dpmpp_2m',
   scheduler: 'karras',
   denoise: 0.6,
+  kind: 'image',
+  durationSec: 4,
+  fps: 16,
 }
 
 test('txt2img 工作流:EmptyLatent + denoise 固定为 1', () => {

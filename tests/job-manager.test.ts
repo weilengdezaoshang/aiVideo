@@ -25,6 +25,9 @@ const params: GenParams = {
   sampler: 'euler',
   scheduler: 'normal',
   denoise: 1,
+  kind: 'image',
+  durationSec: 4,
+  fps: 16,
 }
 
 function fakeProvider(overrides: Partial<GenerationProvider> = {}): GenerationProvider {
@@ -43,6 +46,10 @@ function fakeProvider(overrides: Partial<GenerationProvider> = {}): GenerationPr
     async generate(_params: GenParams, ctx: GenContext): Promise<GeneratedImage> {
       ctx.onProgress(0.5, 'half')
       return { data: Buffer.from('img'), ext: 'png' }
+    },
+    async generateVideo(_params: GenParams, ctx: GenContext): Promise<GeneratedImage> {
+      ctx.onProgress(0.5, 'half')
+      return { data: Buffer.from('vid'), ext: 'svg' }
     },
     ...overrides,
   }
@@ -133,4 +140,31 @@ test('参数校验:空提示词与缺失模型被拒绝', async () => {
   const jm = new JobManager(fakeProvider(), store)
   const job = jm.createJob({ ...params })
   assert.equal(typeof job.id, 'string')
+})
+
+test('kind=video 的任务路由到 generateVideo', async () => {
+  const store = await tmpStore()
+  const calls = { image: 0, video: 0 }
+  const jm = new JobManager(
+    fakeProvider({
+      generate: async (_p, ctx) => {
+        calls.image++
+        ctx.onProgress(1, 'done')
+        return { data: Buffer.from('i'), ext: 'png' }
+      },
+      generateVideo: async (_p, ctx) => {
+        calls.video++
+        ctx.onProgress(1, 'done')
+        return { data: Buffer.from('v'), ext: 'svg' }
+      },
+    }),
+    store,
+  )
+  const imgDone = waitEvent(jm, 'job', (j) => j.status === 'completed')
+  jm.createJob({ ...params, batchCount: 1 })
+  await imgDone
+  const vidDone = waitEvent(jm, 'job', (j) => j.status === 'completed')
+  jm.createJob({ ...params, batchCount: 1, kind: 'video', durationSec: 1, fps: 8 })
+  await vidDone
+  assert.deepEqual(calls, { image: 1, video: 1 })
 })

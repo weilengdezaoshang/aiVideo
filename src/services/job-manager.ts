@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events'
 import { randomInt, randomUUID } from 'node:crypto'
 import type { GenParams, InitImage, Job } from '../types.js'
-import type { GenerationProvider } from './providers/provider.js'
+import type { GenContext, GeneratedImage, GenerationProvider } from './providers/provider.js'
 import type { Store } from '../store.js'
 
 /**
@@ -100,27 +100,32 @@ export class JobManager extends EventEmitter {
     const initImage = this.initImages.get(job.id)
     const baseSeed = job.params.seed >= 0 ? job.params.seed : randomInt(0, 2 ** 31 - 1)
     try {
+      const run = (
+        index: number,
+        onProgress: GenContext['onProgress'],
+      ): Promise<GeneratedImage> => {
+        const ctx: GenContext = {
+          seed: baseSeed + index,
+          index,
+          signal: ac.signal,
+          onProgress,
+        }
+        return job.params.kind === 'video'
+          ? this.provider.generateVideo(job.params, ctx, initImage)
+          : this.provider.generate(job.params, ctx, initImage)
+      }
       for (let index = 0; index < job.batchCount; index++) {
         let lastEmit = 0
-        const generated = await this.provider.generate(
-          job.params,
-          {
-            seed: baseSeed + index,
-            index,
-            signal: ac.signal,
-            onProgress: (p, message) => {
-              const clamped = Math.min(1, Math.max(0, p))
-              job.progress = Math.min(0.999, (index + clamped) / job.batchCount)
-              job.message = message
-              const now = Date.now()
-              if (now - lastEmit > 100 || clamped >= 1) {
-                lastEmit = now
-                this.emit('job', job)
-              }
-            },
-          },
-          initImage,
-        )
+        const generated = await run(index, (p, message) => {
+          const clamped = Math.min(1, Math.max(0, p))
+          job.progress = Math.min(0.999, (index + clamped) / job.batchCount)
+          job.message = message
+          const now = Date.now()
+          if (now - lastEmit > 100 || clamped >= 1) {
+            lastEmit = now
+            this.emit('job', job)
+          }
+        })
         const record = await this.store.save({
           jobId: job.id,
           provider: this.provider.name,

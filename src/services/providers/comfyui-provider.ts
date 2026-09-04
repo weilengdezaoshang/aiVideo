@@ -71,6 +71,16 @@ export class ComfyUIProvider implements GenerationProvider {
     }
   }
 
+  async generateVideo(
+    _params: GenParams,
+    _ctx: GenContext,
+    _initImage?: InitImage,
+  ): Promise<GeneratedImage> {
+    // 视频工作流(Wan2.2-I2V / LTX)依赖真实环境里的模型文件与节点版本,
+    // 盲写无法验证只会留下返工,等阶段 1.5 在真实 ComfyUI 上校准后再启用。
+    throw new Error('ComfyUI 视频后端待真实环境校准后启用,当前请用 Mock 后端演示视频流程')
+  }
+
   async generate(
     params: GenParams,
     ctx: GenContext,

@@ -18,6 +18,12 @@ export interface GenParams {
   scheduler: string
   /** 1 = 纯文生图;小于 1 且携带参考图时为图生图重绘幅度 */
   denoise: number
+  /** 生成媒体类型;video 时 denoise/steps 等图像参数不生效 */
+  kind: 'image' | 'video'
+  /** 视频时长(秒),1..12 */
+  durationSec: number
+  /** 视频帧率,4..30 */
+  fps: number
 }
 
 /** 图生图的参考图(仅在内存中传递,不进入历史记录)。 */

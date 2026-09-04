@@ -46,6 +46,99 @@ export class MockProvider implements GenerationProvider {
     }
   }
 
+  async generateVideo(
+    params: GenParams,
+    ctx: GenContext,
+    initImage?: InitImage,
+  ): Promise<GeneratedImage> {
+    const frames = Math.max(8, Math.round(params.durationSec * params.fps))
+    // 总耗时控制在约 0.8 秒,按帧模拟合成进度
+    const frameMs = Math.max(8, Math.round(800 / frames))
+    for (let frame = 1; frame <= frames; frame++) {
+      if (ctx.signal.aborted) {
+        throw new Error('已取消')
+      }
+      await sleep(frameMs)
+      ctx.onProgress(frame / frames, `演示合成视频帧 ${frame}/${frames}`)
+    }
+    return {
+      data: Buffer.from(this.renderAnimatedSvg(params, ctx, initImage), 'utf8'),
+      ext: 'svg',
+    }
+  }
+
+  /** 视频占位产物:CSS 动画驱动的 SVG(光斑漂移 + 色相流转),浏览器中可直接播放。 */
+  private renderAnimatedSvg(
+    params: GenParams,
+    ctx: GenContext,
+    initImage: InitImage | undefined,
+  ): string {
+    const rng = mulberry32(hashSeed(ctx.seed, params))
+    const hue = Math.floor(rng() * 360)
+    const hue2 = (hue + 60 + Math.floor(rng() * 180)) % 360
+    const min = Math.min(params.width, params.height)
+
+    const blobs = Array.from({ length: 10 }, () => {
+      const cx = (rng() * params.width).toFixed(1)
+      const cy = (rng() * params.height).toFixed(1)
+      const r = ((0.1 + rng() * 0.28) * min).toFixed(1)
+      const h = Math.floor(rng() * 360)
+      const o = (0.12 + rng() * 0.25).toFixed(2)
+      const dur = (5 + rng() * 6).toFixed(1)
+      const dx = ((rng() - 0.5) * min * 0.5).toFixed(0)
+      const dy = ((rng() - 0.5) * min * 0.5).toFixed(0)
+      return `<circle class="b" cx="${cx}" cy="${cy}" r="${r}" fill="hsl(${h},80%,60%)" opacity="${o}" style="animation-duration:${dur}s;--dx:${dx}px;--dy:${dy}px"/>`
+    }).join('')
+    const dots = Array.from({ length: 60 }, () => {
+      const cx = (rng() * params.width).toFixed(0)
+      const cy = (rng() * params.height).toFixed(0)
+      const r = (0.5 + rng() * 1.8).toFixed(1)
+      const o = (rng() * 0.35).toFixed(2)
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff" opacity="${o}"/>`
+    }).join('')
+
+    const refLayer = initImage
+      ? `<image href="data:${mimeOf(initImage.ext)};base64,${initImage.data.toString('base64')}" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" opacity="0.75"/>`
+      : ''
+
+    const lines = wrapText(params.prompt, Math.max(14, Math.floor(params.width / 22))).slice(0, 6)
+    const fontSize = Math.max(16, Math.round(min / 28))
+    const textY = params.height * 0.82 - (lines.length - 1) * fontSize * 1.3
+    const caption = `VIDEO · seed ${ctx.seed} · ${params.width}×${params.height} · ${params.durationSec}s×${params.fps}fps${initImage ? ' · i2v' : ''} · ${escapeXml(params.model)}`
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${params.width}" height="${params.height}" viewBox="0 0 ${params.width} ${params.height}">
+  <style>
+    .b { animation: drift 6s ease-in-out infinite alternate; }
+    .g { animation: hue 9s linear infinite; }
+    @keyframes drift { to { transform: translate(var(--dx, 30px), var(--dy, -24px)); } }
+    @keyframes hue { to { filter: hue-rotate(360deg); } }
+  </style>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="hsl(${hue},70%,22%)"/>
+      <stop offset="1" stop-color="hsl(${hue2},65%,38%)"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#bg)"/>
+  ${refLayer}
+  <g class="g">
+    ${blobs}
+    ${dots}
+  </g>
+  <g id="texts">
+  ${lines
+    .map(
+      (line, i) =>
+        `<text x="50%" y="${(textY + i * fontSize * 1.3).toFixed(1)}" text-anchor="middle" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="${fontSize}" fill="#ffffff" opacity="0.92">${escapeXml(line)}</text>`,
+    )
+    .join('\n  ')}
+  </g>
+  <text x="50%" y="${params.height - fontSize * 1.2}" text-anchor="middle" font-family="monospace" font-size="${Math.max(11, Math.round(fontSize * 0.55))}" fill="#ffffff" opacity="0.6">${caption}</text>
+  <text x="${params.width - 12}" y="30" text-anchor="end" font-family="monospace" font-size="${Math.max(12, Math.round(fontSize * 0.6))}" fill="#ffffff" opacity="0.35">MOCK</text>
+</svg>`
+  }
+
   private renderSvg(
     params: GenParams,
     ctx: GenContext,

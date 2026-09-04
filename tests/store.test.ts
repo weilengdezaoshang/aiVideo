@@ -19,6 +19,9 @@ const params: GenParams = {
   sampler: 'euler',
   scheduler: 'normal',
   denoise: 1,
+  kind: 'image',
+  durationSec: 4,
+  fps: 16,
 }
 
 async function tmpStore(limit = 500) {

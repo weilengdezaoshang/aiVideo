@@ -309,7 +309,8 @@ button:hover,
   cursor: pointer;
   background: var(--panel);
 }
-.cell img {
+.cell img,
+.cell video {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -362,7 +363,8 @@ button:hover,
   max-height: 88vh;
   align-items: stretch;
 }
-.lb-body img {
+.lb-body img,
+.lb-body video {
   max-width: 70vw;
   max-height: 88vh;
   object-fit: contain;
