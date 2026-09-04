@@ -1,0 +1,31 @@
+services:
+  # 应用本体:直接挂载源码跑 tsx,免构建;node_modules 用独立卷隔离宿主与容器的平台差异
+  app:
+    image: node:24-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - node_cache:/app/node_modules
+      - app_data:/app/data
+    ports:
+      - '7801:7801'
+    environment:
+      SWARMUI_PORT: '7801'
+    command: sh -c "npm install --no-audit --no-fund && npx tsx src/server.ts"
+
+  # 真实出图后端:docker compose --profile comfy up -d 后,
+  # 用 SWARMUI_PROVIDER=comfyui SWARMUI_COMFY_URL=http://comfyui:8188 启动 app
+  comfyui:
+    image: yanwk/comfyui-boot:latest
+    profiles: ['comfy']
+    ports:
+      - '8188:8188'
+    volumes:
+      - comfy_models:/root/ComfyUI/models
+      - comfy_output:/root/ComfyUI/output
+
+volumes:
+  node_cache:
+  app_data:
+  comfy_models:
+  comfy_output:

@@ -1,0 +1,11 @@
+# 校验提交信息:type(模块): 中文描述.
+first="$(sed -n '1p' "$1")"
+case "$first" in
+  "Merge "* | "Revert "*) exit 0 ;;
+esac
+# -CSD 让 perl 按 UTF-8 解码输入,否则中文是原始字节、\p{Han} 匹配不到
+if ! printf '%s\n' "$first" | perl -CSD -ne 'exit 1 unless /^(feat|fix|docs|refactor|test|perf|style|build|ci|chore|revert)(\([a-z0-9][a-z0-9-]*\))?!?: .*\p{Han}.*\.$/'; then
+  echo "✗ 提交信息不符合规范,应为:type(模块): 中文描述."
+  echo "  示例:feat(provider): 新增 ComfyUI 图生图支持."
+  exit 1
+fi
