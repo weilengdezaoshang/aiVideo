@@ -1,6 +1,6 @@
 {
   "name": "swarmui-mvp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "SwarmUI 风格的 AI 图像生成最小可用版本:Mock 后端开箱即用,可一键切换 ComfyUI 真实出图",
@@ -17,8 +17,12 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{ts,js,mjs,cjs,css,yml,yaml,json}": ["prettier --write"],
-    "*.{ts,js,mjs,cjs}": ["eslint --fix"]
+    "*.{ts,js,mjs,cjs,css,yml,yaml,json}": [
+      "prettier --write"
+    ],
+    "*.{ts,js,mjs,cjs}": [
+      "eslint --fix"
+    ]
   },
   "engines": {
     "node": ">=20"
