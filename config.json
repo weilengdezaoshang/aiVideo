@@ -1,0 +1,5 @@
+{
+  "provider": "mock",
+  "comfyUrl": "http://127.0.0.1:8188",
+  "port": 7801
+}
