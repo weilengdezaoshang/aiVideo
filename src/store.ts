@@ -12,6 +12,17 @@ export interface SaveImageInput {
   data: Buffer | string
 }
 
+export interface HistoryFilter {
+  /** 关键字:匹配提示词或反向提示词(不区分大小写) */
+  q?: string
+  /** 精确匹配模型名 */
+  model?: string
+  /** 媒体类型 */
+  kind?: 'image' | 'video'
+  /** 收藏状态 */
+  starred?: boolean
+}
+
 /**
  * 生成结果的磁盘持久化:图片写入 imagesDir,历史记录写入 JSON 文件,重启不丢。
  * 历史超过 limit 时裁剪最旧记录并删除对应文件。
@@ -37,8 +48,28 @@ export class Store {
     }
   }
 
-  list(limit = 100): ImageRecord[] {
-    return this.records.slice(0, limit)
+  list(limit = 100, filter: HistoryFilter = {}): ImageRecord[] {
+    const q = filter.q?.trim().toLowerCase()
+    const matched = this.records.filter((r) => {
+      if (filter.kind && r.params.kind !== filter.kind) {
+        return false
+      }
+      if (filter.model && r.params.model !== filter.model) {
+        return false
+      }
+      if (filter.starred !== undefined && Boolean(r.starred) !== filter.starred) {
+        return false
+      }
+      if (
+        q &&
+        !r.params.prompt.toLowerCase().includes(q) &&
+        !r.params.negativePrompt.toLowerCase().includes(q)
+      ) {
+        return false
+      }
+      return true
+    })
+    return matched.slice(0, limit)
   }
 
   get(id: string): ImageRecord | undefined {

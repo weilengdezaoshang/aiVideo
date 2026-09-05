@@ -149,7 +149,16 @@ app.delete('/api/jobs/:id', (req, res) => {
 
 app.get('/api/history', (req, res) => {
   const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 100))
-  res.json({ images: store.list(limit) })
+  const kind = req.query.kind === 'image' || req.query.kind === 'video' ? req.query.kind : undefined
+  const starred = req.query.starred === '1' ? true : req.query.starred === '0' ? false : undefined
+  res.json({
+    images: store.list(limit, {
+      q: typeof req.query.q === 'string' ? req.query.q : undefined,
+      model: typeof req.query.model === 'string' ? req.query.model : undefined,
+      kind,
+      starred,
+    }),
+  })
 })
 
 app.delete('/api/images/:id', async (req, res) => {

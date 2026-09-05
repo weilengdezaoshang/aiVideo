@@ -110,3 +110,42 @@ test('收藏标记可持久化且收藏记录不被裁剪', async () => {
   assert.equal(second.get(a.id)?.starred, true)
   assert.equal(second.list().length, 3)
 })
+
+test('list 支持关键字 / 模型 / 类型 / 收藏过滤', async () => {
+  const { store } = await tmpStore()
+  const mk = async (prompt: string, model: string, kind: 'image' | 'video', starred = false) => {
+    const rec = await store.save({
+      jobId: 'j',
+      provider: 'mock',
+      params: { ...params, prompt, model, kind },
+      ext: 'svg',
+      data: 'x',
+    })
+    if (starred) {
+      await store.setStarred(rec.id, true)
+    }
+    return rec
+  }
+  const cat = await mk('一只宇航员猫', 'm1', 'image')
+  const dog = await mk('一只柴犬 in 雪地', 'm1', 'image')
+  const _sea = await mk('沉船与深海', 'm2', 'image')
+  const vid = await mk('星空延时 video', 'm2', 'video', true)
+
+  assert.deepEqual(
+    store.list(100, { q: '猫' }).map((r) => r.id),
+    [cat.id],
+  )
+  assert.deepEqual(
+    store.list(100, { q: '雪地' }).map((r) => r.id),
+    [dog.id],
+  )
+  assert.deepEqual(store.list(100, { q: 'DEEP'.toLowerCase() }).length, 0)
+  assert.equal(store.list(100, { model: 'm2' }).length, 2)
+  assert.equal(store.list(100, { kind: 'video' }).length, 1)
+  assert.equal(store.list(100, { starred: true }).map((r) => r.id)[0], vid.id)
+  assert.equal(store.list(100, { starred: false }).length, 3)
+  // 组合过滤:模型 m2 + 类型 video
+  assert.equal(store.list(100, { model: 'm2', kind: 'video' }).length, 1)
+  assert.equal(store.list(100, { model: 'm1', kind: 'video' }).length, 0)
+  assert.equal(store.list(100).length, 4)
+})

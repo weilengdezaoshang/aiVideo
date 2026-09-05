@@ -710,3 +710,24 @@ button:hover,
   margin-top: 10px;
   text-align: center;
 }
+.search-box {
+  width: 150px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.search-box:focus {
+  outline: 1px solid var(--accent);
+}
+.model-filter {
+  max-width: 140px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}

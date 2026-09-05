@@ -155,7 +155,8 @@ CI(GitHub Actions)在每次 push / PR 时自动执行 `npm ci && npm run verify`
 - [ ] 指令式图片编辑 —— 接入 Qwen-Image-Edit / FLUX.1 Kontext
 - [ ] LoRA / ControlNet 支持
 - [ ] 云端 GPU 部署指南(AutoDL / RunPod)
-- [ ] 历史搜索与标签管理
+- [x] 历史搜索与参数过滤(关键字 / 模型 / 类型 / 收藏)
+- [ ] 历史标签管理
 - [ ] 多语言界面(i18n)
 
 > 欢迎按下面的贡献流程认领任意条目。

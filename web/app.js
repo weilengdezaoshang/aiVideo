@@ -7,6 +7,8 @@ const state = {
   lbIndex: -1,
   initDataUrl: null,
   filter: 'all',
+  search: '',
+  modelFilter: '',
 }
 
 /* ---------- 基础工具 ---------- */
@@ -250,18 +252,46 @@ function renderPresetSelect() {
 
 /* ---------- 渲染 ---------- */
 
-/** 按过滤条件返回可见历史:全部 / 图像 / 视频 / 收藏。 */
+/** 按过滤条件返回可见历史:类型片选 + 关键字 + 模型 + 收藏。 */
 function visibleHistory() {
+  let items = state.history
   if (state.filter === 'image') {
-    return state.history.filter((h) => h.params.kind !== 'video')
+    items = items.filter((h) => h.params.kind !== 'video')
+  } else if (state.filter === 'video') {
+    items = items.filter((h) => h.params.kind === 'video')
+  } else if (state.filter === 'star') {
+    items = items.filter((h) => h.starred)
   }
-  if (state.filter === 'video') {
-    return state.history.filter((h) => h.params.kind === 'video')
+  if (state.modelFilter) {
+    items = items.filter((h) => h.params.model === state.modelFilter)
   }
-  if (state.filter === 'star') {
-    return state.history.filter((h) => h.starred)
+  if (state.search) {
+    const q = state.search.toLowerCase()
+    items = items.filter(
+      (h) =>
+        h.params.prompt.toLowerCase().includes(q) ||
+        h.params.negativePrompt.toLowerCase().includes(q),
+    )
   }
-  return state.history
+  return items
+}
+
+/** 依据历史里出现过的模型刷新过滤下拉,保留当前选择。 */
+function updateModelFilter() {
+  const sel = $('#model-filter')
+  const models = [...new Set(state.history.map((h) => h.params.model))]
+  const current = sel.value
+  sel.innerHTML = '<option value="">全部模型</option>'
+  for (const m of models) {
+    const opt = document.createElement('option')
+    opt.value = m
+    opt.textContent = m.length > 24 ? `${m.slice(0, 22)}…` : m
+    opt.title = m
+    sel.appendChild(opt)
+  }
+  if (models.includes(current)) {
+    sel.value = current
+  }
 }
 
 /** 网格单元的媒体元素:视频记录渲染 <video>(动画 SVG 除外),其余渲染 <img>。 */
@@ -300,6 +330,7 @@ function createBadges(record) {
 }
 
 function renderGrid() {
+  updateModelFilter()
   const grid = $('#grid')
   const items = visibleHistory()
   grid.replaceChildren()
@@ -568,22 +599,46 @@ async function toggleStar(record) {
   }
 }
 
-/** 把当前过滤结果逐个触发下载(浏览器对多文件下载会询问一次授权)。 */
+/** 把当前过滤结果逐个触发下载(间隔触发,避免浏览器拦截连续下载)。 */
 function downloadAll() {
   const items = visibleHistory()
   if (items.length === 0) {
     toast('当前过滤条件下没有可下载的记录', 'error')
     return
   }
-  for (const item of items) {
-    const a = document.createElement('a')
-    a.href = item.url
-    a.download = item.file
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
+  items.forEach((item, i) => {
+    setTimeout(() => {
+      const a = document.createElement('a')
+      a.href = item.url
+      a.download = item.file
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+    }, i * 250)
+  })
+  toast(`开始下载 ${items.length} 个文件`)
+}
+
+/** 复制当前灯箱记录的完整参数为 JSON。 */
+async function copyParamsJson() {
+  const img = state.history[state.lbIndex]
+  if (!img) {
+    return
   }
-  toast(`已触发下载 ${items.length} 个文件`)
+  const text = JSON.stringify(img.params, null, 2)
+  try {
+    await navigator.clipboard.writeText(text)
+    toast('参数 JSON 已复制到剪贴板')
+  } catch {
+    // 剪贴板 API 不可用(如非安全上下文)时的兜底
+    const ta = document.createElement('textarea')
+    ta.value = text
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    ta.remove()
+    toast('参数 JSON 已复制')
+  }
 }
 
 function navLightbox(step) {
@@ -785,8 +840,21 @@ function bindUI() {
       toggleStar(img)
     }
   })
+  $('#lb-copy-params').addEventListener('click', copyParamsJson)
 
-  // 结果工具栏:过滤 + 全部下载
+  // 结果工具栏:过滤 + 搜索 + 模型 + 全部下载
+  let searchTimer
+  $('#search-box').addEventListener('input', (e) => {
+    clearTimeout(searchTimer)
+    searchTimer = setTimeout(() => {
+      state.search = e.target.value.trim()
+      renderGrid()
+    }, 200)
+  })
+  $('#model-filter').addEventListener('change', (e) => {
+    state.modelFilter = e.target.value
+    renderGrid()
+  })
   for (const btn of document.querySelectorAll('.chip[data-filter]')) {
     btn.addEventListener('click', () => {
       state.filter = btn.dataset.filter
@@ -856,7 +924,7 @@ async function init() {
   await Promise.all([loadModels(), loadSamplers(), pollHealth()])
   try {
     const [{ images }, { jobs: active }, { jobs: recent }] = await Promise.all([
-      api('/api/history'),
+      api('/api/history?limit=500'),
       api('/api/jobs'),
       api('/api/jobs?all=1&limit=30'),
     ])

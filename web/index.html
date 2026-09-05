@@ -96,6 +96,8 @@
       <h1>生成结果</h1>
       <span id="history-count" class="hint"></span>
       <div class="results-tools">
+        <input id="search-box" class="search-box" type="search" placeholder="搜索提示词…" title="按提示词 / 反向提示词关键字过滤"/>
+        <select id="model-filter" class="model-filter" title="按模型过滤"><option value="">全部模型</option></select>
         <button id="filter-all" class="chip active" data-filter="all">全部</button>
         <button id="filter-image" class="chip" data-filter="image">图像</button>
         <button id="filter-video" class="chip" data-filter="video">视频</button>
@@ -127,6 +129,7 @@
         <button id="lb-reuse">复用全部参数</button>
         <button id="lb-reuse-seed">仅复用种子</button>
         <button id="lb-star">☆ 收藏</button>
+        <button id="lb-copy-params">复制参数 JSON</button>
         <a id="lb-download" class="btn" download>下载</a>
         <button id="lb-delete" class="danger">删除</button>
       </div>
