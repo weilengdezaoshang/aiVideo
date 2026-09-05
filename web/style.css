@@ -731,3 +731,61 @@ button:hover,
   border: 1px solid var(--border);
   color: var(--text-dim);
 }
+
+/* ---------- 局部重绘蒙版画板 ---------- */
+#mask-tools {
+  margin-top: 8px;
+}
+#mask-status {
+  margin-top: 6px;
+  color: var(--ok);
+}
+.mask-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  max-width: min(860px, 92vw);
+  max-height: 90vh;
+}
+.mask-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mask-head .hint {
+  flex: 1;
+}
+#mask-canvas-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #000;
+}
+#mask-base {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+}
+#mask-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  opacity: 0.55;
+  touch-action: none;
+}
+.mask-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mask-tools .slider {
+  flex: 1;
+  min-width: 180px;
+}

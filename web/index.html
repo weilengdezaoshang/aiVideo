@@ -76,6 +76,11 @@
         <input id="init-file" type="file" accept="image/png,image/jpeg,image/webp" hidden/>
       </div>
       <button id="init-clear" class="hidden">移除参考图</button>
+      <div id="mask-tools" class="row hidden">
+        <button id="mask-edit">画重绘蒙版</button>
+        <button id="mask-clear" class="danger hidden">清除蒙版</button>
+      </div>
+      <div id="mask-status" class="hint hidden">已设置重绘蒙版(白色区域将被重新生成)</div>
     </section>
 
     <section class="panel">
@@ -133,6 +138,25 @@
         <a id="lb-download" class="btn" download>下载</a>
         <button id="lb-delete" class="danger">删除</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div id="mask-editor" class="lightbox hidden">
+  <div class="mask-panel">
+    <div class="mask-head">
+      <b>重绘蒙版</b>
+      <span class="hint">涂抹需要重新生成的区域,白色 = 重绘</span>
+      <button class="lb-close" id="mask-close" title="关闭 (Esc)">×</button>
+    </div>
+    <div id="mask-canvas-wrap">
+      <img id="mask-base" alt="参考图"/>
+      <canvas id="mask-canvas"></canvas>
+    </div>
+    <div class="mask-tools">
+      <label class="slider">画笔 <b id="brush-val">40</b><input id="brush-size" type="range" min="8" max="160" step="4" value="40"/></label>
+      <button id="mask-reset">清空</button>
+      <button id="mask-done" class="primary">完成</button>
     </div>
   </div>
 </div>

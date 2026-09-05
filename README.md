@@ -29,7 +29,7 @@
 
 ## ✨ 功能特性
 
-- **三种生成模式** —— 文生图、图生图(上传 / 拖入参考图 + 重绘幅度)、图生视频(参考图作首帧;ComfyUI 真实出片,LTX-Video / Wan 均可,Mock 为演示链路)
+- **四种生成模式** —— 文生图、图生图(上传 / 拖入参考图 + 重绘幅度)、局部重绘(画板涂抹蒙版,白 = 重绘区域)、图生视频(参考图作首帧;ComfyUI 真实出片,LTX-Video / Wan 均可,Mock 为演示链路)
 - **完整参数** —— 模型、尺寸预设、步数、CFG、采样器 / 调度器、种子(随机或固定)、批量 1~16
 - **任务队列** —— FIFO 调度,按后端并发能力执行;实时进度条(SSE 推送)、随时取消、失败后一键重试
 - **结果管理** —— 网格视图 / 灯箱大图、类型过滤(图像 / 视频 / 收藏)、星标收藏(豁免历史裁剪)、单张或批量下载、删除
@@ -101,7 +101,7 @@ Wan 系模型(放 `models/unet`)走 UNETLoader 链路,同时配置 `wanHighNoise
 | GET | `/api/health` | 服务与后端状态 |
 | GET | `/api/models` | 模型列表(来自 provider) |
 | GET | `/api/samplers` | 可用采样器与调度器 |
-| POST | `/api/generate` | 提交生成任务(202 + jobId);`initImage` 可选 data URL |
+| POST | `/api/generate` | 提交生成任务(202 + jobId);`initImage` 可选 data URL,`maskImage`(PNG,白 = 重绘)为局部重绘蒙版 |
 | GET | `/api/jobs` | 进行中任务;`?all=1` 返回最近任务历史 |
 | GET | `/api/jobs/:id` | 单个任务状态 |
 | DELETE | `/api/jobs/:id` | 取消任务 |
@@ -123,7 +123,7 @@ aiVideo/
 ├── config.json                  # 运行配置(provider / comfyUrl / port)
 ├── docker-compose.yml           # 应用 + ComfyUI 编排(免构建挂载源码)
 ├── scripts/
-│   └── e2e-smoke.mjs            # 端到端冒烟脚本(零依赖,13 项核心流程检查)
+│   └── e2e-smoke.mjs            # 端到端冒烟脚本(零依赖,14 项核心流程检查)
 ├── src/
 │   ├── server.ts                # Express 入口:REST + SSE + 静态资源 + 错误处理 + 优雅停机
 │   ├── logger.ts                # 结构化日志(LOG_LEVEL 控制)
@@ -159,7 +159,7 @@ generate / generateVideo`)并在 `server.ts` 注册,队列、API、前端零改�
 
 ```bash
 npm run verify          # typecheck + eslint + 单元测试(提交前必跑,pre-commit 自动执行)
-node scripts/e2e-smoke.mjs   # 对运行中的服务执行 13 项端到端检查
+node scripts/e2e-smoke.mjs   # 对运行中的服务执行 14 项端到端检查
 npm run format          # prettier 统一格式
 ```
 
@@ -170,12 +170,12 @@ CI(GitHub Actions)在每次 push / PR 时自动执行 `npm ci && npm run verify`
 - [x] 核心流程:提示词 → 队列 → 生成 → 网格 → 灯箱 → 历史持久化
 - [x] 采样器 / 调度器选择(选项来自后端能力探测)
 - [x] 图生图(参考图上传 + 重绘幅度)
+- [x] 局部重绘(Inpainting)—— 前端蒙版画板 + ComfyUI SetLatentNoiseMask / Mock 蒙版合成链路
 - [x] 图生视频 Mock 链路(动画占位产物,前端播放支持)
 - [x] ComfyUI 图生视频工作流 —— LTX-Video(单 checkpoint)与 Wan / Wan2.2 双 UNet 链路,SaveVideo 出 mp4
 - [x] 收藏 / 过滤 / 批量下载 / 任务历史 / 失败重试
 - [x] 工程化:verify 门禁、husky、CI、Docker、e2e 冒烟脚本
-- [ ] **ComfyUI 真实环境校准** —— 在真实 GPU 上验证图像与视频工作流(超时与视频模型已可配置)
-- [ ] 局部重绘(Inpainting)—— 前端蒙版画板 + mask 工作流
+- [ ] **ComfyUI 真实环境校准** —— 在真实 GPU 上验证图像、视频与重绘工作流(超时与视频模型已可配置)
 - [ ] 指令式图片编辑 —— 接入 Qwen-Image-Edit / FLUX.1 Kontext
 - [ ] LoRA / ControlNet 支持
 - [ ] 云端 GPU 部署指南(AutoDL / RunPod)

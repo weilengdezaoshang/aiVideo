@@ -6,6 +6,10 @@ const state = {
   recentJobs: [],
   lbIndex: -1,
   initDataUrl: null,
+  /** 参考图缩放后的尺寸,蒙版画布与其保持一致 */
+  initDims: null,
+  /** 局部重绘蒙版(黑底白笔 PNG data URL,白 = 重绘区域) */
+  maskDataUrl: null,
   filter: 'all',
   search: '',
   modelFilter: '',
@@ -107,6 +111,7 @@ function syncSliderLabels() {
   $('#denoise-val').textContent = $('#denoise').value
   $('#duration-val').textContent = $('#duration').value
   $('#fps-val').textContent = $('#fps').value
+  $('#brush-val').textContent = $('#brush-size').value
 }
 
 /** 按生成模式切换参数区:视频隐藏采样参数、显示时长/帧率。 */
@@ -118,6 +123,7 @@ function updateModeUI() {
   for (const el of document.querySelectorAll('.video-only')) {
     el.classList.toggle('hidden', !isVideo)
   }
+  $('#mask-tools').classList.toggle('hidden', isVideo || !state.initDataUrl)
   $('#generate').textContent = isVideo ? '🎬 生成视频' : '✨ 生成'
 }
 
@@ -172,11 +178,15 @@ async function loadInitFile(file) {
     return
   }
   try {
-    state.initDataUrl = await downscaleToDataUrl(file, 1024)
-    $('#init-preview').src = state.initDataUrl
+    const { dataUrl, width, height } = await downscaleToDataUrl(file, 1024)
+    state.initDataUrl = dataUrl
+    state.initDims = { width, height }
+    resetMask()
+    $('#init-preview').src = dataUrl
     $('#init-preview').classList.remove('hidden')
     $('#drop-hint').classList.add('hidden')
     $('#init-clear').classList.remove('hidden')
+    $('#mask-tools').classList.toggle('hidden', $('#kind').value === 'video')
     if ($('#kind').value === 'image' && Number($('#denoise').value) >= 1) {
       $('#denoise').value = 0.6
       syncSliderLabels()
@@ -189,13 +199,93 @@ async function loadInitFile(file) {
 
 function clearInitImage() {
   state.initDataUrl = null
+  resetMask()
   $('#init-file').value = ''
   $('#init-preview').classList.add('hidden')
   $('#drop-hint').classList.remove('hidden')
   $('#init-clear').classList.add('hidden')
+  $('#mask-tools').classList.add('hidden')
 }
 
-/** 大图缩放到 maxSize 内再转 JPEG data URL,控制上传体积。 */
+function resetMask() {
+  state.maskDataUrl = null
+  state.initDims = null
+  $('#mask-status').classList.add('hidden')
+  $('#mask-clear').classList.add('hidden')
+}
+
+/* ---------- 局部重绘蒙版画板 ---------- */
+
+const maskPainting = { active: false, lastX: 0, lastY: 0 }
+
+function openMaskEditor() {
+  if (!state.initDataUrl || !state.initDims) {
+    return
+  }
+  $('#mask-base').src = state.initDataUrl
+  const canvas = $('#mask-canvas')
+  canvas.width = state.initDims.width
+  canvas.height = state.initDims.height
+  const ctx = canvas.getContext('2d')
+  ctx.fillStyle = '#000'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  if (state.maskDataUrl) {
+    // 恢复上次保存的蒙版继续编辑
+    const prev = new Image()
+    prev.onload = () => ctx.drawImage(prev, 0, 0, canvas.width, canvas.height)
+    prev.src = state.maskDataUrl
+  }
+  $('#mask-editor').classList.remove('hidden')
+}
+
+function closeMaskEditor() {
+  $('#mask-editor').classList.add('hidden')
+}
+
+function clearMaskCanvas() {
+  const canvas = $('#mask-canvas')
+  const ctx = canvas.getContext('2d')
+  ctx.fillStyle = '#000'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+}
+
+/** 保存蒙版:画布本身就是黑底白笔,直接导出 PNG。 */
+function saveMask() {
+  const canvas = $('#mask-canvas')
+  state.maskDataUrl = canvas.toDataURL('image/png')
+  $('#mask-status').classList.remove('hidden')
+  $('#mask-clear').classList.remove('hidden')
+  closeMaskEditor()
+  toast('蒙版已保存,生成时只重绘白色区域')
+}
+
+/** 把指针位置换算到画布坐标(画布被 CSS 缩放适配容器)。 */
+function maskPointerPos(e) {
+  const canvas = $('#mask-canvas')
+  const rect = canvas.getBoundingClientRect()
+  return {
+    x: ((e.clientX - rect.left) / rect.width) * canvas.width,
+    y: ((e.clientY - rect.top) / rect.height) * canvas.height,
+    scale: canvas.width / rect.width,
+  }
+}
+
+function maskStrokeTo(x, y, scale) {
+  const ctx = $('#mask-canvas').getContext('2d')
+  const brushPx = Number($('#brush-size').value) * scale
+  ctx.strokeStyle = '#fff'
+  ctx.lineWidth = brushPx
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  ctx.moveTo(maskPainting.lastX, maskPainting.lastY)
+  ctx.lineTo(x, y)
+  ctx.stroke()
+  maskPainting.lastX = x
+  maskPainting.lastY = y
+}
+
+/** 大图缩放到 maxSize 内再转 JPEG data URL,控制上传体积;返回尺寸供蒙版画布对齐。 */
 function downscaleToDataUrl(file, maxSize) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -209,7 +299,11 @@ function downscaleToDataUrl(file, maxSize) {
         canvas.width = Math.max(8, Math.round(img.width * scale))
         canvas.height = Math.max(8, Math.round(img.height * scale))
         canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
-        resolve(canvas.toDataURL('image/jpeg', 0.9))
+        resolve({
+          dataUrl: canvas.toDataURL('image/jpeg', 0.9),
+          width: canvas.width,
+          height: canvas.height,
+        })
       }
       img.src = reader.result
     }
@@ -320,9 +414,11 @@ function createBadges(record) {
   kind.textContent =
     record.params.kind === 'video'
       ? `视频 ${record.params.durationSec}s`
-      : record.params.denoise < 1
-        ? '图生图'
-        : '文生图'
+      : record.params.inpaint
+        ? '局部重绘'
+        : record.params.denoise < 1
+          ? '图生图'
+          : '文生图'
   const size = document.createElement('span')
   size.textContent = `${record.params.width}×${record.params.height}`
   badges.append(kind, size)
@@ -352,7 +448,13 @@ function renderGrid() {
     seedSpan.textContent = `#${img.params.seed}`
     const sizeSpan = document.createElement('span')
     const kindLabel =
-      img.params.kind === 'video' ? ' · 视频' : img.params.denoise < 1 ? ' · img2img' : ''
+      img.params.kind === 'video'
+        ? ' · 视频'
+        : img.params.inpaint
+          ? ' · inpaint'
+          : img.params.denoise < 1
+            ? ' · img2img'
+            : ''
     sizeSpan.textContent = `${img.params.width}×${img.params.height}${kindLabel}`
     overlay.append(seedSpan, sizeSpan)
     cell.append(media, createBadges(img), star, overlay)
@@ -406,6 +508,8 @@ function renderJobRow(job) {
   info.append(promptEl)
   if (job.params.kind === 'video') {
     info.appendChild(tagOf('视频'))
+  } else if (job.params.inpaint) {
+    info.appendChild(tagOf('局部重绘'))
   } else if (job.hasInitImage) {
     info.appendChild(tagOf('图生图'))
   }
@@ -543,7 +647,14 @@ function renderLightbox() {
   $('#lb-caption').textContent = img.params.prompt
   const p = img.params
   const rows = [
-    ['类型', p.kind === 'video' ? `视频 · ${p.durationSec ?? 4}s / ${p.fps ?? 16}fps` : '图像'],
+    [
+      '类型',
+      p.kind === 'video'
+        ? `视频 · ${p.durationSec ?? 4}s / ${p.fps ?? 16}fps`
+        : p.inpaint
+          ? '图像 · 局部重绘'
+          : '图像',
+    ],
     ['模型', p.model],
     ['尺寸', `${p.width} × ${p.height}`],
     ...(p.kind === 'video'
@@ -744,7 +855,11 @@ function bindUI() {
       await api('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...params, initImage: state.initDataUrl || undefined }),
+        body: JSON.stringify({
+          ...params,
+          initImage: state.initDataUrl || undefined,
+          maskImage: state.maskDataUrl || undefined,
+        }),
       })
       toast('已加入生成队列')
     } catch (err) {
@@ -796,6 +911,38 @@ function bindUI() {
   $('#drop-zone').addEventListener('drop', (e) => {
     loadInitFile(e.dataTransfer?.files?.[0])
   })
+
+  // 局部重绘蒙版画板
+  $('#mask-edit').addEventListener('click', openMaskEditor)
+  $('#mask-clear').addEventListener('click', () => {
+    resetMask()
+    toast('已清除蒙版')
+  })
+  $('#mask-close').addEventListener('click', closeMaskEditor)
+  $('#mask-reset').addEventListener('click', clearMaskCanvas)
+  $('#mask-done').addEventListener('click', saveMask)
+  $('#brush-size').addEventListener('input', syncSliderLabels)
+  const canvas = $('#mask-canvas')
+  canvas.addEventListener('pointerdown', (e) => {
+    canvas.setPointerCapture(e.pointerId)
+    const { x, y, scale } = maskPointerPos(e)
+    maskPainting.active = true
+    maskPainting.lastX = x
+    maskPainting.lastY = y
+    maskStrokeTo(x + 0.01, y + 0.01, scale)
+  })
+  canvas.addEventListener('pointermove', (e) => {
+    if (!maskPainting.active) {
+      return
+    }
+    const { x, y, scale } = maskPointerPos(e)
+    maskStrokeTo(x, y, scale)
+  })
+  for (const evt of ['pointerup', 'pointercancel']) {
+    canvas.addEventListener(evt, () => {
+      maskPainting.active = false
+    })
+  }
 
   // 预设:保存 / 载入 / 删除
   $('#preset-save').addEventListener('click', () => {
@@ -895,6 +1042,13 @@ function bindUI() {
   })
 
   document.addEventListener('keydown', (e) => {
+    // 蒙版编辑器打开时优先响应 Esc
+    if (!$('#mask-editor').classList.contains('hidden')) {
+      if (e.key === 'Escape') {
+        closeMaskEditor()
+      }
+      return
+    }
     if ($('#lightbox').classList.contains('hidden')) {
       return
     }
