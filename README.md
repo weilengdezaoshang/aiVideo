@@ -29,7 +29,7 @@
 
 ## ✨ 功能特性
 
-- **三种生成模式** —— 文生图、图生图(上传 / 拖入参考图 + 重绘幅度)、图生视频(参考图作首帧,演示链路)
+- **三种生成模式** —— 文生图、图生图(上传 / 拖入参考图 + 重绘幅度)、图生视频(参考图作首帧;ComfyUI 真实出片,LTX-Video / Wan 均可,Mock 为演示链路)
 - **完整参数** —— 模型、尺寸预设、步数、CFG、采样器 / 调度器、种子(随机或固定)、批量 1~16
 - **任务队列** —— FIFO 调度,按后端并发能力执行;实时进度条(SSE 推送)、随时取消、失败后一键重试
 - **结果管理** —— 网格视图 / 灯箱大图、类型过滤(图像 / 视频 / 收藏)、星标收藏(豁免历史裁剪)、单张或批量下载、删除
@@ -69,6 +69,30 @@ docker compose --profile comfy up -d            # 应用 + ComfyUI
 3. 重启服务 —— 模型与采样器列表自动从 ComfyUI 读取,生成真实图片。
 
 也可用环境变量覆盖:`SWARMUI_PROVIDER` / `SWARMUI_COMFY_URL` / `SWARMUI_PORT`。
+
+### 图生视频(ComfyUI 真实出片)
+
+视频工作流按模型自动选择:LTX-Video(单 checkpoint,放 `models/checkpoints`)走 LTXV 链路;
+Wan 系模型(放 `models/unet`)走 UNETLoader 链路,同时配置 `wanHighNoiseUnet` + `wanLowNoiseUnet`
+后按 Wan2.2 双模型分段采样。产物为 mp4(SaveVideo),网格与灯箱内直接播放。
+
+```json
+{
+  "videoModel": "",
+  "videoBackend": "auto",
+  "wanClip": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+  "wanVae": "wan_2.1_vae.safetensors",
+  "wanHighNoiseUnet": "",
+  "wanLowNoiseUnet": "",
+  "imageTimeoutMin": 20,
+  "videoTimeoutMin": 60
+}
+```
+
+`videoModel` 留空则自动探测(wan 优先于 ltx);`videoBackend` 可强制指定 `ltxv` / `wan`。
+以上键均有对应环境变量:`SWARMUI_VIDEO_MODEL` / `SWARMUI_VIDEO_BACKEND` / `SWARMUI_WAN_CLIP` /
+`SWARMUI_WAN_VAE` / `SWARMUI_WAN_HIGH_NOISE_UNET` / `SWARMUI_WAN_LOW_NOISE_UNET` /
+`SWARMUI_IMAGE_TIMEOUT_MIN` / `SWARMUI_VIDEO_TIMEOUT_MIN`。
 
 ## 📡 API 一览
 
@@ -116,7 +140,7 @@ aiVideo/
 │   ├── index.html
 │   ├── style.css
 │   └── app.js                   # 状态管理 / SSE 渲染 / 灯箱 / 预设 / 过滤
-├── tests/                       # node:test 单元测试(27 个)
+├── tests/                       # node:test 单元测试(40 个)
 └── docs/screenshots/            # 界面截图
 ```
 
@@ -147,10 +171,10 @@ CI(GitHub Actions)在每次 push / PR 时自动执行 `npm ci && npm run verify`
 - [x] 采样器 / 调度器选择(选项来自后端能力探测)
 - [x] 图生图(参考图上传 + 重绘幅度)
 - [x] 图生视频 Mock 链路(动画占位产物,前端播放支持)
+- [x] ComfyUI 图生视频工作流 —— LTX-Video(单 checkpoint)与 Wan / Wan2.2 双 UNet 链路,SaveVideo 出 mp4
 - [x] 收藏 / 过滤 / 批量下载 / 任务历史 / 失败重试
 - [x] 工程化:verify 门禁、husky、CI、Docker、e2e 冒烟脚本
-- [ ] **ComfyUI 真实出图验证** —— 在真实环境校准 txt2img / img2img 工作流与超时参数
-- [ ] **ComfyUI 图生视频工作流** —— Wan2.2-I2V / LTX-Video 接入(接口已预留 `generateVideo`)
+- [ ] **ComfyUI 真实环境校准** —— 在真实 GPU 上验证图像与视频工作流(超时与视频模型已可配置)
 - [ ] 局部重绘(Inpainting)—— 前端蒙版画板 + mask 工作流
 - [ ] 指令式图片编辑 —— 接入 Qwen-Image-Edit / FLUX.1 Kontext
 - [ ] LoRA / ControlNet 支持
