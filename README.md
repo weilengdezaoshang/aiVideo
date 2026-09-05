@@ -108,7 +108,10 @@ npm run typecheck  # TypeScript 严格模式检查
   Prettier + ESLint 并运行 typecheck;commit-msg 校验提交规范 `type(模块): 中文描述.`(见 AGENTS.md)。
 - **CI**:GitHub Actions([`.github/workflows/ci.yml`](.github/workflows/ci.yml)),push / PR 触发
   `npm ci && npm run verify`,推送到 GitHub 后自动生效。
-- **日志**:结构化输出(ISO 时间戳 + 级别),`LOG_LEVEL=debug npm run dev` 可看请求级访问日志。
+- **日志**:结构化输出(ISO 时间戳 + 级别 + JSON 上下文,Error 自动展开为 name/message/stack)。
+  默认 info 级即可追踪任务全生命周期:`已接受生成任务 → 任务完成/失败/取消`(带 jobId、耗时、张数);
+  `LOG_LEVEL=debug npm run dev` 额外输出请求访问日志、任务入队/开始、SSE 连接与 ComfyUI 工作流提交细节。
+  排障时优先看 error/warn:任务失败、历史写盘失败、后端探测异常都在这两个级别。
 - **健壮性**:启动时配置快检(非法 provider/端口直接报错)、404/500 统一 JSON 错误结构、
   非法 JSON 请求体返回 400、生成队列上限 50(超限 429)、SIGTERM/SIGINT 优雅停机。
 - **Docker**:`docker compose up -d app` 起服务(挂载源码免构建);
