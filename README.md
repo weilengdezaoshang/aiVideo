@@ -1,128 +1,174 @@
-# SwarmUI MVP
+<div align="center">
 
-SwarmUI 风格的 AI 图像生成最小可用版本(Web UI)。核心流程端到端可用:
+# 🐝 SwarmUI MVP
 
-> 输入提示词 → 提交生成任务 → 实时进度 → 图片进入网格 → 灯箱查看大图/复用参数/删除 → 历史持久化
+**SwarmUI 风格的 AI 图像 / 视频生成 Web 应用 · 零配置开箱即用 · 一键切换 ComfyUI 真实出图**
 
-内置 **Mock 演示后端**(零依赖、开箱即用,无需 GPU),并可一键切换到 **ComfyUI** 真实出图。
+[![CI](https://github.com/weilengdezaoshang/aiVideo/actions/workflows/ci.yml/badge.svg)](https://github.com/weilengdezaoshang/aiVideo/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A520-green.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6.svg)](https://www.typescriptlang.org/)
 
-## 快速开始
+文生图 / 图生图 / 图生视频 · 任务队列 · 实时进度 · 收藏与过滤 · 参数预设 · 历史持久化
+
+</div>
+
+---
+
+## 📸 界面预览
+
+| 主界面(网格 + 参数面板) | 工具栏(过滤 / 收藏 / 批量下载) |
+| --- | --- |
+| ![主界面](docs/screenshots/main-grid.png) | ![工具栏](docs/screenshots/toolbar-filters.png) |
+
+| 灯箱(完整生成参数 + 复用 / 下载) |
+| --- |
+| ![灯箱](docs/screenshots/lightbox-img2img.png) |
+
+> 截图为内置 Mock 后端的演示效果;切换 ComfyUI 后界面不变,产出真实图片。
+
+## ✨ 功能特性
+
+- **三种生成模式** —— 文生图、图生图(上传 / 拖入参考图 + 重绘幅度)、图生视频(参考图作首帧,演示链路)
+- **完整参数** —— 模型、尺寸预设、步数、CFG、采样器 / 调度器、种子(随机或固定)、批量 1~16
+- **任务队列** —— FIFO 调度,按后端并发能力执行;实时进度条(SSE 推送)、随时取消、失败后一键重试
+- **结果管理** —— 网格视图 / 灯箱大图、类型过滤(图像 / 视频 / 收藏)、星标收藏(豁免历史裁剪)、单张或批量下载、删除
+- **参数预设** —— 当前参数保存为命名预设(localStorage),一键载入 / 删除
+- **任务历史** —— 最近任务状态一览(状态点 + 重试入口)
+- **持久化** —— 图片与历史落盘(`data/`),重启不丢;上限 500 条自动裁剪
+- **健壮性** —— 参数校验、统一 JSON 错误、队列上限保护、优雅停机、结构化日志
+- **双后端** —— 内置 Mock(零依赖演示)+ ComfyUI(真实出图),Provider 抽象可扩展任意后端
+
+## 🚀 快速开始
 
 ```bash
+git clone https://github.com/weilengdezaoshang/aiVideo.git
+cd aiVideo
 npm install
-npm run dev        # 开发模式(文件变更自动重启)
-# 或 npm start
+npm run dev
 ```
 
-打开 <http://127.0.0.1:7801>,输入提示词,点击「✨ 生成」即可。
+打开 <http://127.0.0.1:7801>,输入提示词,点击「✨ 生成」—— 内置 Mock 后端无需 GPU 即可体验完整流程。
 
-## 切换到 ComfyUI 真实出图
+### Docker
 
-1. 本地启动 ComfyUI(默认地址 `http://127.0.0.1:8188`),并放置好 checkpoint 模型。
+```bash
+docker compose up -d app                        # 仅应用
+docker compose --profile comfy up -d            # 应用 + ComfyUI
+```
+
+### 切换 ComfyUI 真实出图
+
+1. 本地启动 [ComfyUI](https://github.com/comfyanonymous/ComfyUI)(默认 `http://127.0.0.1:8188`)并放置 checkpoint 模型;
 2. 修改 `config.json`:
 
 ```json
-{
-  "provider": "comfyui",
-  "comfyUrl": "http://127.0.0.1:8188",
-  "port": 7801
-}
+{ "provider": "comfyui", "comfyUrl": "http://127.0.0.1:8188", "port": 7801 }
 ```
 
-3. 重启服务,模型下拉会自动读取 ComfyUI 的 checkpoint 列表。
+3. 重启服务 —— 模型与采样器列表自动从 ComfyUI 读取,生成真实图片。
 
-也可以用环境变量覆盖:`SWARMUI_PROVIDER=comfyui SWARMUI_COMFY_URL=http://127.0.0.1:8188`。
+也可用环境变量覆盖:`SWARMUI_PROVIDER` / `SWARMUI_COMFY_URL` / `SWARMUI_PORT`。
 
-## 功能清单
-
-- 提示词 / 反向提示词、模型选择、宽高(含预设)、步数、CFG、种子(-1 随机)、批量数量
-- 采样器 / 调度器选择(选项来自当前后端;ComfyUI 下自动读取其可用列表)
-- **图生图(img2img)**:上传 / 拖入参考图(自动缩放至 1024px 内),配合「重绘幅度」(denoise < 1)使用;
-  ComfyUI 后端自动上传参考图并切换 LoadImage + VAEEncode 工作流
-- **参数预设**:把当前全部参数保存为命名预设(localStorage),一键载入 / 删除
-- 任务队列(FIFO,Mock 并发 2 / ComfyUI 并发 1)、实时进度条(SSE 推送)、取消任务
-- 图片网格 + 灯箱:完整生成参数(含采样器与重绘幅度)、复用全部参数、仅复用种子、下载、删除、键盘 ←/→/Esc 导航
-- 历史持久化到磁盘(`data/images/` + `data/history.json`),重启不丢,上限 500 张自动裁剪
-- 后端健康状态展示(顶栏状态灯)
-
-## API 一览
+## 📡 API 一览
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/api/health` | 服务与后端状态 |
 | GET | `/api/models` | 模型列表(来自 provider) |
-| GET | `/api/samplers` | 可用采样器与调度器列表 |
-| POST | `/api/generate` | 提交生成任务,返回 `{ jobId }`;`initImage` 字段可选传参考图 data URL |
-| GET | `/api/jobs` | 进行中的任务 |
+| GET | `/api/samplers` | 可用采样器与调度器 |
+| POST | `/api/generate` | 提交生成任务(202 + jobId);`initImage` 可选 data URL |
+| GET | `/api/jobs` | 进行中任务;`?all=1` 返回最近任务历史 |
 | GET | `/api/jobs/:id` | 单个任务状态 |
 | DELETE | `/api/jobs/:id` | 取消任务 |
-| GET | `/api/history?limit=100` | 历史图片(新→旧) |
+| GET | `/api/history?limit=100` | 历史记录(新 → 旧) |
+| PUT | `/api/images/:id/star` | 设置 / 取消收藏 |
 | DELETE | `/api/images/:id` | 删除图片与记录 |
 | GET | `/api/events` | SSE 实时事件(snapshot / job / image) |
-| GET | `/images/:file` | 生成结果静态访问 |
-
-示例:
 
 ```bash
-curl -s -X POST http://127.0.0.1:7801/api/generate \
+curl -X POST http://127.0.0.1:7801/api/generate \
   -H 'Content-Type: application/json' \
   -d '{"prompt":"一只宇航员猫, 霓虹灯","model":"mock-diffusion-xl","steps":20,"batchCount":2}'
 ```
 
-## 目录结构
+## 🏗️ 项目结构
 
 ```
 aiVideo/
-├── config.json              # 运行配置(provider / comfyUrl / port)
+├── config.json                  # 运行配置(provider / comfyUrl / port)
+├── docker-compose.yml           # 应用 + ComfyUI 编排(免构建挂载源码)
+├── scripts/
+│   └── e2e-smoke.mjs            # 端到端冒烟脚本(零依赖,13 项核心流程检查)
 ├── src/
-│   ├── server.ts            # Express 入口:REST API + SSE + 静态资源
-│   ├── validate.ts          # 生成参数校验与规范化
-│   ├── store.ts             # 图片文件 + 历史记录持久化
-│   ├── types.ts
+│   ├── server.ts                # Express 入口:REST + SSE + 静态资源 + 错误处理 + 优雅停机
+│   ├── logger.ts                # 结构化日志(LOG_LEVEL 控制)
+│   ├── validate.ts              # 生成参数 / 参考图校验与规范化
+│   ├── store.ts                 # 图片文件 + 历史持久化(收藏豁免裁剪)
+│   ├── types.ts                 # 领域类型(GenParams / Job / ImageRecord …)
 │   └── services/
-│       ├── job-manager.ts   # 任务队列:调度/进度/取消/事件
+│       ├── job-manager.ts       # FIFO 任务队列:调度 / 进度 / 取消 / 事件 / 媒体类型路由
 │       └── providers/
-│           ├── provider.ts          # 生成后端抽象接口
-│           ├── mock-provider.ts     # 内置演示后端(占位图)
-│           └── comfyui-provider.ts  # ComfyUI HTTP API 对接
-├── web/                     # 前端(原生 HTML/CSS/JS,无构建步骤)
-├── tests/                   # node:test 单元测试
-└── data/                    # 运行时产物(git 已忽略)
+│           ├── provider.ts      # 生成后端抽象接口(图像 + 视频)
+│           ├── mock-provider.ts # 内置演示后端(静态 SVG / 动画 SVG 占位产物)
+│           └── comfyui-provider.ts  # ComfyUI HTTP 对接(工作流构造 / 上传 / 轮询 / 取图)
+├── web/                         # 前端(原生 HTML/CSS/JS,无构建步骤)
+│   ├── index.html
+│   ├── style.css
+│   └── app.js                   # 状态管理 / SSE 渲染 / 灯箱 / 预设 / 过滤
+├── tests/                       # node:test 单元测试(27 个)
+└── docs/screenshots/            # 界面截图
 ```
 
-事件流:前端通过 SSE(`/api/events`)接收 `job`(进度)与 `image`(落盘)事件;后端 `JobManager` 把任务拆成单张图片依次调用 `GenerationProvider`,provider 只负责产出图片字节,落盘与记录统一由 `Store` 完成。
+**核心数据流**:
 
-## 测试与检查
+```
+浏览器 ──POST /api/generate──▶ JobManager ──FIFO 队列──▶ GenerationProvider
+   ▲                                │                      │  Mock / ComfyUI
+   └── SSE 实时渲染 ◀─ job/image 事件 ┘        产物字节 ──▶ Store 落盘 + 历史
+```
+
+新增后端只需实现 `GenerationProvider` 接口(`status / listModels / listSamplerOptions /
+generate / generateVideo`)并在 `server.ts` 注册,队列、API、前端零改动。
+
+## 🧪 测试与校验
 
 ```bash
-npm test           # 22 个单元测试(Store / MockProvider / JobManager / 参数校验 / ComfyUI 工作流)
-npm run typecheck  # TypeScript 严格模式检查
+npm run verify          # typecheck + eslint + 单元测试(提交前必跑,pre-commit 自动执行)
+node scripts/e2e-smoke.mjs   # 对运行中的服务执行 13 项端到端检查
+npm run format          # prettier 统一格式
 ```
 
-## 工程化
+CI(GitHub Actions)在每次 push / PR 时自动执行 `npm ci && npm run verify`。
 
-- **一站式校验**:`npm run verify`(typecheck + eslint + 测试),提交前必跑;`npm run format` 统一格式。
-- **与 codeden 的关系**:aiVideo 是独立 git 仓库(仅物理上位于 codeden 目录内),codeden 已忽略
-  本目录、其 lint 也不扫描;本仓库自带完整工具链,可随时整体移出而不受影响。
-- **Git 钩子**:husky + lint-staged(`npm install` 自动启用)—— pre-commit 对暂存文件执行
-  Prettier + ESLint 并运行 typecheck;commit-msg 校验提交规范 `type(模块): 中文描述.`(见 AGENTS.md)。
-- **CI**:GitHub Actions([`.github/workflows/ci.yml`](.github/workflows/ci.yml)),push / PR 触发
-  `npm ci && npm run verify`,推送到 GitHub 后自动生效。
-- **日志**:结构化输出(ISO 时间戳 + 级别 + JSON 上下文,Error 自动展开为 name/message/stack)。
-  默认 info 级即可追踪任务全生命周期:`已接受生成任务 → 任务完成/失败/取消`(带 jobId、耗时、张数);
-  `LOG_LEVEL=debug npm run dev` 额外输出请求访问日志、任务入队/开始、SSE 连接与 ComfyUI 工作流提交细节。
-  排障时优先看 error/warn:任务失败、历史写盘失败、后端探测异常都在这两个级别。
-- **健壮性**:启动时配置快检(非法 provider/端口直接报错)、404/500 统一 JSON 错误结构、
-  非法 JSON 请求体返回 400、生成队列上限 50(超限 429)、SIGTERM/SIGINT 优雅停机。
-- **Docker**:`docker compose up -d app` 起服务(挂载源码免构建);
-  `docker compose --profile comfy up -d` 额外拉起 ComfyUI(8188),
-  再以 `SWARMUI_PROVIDER=comfyui SWARMUI_COMFY_URL=http://comfyui:8188` 启动 app 即真实出图。
-- **新增生成后端**:实现 `src/services/providers/provider.ts` 的 `GenerationProvider` 接口,
-  在 `src/server.ts` 的 `loadConfig` 后注册即可,JobManager / API / 前端无需改动。
+## 🗺️ Roadmap / TODO
 
-## 已知边界与后续路线
+- [x] 核心流程:提示词 → 队列 → 生成 → 网格 → 灯箱 → 历史持久化
+- [x] 采样器 / 调度器选择(选项来自后端能力探测)
+- [x] 图生图(参考图上传 + 重绘幅度)
+- [x] 图生视频 Mock 链路(动画占位产物,前端播放支持)
+- [x] 收藏 / 过滤 / 批量下载 / 任务历史 / 失败重试
+- [x] 工程化:verify 门禁、husky、CI、Docker、e2e 冒烟脚本
+- [ ] **ComfyUI 真实出图验证** —— 在真实环境校准 txt2img / img2img 工作流与超时参数
+- [ ] **ComfyUI 图生视频工作流** —— Wan2.2-I2V / LTX-Video 接入(接口已预留 `generateVideo`)
+- [ ] 局部重绘(Inpainting)—— 前端蒙版画板 + mask 工作流
+- [ ] 指令式图片编辑 —— 接入 Qwen-Image-Edit / FLUX.1 Kontext
+- [ ] LoRA / ControlNet 支持
+- [ ] 云端 GPU 部署指南(AutoDL / RunPod)
+- [ ] 历史搜索与标签管理
+- [ ] 多语言界面(i18n)
 
-- ComfyUI 工作流为标准 txt2img / img2img(euler 系采样器可用参数选择),LoRA、ControlNet 等高级节点暂未暴露
-- Mock 后端输出 SVG 占位图(同种子可复现;图生图模式下参考图按 1 - denoise 垫底),仅用于打通流程与 UI 演示
-- 后续可扩展:LoRA、ControlNet、参数预设云端同步、多用户会话、
-  视频生成后端(目录名 aiVideo 的预定期望,provider 抽象已为其留好位置)
+> 欢迎按下面的贡献流程认领任意条目。
+
+## 🤝 参与贡献
+
+1. Fork 并创建特性分支:`git checkout -b feat/your-feature`
+2. 提交前运行 `npm run verify` 确保全绿(pre-commit 钩子会自动执行)
+3. 提交信息遵循 [Conventional Commits 中文规范](AGENTS.md):`type(模块): 中文描述.`
+4. 发起 Pull Request
+
+详见 [AGENTS.md](AGENTS.md) 中的完整开发约定。
+
+## 📄 License
+
+[MIT](LICENSE) © 2026 chenGuoFeng
