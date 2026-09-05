@@ -9,7 +9,7 @@ import { MockProvider } from './services/providers/mock-provider.js'
 import type { GenerationProvider } from './services/providers/provider.js'
 import { Store } from './store.js'
 import type { BackendStatus, Job } from './types.js'
-import { parseGenParams, parseInitImage } from './validate.js'
+import { parseGenParams, parseInitImage, parseMaskImage } from './validate.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
@@ -172,11 +172,23 @@ app.post('/api/generate', (req, res) => {
   if (!initParsed.ok) {
     return res.status(400).json({ error: initParsed.error })
   }
-  const job = jobs.createJob(parsed.params, initParsed.image)
+  const maskParsed = parseMaskImage((req.body as Record<string, unknown>).maskImage)
+  if (!maskParsed.ok) {
+    return res.status(400).json({ error: maskParsed.error })
+  }
+  if (maskParsed.mask && !initParsed.image) {
+    return res.status(400).json({ error: '局部重绘需要同时携带参考图(initImage)' })
+  }
+  if (maskParsed.mask) {
+    // 蒙版标记由服务端写入,不信任客户端声明;用于历史与前端展示
+    parsed.params.inpaint = true
+  }
+  const job = jobs.createJob(parsed.params, initParsed.image, maskParsed.mask)
   logger.info('已接受生成任务', {
     jobId: job.id,
     kind: parsed.params.kind,
     batch: parsed.params.batchCount,
+    inpaint: Boolean(maskParsed.mask),
   })
   return res.status(202).json({ jobId: job.id, job })
 })

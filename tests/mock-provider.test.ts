@@ -112,3 +112,20 @@ test('generateVideo:携带首帧时嵌入参考图并标注 i2v', async () => {
   assert.ok(svg.includes('data:image/png;base64,'))
   assert.ok(svg.includes('i2v'))
 })
+
+test('generate:局部重绘时原图完整垫底,生成内容限定在蒙版区域', async () => {
+  const provider = new MockProvider(1)
+  const out = await provider.generate(
+    { ...params, denoise: 0.7 },
+    { seed: 42, index: 0, signal: new AbortController().signal, onProgress: () => {} },
+    { data: Buffer.from('ref'), ext: 'png' },
+    { data: Buffer.from('mask'), ext: 'png' },
+  )
+  const svg = out.data.toString('utf8')
+  assert.ok(svg.includes('<mask id="inpaint-region"'))
+  assert.ok(svg.includes('mask="url(#inpaint-region)"'))
+  assert.ok(svg.includes('inpaint 0.70'))
+  // 蒙版图像与完整不透明度的参考图都在产物中
+  assert.ok(svg.includes('data:image/png;base64,bWFzaw=='))
+  assert.ok(svg.includes('opacity="1"'))
+})

@@ -47,6 +47,26 @@ test('img2img 工作流:LoadImage + VAEEncode + 参数 denoise', () => {
   assert.equal(wf['5'], undefined)
 })
 
+test('局部重绘工作流:蒙版经 ImageToMask + SetLatentNoiseMask 限定重采样区域', () => {
+  const wf = buildWorkflow(params, 42, 'ref_1.png', 'mask_1.png')
+  assert.equal(wf['12'].class_type, 'LoadImage')
+  assert.equal(wf['12'].inputs.image, 'mask_1.png')
+  assert.equal(wf['13'].class_type, 'ImageToMask')
+  assert.deepEqual(wf['13'].inputs.image, ['12', 0])
+  assert.equal(wf['13'].inputs.channel, 'red')
+  assert.equal(wf['14'].class_type, 'SetLatentNoiseMask')
+  assert.deepEqual(wf['14'].inputs.samples, ['11', 0])
+  assert.deepEqual(wf['14'].inputs.mask, ['13', 0])
+  assert.deepEqual(wf['3'].inputs.latent_image, ['14', 0])
+  // 不带蒙版时保持 img2img 原链路;纯文生图忽略蒙版参数
+  const plain = buildWorkflow(params, 42, 'ref_1.png')
+  assert.deepEqual(plain['3'].inputs.latent_image, ['11', 0])
+  assert.equal(plain['12'], undefined)
+  const t2i = buildWorkflow(params, 42, undefined, 'mask_1.png')
+  assert.deepEqual(t2i['3'].inputs.latent_image, ['5', 0])
+  assert.equal(t2i['12'], undefined)
+})
+
 const videoParams: GenParams = { ...params, kind: 'video', durationSec: 4, fps: 16 }
 
 test('LTXV 图生视频:ImgToVideo → 帧率条件 → KSampler → SaveVideo', () => {

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parseGenParams, parseInitImage } from '../src/validate.js'
+import { parseGenParams, parseInitImage, parseMaskImage } from '../src/validate.js'
 
 const validBase = { prompt: 'cat', model: 'm' }
 
@@ -110,5 +110,26 @@ test('parseGenParams:kind 与视频参数默认值及夹紧', () => {
   assert.equal(bad.ok, true)
   if (bad.ok) {
     assert.equal(bad.params.kind, 'image')
+  }
+})
+
+test('parseMaskImage:未携带返回 undefined,仅接受 PNG', () => {
+  const none = parseMaskImage(undefined)
+  assert.equal(none.ok, true)
+  if (none.ok) {
+    assert.equal(none.mask, undefined)
+  }
+
+  const jpeg = parseMaskImage('data:image/jpeg;base64,AAAA')
+  assert.equal(jpeg.ok, false)
+  if (!jpeg.ok) {
+    assert.match(jpeg.error, /PNG/)
+  }
+
+  const png = parseMaskImage('data:image/png;base64,ZmFrZQ==')
+  assert.equal(png.ok, true)
+  if (png.ok) {
+    assert.equal(png.mask?.ext, 'png')
+    assert.equal(png.mask?.data.toString(), 'fake')
   }
 })

@@ -110,6 +110,14 @@ async function main() {
     assert(status === 400, `期望 400,实际 ${status}`)
   })
 
+  await check('POST /api/generate 蒙版缺参考图:400', async () => {
+    const { status, data } = await req('POST', '/api/generate', {
+      body: { prompt: 'inpaint', model: MODEL, maskImage: 'data:image/png;base64,ZmFrZQ==' },
+    })
+    assert(status === 400, `期望 400,实际 ${status}`)
+    assert(String(data?.error ?? '').includes('initImage'), '错误应提示需要参考图')
+  })
+
   await check('GET /api/nonexistent:404 JSON 含 error', async () => {
     const { status, data } = await req('GET', '/api/nonexistent')
     assert(status === 404, `期望 404,实际 ${status}`)

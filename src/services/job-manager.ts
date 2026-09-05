@@ -18,6 +18,7 @@ export class JobManager extends EventEmitter {
   private running = new Set<string>()
   private aborts = new Map<string, AbortController>()
   private initImages = new Map<string, InitImage>()
+  private masks = new Map<string, InitImage>()
 
   constructor(
     private provider: GenerationProvider,
@@ -26,7 +27,7 @@ export class JobManager extends EventEmitter {
     super()
   }
 
-  createJob(params: GenParams, initImage?: InitImage): Job {
+  createJob(params: GenParams, initImage?: InitImage, maskImage?: InitImage): Job {
     const job: Job = {
       id: randomUUID(),
       status: 'queued',
@@ -42,6 +43,9 @@ export class JobManager extends EventEmitter {
     if (initImage) {
       this.initImages.set(job.id, initImage)
     }
+    if (maskImage) {
+      this.masks.set(job.id, maskImage)
+    }
     this.queue.push(job.id)
     this.emit('job', job)
     logger.debug('任务入队', {
@@ -50,6 +54,7 @@ export class JobManager extends EventEmitter {
       batch: params.batchCount,
       model: params.model,
       img2img: Boolean(initImage),
+      inpaint: Boolean(maskImage),
     })
     this.pump()
     return job
@@ -86,6 +91,7 @@ export class JobManager extends EventEmitter {
       job.message = '已取消'
       job.finishedAt = new Date().toISOString()
       this.initImages.delete(id)
+      this.masks.delete(id)
       this.emit('job', job)
       logger.info('排队任务已取消', { jobId: id })
     } else {
@@ -116,6 +122,7 @@ export class JobManager extends EventEmitter {
     const ac = new AbortController()
     this.aborts.set(job.id, ac)
     const initImage = this.initImages.get(job.id)
+    const maskImage = this.masks.get(job.id)
     const baseSeed = job.params.seed >= 0 ? job.params.seed : randomInt(0, 2 ** 31 - 1)
     try {
       const run = (
@@ -130,7 +137,7 @@ export class JobManager extends EventEmitter {
         }
         return job.params.kind === 'video'
           ? this.provider.generateVideo(job.params, ctx, initImage)
-          : this.provider.generate(job.params, ctx, initImage)
+          : this.provider.generate(job.params, ctx, initImage, maskImage)
       }
       for (let index = 0; index < job.batchCount; index++) {
         let lastEmit = 0
@@ -182,6 +189,7 @@ export class JobManager extends EventEmitter {
     } finally {
       this.aborts.delete(job.id)
       this.initImages.delete(job.id)
+      this.masks.delete(job.id)
       this.running.delete(job.id)
       this.pruneFinishedJobs()
       this.pump()

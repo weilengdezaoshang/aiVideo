@@ -57,6 +57,34 @@ export function parseGenParams(
 
 const INIT_MAX_BYTES = 8 * 1024 * 1024
 
+/** 解析图片类 data URL;ext 为 'jpg' 时规范化为 'jpeg'。 */
+function parseImageDataUrl(
+  raw: unknown,
+  label: string,
+  allowed: readonly string[],
+): { ok: true; image: InitImage } | { ok: false; error: string } {
+  if (typeof raw !== 'string') {
+    return { ok: false, error: `${label}必须是 data URL 字符串` }
+  }
+  const match = new RegExp(`^data:image/(${allowed.join('|')});base64,([A-Za-z0-9+/=\\s]+)$`).exec(
+    raw,
+  )
+  if (!match) {
+    return {
+      ok: false,
+      error: `${label}格式错误:仅支持 ${allowed.join(' / ').toUpperCase()} 的 base64 data URL`,
+    }
+  }
+  const data = Buffer.from(match[2].replace(/\s+/g, ''), 'base64')
+  if (data.byteLength === 0) {
+    return { ok: false, error: `${label}内容为空` }
+  }
+  if (data.byteLength > INIT_MAX_BYTES) {
+    return { ok: false, error: `${label}过大(上限 ${INIT_MAX_BYTES / 1024 / 1024}MB)` }
+  }
+  return { ok: true, image: { data, ext: match[1] === 'jpg' ? 'jpeg' : match[1] } }
+}
+
 /**
  * 解析图生图参考图。接收 data URL(data:image/png|jpeg|webp;base64,...)。
  * image 为 undefined 表示请求未携带参考图。
@@ -67,19 +95,19 @@ export function parseInitImage(
   if (raw === undefined || raw === null || raw === '') {
     return { ok: true, image: undefined }
   }
-  if (typeof raw !== 'string') {
-    return { ok: false, error: '参考图(initImage)必须是 data URL 字符串' }
+  return parseImageDataUrl(raw, '参考图(initImage)', ['png', 'jpe?g', 'webp'])
+}
+
+/**
+ * 解析局部重绘蒙版:白 = 重绘区域。只接受 PNG(有损格式会污染蒙版边缘)。
+ * mask 为 undefined 表示请求未携带蒙版。
+ */
+export function parseMaskImage(
+  raw: unknown,
+): { ok: true; mask: InitImage | undefined } | { ok: false; error: string } {
+  if (raw === undefined || raw === null || raw === '') {
+    return { ok: true, mask: undefined }
   }
-  const match = /^data:image\/(png|jpe?g|webp);base64,([A-Za-z0-9+/=\s]+)$/.exec(raw)
-  if (!match) {
-    return { ok: false, error: '参考图格式错误:仅支持 PNG / JPEG / WebP 的 base64 data URL' }
-  }
-  const data = Buffer.from(match[2].replace(/\s+/g, ''), 'base64')
-  if (data.byteLength === 0) {
-    return { ok: false, error: '参考图内容为空' }
-  }
-  if (data.byteLength > INIT_MAX_BYTES) {
-    return { ok: false, error: `参考图过大(上限 ${INIT_MAX_BYTES / 1024 / 1024}MB)` }
-  }
-  return { ok: true, image: { data, ext: match[1] === 'jpg' ? 'jpeg' : match[1] } }
+  const parsed = parseImageDataUrl(raw, '蒙版(maskImage)', ['png'])
+  return parsed.ok ? { ok: true, mask: parsed.image } : parsed
 }

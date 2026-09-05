@@ -20,6 +20,8 @@ export interface GenParams {
   denoise: number
   /** 生成媒体类型;video 时 denoise/steps 等图像参数不生效 */
   kind: 'image' | 'video'
+  /** 局部重绘标记:请求携带蒙版时由服务端写入,仅用于展示与历史 */
+  inpaint?: boolean
   /** 视频时长(秒),1..12 */
   durationSec: number
   /** 视频帧率,4..30 */

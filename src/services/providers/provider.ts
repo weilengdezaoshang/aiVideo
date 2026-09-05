@@ -21,8 +21,13 @@ export interface GenerationProvider {
   status(): Promise<BackendStatus>
   listModels(): Promise<ModelInfo[]>
   listSamplerOptions(): Promise<SamplerOptions>
-  /** initImage 存在且 denoise < 1 时按图生图处理。 */
-  generate(params: GenParams, ctx: GenContext, initImage?: InitImage): Promise<GeneratedImage>
+  /** initImage 存在且 denoise < 1 时按图生图处理;再携带 maskImage 时为局部重绘(白 = 重绘区域)。 */
+  generate(
+    params: GenParams,
+    ctx: GenContext,
+    initImage?: InitImage,
+    maskImage?: InitImage,
+  ): Promise<GeneratedImage>
   /** 图生视频:initImage 作为首帧(未提供时按文生视频)。 */
   generateVideo(params: GenParams, ctx: GenContext, initImage?: InitImage): Promise<GeneratedImage>
 }

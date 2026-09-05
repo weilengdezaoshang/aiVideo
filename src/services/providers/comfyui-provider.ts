@@ -181,18 +181,24 @@ export class ComfyUIProvider implements GenerationProvider {
     params: GenParams,
     ctx: GenContext,
     initImage?: InitImage,
+    maskImage?: InitImage,
   ): Promise<GeneratedImage> {
     let refName: string | undefined
     if (initImage) {
       ctx.onProgress(0.01, '上传参考图到 ComfyUI')
       refName = await this.uploadImage(initImage)
     }
+    let maskName: string | undefined
+    if (refName && maskImage) {
+      ctx.onProgress(0.015, '上传重绘蒙版到 ComfyUI')
+      maskName = await this.uploadImage(maskImage)
+    }
     ctx.onProgress(0.02, '提交工作流到 ComfyUI')
     const submit = await this.fetchJson<{ prompt_id: string }>('/prompt', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt: buildWorkflow(params, ctx.seed, refName),
+        prompt: buildWorkflow(params, ctx.seed, refName, maskName),
         client_id: randomUUID(),
       }),
     })
@@ -351,12 +357,22 @@ const DEFAULT_WAN_CLIP = 'umt5_xxl_fp8_e4m3fn_scaled.safetensors'
 const DEFAULT_WAN_VAE = 'wan_2.1_vae.safetensors'
 
 /**
- * 标准 txt2img / img2img 工作流:
+ * 标准 txt2img / img2img / 局部重绘工作流:
  * txt2img: Checkpoint → CLIP 编码 → KSampler(denoise=1) → VAE 解码 → SaveImage
  * img2img: 参考图经 LoadImage + VAEEncode 进入潜在空间,denoise 由参数控制
+ * inpaint: 在 img2img 基础上,蒙版(白 = 重绘区域)经 ImageToMask + SetLatentNoiseMask
+ *          限定只重采样蒙版内的像素
  */
-export function buildWorkflow(p: GenParams, seed: number, initImageName?: string): ComfyWorkflow {
-  const latentSource = initImageName ? { node: '11', output: 0 } : { node: '5', output: 0 }
+export function buildWorkflow(
+  p: GenParams,
+  seed: number,
+  initImageName?: string,
+  maskImageName?: string,
+): ComfyWorkflow {
+  const hasMask = Boolean(initImageName && maskImageName)
+  const latentSource = initImageName
+    ? { node: hasMask ? '14' : '11', output: 0 }
+    : { node: '5', output: 0 }
   const workflow: ComfyWorkflow = {
     '4': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: p.model } },
     '6': { class_type: 'CLIPTextEncode', inputs: { text: p.prompt, clip: ['4', 1] } },
@@ -382,6 +398,18 @@ export function buildWorkflow(p: GenParams, seed: number, initImageName?: string
   if (initImageName) {
     workflow['10'] = { class_type: 'LoadImage', inputs: { image: initImageName } }
     workflow['11'] = { class_type: 'VAEEncode', inputs: { pixels: ['10', 0], vae: ['4', 2] } }
+    if (hasMask) {
+      // 前端产出黑底白笔的 RGB PNG,取红色通道作为蒙版
+      workflow['12'] = { class_type: 'LoadImage', inputs: { image: maskImageName! } }
+      workflow['13'] = {
+        class_type: 'ImageToMask',
+        inputs: { image: ['12', 0], channel: 'red' },
+      }
+      workflow['14'] = {
+        class_type: 'SetLatentNoiseMask',
+        inputs: { samples: ['11', 0], mask: ['13', 0] },
+      }
+    }
   } else {
     workflow['5'] = {
       class_type: 'EmptyLatentImage',

@@ -31,6 +31,7 @@ export class MockProvider implements GenerationProvider {
     params: GenParams,
     ctx: GenContext,
     initImage?: InitImage,
+    maskImage?: InitImage,
   ): Promise<GeneratedImage> {
     const isImg2img = Boolean(initImage) && params.denoise < 1
     for (let step = 1; step <= params.steps; step++) {
@@ -41,7 +42,7 @@ export class MockProvider implements GenerationProvider {
       ctx.onProgress(step / params.steps, `演示采样 step ${step}/${params.steps}`)
     }
     return {
-      data: Buffer.from(this.renderSvg(params, ctx, initImage, isImg2img), 'utf8'),
+      data: Buffer.from(this.renderSvg(params, ctx, initImage, maskImage, isImg2img), 'utf8'),
       ext: 'svg',
     }
   }
@@ -143,6 +144,7 @@ export class MockProvider implements GenerationProvider {
     params: GenParams,
     ctx: GenContext,
     initImage: InitImage | undefined,
+    maskImage: InitImage | undefined,
     isImg2img: boolean,
   ): string {
     const rng = mulberry32(hashSeed(ctx.seed, params))
@@ -166,16 +168,33 @@ export class MockProvider implements GenerationProvider {
       return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#fff" opacity="${o}"/>`
     }).join('')
 
-    // 图生图:参考图以 (1 - denoise) 的透明度垫底,直观体现重绘幅度
+    // 图生图:参考图以 (1 - denoise) 的透明度垫底,直观体现重绘幅度;
+    // 局部重绘:原图完整垫底,生成内容经亮度蒙版只落在白色区域
+    const refHref = initImage
+      ? `data:${mimeOf(initImage.ext)};base64,${initImage.data.toString('base64')}`
+      : ''
+    const inpaint = Boolean(maskImage && initImage)
     const refLayer = initImage
-      ? `<image href="data:${mimeOf(initImage.ext)};base64,${initImage.data.toString('base64')}" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" opacity="${(1 - params.denoise).toFixed(2)}"/>`
+      ? `<image href="${refHref}" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" opacity="${inpaint ? '1' : (1 - params.denoise).toFixed(2)}"/>`
       : ''
 
     const lines = wrapText(params.prompt, Math.max(14, Math.floor(params.width / 22))).slice(0, 8)
     const fontSize = Math.max(16, Math.round(min / 28))
     const textY = params.height / 2 - ((lines.length - 1) * fontSize * 1.4) / 2
-    const mode = isImg2img ? ` · img2img ${params.denoise.toFixed(2)}` : ''
+    const mode = inpaint
+      ? ` · inpaint ${params.denoise.toFixed(2)}`
+      : isImg2img
+        ? ` · img2img ${params.denoise.toFixed(2)}`
+        : ''
     const caption = `seed ${ctx.seed} · ${params.width}×${params.height} · steps ${params.steps} · cfg ${params.cfgScale} · ${params.sampler}/${params.scheduler}${mode} · ${escapeXml(params.model)}`
+
+    const backdrop = `<rect width="100%" height="100%" fill="url(#bg)"/>`
+    const maskDef = inpaint
+      ? `<mask id="inpaint-region" maskUnits="userSpaceOnUse" x="0" y="0" width="${params.width}" height="${params.height}"><image href="data:${mimeOf(maskImage!.ext)};base64,${maskImage!.data.toString('base64')}" width="${params.width}" height="${params.height}" preserveAspectRatio="none"/></mask>`
+      : ''
+    const scene = inpaint
+      ? `${refLayer}<g mask="url(#inpaint-region)">${backdrop}${blobs}${dots}</g>`
+      : `${backdrop}${refLayer}${blobs}${dots}`
 
     return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${params.width}" height="${params.height}" viewBox="0 0 ${params.width} ${params.height}">
@@ -184,11 +203,9 @@ export class MockProvider implements GenerationProvider {
       <stop offset="0" stop-color="hsl(${hue},70%,22%)"/>
       <stop offset="1" stop-color="hsl(${hue2},65%,38%)"/>
     </linearGradient>
+    ${maskDef}
   </defs>
-  <rect width="100%" height="100%" fill="url(#bg)"/>
-  ${refLayer}
-  ${blobs}
-  ${dots}
+  ${scene}
   ${lines
     .map(
       (line, i) =>
