@@ -21,6 +21,25 @@ interface AppConfig {
   provider: 'mock' | 'comfyui'
   comfyUrl: string
   port: number
+  /** ComfyUI 图像任务整体超时(分钟) */
+  imageTimeoutMin: number
+  /** ComfyUI 视频任务整体超时(分钟) */
+  videoTimeoutMin: number
+  /** 视频模型文件名;留空自动探测 */
+  videoModel: string
+  videoBackend: 'auto' | 'ltxv' | 'wan'
+  wanClip: string
+  wanVae: string
+  wanHighNoiseUnet: string
+  wanLowNoiseUnet: string
+}
+
+const readOptionalString = (envKey: string, fileValue: unknown): string => {
+  const env = process.env[envKey]
+  if (env !== undefined && env.trim() !== '') {
+    return env.trim()
+  }
+  return typeof fileValue === 'string' ? fileValue.trim() : ''
 }
 
 /** 读取并校验运行配置:错误直接抛出快速失败,避免带病启动。 */
@@ -43,12 +62,52 @@ function loadConfig(): AppConfig {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error(`配置错误:port 必须是 1..65535 的整数,当前为 "${port}"`)
   }
-  return { provider, comfyUrl, port }
+  const readTimeoutMin = (envKey: string, fileValue: unknown, fallback: number): number => {
+    const raw = process.env[envKey] ?? fileValue
+    if (raw === undefined || raw === '') {
+      return fallback
+    }
+    const n = Number(raw)
+    if (!Number.isFinite(n) || n < 1 || n > 240) {
+      throw new Error(`配置错误:${envKey} 必须是 1..240 的分钟数,当前为 "${raw}"`)
+    }
+    return n
+  }
+  const videoBackendRaw = readOptionalString('SWARMUI_VIDEO_BACKEND', file.videoBackend) || 'auto'
+  if (videoBackendRaw !== 'auto' && videoBackendRaw !== 'ltxv' && videoBackendRaw !== 'wan') {
+    throw new Error(`配置错误:videoBackend 只能是 auto / ltxv / wan,当前为 "${videoBackendRaw}"`)
+  }
+  return {
+    provider,
+    comfyUrl,
+    port,
+    imageTimeoutMin: readTimeoutMin('SWARMUI_IMAGE_TIMEOUT_MIN', file.imageTimeoutMin, 20),
+    videoTimeoutMin: readTimeoutMin('SWARMUI_VIDEO_TIMEOUT_MIN', file.videoTimeoutMin, 60),
+    videoModel: readOptionalString('SWARMUI_VIDEO_MODEL', file.videoModel),
+    videoBackend: videoBackendRaw,
+    wanClip:
+      readOptionalString('SWARMUI_WAN_CLIP', file.wanClip) ||
+      'umt5_xxl_fp8_e4m3fn_scaled.safetensors',
+    wanVae: readOptionalString('SWARMUI_WAN_VAE', file.wanVae) || 'wan_2.1_vae.safetensors',
+    wanHighNoiseUnet: readOptionalString('SWARMUI_WAN_HIGH_NOISE_UNET', file.wanHighNoiseUnet),
+    wanLowNoiseUnet: readOptionalString('SWARMUI_WAN_LOW_NOISE_UNET', file.wanLowNoiseUnet),
+  }
 }
 
 const config = loadConfig()
 const provider: GenerationProvider =
-  config.provider === 'comfyui' ? new ComfyUIProvider(config.comfyUrl) : new MockProvider()
+  config.provider === 'comfyui'
+    ? new ComfyUIProvider(config.comfyUrl, {
+        imageTimeoutMs: config.imageTimeoutMin * 60_000,
+        videoTimeoutMs: config.videoTimeoutMin * 60_000,
+        videoModel: config.videoModel,
+        videoBackend: config.videoBackend,
+        wanClip: config.wanClip,
+        wanVae: config.wanVae,
+        wanHighNoiseUnet: config.wanHighNoiseUnet,
+        wanLowNoiseUnet: config.wanLowNoiseUnet,
+      })
+    : new MockProvider()
 const dataDir = path.join(rootDir, 'data')
 const store = new Store(path.join(dataDir, 'images'), path.join(dataDir, 'history.json'))
 const jobs = new JobManager(provider, store)

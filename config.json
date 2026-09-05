@@ -1,5 +1,13 @@
 {
   "provider": "mock",
   "comfyUrl": "http://127.0.0.1:8188",
-  "port": 7801
+  "port": 7801,
+  "imageTimeoutMin": 20,
+  "videoTimeoutMin": 60,
+  "videoModel": "",
+  "videoBackend": "auto",
+  "wanClip": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+  "wanVae": "wan_2.1_vae.safetensors",
+  "wanHighNoiseUnet": "",
+  "wanLowNoiseUnet": ""
 }
