@@ -85,3 +85,28 @@ test('重启后历史可从磁盘恢复', async () => {
   assert.equal(second.list().length, 1)
   assert.equal(second.get(rec.id)?.id, rec.id)
 })
+
+test('收藏标记可持久化且收藏记录不被裁剪', async () => {
+  const { store, dir } = await tmpStore(2)
+  // 灌满 2 条未收藏记录,把最旧的 a 标星,再继续灌 3 条:
+  // 若收藏不豁免裁剪,a 最早入列必然先被清除
+  const a = await store.save({ jobId: 'j', provider: 'mock', params, ext: 'svg', data: 'a' })
+  const b = await store.save({ jobId: 'j', provider: 'mock', params, ext: 'svg', data: 'b' })
+  await store.setStarred(a.id, true)
+  const c = await store.save({ jobId: 'j', provider: 'mock', params, ext: 'svg', data: 'c' })
+  const d = await store.save({ jobId: 'j', provider: 'mock', params, ext: 'svg', data: 'd' })
+  const e = await store.save({ jobId: 'j', provider: 'mock', params, ext: 'svg', data: 'e' })
+
+  assert.equal(store.get(a.id)?.starred, true)
+  // 未收藏的 b、c 超出 limit=2 被裁剪;收藏的 a 与最近的 d、e 幸存
+  assert.equal(store.get(b.id), undefined)
+  assert.equal(store.get(c.id), undefined)
+  for (const rec of [a, d, e]) {
+    await fs.access(path.join(dir, 'images', rec.file))
+  }
+  // 重启后收藏标记仍在
+  const second = new Store(path.join(dir, 'images'), path.join(dir, 'history.json'))
+  await second.init()
+  assert.equal(second.get(a.id)?.starred, true)
+  assert.equal(second.list().length, 3)
+})

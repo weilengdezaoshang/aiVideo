@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events'
 import { randomInt, randomUUID } from 'node:crypto'
+import { logger } from '../logger.js'
 import type { GenParams, InitImage, Job } from '../types.js'
 import type { GenContext, GeneratedImage, GenerationProvider } from './providers/provider.js'
 import type { Store } from '../store.js'
@@ -43,6 +44,13 @@ export class JobManager extends EventEmitter {
     }
     this.queue.push(job.id)
     this.emit('job', job)
+    logger.debug('任务入队', {
+      jobId: job.id,
+      kind: params.kind,
+      batch: params.batchCount,
+      model: params.model,
+      img2img: Boolean(initImage),
+    })
     this.pump()
     return job
   }
@@ -56,6 +64,13 @@ export class JobManager extends EventEmitter {
     return [...this.jobs.values()]
       .filter((j) => j.status === 'queued' || j.status === 'running')
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  }
+
+  /** 最近的任务(含已完成/失败),新的在前,用于任务历史面板。 */
+  listRecent(limit = 30): Job[] {
+    return [...this.jobs.values()]
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+      .slice(0, limit)
   }
 
   /** 取消排队或运行中的任务;已结束的任务返回 undefined。 */
@@ -72,6 +87,7 @@ export class JobManager extends EventEmitter {
       job.finishedAt = new Date().toISOString()
       this.initImages.delete(id)
       this.emit('job', job)
+      logger.info('排队任务已取消', { jobId: id })
     } else {
       this.aborts.get(id)?.abort()
     }
@@ -91,10 +107,12 @@ export class JobManager extends EventEmitter {
   }
 
   private async runJob(job: Job): Promise<void> {
+    const startedMs = Date.now()
     job.status = 'running'
     job.startedAt = new Date().toISOString()
     job.message = '准备中'
     this.emit('job', job)
+    logger.debug('任务开始执行', { jobId: job.id })
     const ac = new AbortController()
     this.aborts.set(job.id, ac)
     const initImage = this.initImages.get(job.id)
@@ -140,12 +158,26 @@ export class JobManager extends EventEmitter {
       job.progress = 1
       job.message = '完成'
       job.finishedAt = new Date().toISOString()
+      logger.info('任务完成', {
+        jobId: job.id,
+        images: job.images.length,
+        elapsedMs: Date.now() - startedMs,
+      })
       this.emit('job', job)
     } catch (err) {
       job.status = 'failed'
       job.error = (err as Error).message || '生成失败'
       job.message = job.error
       job.finishedAt = new Date().toISOString()
+      if (job.error === '已取消') {
+        logger.info('运行中任务已取消', { jobId: job.id, images: job.images.length })
+      } else {
+        logger.error('任务失败', {
+          jobId: job.id,
+          err,
+          elapsedMs: Date.now() - startedMs,
+        })
+      }
       this.emit('job', job)
     } finally {
       this.aborts.delete(job.id)

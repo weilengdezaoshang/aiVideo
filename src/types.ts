@@ -56,6 +56,8 @@ export interface ImageRecord {
   provider: string
   params: GenParams
   createdAt: string
+  /** 用户收藏标记,持久化保存;收藏记录不参与历史裁剪 */
+  starred?: boolean
 }
 
 export type JobStatus = 'queued' | 'running' | 'completed' | 'failed'

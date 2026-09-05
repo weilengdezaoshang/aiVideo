@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { logger } from '../../logger.js'
 import type { BackendStatus, GenParams, InitImage, ModelInfo, SamplerOptions } from '../../types.js'
 import type { GenContext, GeneratedImage, GenerationProvider } from './provider.js'
 
@@ -100,6 +101,7 @@ export class ComfyUIProvider implements GenerationProvider {
         client_id: randomUUID(),
       }),
     })
+    logger.debug('已提交工作流到 ComfyUI', { promptId: submit.prompt_id, seed: ctx.seed })
 
     const startedAt = Date.now()
     const estimateMs = 15000 + params.steps * 600
@@ -143,6 +145,10 @@ export class ComfyUIProvider implements GenerationProvider {
         throw new Error(`下载生成结果失败:HTTP ${res.status}`)
       }
       ctx.onProgress(1, '生成完成')
+      logger.debug('ComfyUI 出图完成', {
+        promptId: submit.prompt_id,
+        elapsedMs: Date.now() - startedAt,
+      })
       return { data: Buffer.from(await res.arrayBuffer()), ext: 'png' }
     }
   }
@@ -178,8 +184,9 @@ export class ComfyUIProvider implements GenerationProvider {
         method: 'POST',
         signal: AbortSignal.timeout(2000),
       })
-    } catch {
+    } catch (err) {
       // 尽力而为:ComfyUI 可能已经不在执行该任务
+      logger.warn('中断 ComfyUI 任务失败', { err })
     }
   }
 }

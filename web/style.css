@@ -557,3 +557,156 @@ button:hover,
     width: 100%;
   }
 }
+
+/* ---------- 结果工具栏(过滤 / 下载) ---------- */
+.results-tools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chip {
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--panel);
+  color: var(--text-dim);
+}
+.chip.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+#download-all {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+/* ---------- 网格徽章与收藏 ---------- */
+.cell-badges {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  display: flex;
+  gap: 4px;
+  pointer-events: none;
+}
+.cell-badges span {
+  background: rgba(10, 12, 16, 0.72);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 10px;
+  color: #dfe4ec;
+}
+.cell-star {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 16px;
+  padding: 2px 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.cell:hover .cell-star,
+.cell-star.on {
+  opacity: 1;
+}
+.cell-star.on {
+  color: #ffc94d;
+}
+
+/* ---------- 失败任务与重试 ---------- */
+.job-error {
+  color: var(--danger);
+  font-size: 12px;
+  margin-top: 6px;
+  word-break: break-all;
+}
+.job-retry {
+  margin-top: 6px;
+  padding: 3px 12px;
+  font-size: 12px;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ---------- 任务历史面板 ---------- */
+.job-history-toggle {
+  margin-bottom: 12px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.job-history-toggle summary {
+  cursor: pointer;
+  width: fit-content;
+  user-select: none;
+}
+.job-history-toggle summary:hover {
+  color: var(--text);
+}
+.job-history {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.jh-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.jh-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+.jh-completed {
+  background: var(--ok);
+}
+.jh-failed {
+  background: var(--danger);
+}
+.jh-running {
+  background: var(--accent);
+  animation: jh-pulse 1.2s ease-in-out infinite alternate;
+}
+.jh-queued {
+  background: var(--text-dim);
+}
+@keyframes jh-pulse {
+  to {
+    opacity: 0.35;
+  }
+}
+.jh-prompt {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jh-retry {
+  flex: none;
+  padding: 1px 8px;
+  font-size: 11px;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ---------- 灯箱收藏与快捷键提示 ---------- */
+#lb-star.on {
+  border-color: #ffc94d;
+  color: #ffc94d;
+}
+.shortcuts {
+  margin-top: 10px;
+  text-align: center;
+}

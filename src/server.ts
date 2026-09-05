@@ -71,7 +71,13 @@ app.use((req, res, next) => {
 // 后端探测结果缓存 10 秒,避免每个请求都打一次健康检查
 let providerStatus: BackendStatus = { ok: true, detail: '初始化中' }
 async function refreshStatus(): Promise<void> {
-  providerStatus = await provider.status()
+  try {
+    providerStatus = await provider.status()
+  } catch (err) {
+    // provider.status 约定自行捕获异常,这里兜底避免定时器产生未处理的 Promise 拒绝
+    providerStatus = { ok: false, detail: `状态探测异常:${(err as Error).message}` }
+    logger.warn('后端状态探测异常', { err })
+  }
 }
 setInterval(() => void refreshStatus(), 10_000)
 
@@ -108,11 +114,21 @@ app.post('/api/generate', (req, res) => {
     return res.status(400).json({ error: initParsed.error })
   }
   const job = jobs.createJob(parsed.params, initParsed.image)
+  logger.info('已接受生成任务', {
+    jobId: job.id,
+    kind: parsed.params.kind,
+    batch: parsed.params.batchCount,
+  })
   return res.status(202).json({ jobId: job.id, job })
 })
 
-app.get('/api/jobs', (_req, res) => {
-  res.json({ jobs: jobs.listActive() })
+app.get('/api/jobs', (req, res) => {
+  // 默认返回进行中任务;?all=1 返回最近任务(含已完成/失败)供任务历史面板使用
+  if (req.query.all) {
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 30))
+    return res.json({ jobs: jobs.listRecent(limit) })
+  }
+  return res.json({ jobs: jobs.listActive() })
 })
 
 app.get('/api/jobs/:id', (req, res) => {
@@ -144,6 +160,15 @@ app.delete('/api/images/:id', async (req, res) => {
   return res.json({ removed })
 })
 
+app.put('/api/images/:id/star', async (req, res) => {
+  const starred = (req.body as { starred?: unknown } | undefined)?.starred !== false
+  const record = await store.setStarred(req.params.id, starred)
+  if (!record) {
+    return res.status(404).json({ error: '图片不存在' })
+  }
+  return res.json({ image: record })
+})
+
 // SSE 实时推送:任务进度 + 图片落盘事件,连接即收到快照
 app.get('/api/events', (req, res) => {
   res.set({
@@ -164,11 +189,13 @@ app.get('/api/events', (req, res) => {
   const onImage = (payload: { jobId: string; image: unknown }) => send('image', payload)
   jobs.on('job', onJob)
   jobs.on('image', onImage)
+  logger.debug('SSE 客户端已连接')
   const heartbeat = setInterval(() => res.write(': ping\n\n'), 15_000)
   req.on('close', () => {
     clearInterval(heartbeat)
     jobs.off('job', onJob)
     jobs.off('image', onImage)
+    logger.debug('SSE 客户端已断开')
   })
 })
 
@@ -190,7 +217,7 @@ app.use(
     if (err.type === 'entity.parse.failed') {
       return res.status(400).json({ error: '请求体不是合法 JSON' })
     }
-    logger.error(`未处理错误 ${req.method} ${req.originalUrl}`, { message: err.message })
+    logger.error(`未处理错误 ${req.method} ${req.originalUrl}`, { err })
     return res.status(500).json({ error: '服务器内部错误' })
   },
 )

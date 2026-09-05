@@ -65,6 +65,7 @@
       </div>
       <button id="generate" class="primary">✨ 生成</button>
       <div id="form-error" class="error"></div>
+      <div class="hint shortcuts">⌘/Ctrl+Enter 生成 · ← → 切换 · Esc 关闭 · F 收藏</div>
     </section>
 
     <section class="panel">
@@ -94,8 +95,19 @@
     <div class="results-head">
       <h1>生成结果</h1>
       <span id="history-count" class="hint"></span>
+      <div class="results-tools">
+        <button id="filter-all" class="chip active" data-filter="all">全部</button>
+        <button id="filter-image" class="chip" data-filter="image">图像</button>
+        <button id="filter-video" class="chip" data-filter="video">视频</button>
+        <button id="filter-star" class="chip" data-filter="star">★ 收藏</button>
+        <button id="download-all" title="下载当前过滤结果的全部原图">⬇ 全部下载</button>
+      </div>
     </div>
     <div id="jobs"></div>
+    <div id="job-history" class="job-history hidden"></div>
+    <details id="job-history-toggle" class="job-history-toggle">
+      <summary>任务历史</summary>
+    </details>
     <div id="grid" class="grid"></div>
     <div id="empty" class="empty">还没有生成记录 — 在左侧输入提示词,点击「生成」试试</div>
   </main>
@@ -114,6 +126,7 @@
       <div class="lb-actions">
         <button id="lb-reuse">复用全部参数</button>
         <button id="lb-reuse-seed">仅复用种子</button>
+        <button id="lb-star">☆ 收藏</button>
         <a id="lb-download" class="btn" download>下载</a>
         <button id="lb-delete" class="danger">删除</button>
       </div>

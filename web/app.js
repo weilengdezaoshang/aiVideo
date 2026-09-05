@@ -3,8 +3,10 @@ const $ = (sel) => document.querySelector(sel)
 const state = {
   history: [],
   activeJobs: new Map(),
+  recentJobs: [],
   lbIndex: -1,
   initDataUrl: null,
+  filter: 'all',
 }
 
 /* ---------- 基础工具 ---------- */
@@ -248,6 +250,20 @@ function renderPresetSelect() {
 
 /* ---------- 渲染 ---------- */
 
+/** 按过滤条件返回可见历史:全部 / 图像 / 视频 / 收藏。 */
+function visibleHistory() {
+  if (state.filter === 'image') {
+    return state.history.filter((h) => h.params.kind !== 'video')
+  }
+  if (state.filter === 'video') {
+    return state.history.filter((h) => h.params.kind === 'video')
+  }
+  if (state.filter === 'star') {
+    return state.history.filter((h) => h.starred)
+  }
+  return state.history
+}
+
 /** 网格单元的媒体元素:视频记录渲染 <video>(动画 SVG 除外),其余渲染 <img>。 */
 function createCellMedia(record) {
   if (record.params.kind === 'video' && !record.url.endsWith('.svg')) {
@@ -266,13 +282,39 @@ function createCellMedia(record) {
   return im
 }
 
+/** 缩略图左上角的参数徽章行:模式 + 尺寸。 */
+function createBadges(record) {
+  const badges = document.createElement('div')
+  badges.className = 'cell-badges'
+  const kind = document.createElement('span')
+  kind.textContent =
+    record.params.kind === 'video'
+      ? `视频 ${record.params.durationSec}s`
+      : record.params.denoise < 1
+        ? '图生图'
+        : '文生图'
+  const size = document.createElement('span')
+  size.textContent = `${record.params.width}×${record.params.height}`
+  badges.append(kind, size)
+  return badges
+}
+
 function renderGrid() {
   const grid = $('#grid')
+  const items = visibleHistory()
   grid.replaceChildren()
-  for (const img of state.history) {
+  for (const img of items) {
     const cell = document.createElement('div')
     cell.className = 'cell'
     const media = createCellMedia(img)
+    const star = document.createElement('button')
+    star.className = `cell-star${img.starred ? ' on' : ''}`
+    star.textContent = '★'
+    star.title = img.starred ? '取消收藏' : '收藏'
+    star.addEventListener('click', (e) => {
+      e.stopPropagation()
+      toggleStar(img)
+    })
     const overlay = document.createElement('div')
     overlay.className = 'cell-overlay'
     const seedSpan = document.createElement('span')
@@ -282,42 +324,77 @@ function renderGrid() {
       img.params.kind === 'video' ? ' · 视频' : img.params.denoise < 1 ? ' · img2img' : ''
     sizeSpan.textContent = `${img.params.width}×${img.params.height}${kindLabel}`
     overlay.append(seedSpan, sizeSpan)
-    cell.append(media, overlay)
+    cell.append(media, createBadges(img), star, overlay)
     cell.addEventListener('click', () => openLightbox(img.id))
     grid.appendChild(cell)
   }
-  $('#empty').style.display = state.history.length ? 'none' : ''
-  $('#history-count').textContent = state.history.length ? `共 ${state.history.length} 张` : ''
+  const total = state.history.length
+  $('#empty').style.display = total ? 'none' : ''
+  $('#empty').textContent = total
+    ? '当前过滤条件下没有记录'
+    : '还没有生成记录 — 在左侧输入提示词,点击「生成」试试'
+  $('#history-count').textContent = total
+    ? items.length === total
+      ? `共 ${total} 张`
+      : `${items.length} / ${total} 张`
+    : ''
 }
 
-function renderJobs() {
-  const wrap = $('#jobs')
-  wrap.replaceChildren()
-  for (const job of state.activeJobs.values()) {
-    const pct = Math.round(job.progress * 100)
-    const row = document.createElement('div')
-    row.className = 'job'
-    const info = document.createElement('div')
-    info.className = 'job-info'
-    const promptEl = document.createElement('div')
-    promptEl.className = 'job-prompt'
-    promptEl.textContent = job.params.prompt
-    info.append(promptEl)
-    if (job.params.kind === 'video') {
-      const tag = document.createElement('span')
-      tag.className = 'mode-tag'
-      tag.textContent = '视频'
-      info.appendChild(tag)
-    } else if (job.hasInitImage) {
-      const tag = document.createElement('span')
-      tag.className = 'mode-tag'
-      tag.textContent = '图生图'
-      info.appendChild(tag)
-    }
-    const hint = document.createElement('span')
-    hint.className = 'hint'
-    hint.textContent = job.status === 'queued' ? '排队中…' : `${job.message} · ${pct}%`
-    info.appendChild(hint)
+function tagOf(text) {
+  const tag = document.createElement('span')
+  tag.className = 'mode-tag'
+  tag.textContent = text
+  return tag
+}
+
+/** 用原参数重新提交一次生成(去掉固定种子以保留随机性)。 */
+async function retryJob(job) {
+  const { seed: _dropped, ...rest } = job.params
+  try {
+    await api('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(rest),
+    })
+    toast('已重新排队')
+  } catch (err) {
+    toast(err.message, 'error')
+  }
+}
+
+/** 单个任务行:进行中显示进度+取消;失败显示错误+重试。 */
+function renderJobRow(job) {
+  const pct = Math.round(job.progress * 100)
+  const row = document.createElement('div')
+  row.className = 'job'
+  const info = document.createElement('div')
+  info.className = 'job-info'
+  const promptEl = document.createElement('div')
+  promptEl.className = 'job-prompt'
+  promptEl.textContent = job.params.prompt
+  info.append(promptEl)
+  if (job.params.kind === 'video') {
+    info.appendChild(tagOf('视频'))
+  } else if (job.hasInitImage) {
+    info.appendChild(tagOf('图生图'))
+  }
+  const hint = document.createElement('span')
+  hint.className = 'hint'
+  hint.textContent = job.status === 'queued' ? '排队中…' : `${job.message} · ${pct}%`
+  info.appendChild(hint)
+  row.append(info)
+
+  if (job.status === 'failed' && job.error && job.error !== '已取消') {
+    const errEl = document.createElement('div')
+    errEl.className = 'job-error'
+    errEl.textContent = `失败:${job.error}`
+    row.appendChild(errEl)
+    const retry = document.createElement('button')
+    retry.className = 'job-retry'
+    retry.textContent = '↻ 重试'
+    retry.addEventListener('click', () => retryJob(job))
+    row.appendChild(retry)
+  } else {
     const cancel = document.createElement('button')
     cancel.className = 'job-cancel'
     cancel.textContent = '✕'
@@ -329,13 +406,62 @@ function renderJobs() {
         toast(err.message, 'error')
       }
     })
+    row.appendChild(cancel)
     const bar = document.createElement('div')
     bar.className = 'bar'
     const fill = document.createElement('div')
     fill.className = 'bar-fill'
     fill.style.width = `${pct}%`
     bar.appendChild(fill)
-    row.append(info, cancel, bar)
+    row.appendChild(bar)
+  }
+  return row
+}
+
+function renderJobs() {
+  const wrap = $('#jobs')
+  wrap.replaceChildren()
+  for (const job of state.activeJobs.values()) {
+    wrap.appendChild(renderJobRow(job))
+  }
+}
+
+/** 任务历史面板:最近任务状态一览,失败项可就地重试。 */
+function renderJobHistory() {
+  const wrap = $('#job-history')
+  wrap.replaceChildren()
+  if (state.recentJobs.length === 0) {
+    wrap.classList.add('hidden')
+    return
+  }
+  wrap.classList.remove('hidden')
+  for (const job of state.recentJobs.slice(0, 12)) {
+    const row = document.createElement('div')
+    row.className = 'jh-row'
+    const dot = document.createElement('span')
+    dot.className = `jh-dot jh-${job.status}`
+    const prompt = document.createElement('span')
+    prompt.className = 'jh-prompt'
+    prompt.textContent = job.params.prompt
+    prompt.title = job.params.prompt
+    const status = document.createElement('span')
+    status.className = 'hint'
+    status.textContent =
+      job.status === 'completed'
+        ? `✓ ${job.images.length} 张`
+        : job.status === 'failed'
+          ? `✗ ${job.error || '失败'}`
+          : job.status === 'running'
+            ? '进行中'
+            : '排队中'
+    row.append(dot, prompt, status)
+    if (job.status === 'failed') {
+      const retry = document.createElement('button')
+      retry.className = 'jh-retry'
+      retry.textContent = '重试'
+      retry.addEventListener('click', () => retryJob(job))
+      row.appendChild(retry)
+    }
     wrap.appendChild(row)
   }
 }
@@ -343,6 +469,7 @@ function renderJobs() {
 function renderAll() {
   renderGrid()
   renderJobs()
+  renderJobHistory()
 }
 
 /* ---------- 灯箱 ---------- */
@@ -417,6 +544,46 @@ function renderLightbox() {
   }
   $('#lb-download').href = img.url
   $('#lb-download').setAttribute('download', img.file)
+  const starBtn = $('#lb-star')
+  starBtn.textContent = img.starred ? '★ 已收藏' : '☆ 收藏'
+  starBtn.classList.toggle('on', Boolean(img.starred))
+}
+
+/** 收藏 / 取消收藏;失败时回滚按钮态并提示。 */
+async function toggleStar(record) {
+  const next = !record.starred
+  try {
+    await api(`/api/images/${record.id}/star`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ starred: next }),
+    })
+    record.starred = next
+    renderGrid()
+    if (state.lbIndex !== -1 && state.history[state.lbIndex]?.id === record.id) {
+      renderLightbox()
+    }
+  } catch (err) {
+    toast(err.message, 'error')
+  }
+}
+
+/** 把当前过滤结果逐个触发下载(浏览器对多文件下载会询问一次授权)。 */
+function downloadAll() {
+  const items = visibleHistory()
+  if (items.length === 0) {
+    toast('当前过滤条件下没有可下载的记录', 'error')
+    return
+  }
+  for (const item of items) {
+    const a = document.createElement('a')
+    a.href = item.url
+    a.download = item.file
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  }
+  toast(`已触发下载 ${items.length} 个文件`)
 }
 
 function navLightbox(step) {
@@ -460,6 +627,8 @@ function connectEvents() {
   })
   es.addEventListener('job', (e) => {
     const job = JSON.parse(e.data)
+    // 任务历史面板同步:新增或更新最近任务列表
+    state.recentJobs = [job, ...state.recentJobs.filter((j) => j.id !== job.id)].slice(0, 30)
     if (job.status === 'queued' || job.status === 'running') {
       state.activeJobs.set(job.id, job)
     } else {
@@ -475,6 +644,7 @@ function connectEvents() {
       }
     }
     renderJobs()
+    renderJobHistory()
   })
   es.addEventListener('image', (e) => {
     const { image } = JSON.parse(e.data)
@@ -609,6 +779,29 @@ function bindUI() {
   $('#lb-prev').addEventListener('click', () => navLightbox(-1))
   $('#lb-next').addEventListener('click', () => navLightbox(1))
   $('#lb-delete').addEventListener('click', deleteCurrentImage)
+  $('#lb-star').addEventListener('click', () => {
+    const img = state.history[state.lbIndex]
+    if (img) {
+      toggleStar(img)
+    }
+  })
+
+  // 结果工具栏:过滤 + 全部下载
+  for (const btn of document.querySelectorAll('.chip[data-filter]')) {
+    btn.addEventListener('click', () => {
+      state.filter = btn.dataset.filter
+      for (const b of document.querySelectorAll('.chip[data-filter]')) {
+        b.classList.toggle('active', b === btn)
+      }
+      renderGrid()
+    })
+  }
+  $('#download-all').addEventListener('click', downloadAll)
+
+  // 任务历史面板折叠
+  $('#job-history-toggle').addEventListener('toggle', (e) => {
+    $('#job-history').classList.toggle('hidden', !e.target.open)
+  })
   $('#lb-reuse').addEventListener('click', () => {
     const img = state.history[state.lbIndex]
     if (!img) {
@@ -646,6 +839,12 @@ function bindUI() {
     if (e.key === 'ArrowRight') {
       navLightbox(1)
     }
+    if ((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey) {
+      const img = state.history[state.lbIndex]
+      if (img) {
+        toggleStar(img)
+      }
+    }
   })
 }
 
@@ -656,12 +855,14 @@ async function init() {
   renderPresetSelect()
   await Promise.all([loadModels(), loadSamplers(), pollHealth()])
   try {
-    const [{ images }, { jobs: active }] = await Promise.all([
+    const [{ images }, { jobs: active }, { jobs: recent }] = await Promise.all([
       api('/api/history'),
       api('/api/jobs'),
+      api('/api/jobs?all=1&limit=30'),
     ])
     state.history = images
     state.activeJobs = new Map(active.map((j) => [j.id, j]))
+    state.recentJobs = recent
   } catch (err) {
     toast(err.message, 'error')
   }

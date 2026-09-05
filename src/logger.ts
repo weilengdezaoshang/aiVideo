@@ -5,11 +5,18 @@ const LEVEL_ORDER: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, e
 const envLevel = process.env.LOG_LEVEL as LogLevel | undefined
 const threshold = envLevel && envLevel in LEVEL_ORDER ? LEVEL_ORDER[envLevel] : LEVEL_ORDER.info
 
+/** Error 直接 stringify 会变成 {},统一展开为 name/message/stack 方便排障。 */
+function errorReplacer(_key: string, value: unknown): unknown {
+  return value instanceof Error
+    ? { name: value.name, message: value.message, stack: value.stack }
+    : value
+}
+
 function emit(level: LogLevel, message: string, extra?: Record<string, unknown>): void {
   if (LEVEL_ORDER[level] < threshold) {
     return
   }
-  const suffix = extra === undefined ? '' : ` ${JSON.stringify(extra)}`
+  const suffix = extra === undefined ? '' : ` ${JSON.stringify(extra, errorReplacer)}`
   const line = `${new Date().toISOString()} ${level.toUpperCase().padEnd(5)} ${message}${suffix}`
   if (level === 'error') {
     console.error(line)
