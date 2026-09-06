@@ -21,6 +21,7 @@
 - 正确选择:**`vtracer-webapp@0.4.0`**(visioncortex/vtracer 官方仓库的 wasm-pack 产物,MIT/Apache-2.0,tgz 81K,含 `vtracer_webapp_bg.wasm` + JS glue + d.ts)。
 - API 核实(读 Rust 源码):`ColorImageConverter.new_with_string(jsonParams)` 从 DOM `canvas_id` 读像素、结果 SVG 写入 `svg_id` 元素;`init()` + `tick()`(返回 false 结束)+ `progress()`。参数:`mode / hierarchical / filter_speckle / color_precision / layer_difference / corner_threshold / length_threshold / max_iterations / splice_threshold / path_precision`。
 - 结论:**浏览器端可行**,需 vendor wasm + 薄封装(隐藏 canvas/svg 元素 + rAF 分片 tick 防卡 UI)。备选 `vectortracer@0.1.2` API 更友好(ImageData 进 / getResult 出)但只暴露二值转换器,无彩色量化 → 不采用。超大图服务端 CLI 降级维持 PRD 方案,P1 阶段先不做。
+- ⚠️ **实施修正(T15 实测)**:`vtracer-webapp` 的官方入口 `vtracer_webapp.js` 是 wasm-bindgen **bundler 目标**(`import * from './xx.wasm'`,仅打包器可解析),纯浏览器 ESM 加载不了。落地方式:`web/canvas/vector.js` 手动 `WebAssembly.instantiate`(imports = glue 导出的 34 个 wbg 函数)+ `__wbg_set_wasm` 回注 + `__wbindgen_start()`,维持零构建。node 冒烟已验证导入表接线正确(构造器需浏览器 DOM,node 内 panic 符合预期)。
 
 ### 4. job 历史重启存续(PRD §9 高风险前置项):**不存续**
 - `job-manager.ts` 的 `jobs` 为内存 Map,服务重启即清空;`pruneFinishedJobs` 上限 200。
@@ -67,9 +68,9 @@
 - [ ] **T10** `feat(web)`: 失败卡/任务丢失卡 + 重试(谱系参数原样重发)
 - [ ] **T11** `feat(web)`: 局部重绘模式(蒙版笔刷/擦除/清空、区域提示词、蒙版二进制上传、结果新对象)
 - [ ] **T12** `feat(web)`: 图生视频面板 + 视频对象(点击播放)——M0 三原型到此全部可验收
-- [ ] **T13** `feat(config)`: BYOK 设置界面(S2/S2a/S2b)+ provider 热切换端点 + 首启引导(S1)
+- [ ] **T13** `feat(config)`: BYOK 设置界面(S2/S2a/S2b)+ provider 热切换端点 + 首启引导(S1)→ **服务端(c50d07a:src/config.ts + /api/config*/JobManager.setProvider)与设置 UI(42c1696:settings.js + S1 引导)已完成;消费端(模型列表随 provider 刷新)归 T8/T9 接线**
 - [ ] **T14** `feat(web)`: 断线横幅 + 自动重连对账联动(S15/S16)+ 多开检测
-- [ ] **T15** `feat(web)`: P1——SVG 导出面板(vendor vtracer-webapp + 滑块实时预览)
+- [ ] **T15** `feat(web)`: P1——SVG 导出面板(vendor vtracer-webapp + 滑块实时预览)→ **核心已提交(7e0467b:vendor vtracer-webapp@0.4.0 + web/canvas/vector.js 加载 shim 与串行矢量化 API,见 §3 实施修正);S12 调参面板 UI 与右键菜单接线待做**
 - [ ] **T16** `feat(web)`: P1——素材库入口与拖入画布(S17)
 - [ ] **T17** `feat(web)`: P1——变体批生成 ×4(4 独立任务)
 - [ ] **T18** P2——提示词收藏复用 / 草稿模式 / 种子锁定(按 PRD §5.5)
