@@ -14,8 +14,12 @@
  * @property {number} width
  * @property {number} height
  * @property {string} [assetId]
+ * @property {boolean} [hasThumbs] 资产是否带缩略图(无则只用原图)
+ * @property {string} [ext] 资产原始扩展名
+ * @property {string} [src] 直连图片 URL(stress/素材库拖入)
+ * @property {string} [errorDetail] 错误卡原因文案
  * @property {{fromId: string, params: object}} [lineage]
- * @property {{jobId: string}} [gen]
+ * @property {{jobId: string, progress?: number, message?: string}} [gen]
  */
 
 /** 添加对象(含 order 追加);invert = 移除 @param {CanvasObj[]} objects */

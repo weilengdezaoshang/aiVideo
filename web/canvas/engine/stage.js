@@ -25,6 +25,8 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
   /** 对象层:T6 起渲染文档对象;相机直接作用于此层 */
   const contentLayer = new Konva.Layer({ listening: true })
   stage.add(contentLayer)
+  /** @type {any[]} 需要跟随相机变换的其它层(如选中框覆盖层) */
+  const camLayers = []
 
   /** @type {Cam} 世界原点在屏幕左上角对应的世界坐标 */
   let cam = { x: 0, y: 0, scale: 1 }
@@ -36,11 +38,28 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
   const notify = () => options.onCamMove?.({ ...cam })
 
   function applyCam() {
-    contentLayer.scale({ x: cam.scale, y: cam.scale })
-    contentLayer.position({ x: -cam.x * cam.scale, y: -cam.y * cam.scale })
+    const tr = { x: -cam.x * cam.scale, y: -cam.y * cam.scale }
+    const sc = { x: cam.scale, y: cam.scale }
+    contentLayer.scale(sc)
+    contentLayer.position(tr)
+    for (const layer of camLayers) {
+      layer.scale(sc)
+      layer.position(tr)
+    }
     contentLayer.batchDraw()
     applyDotGrid()
     notify()
+  }
+
+  /**
+   * 注册一个跟随相机变换的层(对象层之外,例如选中框覆盖层)。
+   * @param {any} layer
+   */
+  function registerCamLayer(layer) {
+    camLayers.push(layer)
+    layer.scale({ x: cam.scale, y: cam.scale })
+    layer.position({ x: -cam.x * cam.scale, y: -cam.y * cam.scale })
+    layer.batchDraw()
   }
 
   /** 网点背景(Figma 风格):点距屏幕恒定,平移随世界移动,跨缩放阈值切换密度 */
@@ -182,7 +201,10 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
   return {
     stage,
     contentLayer,
+    registerCamLayer,
     getCam: () => ({ ...cam }),
+    /** 平移手势进行中(空格按住 / 中键拖动);对象层的框选需避开 */
+    isPanActive: () => panning || spaceHeld,
     zoomBy,
     zoomToScale,
     centerOn,

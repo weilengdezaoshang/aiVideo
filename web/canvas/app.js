@@ -5,6 +5,7 @@ import { createCanvasEngine } from './engine/stage.js'
 import { createDocStore } from './state/doc-store.js'
 import { createAutoSaver } from './state/autosave.js'
 import { openDocument } from './state/document-api.js'
+import { createObjectLayer } from './engine/object-layer.js'
 
 /** @param {string} sel @returns {HTMLElement} */
 const $ = (sel) => /** @type {HTMLElement} */ (document.querySelector(sel))
@@ -18,10 +19,16 @@ const canvasEmpty = $('#canvas-empty')
 const zoomValue = $('#zoom-value')
 const saveStatusEl = $('#save-status')
 
+/** @type {ReturnType<typeof createObjectLayer> | null} 引擎构造时会触发 onCamMove,须先声明 */
+let objectLayer = null
+/** @type {string[]} 当前选中(Transient) */
+let selection = []
+
 const engine = createCanvasEngine(rootEl, surfaceEl, {
   /** @param {{ scale: number }} cam */
   onCamMove: (cam) => {
     zoomValue.textContent = `${Math.round(cam.scale * 100)}%`
+    objectLayer?.recomputeVisibility()
   },
 })
 // 初始视野:世界原点居中;文档加载后若已有对象会重定位(T6)
@@ -36,6 +43,7 @@ $('#zoom-out').addEventListener('click', () => engine.zoomBy(1 / 1.2, viewportCe
 
 /** @type {ReturnType<typeof createDocStore> | null} */
 let docStore = null
+let centeredOnce = false
 
 /** @param {"idle" | "saving" | "saved" | "error"} status @param {string} [detail] */
 function updateSaveStatus(status, detail) {
@@ -62,13 +70,64 @@ async function bootDocument() {
     getDoc: () => store.doc,
     onStatus: updateSaveStatus,
   })
+
+  // 对象层:渲染 + 选择/拖动/删除(T6)
+  const objects = createObjectLayer({
+    engine,
+    getDoc: () => store.doc,
+    applyCommand: (cmd) => store.apply(cmd),
+    onSelectionChange: (ids) => {
+      selection = ids
+    },
+    imageUrlsFor: (obj) => {
+      if (!obj.assetId) {
+        return { original: obj.src || '' }
+      }
+      const base = `/assets/${obj.assetId}`
+      return {
+        thumb256: obj.hasThumbs === false ? null : `${base}/t256.webp`,
+        thumb1024: obj.hasThumbs === false ? null : `${base}/t1024.webp`,
+        original: `${base}/original.${obj.ext || 'png'}`,
+      }
+    },
+  })
+  objectLayer = objects
   store.subscribe(({ doc: current }) => {
+    objects.sync()
     saver.markDirty()
     canvasEmpty.hidden = current.order.length > 0
+    // 已有对象时初始视野框住全部内容
+    if (!centeredOnce && current.order.length > 0) {
+      centeredOnce = true
+      fitToContent(current)
+    }
   })
   canvasEmpty.hidden = doc.order.length > 0
+  if (doc.order.length > 0) {
+    centeredOnce = true
+    fitToContent(doc)
+  }
   window.addEventListener('beforeunload', () => saver.flushOnUnload())
   docStore = store
+}
+
+/** 视野框住全部对象(首次加载) @param {{ objects: Record<string, any> }} doc */
+function fitToContent(doc) {
+  const list = Object.values(doc.objects)
+  if (list.length === 0) {
+    return
+  }
+  const minX = Math.min(...list.map((o) => o.x))
+  const minY = Math.min(...list.map((o) => o.y))
+  const maxX = Math.max(...list.map((o) => o.x + o.width))
+  const maxY = Math.max(...list.map((o) => o.y + o.height))
+  const margin = 80
+  const scale = Math.min(
+    1,
+    (engine.stage.width() - margin * 2) / (maxX - minX),
+    (engine.stage.height() - margin * 2) / (maxY - minY),
+  )
+  engine.centerOn({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 }, Math.max(0.05, scale))
 }
 
 void bootDocument()
@@ -108,6 +167,15 @@ document.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
     }
     return
   }
+  if (
+    (e.key === 'Delete' || e.key === 'Backspace') &&
+    !isEditable(e.target) &&
+    selection.length > 0
+  ) {
+    e.preventDefault()
+    objectLayer?.deleteSelected()
+    return
+  }
   if (e.key === 'Tab' && !isEditable(e.target)) {
     e.preventDefault()
     setPanelOpen(promptPanel.hidden)
@@ -120,4 +188,5 @@ document.addEventListener('keydown', (/** @type {KeyboardEvent} */ e) => {
 $('#prompt-collapse').addEventListener('click', () => setPanelOpen(false))
 
 const getDocStore = () => docStore
-export { engine, setPanelOpen, canvasEmpty, getDocStore }
+const getObjectLayer = () => objectLayer
+export { engine, setPanelOpen, canvasEmpty, getDocStore, getObjectLayer }

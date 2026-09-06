@@ -100,6 +100,11 @@ body {
   inset: 0;
 }
 
+/* hidden 属性优先:避免 display:flex/... 覆盖 UA 的 [hidden] 规则 */
+.canvas-root [hidden] {
+  display: none !important;
+}
+
 .canvas-empty {
   position: absolute;
   inset: 0;

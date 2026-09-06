@@ -60,7 +60,7 @@
 - [x] **T3** `feat(server)`: 文档 CRUD(`data/documents/`,防抖落盘语义,sendBeacon 可写)+ job 落盘恢复(重启 → failed"服务已重启")+ `clientRef` 透传;测试
 - [x] **T4** `feat(web)`: 画布引擎——Konva 舞台、平移(空格/中键/双指)、光标中心缩放、网点背景、缩放控件;相机归 TransientStore
 - [x] **T5** `feat(web)`: 状态层——DocStore/TransientStore、Command undo/redo(合并规则)、自动保存(2s 防抖 + beforeunload beacon)、加载恢复;纯逻辑 node:test
-- [ ] **T6** `feat(web)`: 对象渲染与交互——image/video/placeholder/error 四种 kind、单击/框选( bounds 求交)/拖动/Delete、视口裁剪 + 256 缩略图优先;500 对象压测脚本
+- [x] **T6** `feat(web)`: 对象渲染与交互——image/video/placeholder/error 四种 kind、单击/框选( bounds 求交)/拖动/Delete、视口裁剪 + 256 缩略图优先;500 对象压测脚本
 - [ ] **T7** `feat(web)`: SSE 客户端 + 纯函数 reducer(未知 jobId 丢弃)+ 加载/重连对账;六场景 node:test(提交/进度/落位/取消/失败重试/刷新恢复)
 - [ ] **T8** `feat(web)`: 文生图闭环——Tab 面板、生成 → 占位框(可拖动/悬浮取消)→ 进度 → 落位;顶栏进行中任务数
 - [ ] **T9** `feat(web)`: 右键菜单 + 以图生图(参考图挂载)+ 螺旋探测落位(纯函数测试)+ 谱系元数据 + 下载/删除
