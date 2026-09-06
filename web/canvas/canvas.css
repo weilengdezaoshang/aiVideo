@@ -488,3 +488,38 @@ kbd {
 .context-menu-danger {
   color: #d63031 !important;
 }
+
+/* ---------- 重绘模式工具栏(线框 S10) ---------- */
+
+.inpaint-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(640px, calc(100vw - 32px));
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(180%) blur(20px);
+  border: 1px solid var(--gc-hairline);
+  border-radius: var(--gc-radius-lg);
+  z-index: 6;
+}
+
+.inpaint-tag {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gc-blue);
+  white-space: nowrap;
+}
+
+.inpaint-brush {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--gc-ink-muted);
+  white-space: nowrap;
+}

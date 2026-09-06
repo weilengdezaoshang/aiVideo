@@ -78,10 +78,27 @@
       </div>
     </section>
 
+    <!-- 重绘模式工具栏(线框 S10) -->
+    <section class="inpaint-bar" id="inpaint-bar" hidden>
+      <span class="inpaint-tag">重绘模式</span>
+      <label class="inpaint-brush">
+        笔刷
+        <input type="range" id="inpaint-brush-size" min="16" max="200" value="64">
+      </label>
+      <sl-button size="small" id="inpaint-erase">擦除</sl-button>
+      <sl-button size="small" id="inpaint-clear">清空</sl-button>
+      <sl-input id="inpaint-prompt" size="small" placeholder="这块区域变成:皮衣…" style="flex: 1; min-width: 10rem;"></sl-input>
+      <sl-button size="small" variant="primary" id="inpaint-generate">
+        <sl-icon slot="prefix" name="stars"></sl-icon>
+        生成
+      </sl-button>
+      <sl-button size="small" id="inpaint-exit">退出</sl-button>
+    </section>
+
     <!-- 对象右键菜单(线框 S8):以图生图/局部重绘/生成视频/转矢量/下载/删除 -->
     <nav class="context-menu" id="context-menu" hidden>
       <button class="context-menu-item" id="ctx-ref" type="button">以此为参考生成</button>
-      <button class="context-menu-item" data-todo="T11" disabled type="button">局部重绘</button>
+      <button class="context-menu-item" id="ctx-inpaint" type="button">局部重绘</button>
       <button class="context-menu-item" data-todo="T12" disabled type="button">生成视频</button>
       <button class="context-menu-item" id="ctx-vector" type="button">转矢量(SVG)</button>
       <button class="context-menu-item" id="ctx-download" type="button">下载</button>

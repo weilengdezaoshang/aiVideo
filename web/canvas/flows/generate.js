@@ -15,6 +15,7 @@ let localSeq = 0
  *   genParams: Record<string, unknown>,
  *   anchor?: { x: number, y: number },
  *   initImage?: { dataUrl: string },
+ *   maskImage?: { dataUrl: string },
  *   lineage?: { fromId: string, params?: object },
  *   fetchImpl?: typeof fetch,
  * }} options
@@ -26,6 +27,7 @@ export async function submitGeneration(options) {
     genParams,
     anchor = { x: 0, y: 0 },
     initImage,
+    maskImage,
     lineage,
     fetchImpl = (...args) => fetch(...args),
   } = options
@@ -56,6 +58,7 @@ export async function submitGeneration(options) {
         batchCount: 1,
         clientRef: objId,
         initImage: initImage ? initImage.dataUrl : undefined,
+        maskImage: maskImage ? maskImage.dataUrl : undefined,
       }),
     })
     const body = await res.json().catch(() => ({}))

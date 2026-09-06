@@ -58,6 +58,9 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
    * @param {any} layer
    */
   function registerCamLayer(layer) {
+    if (camLayers.includes(layer)) {
+      return
+    }
     camLayers.push(layer)
     layer.scale({ x: cam.scale, y: cam.scale })
     layer.position({ x: -cam.x * cam.scale, y: -cam.y * cam.scale })

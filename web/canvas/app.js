@@ -9,6 +9,7 @@ import { createObjectLayer } from './engine/object-layer.js'
 import { connectGenerationEvents } from './state/generation-events.js'
 import { submitGeneration, cancelPlaceholder } from './flows/generate.js'
 import { initContextMenu } from './flows/context-menu.js'
+import { createInpaintSession } from './flows/inpaint.js'
 import { initSettings } from './settings.js'
 
 /** @param {string} sel @returns {HTMLElement} */
@@ -151,7 +152,69 @@ async function bootDocument() {
     window.addEventListener('beforeunload', () => saver.flushOnUnload())
   }
   docStore = store
+  inpaint = createInpaintSession({
+    engine,
+    getDocStore: () => store,
+    onSubmit: async ({ srcObj, maskDataUrl, prompt }) => {
+      const model = /** @type {any} */ ($('#prompt-model'))?.value || undefined
+      const genParams = {
+        prompt,
+        negativePrompt: '',
+        model,
+        width: srcObj.width,
+        height: srcObj.height,
+        steps: 20,
+        cfgScale: 7,
+        seed: -1,
+        sampler: 'euler',
+        scheduler: 'normal',
+        denoise: 1,
+        kind: 'image',
+        durationSec: 4,
+        fps: 16,
+        inpaint: true,
+      }
+      const initImage = { dataUrl: await objectToDataUrl(srcObj) }
+      await submitGeneration({
+        docStore: store,
+        anchor: { x: srcObj.x + srcObj.width + 40, y: srcObj.y },
+        genParams,
+        initImage,
+        maskImage: { dataUrl: maskDataUrl },
+        lineage: { fromId: srcObj.id, params: { ...genParams } },
+      })
+    },
+  })
   contextMenu.attach(engine, () => objectLayer)
+  // 右键菜单「局部重绘」:仅图像对象可用
+  document.querySelector('#ctx-inpaint')?.addEventListener('click', () => {
+    const sel = objectLayer?.getSelected() ?? []
+    const obj = sel.length > 0 ? store.doc.objects[sel[0]] : null
+    if (obj && obj.kind === 'image' && inpaint?.enter(obj.id)) {
+      setInpaintUi(true)
+    }
+  })
+  // 双击图像进入重绘(PRD §5.3-③)。Konva 不透传原生 dblclick(由 click 时序合成),
+  // 这里直接绑容器 DOM 事件并用事件坐标做命中。
+  engine.stage.container().addEventListener('dblclick', (/** @type {MouseEvent} */ e) => {
+    if (!inpaint || inpaint.isActive()) {
+      return
+    }
+    const rect = engine.stage.container().getBoundingClientRect()
+    const pos = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    const hit = engine.contentLayer.getIntersection(pos)
+    if (!hit) {
+      return
+    }
+    let node = hit
+    while (node && !store.doc.objects[node.id()]) {
+      node = node.parent
+    }
+    const obj = node ? store.doc.objects[node.id()] : null
+    if (obj && obj.kind === 'image' && inpaint.enter(node.id())) {
+      setInpaintUi(true)
+    }
+  })
   // SSE 生成事件驱动占位状态机(T7):进度/落位/失败/对账
   generationEvents = connectGenerationEvents({
     docStore: store,
@@ -290,6 +353,62 @@ const getObjectLayer = () => objectLayer
 const getGenerationEvents = () => generationEvents
 
 /* ---------- 文生图提交(T8,线框 S4→S5) ---------- */
+
+/* ---------- 局部重绘(T11,线框 S10):双击图或菜单进入 ---------- */
+
+/** @type {any} 局部重绘会话(TS 对 object-literal getter 推导不稳,放宽) */
+let inpaint = null
+
+const inpaintBar = $('#inpaint-bar')
+
+/** @param {boolean} active */
+function setInpaintUi(active) {
+  inpaintBar.hidden = !active
+  if (active) {
+    setPanelOpen(false)
+  }
+}
+
+$('#inpaint-brush-size').addEventListener('input', (e) => {
+  inpaint?.setBrush(Number(/** @type {HTMLInputElement} */ (e.target).value))
+})
+$('#inpaint-erase').addEventListener('click', () => {
+  if (!inpaint) {
+    return
+  }
+  const on = !inpaint.eraseOn
+  inpaint.setErase(on)(/** @type {any} */ document.querySelector('#inpaint-erase')).variant = on
+    ? 'primary'
+    : 'default'
+})
+$('#inpaint-clear').addEventListener('click', () => inpaint?.clearStrokes())
+$('#inpaint-exit').addEventListener('click', () => {
+  inpaint?.exit()
+  setInpaintUi(false)
+})
+$('#inpaint-generate').addEventListener('click', async () => {
+  if (!inpaint || !inpaint.isActive() || !docStore) {
+    return
+  }
+  const prompt = /** @type {any} */ (document.querySelector('#inpaint-prompt')).value.trim()
+  if (!prompt) {
+    return
+  }
+  const srcObj = inpaint.getSrcObj()
+  try {
+    await inpaint.submit(prompt)
+    // 结果落在源图右侧(lineage 标记 inpaint);提交后退出重绘模式
+    inpaint.exit()
+    setInpaintUi(false)
+    void srcObj
+  } catch (err) {
+    // 提示词为空/未涂抹:留在重绘模式
+    ;/** @type {any} */ (document.querySelector('#inpaint-prompt')).setAttribute(
+      'help-text',
+      err instanceof Error ? err.message : String(err),
+    )
+  }
+})
 
 /* ---------- 以图生图(T9,线框 S9):参考图来自画布选中图 ---------- */
 
