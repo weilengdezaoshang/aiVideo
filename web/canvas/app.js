@@ -186,6 +186,34 @@ async function bootDocument() {
     },
   })
   contextMenu.attach(engine, () => objectLayer)
+  // 右键菜单「生成视频」:图像对象 → 参数对话框(T12)
+  document.querySelector('#ctx-video')?.addEventListener('click', () => {
+    const sel = objectLayer?.getSelected() ?? []
+    const obj = sel.length > 0 ? store.doc.objects[sel[0]] : null
+    if (obj && obj.kind === 'image') {
+      openVideoDialog(obj.id)
+    }
+  })
+  // 双击视频对象 → 播放(线框 S11「点击播放」)
+  engine.stage.container().addEventListener('dblclick', (/** @type {MouseEvent} */ e) => {
+    if (!docStore) {
+      return
+    }
+    const rect = engine.stage.container().getBoundingClientRect()
+    const pos = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    const hit = engine.contentLayer.getIntersection(pos)
+    if (!hit) {
+      return
+    }
+    let node = hit
+    while (node && !docStore.doc.objects[node.id()]) {
+      node = node.parent
+    }
+    const obj = node ? docStore.doc.objects[node.id()] : null
+    if (obj && obj.kind === 'video') {
+      playVideo(/** @type {any} */ (obj))
+    }
+  })
   // 右键菜单「局部重绘」:仅图像对象可用
   document.querySelector('#ctx-inpaint')?.addEventListener('click', () => {
     const sel = objectLayer?.getSelected() ?? []
@@ -408,6 +436,88 @@ $('#inpaint-generate').addEventListener('click', async () => {
       err instanceof Error ? err.message : String(err),
     )
   }
+})
+
+/* ---------- 图生视频(T12,线框 S11):参数对话框 → 占位 → 视频对象 ---------- */
+
+/** @type {string | null} 待生成视频的源图 id */
+let videoSrcId = null
+
+const videoDialog = /** @type {any} */ ($('#video-dialog'))
+const playerDialog = /** @type {any} */ ($('#video-player'))
+const playerBody = $('#video-player-body')
+
+/** @param {string} objId */
+function openVideoDialog(objId) {
+  const obj = docStore?.doc.objects[objId]
+  if (!obj || obj.kind !== 'image') {
+    return
+  }
+  videoSrcId = objId
+  const thumb = /** @type {HTMLImageElement} */ ($('#video-src-thumb'))
+  thumb.src = obj.assetId ? `/assets/${obj.assetId}/t256.webp` : obj.src || ''
+  void videoDialog.show()
+}
+
+$('#video-cancel').addEventListener('click', () => videoDialog.hide())
+$('#video-generate').addEventListener('click', async () => {
+  if (!docStore || !videoSrcId) {
+    return
+  }
+  const src = docStore.doc.objects[videoSrcId]
+  const model = /** @type {any} */ ($('#prompt-model'))?.value || undefined
+  const durationSec = Number(/** @type {any} */ ($('#video-duration'))?.value) || 4
+  const genParams = {
+    prompt: /** @type {any} */ ((src.lineage?.params) || {}).prompt || '让这张图动起来',
+    negativePrompt: '',
+    model,
+    width: src.width,
+    height: src.height,
+    steps: 20,
+    cfgScale: 7,
+    seed: -1,
+    sampler: 'euler',
+    scheduler: 'normal',
+    denoise: 1,
+    kind: 'video',
+    durationSec,
+    fps: 16,
+  }
+  let initImage
+  try {
+    initImage = { dataUrl: await objectToDataUrl(src) }
+  } catch {
+    videoDialog.hide()
+    return
+  }
+  videoDialog.hide()
+  await submitGeneration({
+    docStore,
+    anchor: { x: src.x + src.width + 40, y: src.y },
+    genParams,
+    initImage,
+    lineage: { fromId: src.id, params: { ...genParams } },
+  })
+})
+
+/** 视频对象播放(线框 S11:点击播放) @param {any} obj */
+function playVideo(obj) {
+  if (!obj) {
+    return
+  }
+  const url = obj.assetId ? `/assets/${obj.assetId}/original.${obj.ext || 'mp4'}` : obj.src
+  if (!url) {
+    return
+  }
+  const isVideoFile = /\.(mp4|webm)$/i.test(url) || obj.ext === 'mp4' || obj.ext === 'webm'
+  playerBody.innerHTML = isVideoFile
+    ? `<video src="${url}" controls autoplay loop style="width: 100%"></video>`
+    : `<img src="${url}" alt="视频预览">`
+  void playerDialog.show()
+}
+
+playerDialog.addEventListener('sl-after-hide', () => {
+  playerBody.innerHTML = ''
 })
 
 /* ---------- 以图生图(T9,线框 S9):参考图来自画布选中图 ---------- */

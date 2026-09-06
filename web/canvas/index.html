@@ -95,11 +95,35 @@
       <sl-button size="small" id="inpaint-exit">退出</sl-button>
     </section>
 
+    <!-- 图生视频参数(线框 S11;完整参数项 PRD 待定,先提供时长) -->
+    <sl-dialog id="video-dialog" label="生成视频" style="--width: 22rem;">
+      <div class="video-dialog-row">
+        <span>源图</span>
+        <img class="video-src-thumb" id="video-src-thumb" alt="源图">
+      </div>
+      <div class="video-dialog-row">
+        <span>时长</span>
+        <sl-select id="video-duration" size="small" value="4" style="width: 8rem;">
+          <sl-option value="2">2 秒</sl-option>
+          <sl-option value="4">4 秒</sl-option>
+          <sl-option value="6">6 秒</sl-option>
+          <sl-option value="8">8 秒</sl-option>
+        </sl-select>
+      </div>
+      <sl-button slot="footer" size="small" id="video-cancel">取消</sl-button>
+      <sl-button slot="footer" size="small" variant="primary" id="video-generate">生成视频</sl-button>
+    </sl-dialog>
+
+    <!-- 视频播放(点击视频对象) -->
+    <sl-dialog id="video-player" label="视频播放" style="--width: 48rem;">
+      <div id="video-player-body" class="video-player-body"></div>
+    </sl-dialog>
+
     <!-- 对象右键菜单(线框 S8):以图生图/局部重绘/生成视频/转矢量/下载/删除 -->
     <nav class="context-menu" id="context-menu" hidden>
       <button class="context-menu-item" id="ctx-ref" type="button">以此为参考生成</button>
       <button class="context-menu-item" id="ctx-inpaint" type="button">局部重绘</button>
-      <button class="context-menu-item" data-todo="T12" disabled type="button">生成视频</button>
+      <button class="context-menu-item" id="ctx-video" type="button">生成视频</button>
       <button class="context-menu-item" id="ctx-vector" type="button">转矢量(SVG)</button>
       <button class="context-menu-item" id="ctx-download" type="button">下载</button>
       <button class="context-menu-item context-menu-danger" id="ctx-delete" type="button">删除</button>

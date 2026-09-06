@@ -523,3 +523,30 @@ kbd {
   color: var(--gc-ink-muted);
   white-space: nowrap;
 }
+
+/* ---------- 图生视频对话框与播放器(线框 S11) ---------- */
+
+.video-dialog-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--gc-ink-soft);
+}
+
+.video-src-thumb {
+  width: 64px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--gc-radius-sm);
+  border: 1px solid var(--gc-hairline);
+}
+
+.video-player-body img,
+.video-player-body video {
+  display: block;
+  width: 100%;
+  border-radius: var(--gc-radius-md);
+  background: #000;
+}
