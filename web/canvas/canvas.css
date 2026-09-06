@@ -218,3 +218,25 @@ kbd {
   font-size: 14px;
   color: var(--gc-ink-soft);
 }
+
+/* ---------- 压测 FPS 计(?stress=N,仅开发验收用) ---------- */
+
+.stress-fps {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 20;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--gc-ink-soft);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: saturate(180%) blur(20px);
+  border: 1px solid var(--gc-hairline);
+  border-radius: var(--gc-radius-md);
+  padding: 6px 12px;
+  pointer-events: none;
+}
+
+.stress-fps.bad {
+  color: #d63031;
+}

@@ -62,14 +62,26 @@ function updateSaveStatus(status, detail) {
   }
 }
 
+/** ?stress=N 压测模式(F1):合成文档不落盘,N 个对象 + FPS 计;详见 stress.js */
+const stressCount = Math.max(
+  0,
+  Math.floor(Number(new URLSearchParams(location.search).get('stress')) || 0),
+)
+
 async function bootDocument() {
-  const doc = await openDocument()
+  const doc =
+    stressCount > 0
+      ? { id: 'stress', name: '压力测试', objects: {}, order: [] }
+      : await openDocument()
   const store = createDocStore(doc)
-  const saver = createAutoSaver({
-    docId: doc.id,
-    getDoc: () => store.doc,
-    onStatus: updateSaveStatus,
-  })
+  const saver =
+    stressCount > 0
+      ? null
+      : createAutoSaver({
+          docId: doc.id,
+          getDoc: () => store.doc,
+          onStatus: updateSaveStatus,
+        })
 
   // 对象层:渲染 + 选择/拖动/删除(T6)
   const objects = createObjectLayer({
@@ -94,7 +106,7 @@ async function bootDocument() {
   objectLayer = objects
   store.subscribe(({ doc: current }) => {
     objects.sync()
-    saver.markDirty()
+    saver?.markDirty()
     canvasEmpty.hidden = current.order.length > 0
     // 已有对象时初始视野框住全部内容
     if (!centeredOnce && current.order.length > 0) {
@@ -107,8 +119,15 @@ async function bootDocument() {
     centeredOnce = true
     fitToContent(doc)
   }
-  window.addEventListener('beforeunload', () => saver.flushOnUnload())
+  if (saver) {
+    window.addEventListener('beforeunload', () => saver.flushOnUnload())
+  }
   docStore = store
+  if (stressCount > 0) {
+    const { installStress } = await import('./stress.js')
+    await installStress(stressCount, { store })
+    fitToContent(store.doc)
+  }
 }
 
 /** 视野框住全部对象(首次加载) @param {{ objects: Record<string, any> }} doc */
