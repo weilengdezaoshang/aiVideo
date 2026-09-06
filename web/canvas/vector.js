@@ -1,80 +1,28 @@
-// vtracer 浏览器端矢量化封装(PRD §5.6 / F9,线框 S12)。
-// 上游 vtracer-webapp@0.4.0 的官方入口(vtracer_webapp.js)是 wasm-bindgen "bundler"
-// 目标 —— `import * as wasm from './vtracer_webapp_bg.wasm'` 只有打包器能解析,
-// 纯浏览器 ESM 加载不了。本模块替代该入口:用 glue 导出的 wbg 函数表手动实例化
-// wasm 并回注(set_wasm + __wbindgen_start),维持仓库零构建约定。
-// 转换过程:rAF 分片 tick,不卡 UI;进度回调驱动预览;同一时刻只跑一个转换。
+// 矢量化引擎封装(PRD §5.6 / F9,线框 S12)。
+// 引擎:imagetracerjs v1.2.6(Unlicense,纯 JS,经经典脚本挂到 window.ImageTracer)。
+// 为什么不用 PRD 初版的 vtracer:vtracer-webapp@0.4.0 的 wasm 聚类在多种参数×图片
+// 组合下确定性 panic(wasm `unreachable`,上游 visioncortex 0.9 的 bug,与加载方式
+// 无关,已实测复现),详见 docs/开发计划-GenCanvas.md §3 的实施修正。
+// imagetracerjs 是同步转换:预览源由调用方下采样(≤1024px),单次通常 <300ms;
+// 取消(abort)只在任务开始前生效,同步执行期无法打断。
 
-/** @typedef {{ mode: string, hierarchical: string, filterSpeckle: number, colorPrecision: number, layerDifference: number, cornerThreshold: number, lengthThreshold: number, maxIterations: number, spliceThreshold: number, pathPrecision: number }} VectorParams */
+/** @typedef {{ colors: number, detail: number, simplify: number }} VectorParams */
 
-/** vtracer 官方 webapp 的默认参数(visioncortex GUI 同款) @returns {VectorParams} */
+/** 界面默认值(S12 滑杆的中位档) @returns {VectorParams} */
 export function defaultVectorParams() {
-  return {
-    mode: 'spline',
-    hierarchical: 'stacked',
-    filterSpeckle: 4,
-    colorPrecision: 6,
-    layerDifference: 16,
-    cornerThreshold: 60,
-    lengthThreshold: 4.0,
-    maxIterations: 10,
-    spliceThreshold: 45,
-    pathPrecision: 8,
-  }
+  return { colors: 12, detail: 6, simplify: 8 }
 }
 
-/** @type {any} glue 模块(vendor/vtracer/vtracer_webapp_bg.js) */
-let glue = null
-/** @type {Promise<any> | null} */
-let loadPromise = null
-
-/** 加载并初始化 wasm(幂等);失败时抛错供调用方提示 */
-export function loadVtracer() {
-  loadPromise ??= (async () => {
-    glue = await import('../vendor/vtracer/vtracer_webapp_bg.js')
-    const wasmUrl = new URL('../vendor/vtracer/vtracer_webapp_bg.wasm', import.meta.url)
-    /** @type {any} */
-    const imports = { './vtracer_webapp_bg.js': glue }
-    let instance
-    try {
-      instance = (await WebAssembly.instantiateStreaming(fetch(wasmUrl), imports)).instance
-    } catch {
-      // instantiateStreaming 要求响应头 application/wasm;不满足时退回字节实例化
-      const bytes = await (await fetch(wasmUrl)).arrayBuffer()
-      instance = (await WebAssembly.instantiate(bytes, imports)).instance
-    }
-    /** @type {any} wasm 实例导出由运行时 wasm 二进制决定,静态类型不完整 */
-    const exports = instance.exports
-    glue.__wbg_set_wasm(exports)
-    exports.__wbindgen_start()
-    return glue
-  })()
-  return loadPromise
+/** 引擎是否就绪(经典脚本同步加载,页面就绪即可用) */
+export function vectorEngineReady() {
+  return typeof window !== 'undefined' && Boolean(/** @type {any} */ (window).ImageTracer)
 }
 
-/** JSON 参数转 vtracer Rust 侧的 snake_case 字段 @param {VectorParams} params */
-function toRustParams(params) {
-  return {
-    mode: params.mode,
-    hierarchical: params.hierarchical,
-    filter_speckle: params.filterSpeckle,
-    color_precision: params.colorPrecision,
-    layer_difference: params.layerDifference,
-    corner_threshold: params.cornerThreshold,
-    length_threshold: params.lengthThreshold,
-    max_iterations: params.maxIterations,
-    splice_threshold: params.spliceThreshold,
-    path_precision: params.pathPrecision,
-  }
-}
-
-let seq = 0
 /** 串行队列:前一个任务失败不阻塞后续排队 */
 let chain = Promise.resolve()
 
 /**
- * 矢量化一张图,返回 SVG 文本。并发调用自动排队(预览滑杆频繁变更时
- * 调用方应传入 signal 丢弃过期任务)。
+ * 矢量化一张图,返回 SVG 文本。并发调用自动排队。
  * @param {{
  *   image: HTMLImageElement | HTMLCanvasElement,
  *   params?: Partial<VectorParams>,
@@ -104,60 +52,39 @@ async function runVectorize({ image, params, onProgress, signal }) {
   if (signal?.aborted) {
     throw new DOMException('已取消', 'AbortError')
   }
-  await loadVtracer()
+  const tracer = /** @type {any} */ (/** @type {any} */ (window).ImageTracer)
+  if (!tracer) {
+    throw new Error('矢量引擎尚未加载完成,请稍后重试')
+  }
   const merged = { ...defaultVectorParams(), ...params }
-  seq += 1
-  const canvasId = `vtracer-src-${seq}`
-  const host = document.createElement('div')
-  // hidden 属性即可:getImageData 不依赖元素可见性
-  host.hidden = true
-  const canvas = document.createElement('canvas')
-  canvas.id = canvasId
-  // 防御性上限:超过 4096px 的源等比缩小,避免像素读取阶段内存爆炸
-  const maxSize = 4096
+  // 防御性上限:超 1024px 的源等比缩小;矢量化对源分辨率不敏感(SVG 可任意缩放),
+  // 降采样同时决定了转换耗时(同步执行)
+  const maxSize = 1024
   const naturalW = /** @type {any} */ (image).naturalWidth || image.width
   const naturalH = /** @type {any} */ (image).naturalHeight || image.height
   const scale = Math.min(1, maxSize / Math.max(naturalW, naturalH))
+  const canvas = document.createElement('canvas')
   canvas.width = Math.max(1, Math.round(naturalW * scale))
   canvas.height = Math.max(1, Math.round(naturalH * scale))
   const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'))
   ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
-  host.append(canvas)
-  document.body.append(host)
-  try {
-    const converter = glue.ColorImageConverter.new_with_string(
-      JSON.stringify({
-        canvas_id: canvasId,
-        svg_id: `${canvasId}-out`,
-        ...toRustParams(merged),
-      }),
-    )
-    converter.init()
-    // rAF 分片:tick 返回 false 表示转换结束
-    /** @type {Promise<void>} */
-    const done = new Promise((resolve, reject) => {
-      const step = () => {
-        if (signal?.aborted) {
-          converter.free()
-          reject(new DOMException('已取消', 'AbortError'))
-          return
-        }
-        const finished = !converter.tick()
-        onProgress?.(converter.progress())
-        if (finished) {
-          resolve()
-        } else {
-          requestAnimationFrame(step)
-        }
-      }
-      requestAnimationFrame(step)
-    })
-    await done
-    const svgEl = /** @type {SVGElement | null} */ (host.querySelector('svg'))
-    const result = svgEl ? svgEl.outerHTML : ''
-    converter.free()
-    return result
-  } finally {
-    host.remove()
+  const imagedata = ctx.getImageData(0, 0, canvas.width, canvas.height)
+
+  // 界面语汇 → imagetracerjs 选项:
+  //   colors   → numberofcolors(调色板大小)
+  //   detail   → ltres/qtres(阈值越低越贴近原细节),0..10 → 1.8..0.2
+  //   simplify → pathomit(短路径剔除,越大越简),0..64
+  const detail = Math.min(10, Math.max(0, merged.detail))
+  const options = {
+    numberofcolors: Math.min(64, Math.max(2, Math.round(merged.colors))),
+    ltres: 1.8 - 0.16 * detail,
+    qtres: 1.8 - 0.16 * detail,
+    pathomit: Math.min(4096, Math.max(0, Math.round(merged.simplify))),
+    roundcoords: 2,
+    viewbox: true,
   }
+  onProgress?.(0.5)
+  const svg = /** @type {string} */ (tracer.imagedataToSVG(imagedata, options))
+  onProgress?.(1)
+  return svg
 }

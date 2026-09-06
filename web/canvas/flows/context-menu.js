@@ -1,5 +1,7 @@
 // 对象右键菜单(线框 S8):图像对象的统一操作入口。
-// 菜单项:以此为参考生成(回调)/ 局部重绘(T11)/ 生成视频(T12)/ 转矢量(T15)/ 下载 / 删除。
+// 菜单项:以此为参考生成(回调)/ 局部重绘(T11)/ 生成视频(T12)/ 转矢量(T15,svg-export.js)/ 下载 / 删除。
+
+import { openSvgExportDialog } from '../svg-export.js'
 
 /**
  * @param {{
@@ -80,6 +82,14 @@ export function initContextMenu(options) {
       document.querySelector('#ctx-ref')?.addEventListener('click', () => {
         if (targetObjId) {
           options.onUseAsReference(targetObjId)
+        }
+        close()
+      })
+      document.querySelector('#ctx-vector')?.addEventListener('click', () => {
+        const obj = targetObjId ? options.getDocStore()?.doc.objects[targetObjId] : null
+        const url = obj?.assetId ? `/assets/${obj.assetId}/original.${obj.ext || 'png'}` : obj?.src
+        if (url) {
+          void openSvgExportDialog({ imageUrl: url, filename: `gencanvas-${targetObjId}.svg` })
         }
         close()
       })

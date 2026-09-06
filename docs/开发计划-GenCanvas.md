@@ -21,7 +21,8 @@
 - 正确选择:**`vtracer-webapp@0.4.0`**(visioncortex/vtracer 官方仓库的 wasm-pack 产物,MIT/Apache-2.0,tgz 81K,含 `vtracer_webapp_bg.wasm` + JS glue + d.ts)。
 - API 核实(读 Rust 源码):`ColorImageConverter.new_with_string(jsonParams)` 从 DOM `canvas_id` 读像素、结果 SVG 写入 `svg_id` 元素;`init()` + `tick()`(返回 false 结束)+ `progress()`。参数:`mode / hierarchical / filter_speckle / color_precision / layer_difference / corner_threshold / length_threshold / max_iterations / splice_threshold / path_precision`。
 - 结论:**浏览器端可行**,需 vendor wasm + 薄封装(隐藏 canvas/svg 元素 + rAF 分片 tick 防卡 UI)。备选 `vectortracer@0.1.2` API 更友好(ImageData 进 / getResult 出)但只暴露二值转换器,无彩色量化 → 不采用。超大图服务端 CLI 降级维持 PRD 方案,P1 阶段先不做。
-- ⚠️ **实施修正(T15 实测)**:`vtracer-webapp` 的官方入口 `vtracer_webapp.js` 是 wasm-bindgen **bundler 目标**(`import * from './xx.wasm'`,仅打包器可解析),纯浏览器 ESM 加载不了。落地方式:`web/canvas/vector.js` 手动 `WebAssembly.instantiate`(imports = glue 导出的 34 个 wbg 函数)+ `__wbg_set_wasm` 回注 + `__wbindgen_start()`,维持零构建。node 冒烟已验证导入表接线正确(构造器需浏览器 DOM,node 内 panic 符合预期)。
+- ⚠️ **实施修正(T15 实测,最终结论:弃用 vtracer)**:落地时发现两处硬伤——① 官方入口 `vtracer_webapp.js` 是 wasm-bindgen **bundler 目标**(`import * from './xx.wasm'` 仅打包器可解析),需手写 `WebAssembly.instantiate` + `__wbg_set_wasm` 回注 shim(已验证可行);② **致命**:visioncortex 0.9 的 wasm 聚类对大量"参数×图片"组合**确定性 panic**(`unreachable`;实测同一图片颜色层数 6/7 可过、2/3/4/5/8 必炸,与加载方式、中止时序无关,参数空间无法绕开,前端不可修)。
+- **改用 `imagetracerjs@1.2.6`**(Unlicense 公有领域,纯 JS 47KB,经典脚本挂 `window.ImageTracer`,零构建、无 wasm、无 panic):`imagedataToSVG(imagedata, { numberofcolors, ltres, qtres, pathomit, viewbox })`,同步执行,源图下采样 ≤1024px 后单次通常 <300ms。S12 滑杆映射:颜色层数→numberofcolors、细节→ltres/qtres、简化→pathomit。浏览器 E2E 全流程验证通过(转换/滑杆联动/串行队列健壮性)。
 
 ### 4. job 历史重启存续(PRD §9 高风险前置项):**不存续**
 - `job-manager.ts` 的 `jobs` 为内存 Map,服务重启即清空;`pruneFinishedJobs` 上限 200。
