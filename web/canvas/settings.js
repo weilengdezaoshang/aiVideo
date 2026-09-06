@@ -35,7 +35,13 @@ async function api(path, options) {
  *   onConfigChanged?: (config: { provider: string }) => void,
  * }} [hooks]
  */
-export function initSettings(hooks = {}) {
+/**
+ * @param {{ onConfigChanged?: (config: { provider: string }) => void }} [hooks]
+ */
+export async function initSettings(hooks = {}) {
+  // Shoelace 是运行时升级的自定义元素:未定义前 show/hide 不存在
+  await customElements.whenDefined('sl-dialog')
+  await customElements.whenDefined('sl-select')
   const dialog = /** @type {any} */ ($('#settings-dialog'))
   const onboarding = /** @type {any} */ ($('#onboarding-dialog'))
   const providerSelect = /** @type {any} */ ($('#settings-provider'))
