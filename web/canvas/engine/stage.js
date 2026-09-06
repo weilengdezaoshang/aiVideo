@@ -15,7 +15,6 @@ const ZOOM_LEVELS = [0.05, 0.125, 0.25, 0.5, 1, 2, 4, 8]
  * @param {HTMLElement} rootEl 画布容器(.canvas-root,网点背景作用其上)
  * @param {HTMLElement} surfaceEl Konva 舞台宿主;必须是空元素(Stage 构造会清空其内容)
  * @param {{ onCamMove?: (cam: Cam) => void }} [options]
- * @returns {CanvasEngine}
  */
 export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
   const stage = new Konva.Stage({
@@ -32,6 +31,7 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
   let spaceHeld = false
   let panning = false
 
+  /** @param {number} s */
   const clampScale = (s) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s))
   const notify = () => options.onCamMove?.({ ...cam })
 
@@ -52,6 +52,7 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
     rootEl.style.backgroundSize = `${step}px ${step}px`
   }
 
+  /** @param {number} scale */
   function dotStepFor(scale) {
     // 找到使世界网格(基础 18/scale)密度落在 [18, 36) 屏幕px 的 2 的幂倍步长
     const worldStep = DOT_BASE / scale
@@ -60,6 +61,7 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
   }
 
   /** 以屏幕坐标 anchor 为锚点缩放到 target */
+  /** @param {number} target @param {Point} anchor */
   function zoomToScale(target, anchor) {
     const scale = clampScale(target)
     if (scale === cam.scale) {
@@ -70,6 +72,7 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
     applyCam()
   }
 
+  /** @param {number} factor @param {Point} anchor */
   function zoomBy(factor, anchor) {
     zoomToScale(cam.scale * factor, anchor)
   }
@@ -79,15 +82,18 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
     return stage.getPointerPosition() ?? { x: stage.width() / 2, y: stage.height() / 2 }
   }
 
+  /** @param {Point} point */
   function screenToWorld(point) {
     return { x: cam.x + point.x / cam.scale, y: cam.y + point.y / cam.scale }
   }
 
+  /** @param {Point} point */
   function worldToScreen(point) {
     return { x: (point.x - cam.x) * cam.scale, y: (point.y - cam.y) * cam.scale }
   }
 
   /** 视野居中到世界坐标点(初始视图 / 100% 重置用) */
+  /** @param {Point} world @param {number} [scale] */
   function centerOn(world, scale = cam.scale) {
     const s = clampScale(scale)
     cam = {
@@ -104,7 +110,7 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
   //   deltaX ≠ 0 → 触控板双指横移,平移;
   //   deltaY 为整数且绝对值较大(≥40)→ 鼠标滚轮格,缩放;
   //   其余(小数 deltaY)→ 触控板双指纵移,平移。
-  stage.on('wheel', (e) => {
+  stage.on('wheel', (/** @type {KonvaWheelEvent} */ e) => {
     const ev = e.evt
     ev.preventDefault()
     if (ev.ctrlKey || ev.metaKey) {
@@ -121,7 +127,7 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
   })
 
   /* ---------- 手势:空格+拖 / 中键拖 ---------- */
-  stage.on('mousedown touchstart', (e) => {
+  stage.on('mousedown touchstart', (/** @type {KonvaMouseEvent} */ e) => {
     const wantPan = spaceHeld || e.evt.button === 1
     if (!wantPan) {
       return
@@ -132,7 +138,7 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
     stage.stopDrag()
     stage.draggable(false)
   })
-  stage.on('mousemove', (e) => {
+  stage.on('mousemove', (/** @type {KonvaMouseEvent} */ e) => {
     if (!panning || e.evt.buttons === 0) {
       return
     }
@@ -192,10 +198,17 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
 }
 
 /**
+ * @typedef {Object} Point
+ * @property {number} x
+ * @property {number} y
+ *
  * @typedef {Object} Cam
  * @property {number} x
  * @property {number} y
  * @property {number} scale
  *
- * @typedef {ReturnType<typeof createCanvasEngine>} CanvasEngine
+ * @typedef {{ evt: WheelEvent, target: any }} KonvaWheelEvent
+ *
+ * @typedef {{ evt: MouseEvent, target: any }} KonvaMouseEvent
  */
+export {}
