@@ -200,6 +200,8 @@ export function createObjectLayer(options) {
     try {
       // drawBorder 是调试边框(红色),必须关掉
       group.cache({ pixelRatio: cachePixelRatio(), offset: 4 })
+      // Konva 10 的 hit 画布是懒创建:必须显式 drawHit 才会物化,否则命中检测漏掉整个对象
+      layer.drawHit()
       cachedAtScale.set(obj.id, engine.getCam().scale)
     } finally {
       group.setAttr('caching', false)
@@ -553,8 +555,10 @@ export function createObjectLayer(options) {
     recomputeVisibility()
     refreshStaleCaches()
     applySelection()
-    // 同步 draw:命中画布立即可用(batchDraw 走 rAF,后台标签页会冻结导致点击不中)
+    // 同步 draw + hit:Konva 10 的 hit 画布是惰性重绘(等真实指针事件),
+    // 文档变更后必须显式刷新,否则命中检测漏掉新建/重建的对象
     layer.draw()
+    layer.drawHit()
     overlayLayer.draw()
   }
 

@@ -46,7 +46,9 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
       layer.scale(sc)
       layer.position(tr)
     }
-    contentLayer.batchDraw()
+    // 同步 draw 而非 batchDraw:Konva 10 的 rAF 调度在后台标签页不触发,
+    // 会导致命中画布停留在旧位置,相机移动后点不中对象
+    contentLayer.draw()
     applyDotGrid()
     notify()
   }
@@ -188,13 +190,37 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
     }
   })
 
-  /* ---------- 尺寸自适应 ---------- */
+  /* ---------- 尺寸自适应 ----------
+   * 观察舞台宿主本身(容器可能在模块执行后才完成布局,如隐藏面板中加载)。 */
   const resizeObserver = new ResizeObserver(() => {
-    stage.width(rootEl.clientWidth)
-    stage.height(rootEl.clientHeight)
-    stage.batchDraw()
+    const w = surfaceEl.clientWidth
+    const h = surfaceEl.clientHeight
+    if (w > 0 && h > 0 && (stage.width() !== w || stage.height() !== h)) {
+      stage.width(w)
+      stage.height(h)
+      stage.batchDraw()
+    }
   })
+  resizeObserver.observe(surfaceEl)
   resizeObserver.observe(rootEl)
+
+  /** 同步舞台尺寸到容器;返回是否发生变化 */
+  function syncSize() {
+    const w = surfaceEl.clientWidth
+    const h = surfaceEl.clientHeight
+    if (w > 0 && h > 0 && (stage.width() !== w || stage.height() !== h)) {
+      stage.width(w)
+      stage.height(h)
+      stage.batchDraw()
+      return true
+    }
+    return false
+  }
+  window.addEventListener('resize', syncSize)
+  // 启动后前几帧布局可能仍在收敛(CSS/字体加载、宿主面板显隐):主动同步几帧
+  for (let i = 1; i <= 10; i++) {
+    setTimeout(syncSize, i * 120)
+  }
 
   applyCam()
 

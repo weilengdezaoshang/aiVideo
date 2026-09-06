@@ -323,3 +323,168 @@ kbd {
   font-size: 12px;
   color: var(--gc-ink-muted);
 }
+
+/* ---------- SVG 导出面板(S12) ---------- */
+
+.svg-body {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.svg-pane {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.svg-pane img,
+.svg-pane .svg-preview {
+  width: 100%;
+  height: 150px;
+  object-fit: contain;
+  border: 1px solid var(--gc-hairline);
+  border-radius: var(--gc-radius-sm);
+  background: repeating-conic-gradient(#f0f0f0 0% 25%, #fff 0% 50%) 0 0 / 16px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.svg-pane-caption {
+  font-size: 11px;
+  color: var(--gc-ink-muted);
+  text-align: center;
+  margin-top: 4px;
+}
+
+.svg-arrow {
+  color: var(--gc-ink-muted);
+}
+
+.svg-preview-spin {
+  position: absolute;
+  inset: 0 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--gc-ink-muted);
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: var(--gc-radius-sm);
+}
+
+.svg-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.svg-slider-row {
+  display: grid;
+  grid-template-columns: 64px 1fr 72px;
+  align-items: center;
+  gap: 10px;
+}
+
+.svg-slider-label {
+  font-size: 13px;
+  color: var(--gc-ink-soft);
+}
+
+.svg-slider-hint {
+  font-size: 12px;
+  color: var(--gc-ink-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.svg-hint {
+  font-size: 12px;
+  color: var(--gc-ink-muted);
+  line-height: 1.5;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: var(--gc-parchment);
+  border-radius: var(--gc-radius-sm);
+}
+
+/* ---------- 参考图槽位(线框 S9) ---------- */
+
+.ref-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--gc-hairline);
+  border-radius: var(--gc-radius-md);
+  background: var(--gc-pearl);
+  font-size: 14px;
+  color: var(--gc-ink-muted);
+}
+
+.ref-thumb {
+  width: 40px;
+  height: 30px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--gc-hairline);
+}
+
+.ref-remove {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: var(--gc-radius-pill);
+  background: transparent;
+  color: var(--gc-ink-muted);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.ref-remove:hover {
+  background: var(--gc-hairline);
+  color: var(--gc-ink);
+}
+
+/* ---------- 对象右键菜单(线框 S8) ---------- */
+
+.context-menu {
+  position: fixed;
+  z-index: 30;
+  min-width: 180px;
+  padding: 4px;
+  background: #ffffff;
+  border: 1px solid var(--gc-hairline);
+  border-radius: var(--gc-radius-md);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 7px 12px;
+  border: none;
+  border-radius: var(--gc-radius-sm);
+  background: transparent;
+  text-align: left;
+  font-size: 14px;
+  color: var(--gc-ink);
+  cursor: pointer;
+}
+
+.context-menu-item:hover:not(:disabled) {
+  background: var(--gc-parchment);
+}
+
+.context-menu-item:disabled {
+  color: var(--gc-ink-muted);
+  cursor: default;
+}
+
+.context-menu-danger {
+  color: #d63031 !important;
+}

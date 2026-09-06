@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/vendor/shoelace/cdn/themes/light.css">
   <link rel="stylesheet" href="canvas.css">
   <script src="/vendor/konva/konva.min.js"></script>
+  <script src="/vendor/imagetracerjs/imagetracer_v1.2.6.js"></script>
   <script type="module" src="/vendor/shoelace/cdn/shoelace-autoloader.js"></script></head>
 <body>
   <!-- 顶栏:画布切换 / 模型选择 / 进行中任务数 / 保存状态(线框 S3) -->
@@ -58,6 +59,12 @@
         </sl-select>
         <sl-input id="prompt-seed" size="small" placeholder="种子:随机" style="width: 8rem;"></sl-input>
       </div>
+      <!-- 参考图槽位(线框 S9):以图生图时挂载画布选中图 -->
+      <div class="ref-chip" id="ref-chip" hidden>
+        <img class="ref-thumb" id="ref-thumb" alt="参考图">
+        <span>来自画布选中图</span>
+        <button class="ref-remove" id="ref-remove" type="button" title="移除参考图">×</button>
+      </div>
       <button class="dropzone" id="ref-dropzone" type="button">
         <sl-icon name="image"></sl-icon>
         拖入参考图(可选,留空 = 文生图)
@@ -70,6 +77,16 @@
         </sl-button>
       </div>
     </section>
+
+    <!-- 对象右键菜单(线框 S8):以图生图/局部重绘/生成视频/转矢量/下载/删除 -->
+    <nav class="context-menu" id="context-menu" hidden>
+      <button class="context-menu-item" id="ctx-ref" type="button">以此为参考生成</button>
+      <button class="context-menu-item" data-todo="T11" disabled type="button">局部重绘</button>
+      <button class="context-menu-item" data-todo="T12" disabled type="button">生成视频</button>
+      <button class="context-menu-item" data-todo="T15" disabled type="button">转矢量(SVG)</button>
+      <button class="context-menu-item" id="ctx-download" type="button">下载</button>
+      <button class="context-menu-item context-menu-danger" id="ctx-delete" type="button">删除</button>
+    </nav>
 
     <!-- 缩放控件(右下角);引擎接线在 T4 -->
     <nav class="zoom-controls" aria-label="缩放控制">
@@ -138,6 +155,50 @@
       <b>③ 先用演示模式逛逛</b>
       <span>内置 Mock 后端,不需要任何配置</span>
     </button>
+  </sl-dialog>
+
+  <!-- SVG 导出调参面板(线框 S12):左原图 / 右实时预览 / 三滑杆;入口由右键菜单(T9)接线 -->
+  <sl-dialog id="svg-dialog" label="转为矢量图(SVG)" style="--width: 34rem;">
+    <div class="svg-body">
+      <div class="svg-pane">
+        <img id="svg-source" alt="原图" />
+        <div class="svg-pane-caption">原图</div>
+      </div>
+      <div class="svg-arrow">→</div>
+      <div class="svg-pane">
+        <div class="svg-preview" id="svg-preview"></div>
+        <div class="svg-preview-spin" id="svg-preview-spin">
+          <sl-spinner></sl-spinner>
+          <span>预览生成中…</span>
+        </div>
+        <div class="svg-pane-caption">SVG 实时预览</div>
+      </div>
+    </div>
+
+    <div class="svg-sliders">
+      <div class="svg-slider-row">
+        <span class="svg-slider-label">颜色层数</span>
+        <sl-range id="svg-colors" min="2" max="8" step="1"></sl-range>
+        <span class="svg-slider-hint" id="svg-colors-hint"></span>
+      </div>
+      <div class="svg-slider-row">
+        <span class="svg-slider-label">细节程度</span>
+        <sl-range id="svg-detail" min="0" max="10" step="1"></sl-range>
+        <span class="svg-slider-hint" id="svg-detail-hint"></span>
+      </div>
+      <div class="svg-slider-row">
+        <span class="svg-slider-label">简化程度</span>
+        <sl-range id="svg-simplify" min="0" max="64" step="1"></sl-range>
+        <span class="svg-slider-hint" id="svg-simplify-hint"></span>
+      </div>
+    </div>
+
+    <div class="svg-hint">
+      适用:logo / 图标 / 扁平插画效果最好;照片类图片矢量化后观感差,请预览确认后再导出。
+    </div>
+
+    <sl-button slot="footer" id="svg-cancel">取消</sl-button>
+    <sl-button slot="footer" variant="primary" id="svg-export">导出 SVG</sl-button>
   </sl-dialog>
 
   <script type="module" src="app.js"></script>

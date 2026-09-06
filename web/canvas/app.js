@@ -8,6 +8,7 @@ import { openDocument } from './state/document-api.js'
 import { createObjectLayer } from './engine/object-layer.js'
 import { connectGenerationEvents } from './state/generation-events.js'
 import { submitGeneration, cancelPlaceholder } from './flows/generate.js'
+import { initContextMenu } from './flows/context-menu.js'
 import { initSettings } from './settings.js'
 
 /** @param {string} sel @returns {HTMLElement} */
@@ -115,6 +116,7 @@ async function bootDocument() {
     },
   })
   objectLayer = objects
+  objects.sync() // 首次渲染:订阅只在变更时触发,纯加载(无变更)也需要建组
   store.subscribe(({ doc: current }) => {
     objects.sync()
     saver?.markDirty()
@@ -134,6 +136,7 @@ async function bootDocument() {
     window.addEventListener('beforeunload', () => saver.flushOnUnload())
   }
   docStore = store
+  contextMenu.attach(engine, () => objectLayer)
   // SSE 生成事件驱动占位状态机(T7):进度/落位/失败/对账
   generationEvents = connectGenerationEvents({
     docStore: store,
@@ -273,6 +276,86 @@ const getGenerationEvents = () => generationEvents
 
 /* ---------- 文生图提交(T8,线框 S4→S5) ---------- */
 
+/* ---------- 以图生图(T9,线框 S9):参考图来自画布选中图 ---------- */
+
+/** @type {string | null} 参考图对象 id */
+let referenceObjId = null
+
+const refChip = $('#ref-chip')
+const refThumb = /** @type {HTMLImageElement} */ ($('#ref-thumb'))
+
+function refObject() {
+  const obj = docStore?.doc.objects[referenceObjId || '']
+  return obj && (obj.kind === 'image' || obj.kind === 'video') ? obj : null
+}
+
+/** @param {string | null} objId */
+function setReference(objId) {
+  referenceObjId = objId
+  const obj = docStore?.doc.objects[objId || '']
+  if (obj && (obj.kind === 'image' || obj.kind === 'video')) {
+    refThumb.src = obj.assetId ? `/assets/${obj.assetId}/t256.webp` : obj.src || ''
+    refChip.hidden = false
+    $('#ref-dropzone').hidden = true
+  } else {
+    referenceObjId = null
+    refChip.hidden = true
+    $('#ref-dropzone').hidden = false
+  }
+}
+
+$('#ref-remove').addEventListener('click', () => setReference(null))
+
+/** 服务端接受的参考图 MIME;其余格式(如 Mock 的 SVG)栅格化为 PNG */
+const INIT_IMAGE_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp'])
+
+/** 位图化:任意可显示图 → PNG data URL @param {string} url */
+function rasterizeToPng(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('参考图转换失败'))
+        return
+      }
+      ctx.drawImage(img, 0, 0)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.onerror = () => reject(new Error('参考图转换失败'))
+    img.src = url
+  })
+}
+
+/** 对象原图转 dataURL(图生图 initImage) @param {any} obj */
+async function objectToDataUrl(obj) {
+  const url = obj.assetId ? `/assets/${obj.assetId}/original.${obj.ext || 'png'}` : obj.src
+  if (!url) {
+    throw new Error('参考图不可用')
+  }
+  const blob = await (await fetch(url)).blob()
+  if (INIT_IMAGE_MIMES.has(blob.type)) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.onerror = () => reject(new Error('参考图读取失败'))
+      reader.readAsDataURL(blob)
+    })
+  }
+  return rasterizeToPng(url)
+}
+
+const contextMenu = initContextMenu({
+  getDocStore: () => docStore,
+  onUseAsReference: (/** @type {string} */ objId) => {
+    setReference(objId)
+    setPanelOpen(true)
+  },
+})
+
 $('#prompt-generate').addEventListener('click', async () => {
   if (!docStore) {
     return
@@ -288,30 +371,50 @@ $('#prompt-generate').addEventListener('click', async () => {
   const size = Number(/** @type {any} */ ($('#prompt-size'))?.value) || 512
   const seedRaw = Number(/** @type {any} */ ($('#prompt-seed'))?.value)
   const cam = engine.getCam()
-  const anchor = {
+  const seed = Number.isFinite(seedRaw) && seedRaw >= 0 ? Math.floor(seedRaw) : -1
+  const genParams = {
+    prompt,
+    negativePrompt: '',
+    model,
+    width: size,
+    height: size,
+    steps: 20,
+    cfgScale: 7,
+    seed,
+    sampler: 'euler',
+    scheduler: 'normal',
+    denoise: 1,
+    kind: 'image',
+    durationSec: 4,
+    fps: 16,
+  }
+  let initImage
+  let anchor = {
     x: cam.x + engine.stage.width() / cam.scale / 2 - size / 2,
     y: cam.y + engine.stage.height() / cam.scale / 2 - size / 2,
+  }
+  const ref = refObject()
+  if (ref) {
+    // 以图生图(PRD §5.3-②):锚点 = 源图右上;结果携带谱系;源图不动
+    try {
+      initImage = { dataUrl: await objectToDataUrl(ref) }
+    } catch (err) {
+      promptInput.setAttribute('help-text', err instanceof Error ? err.message : String(err))
+      return
+    }
+    genParams.denoise = 0.75
+    anchor = { x: ref.x + ref.width + 40, y: ref.y }
   }
   await submitGeneration({
     docStore,
     anchor,
-    genParams: {
-      prompt,
-      negativePrompt: '',
-      model,
-      width: size,
-      height: size,
-      steps: 20,
-      cfgScale: 7,
-      seed: Number.isFinite(seedRaw) && seedRaw >= 0 ? Math.floor(seedRaw) : -1,
-      sampler: 'euler',
-      scheduler: 'normal',
-      denoise: 1,
-      kind: 'image',
-      durationSec: 4,
-      fps: 16,
-    },
+    genParams,
+    initImage,
+    lineage: ref ? { fromId: ref.id, params: { ...genParams } } : undefined,
   })
+  if (ref) {
+    setReference(null)
+  }
   // 生成后面板收起,画布不锁死可继续发任务(PRD §5.3-①)
   setPanelOpen(false)
 })
