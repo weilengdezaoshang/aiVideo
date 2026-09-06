@@ -69,8 +69,8 @@
 - [x] **T10** `feat(web)`: 失败卡/任务丢失卡 + 重试(谱系参数原样重发)
 - [x] **T11** `feat(web)`: 局部重绘模式(蒙版笔刷/擦除/清空、区域提示词、蒙版二进制上传、结果新对象)
 - [x] **T12** `feat(web)`: 图生视频面板 + 视频对象(点击播放)——M0 三原型到此全部可验收
-- [ ] **T13** `feat(config)`: BYOK 设置界面(S2/S2a/S2b)+ provider 热切换端点 + 首启引导(S1)→ **服务端(c50d07a:src/config.ts + /api/config*/JobManager.setProvider)与设置 UI(42c1696:settings.js + S1 引导)已完成;消费端(模型列表随 provider 刷新)归 T8/T9 接线**
-- [ ] **T14** `feat(web)`: 断线横幅 + 自动重连对账联动(S15/S16)+ 多开检测
+- [x] **T13** `feat(config)`: BYOK 设置界面(S2/S2a/S2b)+ provider 热切换端点 + 首启引导(S1)→ **服务端(c50d07a:src/config.ts + /api/config*/JobManager.setProvider)与设置 UI(42c1696:settings.js + S1 引导)已完成;消费端(模型列表随 provider 刷新)归 T8/T9 接线**
+- [x] **T14** `feat(web)`: 断线横幅 + 自动重连对账联动(S15/S16)+ 多开检测
 - [x] **T15** `feat(web)`: P1——SVG 导出面板 → **完成(9e7d1f2):引擎最终采用 imagetracerjs(vtracer 因上游 wasm 聚类 panic 弃用,见 §3);S12 面板(原图/实时预览/三滑杆/导出下载)+ 右键菜单接线,浏览器 E2E 全链路验证通过**
 - [ ] **T16** `feat(web)`: P1——素材库入口与拖入画布(S17)
 - [ ] **T17** `feat(web)`: P1——变体批生成 ×4(4 独立任务)

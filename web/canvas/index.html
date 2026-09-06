@@ -10,6 +10,13 @@
   <script src="/vendor/imagetracerjs/imagetracer_v1.2.6.js"></script>
   <script type="module" src="/vendor/shoelace/cdn/shoelace-autoloader.js"></script></head>
 <body>
+  <!-- 断线横幅(线框 S15) -->
+  <div class="offline-banner" id="offline-banner" hidden>
+    <sl-icon name="wifi-off"></sl-icon>
+    <span>连接断开,正在重连…</span>
+    <button id="offline-retry" type="button">立即重试</button>
+  </div>
+
   <!-- 顶栏:画布切换 / 模型选择 / 进行中任务数 / 保存状态(线框 S3) -->
   <header class="topbar">
     <sl-dropdown>

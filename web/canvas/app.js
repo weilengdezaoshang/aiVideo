@@ -10,6 +10,7 @@ import { connectGenerationEvents } from './state/generation-events.js'
 import { submitGeneration, cancelPlaceholder } from './flows/generate.js'
 import { initContextMenu } from './flows/context-menu.js'
 import { createInpaintSession } from './flows/inpaint.js'
+import { watchDuplicateTabs } from './state/duplicate-tabs.js'
 import { initSettings } from './settings.js'
 
 /** @param {string} sel @returns {HTMLElement} */
@@ -247,7 +248,9 @@ async function bootDocument() {
   generationEvents = connectGenerationEvents({
     docStore: store,
     onConnectionChange: (connected) => {
-      rootEl.title = connected ? '' : '连接断开,正在重连…'
+      // 断线横幅(线框 S15):断开显示,重连成功隐藏
+      const banner = $('#offline-banner')
+      banner.hidden = connected
     },
     onReconciled: ({ changed }) => {
       if (changed > 0) {
@@ -321,7 +324,38 @@ async function loadModels() {
 }
 void loadModels()
 
-/* ---------- 撤销 / 重做快捷键(PRD §8.3,入口形式自定:Cmd/Ctrl+Z) ---------- */
+/* ---------- 断线「立即重试」+ 多标签页检测(T14,线框 S15 / PRD §9) ---------- */
+
+$('#offline-retry').addEventListener('click', () => {
+  generationEvents?.reconcileNow()
+  // EventSource 断开后会自动重连;此处强制重连以立即见效
+  generationEvents?.close()
+  void bootDocumentRetry()
+})
+
+/** 重连:直接刷新页面(事件流与文档状态一并重建,最稳) */
+function bootDocumentRetry() {
+  location.reload()
+}
+
+watchDuplicateTabs({
+  onDuplicate: () => {
+    const banner = $('#offline-banner')
+    banner.hidden = false
+    const label = banner.querySelector('span')
+    if (label) {
+      label.textContent = '检测到多个画布标签页,文档可能互相覆盖,建议只保留一个'
+    }
+    setTimeout(() => {
+      banner.hidden = true
+      if (label) {
+        label.textContent = '连接断开,正在重连…'
+      }
+    }, 8000)
+  },
+})
+
+/* ---------- BYOK 设置 + 首启引导(T13,线框 S1/S2) ---------- */
 
 /* ---------- 提示词面板:Tab 呼出 / Esc 收起(线框 S3→S4) ---------- */
 
@@ -468,7 +502,7 @@ $('#video-generate').addEventListener('click', async () => {
   const model = /** @type {any} */ ($('#prompt-model'))?.value || undefined
   const durationSec = Number(/** @type {any} */ ($('#video-duration'))?.value) || 4
   const genParams = {
-    prompt: /** @type {any} */ ((src.lineage?.params) || {}).prompt || '让这张图动起来',
+    prompt: /** @type {any} */ (src.lineage?.params || {}).prompt || '让这张图动起来',
     negativePrompt: '',
     model,
     width: src.width,
