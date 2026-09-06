@@ -6,6 +6,7 @@ import { createDocStore } from './state/doc-store.js'
 import { createAutoSaver } from './state/autosave.js'
 import { openDocument } from './state/document-api.js'
 import { createObjectLayer } from './engine/object-layer.js'
+import { initSettings } from './settings.js'
 
 /** @param {string} sel @returns {HTMLElement} */
 const $ = (sel) => /** @type {HTMLElement} */ (document.querySelector(sel))
@@ -150,6 +151,10 @@ function fitToContent(doc) {
 }
 
 void bootDocument()
+
+/* ---------- BYOK 设置 + 首启引导(T13,线框 S1/S2) ---------- */
+
+initSettings()
 
 /* ---------- 撤销 / 重做快捷键(PRD §8.3,入口形式自定:Cmd/Ctrl+Z) ---------- */
 

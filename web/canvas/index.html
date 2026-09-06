@@ -29,6 +29,7 @@
 
     <span class="topbar-spacer"></span>
 
+    <sl-icon-button id="settings-open" name="gear" label="设置(BYOK / 后端)"></sl-icon-button>
     <span class="topbar-status" id="job-count" title="进行中的任务数">
       <sl-icon name="hourglass-split"></sl-icon>
       <span id="job-count-value">0</span>
@@ -79,6 +80,65 @@
       </sl-button-group>
     </nav>
   </main>
+
+  <!-- BYOK 设置对话框(线框 S2/S2a/S2b):后端热切换 + 测试连接 + API Key 管理 -->
+  <sl-dialog id="settings-dialog" label="设置" style="--width: 30rem;">
+    <div class="settings-section">
+      <div class="settings-title">生成后端</div>
+      <div class="settings-row">
+        <sl-select id="settings-provider" size="small" style="width: 100%;">
+          <sl-option value="mock">演示模式(Mock,无需配置)</sl-option>
+          <sl-option value="comfyui">本地 ComfyUI</sl-option>
+        </sl-select>
+      </div>
+      <div class="settings-row" id="settings-comfy-row">
+        <sl-input id="settings-comfy-url" size="small" placeholder="http://127.0.0.1:8188"
+          style="flex: 1;"></sl-input>
+        <sl-button size="small" id="settings-test">测试连接</sl-button>
+      </div>
+      <div class="settings-test-result" id="settings-test-result" hidden></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">云端模型 API Key(BYOK)</div>
+      <div class="settings-row">
+        <sl-input id="settings-image-key" size="small" type="password" password-toggle
+          placeholder="图像 API Key…" style="flex: 1;"></sl-input>
+        <sl-icon-button id="settings-image-key-clear" name="x-lg" label="清除图像 Key"
+          title="清除已保存的图像 Key"></sl-icon-button>
+      </div>
+      <div class="settings-row">
+        <sl-input id="settings-video-key" size="small" type="password" password-toggle
+          placeholder="视频 API Key…" style="flex: 1;"></sl-input>
+        <sl-icon-button id="settings-video-key-clear" name="x-lg" label="清除视频 Key"
+          title="清除已保存的视频 Key"></sl-icon-button>
+      </div>
+      <div class="settings-hint">
+        Key 仅保存在本机 config.json,不随文档上传;留空 = 保持已保存值不变。
+      </div>
+    </div>
+
+    <sl-button slot="footer" id="settings-cancel">取消</sl-button>
+    <sl-button slot="footer" variant="primary" id="settings-save">保存</sl-button>
+  </sl-dialog>
+
+  <!-- 首次启动引导(线框 S1):三选一进入设置或直接体验 -->
+  <sl-dialog id="onboarding-dialog" no-header style="--width: 26rem;">
+    <div class="onb-head">欢迎使用 GenCanvas</div>
+    <div class="onb-sub">选择一个生成后端开始(可随时在右下角设置中更改)</div>
+    <button class="onb-card" id="onb-comfy" type="button">
+      <b>① 连接本地 ComfyUI</b>
+      <span>输入地址,如 http://127.0.0.1:8188</span>
+    </button>
+    <button class="onb-card" id="onb-byok" type="button">
+      <b>② 填写模型 API Key</b>
+      <span>使用云端模型(BYOK)</span>
+    </button>
+    <button class="onb-card" id="onb-demo" type="button">
+      <b>③ 先用演示模式逛逛</b>
+      <span>内置 Mock 后端,不需要任何配置</span>
+    </button>
+  </sl-dialog>
 
   <script type="module" src="app.js"></script>
 </body>

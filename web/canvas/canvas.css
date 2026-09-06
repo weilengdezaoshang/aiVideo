@@ -240,3 +240,86 @@ kbd {
 .stress-fps.bad {
   color: #d63031;
 }
+
+/* ---------- BYOK 设置对话框(S2)+ 首启引导(S1) ---------- */
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.settings-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gc-ink);
+}
+
+.settings-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.settings-test-result {
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: var(--gc-radius-sm);
+  background: var(--gc-parchment);
+  color: var(--gc-ink-soft);
+}
+
+.settings-test-result.error {
+  background: #fdecec;
+  color: #d63031;
+}
+
+.settings-hint {
+  font-size: 12px;
+  color: var(--gc-ink-muted);
+  line-height: 1.5;
+}
+
+.onb-head {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--gc-ink);
+  text-align: center;
+}
+
+.onb-sub {
+  font-size: 13px;
+  color: var(--gc-ink-muted);
+  text-align: center;
+  margin: 4px 0 16px;
+}
+
+.onb-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  background: #fff;
+  border: 1px solid var(--gc-hairline);
+  border-radius: var(--gc-radius-md);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.onb-card:hover {
+  border-color: var(--gc-blue);
+}
+
+.onb-card b {
+  font-size: 14px;
+  color: var(--gc-ink);
+}
+
+.onb-card span {
+  font-size: 12px;
+  color: var(--gc-ink-muted);
+}
