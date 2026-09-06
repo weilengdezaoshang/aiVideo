@@ -155,3 +155,123 @@ test('取消占位:DELETE 任务 + 占位移除(可撤销)', async () => {
   assert.equal(store.undo(), true)
   assert.equal((store.doc.objects.p1 as any)?.kind, 'placeholder')
 })
+
+/* ---------- retryError(T10) ---------- */
+
+test('重试:错误卡原位转占位,按谱系参数重发并回填 jobId', async () => {
+  const store = createDocStore({ id: 'd', name: 't', objects: {}, order: [] })
+  store.apply(
+    cmdAddObjects([
+      {
+        id: 'err-1',
+        kind: 'error',
+        x: 50,
+        y: 60,
+        width: 300,
+        height: 150,
+        errorDetail: '后端超时',
+        lineage: { fromId: 'src-1', params: { prompt: '猫', width: 512, height: 512, seed: 7 } },
+      },
+    ]),
+  )
+  const { impl, calls } = fakeFetch([{ status: 202, body: { jobId: 'job-retry' } }])
+
+  const result = await import('../web/canvas/flows/generate.js').then((m) =>
+    m.retryError({
+      docStore: store,
+      objId: 'err-1',
+      resolveReference: async () => null, // 源图不在:退化纯文生图
+      fetchImpl: impl,
+    }),
+  )
+  assert.equal(result.ok, true)
+  assert.equal((result as any).jobId, 'job-retry')
+  const obj = store.doc.objects['err-1'] as any
+  assert.equal(obj.kind, 'placeholder')
+  assert.equal(obj.gen?.jobId, 'job-retry')
+  assert.equal(obj.x, 50, '原位转占位')
+
+  const sent = JSON.parse(String(calls[0].init.body))
+  assert.equal(sent.prompt, '猫', '谱系参数原样重发')
+  assert.equal(sent.seed, 7)
+  assert.equal(sent.initImage, undefined, '参考图不可得时退化为文生图')
+})
+
+test('重试携带参考图:源图可得时 initImage 透传', async () => {
+  const store = createDocStore({ id: 'd', name: 't', objects: {}, order: [] })
+  store.apply(
+    cmdAddObjects([
+      {
+        id: 'err-2',
+        kind: 'error',
+        x: 0,
+        y: 0,
+        width: 300,
+        height: 150,
+        lineage: { fromId: 'src-9', params: { prompt: '夜景', width: 512, height: 512 } },
+      },
+    ]),
+  )
+  const { impl, calls } = fakeFetch([{ status: 202, body: { jobId: 'job-2' } }])
+  const result = await import('../web/canvas/flows/generate.js').then((m) =>
+    m.retryError({
+      docStore: store,
+      objId: 'err-2',
+      resolveReference: async () => ({ dataUrl: 'data:image/png;base64,AAA' }),
+      fetchImpl: impl,
+    }),
+  )
+  assert.equal(result.ok, true)
+  const sent = JSON.parse(String(calls[0].init.body))
+  assert.equal(sent.initImage, 'data:image/png;base64,AAA')
+})
+
+test('重试再次失败:回到错误卡并更新原因', async () => {
+  const store = createDocStore({ id: 'd', name: 't', objects: {}, order: [] })
+  store.apply(
+    cmdAddObjects([
+      {
+        id: 'err-3',
+        kind: 'error',
+        x: 0,
+        y: 0,
+        width: 300,
+        height: 150,
+        lineage: { fromId: 'src', params: { prompt: 'x', width: 512, height: 512 } },
+      },
+    ]),
+  )
+  const { impl } = fakeFetch([{ status: 500, body: { error: '后端超时' } }])
+  await import('../web/canvas/flows/generate.js').then((m) =>
+    m.retryError({ docStore: store, objId: 'err-3', fetchImpl: impl }),
+  )
+  const obj = store.doc.objects['err-3'] as any
+  assert.equal(obj.kind, 'error')
+  assert.equal(obj.errorDetail, '后端超时')
+})
+
+test('重试非错误卡/缺谱系:拒绝', async () => {
+  const store = createDocStore({ id: 'd', name: 't', objects: {}, order: [] })
+  store.apply(
+    cmdAddObjects([
+      {
+        id: 'img-1',
+        kind: 'image',
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+      },
+    ]),
+  )
+  const { impl } = fakeFetch([])
+  const r1 = await import('../web/canvas/flows/generate.js').then((m) =>
+    m.retryError({ docStore: store, objId: 'img-1', fetchImpl: impl }),
+  )
+  assert.equal(r1.ok, false)
+  store.apply(cmdAddObjects([{ id: 'err-x', kind: 'error', x: 0, y: 0, width: 10, height: 10 }]))
+  const r2 = await import('../web/canvas/flows/generate.js').then((m) =>
+    m.retryError({ docStore: store, objId: 'err-x', fetchImpl: impl }),
+  )
+  assert.equal(r2.ok, false)
+})

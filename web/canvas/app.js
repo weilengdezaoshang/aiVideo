@@ -103,6 +103,21 @@ async function bootDocument() {
     onDeletePlaceholder: (objId) => {
       void cancelPlaceholder({ docStore: store, objId })
     },
+    onRetryError: (objId) => {
+      void import('./flows/generate.js').then((m) =>
+        m.retryError({
+          docStore: store,
+          objId,
+          resolveReference: async (fromId) => {
+            const ref = store.doc.objects[fromId]
+            if (!ref || (ref.kind !== 'image' && ref.kind !== 'video')) {
+              return null
+            }
+            return { dataUrl: await objectToDataUrl(ref) }
+          },
+        }),
+      )
+    },
     imageUrlsFor: (obj) => {
       if (!obj.assetId) {
         return { original: obj.src || '' }

@@ -32,6 +32,7 @@ const isCacheable = (obj) => obj.kind === 'image' || obj.kind === 'video'
  *   onSelectionChange?: (ids: string[]) => void,
  *   onCancelPlaceholder?: (objId: string) => void,
  *   onDeletePlaceholder?: (objId: string) => void,
+ *   onRetryError?: (objId: string) => void,
  *   imageUrlsFor?: (obj: CanvasObj) => { thumb256?: string | null, thumb1024?: string | null, original: string },
  * }} options
  */
@@ -282,18 +283,20 @@ export function createObjectLayer(options) {
       syncSelectionRects()
     })
 
-    // 占位对象悬浮:显示「取消」(PRD §5.4)
+    // 占位悬浮「取消」/ 错误卡悬浮「重试·删除」(PRD §5.4 / 线框 S7)
     group.on('mouseenter', () => {
       const o = nodeById(group.id())
-      if (o?.kind !== 'placeholder' || group.getAttr('cancelBtn')) {
+      if (group.getAttr('cancelBtn') || (o?.kind !== 'placeholder' && o?.kind !== 'error')) {
         return
       }
-      const btn = new Konva.Label({
-        x: o.width,
-        y: 0,
-        opacity: 0.92,
-        listening: true,
-      })
+      const actions =
+        o.kind === 'placeholder'
+          ? [{ label: '取消', run: options.onCancelPlaceholder }]
+          : [
+              { label: '重试', run: options.onRetryError },
+              { label: '删除', run: options.onDeletePlaceholder },
+            ]
+      const btn = new Konva.Label({ x: o.width, y: 0, opacity: 0.92, listening: true })
       btn.add(
         new Konva.Tag({
           fill: '#1d1d1f',
@@ -303,10 +306,21 @@ export function createObjectLayer(options) {
           pointerHeight: 6,
         }),
       )
-      btn.add(new Konva.Text({ text: '取消', padding: 4, fontSize: 12, fill: '#fff' }))
+      btn.add(
+        new Konva.Text({
+          text: actions.map((a) => a.label).join(' · '),
+          padding: 4,
+          fontSize: 12,
+          fill: '#fff',
+        }),
+      )
       btn.on('click tap', (/** @type {any} */ ev) => {
         ev.cancelBubble = true
-        options.onCancelPlaceholder?.(group.id())
+        const pointer = group.getStage().getPointerPosition()
+        const rel = btn.getAbsoluteTransform().copy().invert().point(pointer)
+        const per = btn.width() / actions.length
+        const idx = Math.min(actions.length - 1, Math.max(0, Math.floor(rel.x / per)))
+        actions[idx].run?.(group.id())
       })
       group.add(btn)
       group.setAttr('cancelBtn', btn)
