@@ -1,7 +1,8 @@
 import express from 'express'
-import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { applyConfigPatch, loadConfig, publicConfig, saveConfigPatch } from './config.js'
+import type { AppConfig, ConfigPatch } from './config.js'
 import { logger } from './logger.js'
 import { AssetStore } from './assets.js'
 import { DocumentStore } from './documents.js'
@@ -19,86 +20,9 @@ const rootDir = path.resolve(__dirname, '..')
 /** 进行中(排队 + 运行)任务数上限,防止前端异常把队列灌爆。 */
 const MAX_ACTIVE_JOBS = 50
 
-interface AppConfig {
-  provider: 'mock' | 'comfyui'
-  comfyUrl: string
-  port: number
-  /** ComfyUI 图像任务整体超时(分钟) */
-  imageTimeoutMin: number
-  /** ComfyUI 视频任务整体超时(分钟) */
-  videoTimeoutMin: number
-  /** 视频模型文件名;留空自动探测 */
-  videoModel: string
-  videoBackend: 'auto' | 'ltxv' | 'wan'
-  wanClip: string
-  wanVae: string
-  wanHighNoiseUnet: string
-  wanLowNoiseUnet: string
-}
-
-const readOptionalString = (envKey: string, fileValue: unknown): string => {
-  const env = process.env[envKey]
-  if (env !== undefined && env.trim() !== '') {
-    return env.trim()
-  }
-  return typeof fileValue === 'string' ? fileValue.trim() : ''
-}
-
-/** 读取并校验运行配置:错误直接抛出快速失败,避免带病启动。 */
-function loadConfig(): AppConfig {
-  let file: Partial<AppConfig> = {}
-  try {
-    file = JSON.parse(readFileSync(path.join(rootDir, 'config.json'), 'utf8'))
-  } catch {
-    // 没有 config.json 时使用默认值
-  }
-  const provider = process.env.SWARMUI_PROVIDER ?? file.provider ?? 'mock'
-  if (provider !== 'mock' && provider !== 'comfyui') {
-    throw new Error(`配置错误:provider 只能是 mock 或 comfyui,当前为 "${provider}"`)
-  }
-  const comfyUrl = process.env.SWARMUI_COMFY_URL ?? file.comfyUrl ?? 'http://127.0.0.1:8188'
-  if (provider === 'comfyui' && !/^https?:\/\//.test(comfyUrl)) {
-    throw new Error(`配置错误:comfyUrl 必须以 http:// 或 https:// 开头,当前为 "${comfyUrl}"`)
-  }
-  const port = Number(process.env.SWARMUI_PORT ?? file.port ?? 7801)
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error(`配置错误:port 必须是 1..65535 的整数,当前为 "${port}"`)
-  }
-  const readTimeoutMin = (envKey: string, fileValue: unknown, fallback: number): number => {
-    const raw = process.env[envKey] ?? fileValue
-    if (raw === undefined || raw === '') {
-      return fallback
-    }
-    const n = Number(raw)
-    if (!Number.isFinite(n) || n < 1 || n > 240) {
-      throw new Error(`配置错误:${envKey} 必须是 1..240 的分钟数,当前为 "${raw}"`)
-    }
-    return n
-  }
-  const videoBackendRaw = readOptionalString('SWARMUI_VIDEO_BACKEND', file.videoBackend) || 'auto'
-  if (videoBackendRaw !== 'auto' && videoBackendRaw !== 'ltxv' && videoBackendRaw !== 'wan') {
-    throw new Error(`配置错误:videoBackend 只能是 auto / ltxv / wan,当前为 "${videoBackendRaw}"`)
-  }
-  return {
-    provider,
-    comfyUrl,
-    port,
-    imageTimeoutMin: readTimeoutMin('SWARMUI_IMAGE_TIMEOUT_MIN', file.imageTimeoutMin, 20),
-    videoTimeoutMin: readTimeoutMin('SWARMUI_VIDEO_TIMEOUT_MIN', file.videoTimeoutMin, 60),
-    videoModel: readOptionalString('SWARMUI_VIDEO_MODEL', file.videoModel),
-    videoBackend: videoBackendRaw,
-    wanClip:
-      readOptionalString('SWARMUI_WAN_CLIP', file.wanClip) ||
-      'umt5_xxl_fp8_e4m3fn_scaled.safetensors',
-    wanVae: readOptionalString('SWARMUI_WAN_VAE', file.wanVae) || 'wan_2.1_vae.safetensors',
-    wanHighNoiseUnet: readOptionalString('SWARMUI_WAN_HIGH_NOISE_UNET', file.wanHighNoiseUnet),
-    wanLowNoiseUnet: readOptionalString('SWARMUI_WAN_LOW_NOISE_UNET', file.wanLowNoiseUnet),
-  }
-}
-
-const config = loadConfig()
-const provider: GenerationProvider =
-  config.provider === 'comfyui'
+/** 由配置构建生成后端(provider 热切换时重建实例)。 */
+function buildProvider(config: AppConfig): GenerationProvider {
+  return config.provider === 'comfyui'
     ? new ComfyUIProvider(config.comfyUrl, {
         imageTimeoutMs: config.imageTimeoutMin * 60_000,
         videoTimeoutMs: config.videoTimeoutMin * 60_000,
@@ -110,6 +34,10 @@ const provider: GenerationProvider =
         wanLowNoiseUnet: config.wanLowNoiseUnet,
       })
     : new MockProvider()
+}
+
+let config = loadConfig(rootDir)
+let provider = buildProvider(config)
 const dataDir = path.join(rootDir, 'data')
 const store = new Store(path.join(dataDir, 'images'), path.join(dataDir, 'history.json'))
 const assets = new AssetStore(path.join(dataDir, 'assets'))
@@ -162,6 +90,63 @@ app.get('/api/samplers', async (_req, res) => {
   } catch (err) {
     res.status(502).json({ error: `获取采样器列表失败:${(err as Error).message}` })
   }
+})
+
+// BYOK 配置(F8/S2):读取打码视图;热更新只写 config.json 并热切换后端;
+// 环境变量优先级不变(env 覆盖的字段文件照写,但生效值仍来自 env,响应中提示)。
+app.get('/api/config', (_req, res) => {
+  res.json({ config: publicConfig(config) })
+})
+
+app.post('/api/config', async (req, res) => {
+  const patch = applyConfigPatch(config, (req.body ?? {}) as ConfigPatch, {
+    SWARMUI_PROVIDER: process.env.SWARMUI_PROVIDER,
+    SWARMUI_COMFY_URL: process.env.SWARMUI_COMFY_URL,
+  })
+  if (!patch.ok) {
+    return res.status(400).json({ error: patch.error })
+  }
+  try {
+    await saveConfigPatch(rootDir, patch.filePatch)
+  } catch (err) {
+    return res.status(500).json({ error: `配置写入失败:${(err as Error).message}` })
+  }
+  const previousProvider = provider.name
+  config = patch.config
+  const switched = patch.filePatch.provider !== undefined || patch.filePatch.comfyUrl !== undefined
+  if (switched) {
+    provider = buildProvider(config)
+    jobs.setProvider(provider)
+    void refreshStatus()
+  }
+  logger.info('配置已更新', {
+    switched,
+    fields: Object.keys(patch.filePatch),
+    envOverridden: patch.envOverridden,
+  })
+  return res.json({
+    config: publicConfig(config),
+    providerSwitched: switched,
+    previousProvider,
+    envOverridden: patch.envOverridden,
+  })
+})
+
+// 测试连接(S2a/S2b):用候选配置构建临时后端探测,不落盘、不切换
+app.post('/api/config/test', async (req, res) => {
+  const body = (req.body ?? {}) as ConfigPatch
+  const candidate = applyConfigPatch(config, body, {})
+  if (!candidate.ok) {
+    return res.status(400).json({ error: candidate.error })
+  }
+  const probe = buildProvider({ ...config, ...candidate.filePatch })
+  const status = await Promise.race([
+    probe.status().catch((err: Error) => ({ ok: false, detail: `连接失败:${err.message}` })),
+    new Promise<BackendStatus>((resolve) =>
+      setTimeout(() => resolve({ ok: false, detail: '连接超时(5 秒)' }), 5000),
+    ),
+  ])
+  return res.json({ ok: status.ok, detail: status.detail, provider: probe.name })
 })
 
 app.post('/api/generate', (req, res) => {

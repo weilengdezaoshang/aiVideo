@@ -147,6 +147,12 @@ export class JobManager extends EventEmitter {
     return this.jobs.get(id)
   }
 
+  /** 运行中热切换生成后端(BYOK 设置):进行中任务按原后端跑完,此后调度的任务用新后端。 */
+  setProvider(provider: GenerationProvider): void {
+    this.provider = provider
+    this.pump()
+  }
+
   /** 进行中的任务(排队 + 运行),新的在前。 */
   listActive(): Job[] {
     return [...this.jobs.values()]
