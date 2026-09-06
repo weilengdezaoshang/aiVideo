@@ -9,7 +9,7 @@
  * @param {{
  *   engine: any,
  *   getDocStore: () => any,
- *   onSubmit: (spec: { srcObj: any, maskDataUrl: string, prompt: string }) => Promise<void>,
+ *   onSubmit: (spec: { srcObj: any, mask: { dataUrl: string, width: number, height: number }, prompt: string }) => Promise<void>,
  * }} options
  */
 export function createInpaintSession(options) {
@@ -86,10 +86,11 @@ export function createInpaintSession(options) {
     return pts
   }
 
-  /** 导出蒙版:黑底白笔 PNG(与源图原始像素同尺寸) */
-  /** @param {any} obj */
+  /**
+   * 导出蒙版:黑底白笔 PNG(与源图原始像素同尺寸);返回自然尺寸供生成参数对齐。
+   * @param {any} obj
+   */
   async function exportMask(obj) {
-    // 取原图尺寸
     const img = new Image()
     img.src = obj.assetId ? `/assets/${obj.assetId}/original.${obj.ext || 'png'}` : obj.src
     await new Promise((resolve, reject) => {
@@ -123,7 +124,7 @@ export function createInpaintSession(options) {
       ctx.stroke()
     }
     ctx.globalCompositeOperation = 'source-over'
-    return canvas.toDataURL('image/png')
+    return { dataUrl: canvas.toDataURL('image/png'), width: canvas.width, height: canvas.height }
   }
 
   function attachPointerHandlers() {
@@ -258,8 +259,8 @@ export function createInpaintSession(options) {
       if (strokes.length === 0) {
         throw new Error('请先涂抹要重绘的区域')
       }
-      const maskDataUrl = await exportMask(obj)
-      await onSubmit({ srcObj: obj, maskDataUrl, prompt })
+      const mask = await exportMask(obj)
+      await onSubmit({ srcObj: obj, mask, prompt })
     },
   }
 }

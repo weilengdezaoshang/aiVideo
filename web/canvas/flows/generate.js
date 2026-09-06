@@ -77,7 +77,8 @@ export async function submitGeneration(options) {
     // jobId 回填(瞬态):SSE 可能已先到,handleJobEvent 靠 clientRef 兜底
     docStore.mutateTransient((doc) => {
       const obj = doc.objects[objId]
-      if (obj && obj.kind === 'placeholder') {
+      // SSE 事件可能先于本响应到达并已写入 jobId/进度:只在首次回填
+      if (obj && obj.kind === 'placeholder' && !obj.gen?.jobId) {
         obj.gen = { jobId: body.jobId, progress: 0, message: '排队中' }
       }
     })

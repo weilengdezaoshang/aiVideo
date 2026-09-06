@@ -74,8 +74,8 @@ let currentTask = null
 let debounceTimer = null
 let lastSvg = ''
 let downloadName = '矢量图.svg'
-/** @type {{ colors: number, detail: number, simplify: number }} */
-let sliderValues = { colors: 6, detail: 6, simplify: 16 }
+/** @type {{ colors: number, detail: number, simplify: number }} 初始与滑杆显示同源(defaultVectorParams) */
+let sliderValues = defaultVectorParams()
 
 /** 用当前滑杆值跑一次矢量化并刷新预览 */
 async function renderPreview() {

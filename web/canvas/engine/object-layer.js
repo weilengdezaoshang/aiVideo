@@ -31,7 +31,7 @@ const isCacheable = (obj) => obj.kind === 'image' || obj.kind === 'video'
  *   applyCommand?: (cmd: any) => void,
  *   onSelectionChange?: (ids: string[]) => void,
  *   onCancelPlaceholder?: (objId: string) => void,
- *   onDeletePlaceholder?: (objId: string) => void,
+ *   onCancelTransient?: (objId: string) => void, // 占位=级联取消;错误卡=移除
  *   onRetryError?: (objId: string) => void,
  *   imageUrlsFor?: (obj: CanvasObj) => { thumb256?: string | null, thumb1024?: string | null, original: string },
  * }} options
@@ -294,7 +294,7 @@ export function createObjectLayer(options) {
           ? [{ label: '取消', run: options.onCancelPlaceholder }]
           : [
               { label: '重试', run: options.onRetryError },
-              { label: '删除', run: options.onDeletePlaceholder },
+              { label: '删除', run: options.onCancelTransient },
             ]
       const btn = new Konva.Label({ x: o.width, y: 0, opacity: 0.92, listening: true })
       btn.add(
@@ -645,7 +645,7 @@ export function createObjectLayer(options) {
       // 占位对象级联取消;其余对象走命令删除
       for (const id of ids) {
         if (doc.objects[id]?.kind === 'placeholder') {
-          options.onDeletePlaceholder?.(id)
+          options.onCancelTransient?.(id)
         }
       }
       const removable = ids.filter(

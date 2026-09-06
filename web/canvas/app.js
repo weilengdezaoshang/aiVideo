@@ -102,7 +102,7 @@ async function bootDocument() {
     onCancelPlaceholder: (objId) => {
       void cancelPlaceholder({ docStore: store, objId })
     },
-    onDeletePlaceholder: (objId) => {
+    onCancelTransient: (objId) => {
       void cancelPlaceholder({ docStore: store, objId })
     },
     onRetryError: (objId) => {
@@ -156,14 +156,15 @@ async function bootDocument() {
   inpaint = createInpaintSession({
     engine,
     getDocStore: () => store,
-    onSubmit: async ({ srcObj, maskDataUrl, prompt }) => {
+    onSubmit: async ({ srcObj, mask, prompt }) => {
       const model = /** @type {any} */ ($('#prompt-model'))?.value || undefined
       const genParams = {
         prompt,
         negativePrompt: '',
         model,
-        width: srcObj.width,
-        height: srcObj.height,
+        // 用蒙版的自然尺寸(源图原始像素)而非画布显示尺寸,避免蒙版/尺寸错位
+        width: mask.width,
+        height: mask.height,
         steps: 20,
         cfgScale: 7,
         seed: -1,
@@ -181,7 +182,7 @@ async function bootDocument() {
         anchor: { x: srcObj.x + srcObj.width + 40, y: srcObj.y },
         genParams,
         initImage,
-        maskImage: { dataUrl: maskDataUrl },
+        maskImage: { dataUrl: mask.dataUrl },
         lineage: { fromId: srcObj.id, params: { ...genParams } },
       })
     },
@@ -195,7 +196,8 @@ async function bootDocument() {
       openVideoDialog(obj.id)
     }
   })
-  // 双击视频对象 → 播放(线框 S11「点击播放」)
+  // 双击分发(线框 S10/S11):Konva 不透传原生 dblclick(由 click 时序合成),
+  // 直接绑容器 DOM 事件并用事件坐标做命中。视频 → 播放;图像 → 进入重绘。
   engine.stage.container().addEventListener('dblclick', (/** @type {MouseEvent} */ e) => {
     if (!docStore) {
       return
@@ -211,8 +213,15 @@ async function bootDocument() {
       node = node.parent
     }
     const obj = node ? docStore.doc.objects[node.id()] : null
-    if (obj && obj.kind === 'video') {
-      playVideo(/** @type {any} */ (obj))
+    if (!obj) {
+      return
+    }
+    if (obj.kind === 'video') {
+      playVideo(obj)
+      return
+    }
+    if (obj.kind === 'image' && inpaint && !inpaint.isActive() && inpaint.enter(obj.id)) {
+      setInpaintUi(true)
     }
   })
   // 右键菜单「局部重绘」:仅图像对象可用
@@ -220,27 +229,6 @@ async function bootDocument() {
     const sel = objectLayer?.getSelected() ?? []
     const obj = sel.length > 0 ? store.doc.objects[sel[0]] : null
     if (obj && obj.kind === 'image' && inpaint?.enter(obj.id)) {
-      setInpaintUi(true)
-    }
-  })
-  // 双击图像进入重绘(PRD §5.3-③)。Konva 不透传原生 dblclick(由 click 时序合成),
-  // 这里直接绑容器 DOM 事件并用事件坐标做命中。
-  engine.stage.container().addEventListener('dblclick', (/** @type {MouseEvent} */ e) => {
-    if (!inpaint || inpaint.isActive()) {
-      return
-    }
-    const rect = engine.stage.container().getBoundingClientRect()
-    const pos = { x: e.clientX - rect.left, y: e.clientY - rect.top }
-    const hit = engine.contentLayer.getIntersection(pos)
-    if (!hit) {
-      return
-    }
-    let node = hit
-    while (node && !store.doc.objects[node.id()]) {
-      node = node.parent
-    }
-    const obj = node ? store.doc.objects[node.id()] : null
-    if (obj && obj.kind === 'image' && inpaint.enter(node.id())) {
       setInpaintUi(true)
     }
   })
@@ -286,8 +274,6 @@ function fitToContent(doc) {
 
 void bootDocument()
 
-/* ---------- BYOK 设置 + 首启引导(T13,线框 S1/S2) ---------- */
-
 void initSettings()
 
 /* ---------- 模型列表:顶栏与提示词面板共用( provider 决定可选项) ---------- */
@@ -327,9 +313,6 @@ void loadModels()
 /* ---------- 断线「立即重试」+ 多标签页检测(T14,线框 S15 / PRD §9) ---------- */
 
 $('#offline-retry').addEventListener('click', () => {
-  generationEvents?.reconcileNow()
-  // EventSource 断开后会自动重连;此处强制重连以立即见效
-  generationEvents?.close()
   void bootDocumentRetry()
 })
 
@@ -414,9 +397,7 @@ const getDocStore = () => docStore
 const getObjectLayer = () => objectLayer
 const getGenerationEvents = () => generationEvents
 
-/* ---------- 文生图提交(T8,线框 S4→S5) ---------- */
-
-/* ---------- 局部重绘(T11,线框 S10):双击图或菜单进入 ---------- */
+/* ---------- 局部重绘(T11,线框 S10):双击图或菜单进入;文生图提交见下方「提示词面板」 ---------- */
 
 /** @type {any} 局部重绘会话(TS 对 object-literal getter 推导不稳,放宽) */
 let inpaint = null
@@ -439,9 +420,9 @@ $('#inpaint-erase').addEventListener('click', () => {
     return
   }
   const on = !inpaint.eraseOn
-  inpaint.setErase(on)(/** @type {any} */ document.querySelector('#inpaint-erase')).variant = on
-    ? 'primary'
-    : 'default'
+  inpaint.setErase(on)
+  const eraseBtn = /** @type {any} */ (document.querySelector('#inpaint-erase'))
+  eraseBtn.variant = on ? 'primary' : 'default'
 })
 $('#inpaint-clear').addEventListener('click', () => inpaint?.clearStrokes())
 $('#inpaint-exit').addEventListener('click', () => {
@@ -456,13 +437,11 @@ $('#inpaint-generate').addEventListener('click', async () => {
   if (!prompt) {
     return
   }
-  const srcObj = inpaint.getSrcObj()
   try {
     await inpaint.submit(prompt)
     // 结果落在源图右侧(lineage 标记 inpaint);提交后退出重绘模式
     inpaint.exit()
     setInpaintUi(false)
-    void srcObj
   } catch (err) {
     // 提示词为空/未涂抹:留在重绘模式
     ;/** @type {any} */ (document.querySelector('#inpaint-prompt')).setAttribute(
@@ -544,9 +523,16 @@ function playVideo(obj) {
     return
   }
   const isVideoFile = /\.(mp4|webm)$/i.test(url) || obj.ext === 'mp4' || obj.ext === 'webm'
-  playerBody.innerHTML = isVideoFile
-    ? `<video src="${url}" controls autoplay loop style="width: 100%"></video>`
-    : `<img src="${url}" alt="视频预览">`
+  // url 来自文档字段(服务端不校验内容):用 DOM API 设置 src,不拼 innerHTML
+  const media = document.createElement(isVideoFile ? 'video' : 'img')
+  if (isVideoFile) {
+    media.setAttribute('controls', '')
+    media.setAttribute('autoplay', '')
+    media.setAttribute('loop', '')
+  }
+  media.setAttribute('src', url)
+  media.style.width = '100%'
+  playerBody.replaceChildren(media)
   void playerDialog.show()
 }
 
