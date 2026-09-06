@@ -6,6 +6,8 @@ import { createDocStore } from './state/doc-store.js'
 import { createAutoSaver } from './state/autosave.js'
 import { openDocument } from './state/document-api.js'
 import { createObjectLayer } from './engine/object-layer.js'
+import { connectGenerationEvents } from './state/generation-events.js'
+import { submitGeneration, cancelPlaceholder } from './flows/generate.js'
 import { initSettings } from './settings.js'
 
 /** @param {string} sel @returns {HTMLElement} */
@@ -44,6 +46,8 @@ $('#zoom-out').addEventListener('click', () => engine.zoomBy(1 / 1.2, viewportCe
 
 /** @type {ReturnType<typeof createDocStore> | null} */
 let docStore = null
+/** @type {ReturnType<typeof connectGenerationEvents> | null} T14 断线横幅将使用 */
+let generationEvents = null
 let centeredOnce = false
 
 /** @param {"idle" | "saving" | "saved" | "error"} status @param {string} [detail] */
@@ -92,6 +96,12 @@ async function bootDocument() {
     onSelectionChange: (ids) => {
       selection = ids
     },
+    onCancelPlaceholder: (objId) => {
+      void cancelPlaceholder({ docStore: store, objId })
+    },
+    onDeletePlaceholder: (objId) => {
+      void cancelPlaceholder({ docStore: store, objId })
+    },
     imageUrlsFor: (obj) => {
       if (!obj.assetId) {
         return { original: obj.src || '' }
@@ -124,6 +134,18 @@ async function bootDocument() {
     window.addEventListener('beforeunload', () => saver.flushOnUnload())
   }
   docStore = store
+  // SSE 生成事件驱动占位状态机(T7):进度/落位/失败/对账
+  generationEvents = connectGenerationEvents({
+    docStore: store,
+    onConnectionChange: (connected) => {
+      rootEl.title = connected ? '' : '连接断开,正在重连…'
+    },
+    onReconciled: ({ changed }) => {
+      if (changed > 0) {
+        objects.sync()
+      }
+    },
+  })
   if (stressCount > 0) {
     const { installStress } = await import('./stress.js')
     await installStress(stressCount, { store })
@@ -154,7 +176,41 @@ void bootDocument()
 
 /* ---------- BYOK 设置 + 首启引导(T13,线框 S1/S2) ---------- */
 
-initSettings()
+void initSettings()
+
+/* ---------- 模型列表:顶栏与提示词面板共用( provider 决定可选项) ---------- */
+
+async function loadModels() {
+  try {
+    await customElements.whenDefined('sl-select')
+    const res = await fetch('/api/models')
+    const body = await res.json()
+    const models = body.models || []
+    const selects = [$('#model-select'), $('#prompt-model')]
+    for (const sel of selects) {
+      sel.innerHTML = models
+        .map((/** @type {any} */ m) => `<sl-option value="${m.id}">${m.name}</sl-option>`)
+        .join('')
+    }
+    if (models.length > 0) {
+      // sl-select 升级与选项注册都是异步的:轮询赋值直到生效(上限 ~2s)
+      await customElements.whenDefined('sl-option')
+      const topSelect = /** @type {any} */ ($('#model-select'))
+      const panelSelect = /** @type {any} */ ($('#prompt-model'))
+      for (let i = 0; i < 40; i++) {
+        topSelect.value = models[0].id
+        panelSelect.value = models[0].id
+        if (topSelect.value === models[0].id && panelSelect.value === models[0].id) {
+          break
+        }
+        await new Promise((r) => setTimeout(r, 50))
+      }
+    }
+  } catch {
+    // 模型列表失败不阻塞:提交时服务端会给出明确错误
+  }
+}
+void loadModels()
 
 /* ---------- 撤销 / 重做快捷键(PRD §8.3,入口形式自定:Cmd/Ctrl+Z) ---------- */
 
@@ -213,4 +269,51 @@ $('#prompt-collapse').addEventListener('click', () => setPanelOpen(false))
 
 const getDocStore = () => docStore
 const getObjectLayer = () => objectLayer
-export { engine, setPanelOpen, canvasEmpty, getDocStore, getObjectLayer }
+const getGenerationEvents = () => generationEvents
+
+/* ---------- 文生图提交(T8,线框 S4→S5) ---------- */
+
+$('#prompt-generate').addEventListener('click', async () => {
+  if (!docStore) {
+    return
+  }
+  const prompt = /** @type {any} */ (promptInput).value.trim()
+  if (!prompt) {
+    ;/** @type {any} */ (promptInput).focus()
+    promptInput.setAttribute('help-text', '请先输入提示词')
+    return
+  }
+  const promptModel = /** @type {any} */ ($('#prompt-model'))
+  const model = promptModel?.value || promptModel?.querySelector('sl-option')?.value || undefined
+  const size = Number(/** @type {any} */ ($('#prompt-size'))?.value) || 512
+  const seedRaw = Number(/** @type {any} */ ($('#prompt-seed'))?.value)
+  const cam = engine.getCam()
+  const anchor = {
+    x: cam.x + engine.stage.width() / cam.scale / 2 - size / 2,
+    y: cam.y + engine.stage.height() / cam.scale / 2 - size / 2,
+  }
+  await submitGeneration({
+    docStore,
+    anchor,
+    genParams: {
+      prompt,
+      negativePrompt: '',
+      model,
+      width: size,
+      height: size,
+      steps: 20,
+      cfgScale: 7,
+      seed: Number.isFinite(seedRaw) && seedRaw >= 0 ? Math.floor(seedRaw) : -1,
+      sampler: 'euler',
+      scheduler: 'normal',
+      denoise: 1,
+      kind: 'image',
+      durationSec: 4,
+      fps: 16,
+    },
+  })
+  // 生成后面板收起,画布不锁死可继续发任务(PRD §5.3-①)
+  setPanelOpen(false)
+})
+
+export { engine, setPanelOpen, canvasEmpty, getDocStore, getObjectLayer, getGenerationEvents }

@@ -1,0 +1,157 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { findFreePosition, overlapsAny } from '../web/canvas/state/placement.js'
+import { submitGeneration, cancelPlaceholder } from '../web/canvas/flows/generate.js'
+import { createDocStore } from '../web/canvas/state/doc-store.js'
+import { cmdAddObjects } from '../web/canvas/state/commands.js'
+
+/* eslint-disable @typescript-eslint/no-explicit-any -- 测试对生成参数与文档结构使用宽类型 */
+
+/* ---------- 螺旋落位纯函数 ---------- */
+
+test('锚点空时直接落位', () => {
+  const doc = { objects: {} }
+  const pos = findFreePosition(doc, { x: 100, y: 100 }, { width: 256, height: 256 })
+  assert.deepEqual(pos, { x: 100, y: 100 })
+})
+
+test('锚点被占:顺时针螺旋找到第一个空位(右侧优先)', () => {
+  const doc = {
+    objects: { a: { x: 100, y: 100, width: 256, height: 256 } },
+  }
+  const pos = findFreePosition(doc, { x: 100, y: 100 }, { width: 256, height: 256 }, { gap: 40 })
+  // 环 1 顶边起点 = 右上 (100+296, 100-296) → 空,胜出
+  assert.deepEqual(pos, { x: 396, y: -196 })
+})
+
+test('连续以图生图形成右侧变体群(空间谱系布局)', () => {
+  const objects: Record<string, { x: number; y: number; width: number; height: number }> = {}
+  // 源图 a 在 (0,0);两次以它为锚的落位应排开不重叠
+  objects.a = { x: 0, y: 0, width: 256, height: 256 }
+  const p1 = findFreePosition(
+    { objects },
+    { x: 296, y: 0 },
+    { width: 256, height: 256 },
+    { gap: 40 },
+  )
+  objects.b = { x: p1.x, y: p1.y, width: 256, height: 256 }
+  const p2 = findFreePosition(
+    { objects },
+    { x: 296, y: 0 },
+    { width: 256, height: 256 },
+    { gap: 40 },
+  )
+  objects.c = { x: p2.x, y: p2.y, width: 256, height: 256 }
+
+  const ids = ['a', 'b', 'c']
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      const A = objects[ids[i]] as any
+      const B = objects[ids[j]] as any
+      const sep =
+        A.x + A.width < B.x || B.x + B.width < A.x || A.y + A.height < B.y || B.y + B.height < A.y
+      assert.ok(sep, `${ids[i]} 与 ${ids[j]} 不应重叠`)
+    }
+  }
+})
+
+test('overlapsAny 保留 GAP 间距', () => {
+  const boxes = { a: { x: 0, y: 0, width: 100, height: 100 } }
+  // 间距不足 40:视为重叠
+  assert.equal(overlapsAny(boxes, { x: 120, y: 0, width: 100, height: 100 }, 40), true)
+  // 恰好留出 40:不重叠
+  assert.equal(overlapsAny(boxes, { x: 140, y: 0, width: 100, height: 100 }, 40), false)
+})
+
+/* ---------- submitGeneration(依赖注入 fetch) ---------- */
+
+interface FetchCall {
+  url: string
+  init: RequestInit
+}
+function fakeFetch(responses: Array<{ status: number; body: any }>) {
+  const calls: FetchCall[] = []
+  const impl = (async (url: string, init: RequestInit = {}) => {
+    calls.push({ url, init })
+    const next = responses.shift()
+    if (!next) {
+      throw new Error('no more responses')
+    }
+    return new Response(JSON.stringify(next.body), { status: next.status })
+  }) as unknown as typeof fetch
+  return { impl, calls }
+}
+
+test('提交成功:占位入 undo 栈 + jobId 回填 + batchCount 强制 1', async () => {
+  const store = createDocStore({ id: 'd', name: 't', objects: {}, order: [] })
+  const { impl, calls } = fakeFetch([{ status: 202, body: { jobId: 'job-77' } }])
+
+  const result = await submitGeneration({
+    docStore: store,
+    genParams: { prompt: '猫', width: 512, height: 512, batchCount: 4 },
+    anchor: { x: 0, y: 0 },
+    fetchImpl: impl,
+  })
+  assert.equal(result.ok, true)
+  assert.equal(result.jobId, 'job-77')
+  const objId = result.objId!
+  assert.equal(store.doc.objects[objId].kind, 'placeholder')
+  assert.equal(store.doc.objects[objId].gen?.jobId, 'job-77')
+
+  const sent = JSON.parse(String(calls[0].init.body))
+  assert.equal(sent.batchCount, 1, '画布提交强制单张')
+  assert.equal(sent.clientRef, objId)
+
+  // 撤销提交 → 占位消失(占位创建与回填合并为一条命令的效果)
+  assert.equal(store.undo(), true)
+  assert.equal(store.doc.objects[objId], undefined)
+})
+
+test('提交失败(4xx):占位转错误卡并携带原因', async () => {
+  const store = createDocStore({ id: 'd', name: 't', objects: {}, order: [] })
+  const { impl } = fakeFetch([{ status: 400, body: { error: '提示词不能为空' } }])
+  const result = await submitGeneration({
+    docStore: store,
+    genParams: { prompt: '', width: 512, height: 512 },
+    fetchImpl: impl,
+  })
+  assert.equal(result.ok, false)
+  const obj = store.doc.objects[result.objId!]
+  assert.equal(obj.kind, 'error')
+  assert.equal(obj.errorDetail, '提示词不能为空')
+})
+
+test('网络异常:占位转错误卡', async () => {
+  const store = createDocStore({ id: 'd', name: 't', objects: {}, order: [] })
+  const impl = (async () => {
+    throw new Error('fetch failed')
+  }) as unknown as typeof fetch
+  const result = await submitGeneration({
+    docStore: store,
+    genParams: { prompt: 'x', width: 512, height: 512 },
+    fetchImpl: impl,
+  })
+  assert.equal(result.ok, false)
+  assert.equal(store.doc.objects[result.objId!].kind, 'error')
+})
+
+test('取消占位:DELETE 任务 + 占位移除(可撤销)', async () => {
+  const store = createDocStore({ id: 'd', name: 't', objects: {}, order: [] })
+  const calls: FetchCall[] = []
+  const impl = (async (url: string, init: RequestInit = {}) => {
+    calls.push({ url, init })
+    return new Response('{}', { status: 200 })
+  }) as unknown as typeof fetch
+
+  store.apply(
+    cmdAddObjects([
+      { id: 'p1', kind: 'placeholder', x: 0, y: 0, width: 10, height: 10, gen: { jobId: 'j1' } },
+    ]),
+  )
+  await cancelPlaceholder({ docStore: store, objId: 'p1', fetchImpl: impl })
+  assert.equal(calls[0].url, '/api/jobs/j1')
+  assert.equal(calls[0].init.method, 'DELETE')
+  assert.equal(store.doc.objects.p1, undefined)
+  assert.equal(store.undo(), true)
+  assert.equal((store.doc.objects.p1 as any)?.kind, 'placeholder')
+})

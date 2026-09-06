@@ -30,6 +30,8 @@ const isCacheable = (obj) => obj.kind === 'image' || obj.kind === 'video'
  *   getDoc: () => { objects: Record<string, CanvasObj>, order: string[] },
  *   applyCommand?: (cmd: any) => void,
  *   onSelectionChange?: (ids: string[]) => void,
+ *   onCancelPlaceholder?: (objId: string) => void,
+ *   onDeletePlaceholder?: (objId: string) => void,
  *   imageUrlsFor?: (obj: CanvasObj) => { thumb256?: string | null, thumb1024?: string | null, original: string },
  * }} options
  */
@@ -278,6 +280,45 @@ export function createObjectLayer(options) {
       syncSelectionRects()
     })
 
+    // 占位对象悬浮:显示「取消」(PRD §5.4)
+    group.on('mouseenter', () => {
+      const o = nodeById(group.id())
+      if (o?.kind !== 'placeholder' || group.getAttr('cancelBtn')) {
+        return
+      }
+      const btn = new Konva.Label({
+        x: o.width,
+        y: 0,
+        opacity: 0.92,
+        listening: true,
+      })
+      btn.add(
+        new Konva.Tag({
+          fill: '#1d1d1f',
+          cornerRadius: 4,
+          pointerDirection: 'left',
+          pointerWidth: 4,
+          pointerHeight: 6,
+        }),
+      )
+      btn.add(new Konva.Text({ text: '取消', padding: 4, fontSize: 12, fill: '#fff' }))
+      btn.on('click tap', (/** @type {any} */ ev) => {
+        ev.cancelBubble = true
+        options.onCancelPlaceholder?.(group.id())
+      })
+      group.add(btn)
+      group.setAttr('cancelBtn', btn)
+      layer.batchDraw()
+    })
+    group.on('mouseleave', () => {
+      const btn = group.getAttr('cancelBtn')
+      if (btn) {
+        btn.destroy()
+        group.setAttr('cancelBtn', null)
+        layer.batchDraw()
+      }
+    })
+
     group.on('dragend', () => {
       if (!dragStarts) {
         return
@@ -474,13 +515,28 @@ export function createObjectLayer(options) {
       }
       seen.add(id)
       let group = groups.get(id)
+      // 占位 → 图片/错误卡等 kind 迁移需要重建组(spinner 等子节点无法复用)
+      if (group && group.getAttr('builtKind') !== obj.kind) {
+        group.destroy()
+        groups.delete(id)
+        cachedAtScale.delete(id)
+        group = null
+      }
       if (!group) {
         group = buildGroup(obj)
+        group.setAttr('builtKind', obj.kind)
         groups.set(id, group)
         layer.add(group)
       }
       if (id !== draggingId) {
         group.position({ x: obj.x, y: obj.y })
+      }
+      if (obj.kind !== 'placeholder') {
+        const staleBtn = group.getAttr('cancelBtn')
+        if (staleBtn) {
+          staleBtn.destroy()
+          group.setAttr('cancelBtn', null)
+        }
       }
       refreshContent(obj, group)
     }
@@ -561,20 +617,32 @@ export function createObjectLayer(options) {
       }
       applySelection()
     },
-    /** 删除当前选中(Delete 键/菜单);占位对象删除时由 flows 层级联取消任务 */
+    /** 删除当前选中(Delete 键/菜单);占位对象级联取消任务(PRD §5.4) */
     deleteSelected() {
       const ids = [...selected]
       if (ids.length === 0) {
         return
       }
       const doc = getDoc()
-      options.applyCommand?.(
-        cmdRemoveObjects(
-          ids
-            .filter((id) => doc.objects[id])
-            .map((id) => ({ object: doc.objects[id], orderIndex: doc.order.indexOf(id) })),
-        ),
+      // 占位对象级联取消;其余对象走命令删除
+      for (const id of ids) {
+        if (doc.objects[id]?.kind === 'placeholder') {
+          options.onDeletePlaceholder?.(id)
+        }
+      }
+      const removable = ids.filter(
+        (id) => doc.objects[id] && doc.objects[id].kind !== 'placeholder',
       )
+      if (removable.length > 0) {
+        options.applyCommand?.(
+          cmdRemoveObjects(
+            removable.map((id) => ({
+              object: doc.objects[id],
+              orderIndex: doc.order.indexOf(id),
+            })),
+          ),
+        )
+      }
     },
     /** 视野框住对象(生成落位后跟进) @param {string} id */
     revealObject(id) {
