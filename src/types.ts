@@ -71,6 +71,8 @@ export interface Job {
   batchCount: number
   /** 是否携带图生图参考图 */
   hasInitImage: boolean
+  /** 客户端透传引用(画布占位对象 id):事件先于 POST 响应到达时靠它对齐 */
+  clientRef?: string
   /** 0..1,按 (已完成张数 + 当前张进度) / 总张数 计算 */
   progress: number
   message: string

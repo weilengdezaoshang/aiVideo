@@ -168,3 +168,69 @@ test('kind=video 的任务路由到 generateVideo', async () => {
   await vidDone
   assert.deepEqual(calls, { image: 1, video: 1 })
 })
+
+/* ---------- 任务快照落盘与重启恢复(T3) ---------- */
+
+test('clientRef 透传到 Job 并随事件可见', async () => {
+  const store = await tmpStore()
+  const jm = new JobManager(fakeProvider(), store)
+  const job = jm.createJob({ ...params, batchCount: 1 }, undefined, undefined, 'canvas-obj-42')
+  assert.equal(job.clientRef, 'canvas-obj-42')
+  const done = waitEvent(jm, 'job', (j) => j.status === 'completed')
+  jm.createJob({ ...params, batchCount: 1 }, undefined, undefined, 'other')
+  await done
+})
+
+test('flush 落盘快照;重启后完成任务可查、进行中任务标记失败', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'swarm-jm-snap-'))
+  const store = new Store(path.join(dir, 'images'), path.join(dir, 'history.json'))
+  await store.init()
+  const snapshotFile = path.join(dir, 'jobs.json')
+
+  // 第一段:一个任务跑完、一个任务卡在 running(第二次 generate 永不 resolve,模拟重启前挂起)
+  let generateCalls = 0
+  const jm = new JobManager(
+    fakeProvider({
+      capacity: 1,
+      generate: (_p, ctx) => {
+        ctx.onProgress(0.3, '跑着')
+        generateCalls++
+        if (generateCalls === 1) {
+          return Promise.resolve({ data: Buffer.from('img'), ext: 'png' })
+        }
+        return new Promise(() => {})
+      },
+    }),
+    store,
+    snapshotFile,
+  )
+  const finished = waitEvent(jm, 'job', (j) => j.status === 'completed')
+  jm.createJob({ ...params, batchCount: 1 }, undefined, undefined, 'done-ref')
+  await finished
+  jm.createJob({ ...params, batchCount: 1 }, undefined, undefined, 'stuck-ref')
+  await new Promise((r) => setTimeout(r, 30))
+  await jm.flush()
+
+  // 第二段:模拟重启,同一快照文件恢复
+  const reborn = new JobManager(fakeProvider(), store, snapshotFile)
+  await reborn.restore()
+  const doneJob = reborn.listRecent(10).find((j) => j.clientRef === 'done-ref')
+  assert.equal(doneJob?.status, 'completed')
+  const stuckJob = reborn.listRecent(10).find((j) => j.clientRef === 'stuck-ref')
+  assert.equal(stuckJob?.status, 'failed')
+  assert.equal(stuckJob?.error, '服务已重启,任务中断')
+})
+
+test('restore 对缺失/损坏的快照文件安全返回', async () => {
+  const store = await tmpStore()
+  const dir = path.dirname(store.imagesDir)
+  const jm = new JobManager(fakeProvider(), store, path.join(dir, 'no-such.json'))
+  await rebornRestore(jm)
+  const jm2 = new JobManager(fakeProvider(), store, path.join(dir, 'history.json'))
+  await rebornRestore(jm2)
+
+  async function rebornRestore(manager: JobManager): Promise<void> {
+    await manager.restore()
+    assert.equal(manager.listRecent().length, 0)
+  }
+})

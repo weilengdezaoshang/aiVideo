@@ -4,6 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { logger } from './logger.js'
 import { AssetStore } from './assets.js'
+import { DocumentStore } from './documents.js'
 import { JobManager } from './services/job-manager.js'
 import { ComfyUIProvider } from './services/providers/comfyui-provider.js'
 import { MockProvider } from './services/providers/mock-provider.js'
@@ -112,7 +113,8 @@ const provider: GenerationProvider =
 const dataDir = path.join(rootDir, 'data')
 const store = new Store(path.join(dataDir, 'images'), path.join(dataDir, 'history.json'))
 const assets = new AssetStore(path.join(dataDir, 'assets'))
-const jobs = new JobManager(provider, store)
+const documents = new DocumentStore(path.join(dataDir, 'documents'))
+const jobs = new JobManager(provider, store, path.join(dataDir, 'jobs.json'))
 
 const app = express()
 app.disable('x-powered-by')
@@ -185,7 +187,13 @@ app.post('/api/generate', (req, res) => {
     // 蒙版标记由服务端写入,不信任客户端声明;用于历史与前端展示
     parsed.params.inpaint = true
   }
-  const job = jobs.createJob(parsed.params, initParsed.image, maskParsed.mask)
+  // 画布占位对象引用:事件可能先于本响应到达,客户端靠 clientRef 对齐
+  const clientRefRaw = (req.body as Record<string, unknown>).clientRef
+  const clientRef =
+    typeof clientRefRaw === 'string' && clientRefRaw.trim()
+      ? clientRefRaw.trim().slice(0, 64)
+      : undefined
+  const job = jobs.createJob(parsed.params, initParsed.image, maskParsed.mask, clientRef)
   logger.info('已接受生成任务', {
     jobId: job.id,
     kind: parsed.params.kind,
@@ -283,6 +291,44 @@ app.get('/api/assets/:id', (req, res) => {
   return res.json({ asset: record, urls: assets.urls(record.id) })
 })
 
+// 画布文档 CRUD:客户端防抖全量快照保存;POST 保存路径同时兼容 sendBeacon 冲刷
+app.get('/api/documents', async (_req, res) => {
+  res.json({ documents: await documents.listAll() })
+})
+
+app.post('/api/documents', async (req, res) => {
+  const doc = await documents.create((req.body as Record<string, unknown>)?.name)
+  return res.status(201).json({ document: doc })
+})
+
+app.get('/api/documents/:id', async (req, res) => {
+  const doc = await documents.get(req.params.id)
+  if (!doc) {
+    return res.status(404).json({ error: '文档不存在' })
+  }
+  return res.json({ document: doc })
+})
+
+app.post('/api/documents/:id', async (req, res) => {
+  try {
+    const doc = await documents.save(req.params.id, req.body)
+    if (!doc) {
+      return res.status(404).json({ error: '文档不存在(id 非法)' })
+    }
+    return res.json({ document: doc })
+  } catch (err) {
+    return res.status(400).json({ error: (err as Error).message })
+  }
+})
+
+app.delete('/api/documents/:id', async (req, res) => {
+  const removed = await documents.remove(req.params.id)
+  if (!removed) {
+    return res.status(404).json({ error: '文档不存在' })
+  }
+  return res.json({ removed: true })
+})
+
 // SSE 实时推送:任务进度 + 图片落盘事件,连接即收到快照
 app.get('/api/events', (req, res) => {
   res.set({
@@ -342,6 +388,8 @@ app.use(
 
 await store.init()
 await assets.init()
+await documents.init()
+await jobs.restore()
 await refreshStatus()
 const server = app.listen(config.port, () => {
   logger.info(`SwarmUI-MVP 已启动: http://127.0.0.1:${config.port}`)
@@ -353,12 +401,15 @@ const server = app.listen(config.port, () => {
 
 function shutdown(signal: string): void {
   logger.info(`收到 ${signal},正在关闭`)
-  server.close(() => {
-    logger.info('服务已关闭')
-    process.exit(0)
+  // 优雅关闭:任务快照与进行中的请求先冲刷再退出
+  void jobs.flush().finally(() => {
+    server.close(() => {
+      logger.info('服务已关闭')
+      process.exit(0)
+    })
+    // 兜底:5 秒后强制退出,避免残留连接悬挂进程
+    setTimeout(() => process.exit(1), 5000).unref()
   })
-  // 兜底:5 秒后强制退出,避免残留连接悬挂进程
-  setTimeout(() => process.exit(1), 5000).unref()
 }
 
 process.on('SIGINT', () => shutdown('SIGINT'))
