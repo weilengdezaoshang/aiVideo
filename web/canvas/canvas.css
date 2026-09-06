@@ -1,0 +1,208 @@
+/* GenCanvas 画布页样式 —— 视觉基准:DESIGN.md(Apple 风:单一 #0066cc 强调色、
+   胶囊按钮、17px 正文、surface 色阶区分层级,阴影只给"作品"不给 UI) */
+
+:root {
+  --gc-blue: #0066cc;
+  --gc-blue-focus: #0071e3;
+  --gc-ink: #1d1d1f;
+  --gc-ink-soft: #333333;
+  --gc-ink-muted: #7a7a7a;
+  --gc-parchment: #f5f5f7;
+  --gc-pearl: #fafafc;
+  --gc-hairline: #e0e0e0;
+  --gc-dot: #c8c8c8;
+  --gc-radius-sm: 8px;
+  --gc-radius-md: 11px;
+  --gc-radius-lg: 18px;
+  --gc-radius-pill: 9999px;
+  --gc-shadow-product: 0 3px 5px 30px rgba(0, 0, 0, 0.22);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  font-family:
+    -apple-system, 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  font-size: 17px;
+  color: var(--gc-ink);
+  background: var(--gc-parchment);
+  letter-spacing: -0.01em;
+}
+
+/* ---------- 顶栏 ---------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 52px;
+  padding: 0 16px;
+  background: rgba(245, 245, 247, 0.8);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--gc-hairline);
+  font-size: 14px;
+  z-index: 10;
+}
+
+.topbar-spacer {
+  flex: 1;
+}
+
+.topbar-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--gc-ink-muted);
+  font-size: 14px;
+}
+
+#save-status {
+  min-width: 3.5em;
+  text-align: right;
+}
+
+#save-status.pending {
+  color: var(--gc-blue);
+}
+
+/* ---------- 画布区 ---------- */
+
+.canvas-root {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  background:
+    radial-gradient(var(--gc-dot) 1px, transparent 1px) 0 0 / 18px 18px,
+    #ffffff;
+  cursor: default;
+}
+
+.canvas-root.panning {
+  cursor: grab;
+}
+
+.canvas-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+  color: var(--gc-ink-muted);
+}
+
+.canvas-empty-title {
+  font-size: 21px;
+  font-weight: 600;
+  color: var(--gc-ink-soft);
+}
+
+.canvas-empty-hint {
+  font-size: 14px;
+}
+
+kbd {
+  padding: 1px 7px;
+  border: 1px solid var(--gc-hairline);
+  border-radius: var(--gc-radius-sm);
+  background: var(--gc-pearl);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+/* ---------- 提示词面板(悬浮,顶部居中;线框 S4) ---------- */
+
+.prompt-panel {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(340px, calc(100vw - 32px));
+  padding: 14px;
+  background: #ffffff;
+  border: 1px solid var(--gc-hairline);
+  border-radius: var(--gc-radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.prompt-panel-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.prompt-panel-actions {
+  justify-content: flex-end;
+}
+
+.dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  border: 1px dashed var(--gc-hairline);
+  border-radius: var(--gc-radius-md);
+  background: var(--gc-pearl);
+  color: var(--gc-ink-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.dropzone:hover,
+.dropzone.dragover {
+  border-color: var(--gc-blue);
+  color: var(--gc-blue);
+}
+
+/* Shoelace 主按钮统一为 Apple 胶囊蓝 */
+#prompt-generate::part(base) {
+  border-radius: var(--gc-radius-pill);
+}
+
+/* ---------- 缩放控件(右下角) ---------- */
+
+.zoom-controls {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: saturate(180%) blur(20px);
+  border: 1px solid var(--gc-hairline);
+  border-radius: var(--gc-radius-pill);
+  padding: 4px;
+  z-index: 5;
+}
+
+.zoom-controls sl-button::part(base) {
+  border-radius: var(--gc-radius-pill);
+}
+
+.zoom-value {
+  min-width: 4em;
+  text-align: center;
+  font-size: 14px;
+  color: var(--gc-ink-soft);
+}

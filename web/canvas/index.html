@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GenCanvas · 生成式创作画布</title>
+  <link rel="stylesheet" href="/vendor/shoelace/cdn/themes/light.css">
+  <link rel="stylesheet" href="canvas.css">
+  <script src="/vendor/konva/konva.min.js"></script>
+  <script type="module" src="/vendor/shoelace/cdn/shoelace-autoloader.js"></script>
+</head>
+<body>
+  <!-- 顶栏:画布切换 / 模型选择 / 进行中任务数 / 保存状态(线框 S3) -->
+  <header class="topbar">
+    <sl-dropdown>
+      <sl-button slot="trigger" caret size="small" variant="default">画布</sl-button>
+      <sl-menu id="canvas-menu">
+        <sl-menu-item>未命名画布</sl-menu-item>
+        <sl-divider></sl-divider>
+        <sl-menu-item id="canvas-new">
+          <sl-icon slot="prefix" name="plus-lg"></sl-icon>
+          新建画布
+        </sl-menu-item>
+      </sl-menu>
+    </sl-dropdown>
+
+    <sl-select id="model-select" size="small" placeholder="模型" style="width: 12rem;">
+      <sl-option value="flux">FLUX</sl-option>
+    </sl-select>
+
+    <span class="topbar-spacer"></span>
+
+    <span class="topbar-status" id="job-count" title="进行中的任务数">
+      <sl-icon name="hourglass-split"></sl-icon>
+      <span id="job-count-value">0</span>
+    </span>
+    <span class="topbar-status" id="save-status">已保存</span>
+  </header>
+
+  <!-- 画布区:灰底网点 + 空态引导;Konva 舞台在 T4 挂载 -->
+  <main class="canvas-root" id="canvas-root">
+    <div class="canvas-empty" id="canvas-empty">
+      <p class="canvas-empty-title">画布是空的</p>
+      <p class="canvas-empty-hint">按 <kbd>Tab</kbd> 呼出提示词面板,开始第一张图</p>
+    </div>
+
+    <!-- 提示词面板:收起态为一个按钮,Tab 展开(T8 接生成闭环) -->
+    <section class="prompt-panel" id="prompt-panel" hidden>
+      <sl-textarea id="prompt-input" placeholder="输入提示词…(例:一只戴墨镜的猫在沙滩上)"
+        rows="3" autofocus></sl-textarea>
+      <div class="prompt-panel-row">
+        <sl-select id="prompt-model" size="small" style="width: 9rem;">
+          <sl-option value="flux">FLUX</sl-option>
+        </sl-select>
+        <sl-select id="prompt-size" size="small" style="width: 8rem;">
+          <sl-option value="1024">1024</sl-option>
+        </sl-select>
+        <sl-input id="prompt-seed" size="small" placeholder="种子:随机" style="width: 8rem;"></sl-input>
+      </div>
+      <button class="dropzone" id="ref-dropzone" type="button">
+        <sl-icon name="image"></sl-icon>
+        拖入参考图(可选,留空 = 文生图)
+      </button>
+      <div class="prompt-panel-row prompt-panel-actions">
+        <sl-button size="small" id="prompt-collapse">收起</sl-button>
+        <sl-button size="small" variant="primary" id="prompt-generate">
+          <sl-icon slot="prefix" name="stars"></sl-icon>
+          生成
+        </sl-button>
+      </div>
+    </section>
+
+    <!-- 缩放控件(右下角);引擎接线在 T4 -->
+    <nav class="zoom-controls" aria-label="缩放控制">
+      <sl-button-group>
+        <sl-button size="small" id="zoom-out"><sl-icon name="zoom-out"></sl-icon></sl-button>
+        <span class="zoom-value" id="zoom-value">100%</span>
+        <sl-button size="small" id="zoom-in"><sl-icon name="zoom-in"></sl-icon></sl-button>
+      </sl-button-group>
+    </nav>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

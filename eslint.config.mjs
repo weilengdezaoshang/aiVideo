@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 // 本仓库风格约定:格式交给 Prettier(.prettierrc),ESLint 负责代码质量并统一大括号风格;
 // eslint-config-prettier 需在 curly 之前声明,否则 curly 会被其静默关闭。
 export default tseslint.config(
-  { ignores: ['node_modules/', 'data/'] },
+  { ignores: ['node_modules/', 'data/', 'web/vendor/'] },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,
