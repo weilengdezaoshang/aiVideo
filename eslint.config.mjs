@@ -32,6 +32,8 @@ export default tseslint.config(
     languageOptions: {
       globals: {
         ...globals.browser,
+        // Konva 以 UMD 全局引入(web/vendor/konva)
+        Konva: 'readonly',
       },
     },
   },

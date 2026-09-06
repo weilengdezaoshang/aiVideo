@@ -83,14 +83,21 @@ body {
   position: relative;
   flex: 1;
   overflow: hidden;
-  background:
-    radial-gradient(var(--gc-dot) 1px, transparent 1px) 0 0 / 18px 18px,
-    #ffffff;
+  background-color: #ffffff;
+  /* 网点层由引擎按相机动态平移/调密度(stage.js applyDotGrid) */
+  background-image: radial-gradient(var(--gc-dot) 1px, transparent 1px);
+  background-size: 18px 18px;
   cursor: default;
 }
 
 .canvas-root.panning {
   cursor: grab;
+}
+
+/* Konva 舞台宿主:铺满画布区,置于面板层之下 */
+.canvas-surface {
+  position: absolute;
+  inset: 0;
 }
 
 .canvas-empty {

@@ -7,8 +7,7 @@
   <link rel="stylesheet" href="/vendor/shoelace/cdn/themes/light.css">
   <link rel="stylesheet" href="canvas.css">
   <script src="/vendor/konva/konva.min.js"></script>
-  <script type="module" src="/vendor/shoelace/cdn/shoelace-autoloader.js"></script>
-</head>
+  <script type="module" src="/vendor/shoelace/cdn/shoelace-autoloader.js"></script></head>
 <body>
   <!-- 顶栏:画布切换 / 模型选择 / 进行中任务数 / 保存状态(线框 S3) -->
   <header class="topbar">
@@ -37,8 +36,9 @@
     <span class="topbar-status" id="save-status">已保存</span>
   </header>
 
-  <!-- 画布区:灰底网点 + 空态引导;Konva 舞台在 T4 挂载 -->
+  <!-- 画布区:灰底网点 + 空态引导;Konva 舞台挂载在专用空容器(Stage 构造会清空宿主) -->
   <main class="canvas-root" id="canvas-root">
+    <div class="canvas-surface" id="canvas-surface"></div>
     <div class="canvas-empty" id="canvas-empty">
       <p class="canvas-empty-title">画布是空的</p>
       <p class="canvas-empty-hint">按 <kbd>Tab</kbd> 呼出提示词面板,开始第一张图</p>
@@ -49,10 +49,10 @@
       <sl-textarea id="prompt-input" placeholder="输入提示词…(例:一只戴墨镜的猫在沙滩上)"
         rows="3" autofocus></sl-textarea>
       <div class="prompt-panel-row">
-        <sl-select id="prompt-model" size="small" style="width: 9rem;">
+        <sl-select id="prompt-model" size="small" placeholder="模型" style="width: 9rem;">
           <sl-option value="flux">FLUX</sl-option>
         </sl-select>
-        <sl-select id="prompt-size" size="small" style="width: 8rem;">
+        <sl-select id="prompt-size" size="small" placeholder="尺寸" style="width: 8rem;">
           <sl-option value="1024">1024</sl-option>
         </sl-select>
         <sl-input id="prompt-seed" size="small" placeholder="种子:随机" style="width: 8rem;"></sl-input>
@@ -80,6 +80,6 @@
     </nav>
   </main>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
