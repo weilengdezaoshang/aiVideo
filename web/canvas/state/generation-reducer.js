@@ -11,7 +11,7 @@
 
 /**
  * 从 SSE job 事件计算占位对象应变成什么。
- * @returns {{ kind: 'none' } | { kind: 'progress', progress: number, message: string } | { kind: 'complete', image: any } | { kind: 'fail', error: string }}
+ * @returns {{ kind: 'none' } | { kind: 'progress', jobId: string, progress: number, message: string } | { kind: 'complete', image: any } | { kind: 'fail', error: string }}
  */
 /** @param {CanvasObj} obj @param {JobLike} job */
 export function jobEventToTransition(obj, job) {
@@ -21,6 +21,8 @@ export function jobEventToTransition(obj, job) {
   if (job.status === 'running' || job.status === 'queued') {
     return {
       kind: 'progress',
+      // 事件先于 POST 响应到达时占位 gen.jobId 为空,用事件自带的 id 回填(PRD §8.4-4)
+      jobId: job.id,
       progress: typeof job.progress === 'number' ? job.progress : 0,
       message: job.message || (job.status === 'queued' ? '排队中' : '生成中'),
     }
@@ -61,7 +63,7 @@ export function applyTransition(doc, objId, transition, resolveImage = undefined
     case 'progress': {
       obj.gen = {
         ...(obj.gen || {}),
-        jobId: obj.gen?.jobId || '',
+        jobId: obj.gen?.jobId || transition.jobId || '',
         progress: transition.progress,
         message: transition.message,
       }

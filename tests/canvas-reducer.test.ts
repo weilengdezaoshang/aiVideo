@@ -46,6 +46,8 @@ test('场景① 提交:SSE 先于 POST 响应到达,clientRef 对齐占位对象
   )
   assert.equal(changed, true)
   assert.equal(doc.objects.p1.gen.progress, 0)
+  // 关键:gen.jobId 为空时必须用事件自带的 job.id 回填,否则对账/取消都找不到该占位
+  assert.equal(doc.objects.p1.gen.jobId, 'job-1')
 })
 
 test('场景② 进度:running 事件推进百分比与文案', () => {
