@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { logger } from './logger.js'
+import { AssetStore } from './assets.js'
 import { JobManager } from './services/job-manager.js'
 import { ComfyUIProvider } from './services/providers/comfyui-provider.js'
 import { MockProvider } from './services/providers/mock-provider.js'
@@ -110,6 +111,7 @@ const provider: GenerationProvider =
     : new MockProvider()
 const dataDir = path.join(rootDir, 'data')
 const store = new Store(path.join(dataDir, 'images'), path.join(dataDir, 'history.json'))
+const assets = new AssetStore(path.join(dataDir, 'assets'))
 const jobs = new JobManager(provider, store)
 
 const app = express()
@@ -249,6 +251,38 @@ app.put('/api/images/:id/star', async (req, res) => {
   return res.json({ image: record })
 })
 
+// 二进制资产上传:画布参考图 / 蒙版等大文件走原始字节,替换 base64 JSON,避开 body 限制
+app.post('/api/assets', express.raw({ type: () => true, limit: '40mb' }), async (req, res) => {
+  const body = req.body as Buffer | undefined
+  if (!Buffer.isBuffer(body) || body.length === 0) {
+    return res.status(400).json({ error: '请求体必须是非空二进制内容' })
+  }
+  const url = new URL(req.originalUrl, 'http://localhost')
+  const extRaw = url.searchParams.get('ext')
+  const kindRaw = url.searchParams.get('kind')
+  const kind = kindRaw === 'video' ? 'video' : 'image'
+  // 扩展名缺省时从 Content-Type 推断(如 image/png → png)
+  let ext = extRaw ?? ''
+  if (!ext && req.headers['content-type']) {
+    const mime = req.headers['content-type'].split(';')[0].trim()
+    ext = mime.split('/')[1] ?? ''
+  }
+  try {
+    const record = await assets.save(body, ext, kind)
+    return res.status(201).json({ asset: record, urls: assets.urls(record.id) })
+  } catch (err) {
+    return res.status(400).json({ error: (err as Error).message })
+  }
+})
+
+app.get('/api/assets/:id', (req, res) => {
+  const record = assets.get(req.params.id)
+  if (!record) {
+    return res.status(404).json({ error: '资产不存在' })
+  }
+  return res.json({ asset: record, urls: assets.urls(record.id) })
+})
+
 // SSE 实时推送:任务进度 + 图片落盘事件,连接即收到快照
 app.get('/api/events', (req, res) => {
   res.set({
@@ -280,6 +314,7 @@ app.get('/api/events', (req, res) => {
 })
 
 app.use('/images', express.static(path.join(dataDir, 'images'), { maxAge: '1d' }))
+app.use('/assets', express.static(path.join(dataDir, 'assets'), { maxAge: '1y', immutable: true }))
 app.use(express.static(path.join(rootDir, 'web')))
 
 // 404 与兜底错误处理:所有出口保持 { error } 结构,前端提示不炸
@@ -297,12 +332,16 @@ app.use(
     if (err.type === 'entity.parse.failed') {
       return res.status(400).json({ error: '请求体不是合法 JSON' })
     }
+    if (err.type === 'entity.too.large') {
+      return res.status(413).json({ error: '上传内容超过大小限制(40MB)' })
+    }
     logger.error(`未处理错误 ${req.method} ${req.originalUrl}`, { err })
     return res.status(500).json({ error: '服务器内部错误' })
   },
 )
 
 await store.init()
+await assets.init()
 await refreshStatus()
 const server = app.listen(config.port, () => {
   logger.info(`SwarmUI-MVP 已启动: http://127.0.0.1:${config.port}`)
