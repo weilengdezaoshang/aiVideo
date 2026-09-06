@@ -322,6 +322,8 @@ app.get('/api/events', (req, res) => {
     Connection: 'keep-alive',
   })
   res.flushHeaders()
+  // 断线重连间隔提示(PRD §8 非功能:5s 内重连;EventSource 原生重连按此间隔)
+  res.write('retry: 3000\n\n')
   const send = (event: string, data: unknown) =>
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
   send('snapshot', {
