@@ -5,10 +5,18 @@
 import { readFileSync } from 'node:fs'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import { CLOUD_VENDOR_IDS, CLOUD_VENDORS } from './services/providers/cloud-provider.js'
+import type { CloudVendorId } from './services/providers/cloud-provider.js'
 
 export interface AppConfig {
-  provider: 'mock' | 'comfyui'
+  provider: 'mock' | 'comfyui' | 'cloud'
   comfyUrl: string
+  /** 云端生图厂商(zhipu/siliconflow/openai) */
+  cloudVendor: CloudVendorId
+  /** 云端 API 地址(厂商默认可覆盖,兼容自建网关) */
+  cloudBaseUrl: string
+  /** 云端模型名(如 cogview-4-250304) */
+  cloudModel: string
   port: number
   /** ComfyUI 图像任务整体超时(分钟) */
   imageTimeoutMin: number
@@ -56,9 +64,18 @@ export function loadConfig(rootDir: string): AppConfig {
     // 没有 config.json 时使用默认值
   }
   const provider = process.env.SWARMUI_PROVIDER ?? file.provider ?? 'mock'
-  if (provider !== 'mock' && provider !== 'comfyui') {
-    throw new Error(`配置错误:provider 只能是 mock 或 comfyui,当前为 "${provider}"`)
+  if (provider !== 'mock' && provider !== 'comfyui' && provider !== 'cloud') {
+    throw new Error(`配置错误:provider 只能是 mock、comfyui 或 cloud,当前为 "${provider}"`)
   }
+  const cloudVendorRaw = readOptionalString('SWARMUI_CLOUD_VENDOR', file.cloudVendor) || 'zhipu'
+  if (!CLOUD_VENDOR_IDS.includes(cloudVendorRaw as never)) {
+    throw new Error(
+      `配置错误:cloudVendor 只能是 ${CLOUD_VENDOR_IDS.join(' / ')},当前为 "${cloudVendorRaw}"`,
+    )
+  }
+  const cloudVendor = cloudVendorRaw as CloudVendorId
+  const cloudBaseUrl = readOptionalString('SWARMUI_CLOUD_BASE_URL', file.cloudBaseUrl)
+  const cloudModel = readOptionalString('SWARMUI_CLOUD_MODEL', file.cloudModel)
   const comfyUrl = process.env.SWARMUI_COMFY_URL ?? file.comfyUrl ?? 'http://127.0.0.1:8188'
   if (provider === 'comfyui' && !/^https?:\/\//.test(comfyUrl)) {
     throw new Error(`配置错误:comfyUrl 必须以 http:// 或 https:// 开头,当前为 "${comfyUrl}"`)
@@ -87,6 +104,9 @@ export function loadConfig(rootDir: string): AppConfig {
     wanLowNoiseUnet: readOptionalString('SWARMUI_WAN_LOW_NOISE_UNET', file.wanLowNoiseUnet),
     imageApiKey: readOptionalString('SWARMUI_IMAGE_API_KEY', file.imageApiKey),
     videoApiKey: readOptionalString('SWARMUI_VIDEO_API_KEY', file.videoApiKey),
+    cloudVendor,
+    cloudBaseUrl: cloudBaseUrl || CLOUD_VENDORS[cloudVendor].defaultBaseUrl,
+    cloudModel: cloudModel || CLOUD_VENDORS[cloudVendor].defaultModel,
   }
 }
 
@@ -96,11 +116,23 @@ export type ConfigPatch = {
   comfyUrl?: unknown
   imageApiKey?: unknown
   videoApiKey?: unknown
+  cloudVendor?: unknown
+  cloudBaseUrl?: unknown
+  cloudModel?: unknown
 }
 
 /** 本次实际变更、允许写回 config.json 的字段集合 */
 export type ConfigFilePatch = Partial<
-  Pick<AppConfig, 'provider' | 'comfyUrl' | 'imageApiKey' | 'videoApiKey'>
+  Pick<
+    AppConfig,
+    | 'provider'
+    | 'comfyUrl'
+    | 'imageApiKey'
+    | 'videoApiKey'
+    | 'cloudVendor'
+    | 'cloudBaseUrl'
+    | 'cloudModel'
+  >
 >
 
 export type PatchResult =
@@ -145,11 +177,43 @@ export function applyConfigPatch(
 ): PatchResult {
   const filePatch: ConfigFilePatch = {}
   const envOverridden: string[] = []
+  if (patch.cloudVendor !== undefined) {
+    if (
+      typeof patch.cloudVendor !== 'string' ||
+      !CLOUD_VENDOR_IDS.includes(patch.cloudVendor as never)
+    ) {
+      return { ok: false, error: `配置错误:cloudVendor 只能是 ${CLOUD_VENDOR_IDS.join(' / ')}` }
+    }
+    if (patch.cloudVendor !== current.cloudVendor) {
+      filePatch.cloudVendor = patch.cloudVendor as CloudVendorId
+    }
+  }
+  if (patch.cloudBaseUrl !== undefined) {
+    if (typeof patch.cloudBaseUrl !== 'string') {
+      return { ok: false, error: '配置错误:cloudBaseUrl 必须是字符串' }
+    }
+    const cloudUrl = patch.cloudBaseUrl.trim()
+    if (cloudUrl && !/^https?:\/\//.test(cloudUrl)) {
+      return { ok: false, error: '配置错误:cloudBaseUrl 必须以 http:// 或 https:// 开头' }
+    }
+    if (cloudUrl !== current.cloudBaseUrl) {
+      filePatch.cloudBaseUrl = cloudUrl
+    }
+  }
+  if (patch.cloudModel !== undefined) {
+    if (typeof patch.cloudModel !== 'string') {
+      return { ok: false, error: '配置错误:cloudModel 必须是字符串' }
+    }
+    const cloudModel = patch.cloudModel.trim().slice(0, 200)
+    if (cloudModel && cloudModel !== current.cloudModel) {
+      filePatch.cloudModel = cloudModel
+    }
+  }
   const keyEnvNames = { imageApiKey: 'SWARMUI_IMAGE_API_KEY', videoApiKey: 'SWARMUI_VIDEO_API_KEY' }
 
   if (patch.provider !== undefined) {
-    if (patch.provider !== 'mock' && patch.provider !== 'comfyui') {
-      return { ok: false, error: `配置错误:provider 只能是 mock 或 comfyui` }
+    if (patch.provider !== 'mock' && patch.provider !== 'comfyui' && patch.provider !== 'cloud') {
+      return { ok: false, error: `配置错误:provider 只能是 mock、comfyui 或 cloud` }
     }
     if (patch.provider !== current.provider) {
       filePatch.provider = patch.provider
@@ -232,6 +296,9 @@ export function publicConfig(config: AppConfig) {
   return {
     provider: config.provider,
     comfyUrl: config.comfyUrl,
+    cloudVendor: config.cloudVendor,
+    cloudBaseUrl: config.cloudBaseUrl,
+    cloudModel: config.cloudModel,
     imageApiKeyMasked: maskKey(config.imageApiKey),
     videoApiKeyMasked: maskKey(config.videoApiKey),
     hasImageKey: Boolean(config.imageApiKey),

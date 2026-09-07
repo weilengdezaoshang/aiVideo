@@ -54,7 +54,9 @@ function ensureDialog() {
 }
 
 /** @param {string} message @param {string} [variant] */
-function toast(message, variant = 'success') {
+async function toast(message, variant = 'success') {
+  // sl-alert 可能尚未升级:先等定义完成,否则 .toast() 不存在且会中断调用方
+  await customElements.whenDefined('sl-alert')
   const alert = /** @type {any} */ (
     Object.assign(document.createElement('sl-alert'), {
       variant,

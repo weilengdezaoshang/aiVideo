@@ -11,6 +11,7 @@ import {
   saveConfigPatch,
 } from '../src/config.js'
 import type { AppConfig } from '../src/config.js'
+import type { CloudVendorId } from '../src/services/providers/cloud-provider.js'
 import { JobManager } from '../src/services/job-manager.js'
 import { Store } from '../src/store.js'
 import type { GenParams, Job } from '../src/types.js'
@@ -34,6 +35,9 @@ const baseConfig = (): AppConfig => ({
   wanLowNoiseUnet: '',
   imageApiKey: '',
   videoApiKey: '',
+  cloudVendor: 'zhipu' as CloudVendorId,
+  cloudBaseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+  cloudModel: 'cogview-4-250304',
 })
 
 /** 临时设置/还原环境变量,保证测试互不污染 */

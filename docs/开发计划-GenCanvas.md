@@ -54,7 +54,11 @@
 | M6 | 图生视频(web) | i2v 参数面板、视频对象渲染与播放 | M2 + M4 扩展 |
 | M7 | 配置与外围(web+server) | 首启引导 + BYOK 设置、provider 热切换、断线横幅、多开检测;P1:SVG 导出、素材库入口 | `web/canvas/`(settings)`src/server.ts` |
 
-## 三、TODO 清单(执行序,✅ = 已提交)
+## 三、TODO 清单
+
+> **T19(云端生图接入)**:CloudImagesProvider(zhipu/siliconflow/openai 三厂商适配,提示词直通、
+> status 零计费、i2i/蒙版显式降级),config 扩展 cloudVendor/cloudBaseUrl/cloudModel,设置界面
+> 云端分支 + 热切换后模型列表刷新。见 tests/cloud-provider.test.ts。(执行序,✅ = 已提交)
 
 - [x] **T0** 计划文档(本文)+ 调研结论落盘
 - [x] **T1** `build(project)`: vendor Konva + Shoelace 进 `web/vendor/`(含 license),eslint/prettier 忽略;`web/canvas/index.html` 静态骨架(顶栏/空态/缩放控件/面板挂点),S3 线框对齐

@@ -7,7 +7,9 @@ const ONBOARDED_KEY = 'gencanvas.onboarded'
 const $ = (sel) => /** @type {HTMLElement} */ (document.querySelector(sel))
 
 /** Shoelace toast 提示 @param {string} message @param {string} [variant] */
-function toast(message, variant = 'success') {
+async function toast(message, variant = 'success') {
+  // sl-alert 可能尚未升级:先等定义完成,否则 .toast() 不存在且会中断调用方
+  await customElements.whenDefined('sl-alert')
   const alert = /** @type {any} */ (
     Object.assign(document.createElement('sl-alert'), {
       variant,
@@ -47,6 +49,11 @@ export async function initSettings(hooks = {}) {
   const providerSelect = /** @type {any} */ ($('#settings-provider'))
   const comfyRow = $('#settings-comfy-row')
   const comfyUrl = /** @type {any} */ ($('#settings-comfy-url'))
+  const cloudRow = $('#settings-cloud-row')
+  const cloudUrlRow = $('#settings-cloud-url-row')
+  const cloudVendor = /** @type {any} */ ($('#settings-cloud-vendor'))
+  const cloudBaseUrl = /** @type {any} */ ($('#settings-cloud-base-url'))
+  const cloudModel = /** @type {any} */ ($('#settings-cloud-model'))
   const testButton = /** @type {any} */ ($('#settings-test'))
   const testResult = $('#settings-test-result')
   const imageKey = /** @type {any} */ ($('#settings-image-key'))
@@ -56,9 +63,12 @@ export async function initSettings(hooks = {}) {
   let clearImageKey = false
   let clearVideoKey = false
 
-  /** comfy 行只在选中 ComfyUI 时有意义 */
-  function syncComfyRowVisibility() {
+  /** 各后端的配置行只在其选中时有意义 */
+  function syncRowVisibility() {
     comfyRow.hidden = providerSelect.value !== 'comfyui'
+    const isCloud = providerSelect.value === 'cloud'
+    cloudRow.hidden = !isCloud
+    cloudUrlRow.hidden = !isCloud
   }
 
   /** @param {{ ok: boolean, detail: string }} [result] 测试结果条(S2a loading / S2b 失败 / 成功) */
@@ -76,7 +86,10 @@ export async function initSettings(hooks = {}) {
     const { config } = await api('/api/config')
     providerSelect.value = config.provider
     comfyUrl.value = config.comfyUrl
-    syncComfyRowVisibility()
+    cloudVendor.value = config.cloudVendor || 'zhipu'
+    cloudBaseUrl.value = config.cloudBaseUrl || ''
+    cloudModel.value = config.cloudModel || ''
+    syncRowVisibility()
     showTestResult()
     imageKey.value = ''
     videoKey.value = ''
@@ -109,7 +122,13 @@ export async function initSettings(hooks = {}) {
       const result = await api('/api/config/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider: providerSelect.value, comfyUrl: comfyUrl.value.trim() }),
+        body: JSON.stringify({
+          provider: providerSelect.value,
+          comfyUrl: comfyUrl.value.trim(),
+          cloudVendor: cloudVendor.value,
+          cloudBaseUrl: cloudBaseUrl.value.trim(),
+          cloudModel: cloudModel.value.trim(),
+        }),
       })
       showTestResult(result)
     } catch (err) {
@@ -120,7 +139,7 @@ export async function initSettings(hooks = {}) {
     }
   })
 
-  providerSelect.addEventListener('sl-change', syncComfyRowVisibility)
+  providerSelect.addEventListener('sl-change', syncRowVisibility)
 
   /* ---------- 保存:POST /api/config,热切换由服务端完成 ---------- */
 
@@ -131,6 +150,16 @@ export async function initSettings(hooks = {}) {
     const url = comfyUrl.value.trim()
     if (providerSelect.value === 'comfyui' || url) {
       payload.comfyUrl = url
+    }
+    if (providerSelect.value === 'cloud') {
+      payload.cloudVendor = cloudVendor.value
+      payload.cloudBaseUrl = cloudBaseUrl.value.trim()
+      payload.cloudModel = cloudModel.value.trim()
+      if (!String(cloudModel.value || '').trim()) {
+        toast('请填写云端模型名(如 cogview-4-250304)', 'warning')
+        cloudModel.focus()
+        return
+      }
     }
     if (clearImageKey) {
       payload.imageApiKey = ''
@@ -154,7 +183,13 @@ export async function initSettings(hooks = {}) {
       localStorage.setItem(ONBOARDED_KEY, '1')
       dialog.hide()
       if (result.providerSwitched) {
-        toast(`已切换生成后端:${result.config.provider === 'comfyui' ? 'ComfyUI' : '演示模式'}`)
+        const label =
+          result.config.provider === 'comfyui'
+            ? 'ComfyUI'
+            : result.config.provider === 'cloud'
+              ? `云端模型 ${result.config.cloudModel}`
+              : '演示模式'
+        toast(`已切换生成后端:${label}`)
       } else {
         toast('设置已保存')
       }
@@ -195,7 +230,7 @@ export async function initSettings(hooks = {}) {
     onboarding.hide()
     void openSettings().then(() => {
       providerSelect.value = 'comfyui'
-      syncComfyRowVisibility()
+      syncRowVisibility()
       comfyUrl.focus()
     })
   })

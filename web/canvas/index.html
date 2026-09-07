@@ -171,8 +171,22 @@
       <div class="settings-row">
         <sl-select id="settings-provider" size="small" style="width: 100%;">
           <sl-option value="mock">演示模式(Mock,无需配置)</sl-option>
+          <sl-option value="cloud">云端生图模型(BYOK,按张计费)</sl-option>
           <sl-option value="comfyui">本地 ComfyUI</sl-option>
         </sl-select>
+      </div>
+      <div class="settings-row" id="settings-cloud-row" hidden>
+        <sl-select id="settings-cloud-vendor" size="small" style="width: 10rem;">
+          <sl-option value="zhipu">智谱 CogView</sl-option>
+          <sl-option value="siliconflow">硅基流动 FLUX</sl-option>
+          <sl-option value="openai">OpenAI 兼容</sl-option>
+        </sl-select>
+        <sl-input id="settings-cloud-model" size="small" placeholder="模型名,如 cogview-4-250304"
+          style="width: 12rem;"></sl-input>
+      </div>
+      <div class="settings-row" id="settings-cloud-url-row" hidden>
+        <sl-input id="settings-cloud-base-url" size="small" placeholder="API 地址(留空 = 厂商默认)"
+          style="width: 100%;"></sl-input>
       </div>
       <div class="settings-row" id="settings-comfy-row">
         <sl-input id="settings-comfy-url" size="small" placeholder="http://127.0.0.1:8188"

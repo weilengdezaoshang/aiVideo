@@ -7,6 +7,7 @@ import { logger } from './logger.js'
 import { AssetStore } from './assets.js'
 import { DocumentStore } from './documents.js'
 import { JobManager } from './services/job-manager.js'
+import { CloudImagesProvider } from './services/providers/cloud-provider.js'
 import { ComfyUIProvider } from './services/providers/comfyui-provider.js'
 import { MockProvider } from './services/providers/mock-provider.js'
 import type { GenerationProvider } from './services/providers/provider.js'
@@ -22,6 +23,15 @@ const MAX_ACTIVE_JOBS = 50
 
 /** 由配置构建生成后端(provider 热切换时重建实例)。 */
 function buildProvider(config: AppConfig): GenerationProvider {
+  if (config.provider === 'cloud') {
+    return new CloudImagesProvider({
+      vendor: config.cloudVendor,
+      baseUrl: config.cloudBaseUrl,
+      model: config.cloudModel,
+      apiKey: config.imageApiKey,
+      imageTimeoutMs: config.imageTimeoutMin * 60_000,
+    })
+  }
   return config.provider === 'comfyui'
     ? new ComfyUIProvider(config.comfyUrl, {
         imageTimeoutMs: config.imageTimeoutMin * 60_000,
@@ -139,7 +149,12 @@ app.post('/api/config/test', async (req, res) => {
   if (!candidate.ok) {
     return res.status(400).json({ error: candidate.error })
   }
-  const probe = buildProvider({ ...config, ...candidate.filePatch })
+  const merged = { ...config, ...candidate.filePatch }
+  if (merged.provider === 'cloud' && !merged.imageApiKey) {
+    // status() 不发网络请求(避免计费),Key 缺失在这里直接给出结论
+    return res.json({ ok: false, detail: '未配置图像 API Key', provider: 'cloud' })
+  }
+  const probe = buildProvider(merged)
   const status = await Promise.race([
     probe.status().catch((err: Error) => ({ ok: false, detail: `连接失败:${err.message}` })),
     new Promise<BackendStatus>((resolve) =>
