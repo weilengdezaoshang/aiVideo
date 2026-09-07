@@ -56,6 +56,11 @@
 
 ## 三、TODO 清单
 
+> **T20(可评测可追踪)**:src/traces.ts 生成链路追踪(JSONL,含 promptHash/seed/排队与生成
+> 分离计时/错误分类/费用估算,预留 origin=user|agent 给未来 agent 编排层)、删除反馈
+> (POST /api/feedback)沉淀隐式保留率、GET /api/metrics 指标聚合、scripts/eval-prompts.mjs
+> golden-prompts 评测集脚本(跨模型对比报告)。
+
 > **T19(云端生图接入)**:CloudImagesProvider(zhipu/siliconflow/openai 三厂商适配,提示词直通、
 > status 零计费、i2i/蒙版显式降级),config 扩展 cloudVendor/cloudBaseUrl/cloudModel,设置界面
 > 云端分支 + 热切换后模型列表刷新。见 tests/cloud-provider.test.ts。(执行序,✅ = 已提交)

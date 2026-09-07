@@ -18,6 +18,7 @@
  * @property {string} [ext] 资产原始扩展名
  * @property {string} [src] 直连图片 URL(stress/素材库拖入)
  * @property {string} [errorDetail] 错误卡原因文案
+ * @property {string} [imageId] 历史记录 id(隐式反馈关联用)
  * @property {{fromId: string, params: object}} [lineage]
  * @property {{jobId: string, progress?: number, message?: string}} [gen]
  */

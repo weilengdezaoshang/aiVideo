@@ -84,6 +84,7 @@ export function applyTransition(doc, objId, transition, resolveImage = undefined
       obj.kind = resolved.kind || 'image'
       obj.assetId = resolved.assetId || undefined
       obj.src = resolved.src
+      obj.imageId = resolved.imageId || undefined
       obj.hasThumbs = resolved.hasThumbs !== false
       obj.ext = resolved.ext
       obj.width = resolved.width || obj.width

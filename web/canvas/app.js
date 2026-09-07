@@ -257,6 +257,7 @@ async function bootDocument() {
             width: item.width,
             height: item.height,
             src: item.url,
+            imageId: item.id,
           },
         ],
       })
@@ -306,7 +307,12 @@ function fitToContent(doc) {
 
 void bootDocument()
 
-void initSettings()
+void initSettings({
+  // 后端热切换后模型列表会变(如云端只提供一个模型):刷新顶栏与面板下拉
+  onConfigChanged: () => {
+    void loadModels()
+  },
+})
 
 /* ---------- 模型列表:顶栏与提示词面板共用( provider 决定可选项) ---------- */
 

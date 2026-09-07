@@ -32,6 +32,7 @@ const isCacheable = (obj) => obj.kind === 'image' || obj.kind === 'video'
  *   onSelectionChange?: (ids: string[]) => void,
  *   onCancelPlaceholder?: (objId: string) => void,
  *   onCancelTransient?: (objId: string) => void, // 占位=级联取消;错误卡=移除
+ *   onObjectsDeleted?: (objs: CanvasObj[]) => void, // 生成结果被删除(隐式质量反馈)
  *   onRetryError?: (objId: string) => void,
  *   imageUrlsFor?: (obj: CanvasObj) => { thumb256?: string | null, thumb1024?: string | null, original: string },
  * }} options
@@ -652,6 +653,8 @@ export function createObjectLayer(options) {
         (id) => doc.objects[id] && doc.objects[id].kind !== 'placeholder',
       )
       if (removable.length > 0) {
+        // 生成结果的删除是隐式质量信号(保留率),上报给追踪层
+        options.onObjectsDeleted?.(removable.map((id) => doc.objects[id]))
         options.applyCommand?.(
           cmdRemoveObjects(
             removable.map((id) => ({

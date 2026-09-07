@@ -12,6 +12,7 @@ import { ComfyUIProvider } from './services/providers/comfyui-provider.js'
 import { MockProvider } from './services/providers/mock-provider.js'
 import type { GenerationProvider } from './services/providers/provider.js'
 import { Store } from './store.js'
+import { classifyError, estimateCostCny, promptHash, TraceStore } from './traces.js'
 import type { BackendStatus, Job } from './types.js'
 import { parseGenParams, parseInitImage, parseMaskImage } from './validate.js'
 
@@ -53,6 +54,47 @@ const store = new Store(path.join(dataDir, 'images'), path.join(dataDir, 'histor
 const assets = new AssetStore(path.join(dataDir, 'assets'))
 const documents = new DocumentStore(path.join(dataDir, 'documents'))
 const jobs = new JobManager(provider, store, path.join(dataDir, 'jobs.json'))
+// 生成链路追踪(PRD 目标:质量可评测、行为可追踪)
+const traces = new TraceStore(path.join(dataDir, 'traces.jsonl'))
+
+/** 终态任务 → 追踪记录;错误分类 + 费用估算,排队/生成分离计时 */
+jobs.on('job', (job: Job) => {
+  if (job.status !== 'completed' && job.status !== 'failed') {
+    return
+  }
+  const finished = Date.parse(job.finishedAt ?? '') || Date.now()
+  const started = Date.parse(job.startedAt ?? '') || finished
+  const created = Date.parse(job.createdAt) || started
+  const status =
+    job.status === 'completed'
+      ? 'completed'
+      : /已取消/.test(job.error ?? '')
+        ? 'cancelled'
+        : 'failed'
+  void traces.append({
+    ts: new Date().toISOString(),
+    kind: 'trace',
+    jobId: job.id,
+    clientRef: job.clientRef,
+    provider: provider.name,
+    vendor: provider.name === 'cloud' ? config.cloudVendor : undefined,
+    model: job.params.model,
+    origin: 'user',
+    promptHash: promptHash(job.params.prompt),
+    promptChars: job.params.prompt.length,
+    seed: job.params.seed,
+    width: job.params.width,
+    height: job.params.height,
+    kind_of_media: job.params.kind,
+    status,
+    queueMs: Math.max(0, started - created),
+    latencyMs: Math.max(0, finished - started),
+    imageId: job.images[0]?.id,
+    costCny: status === 'completed' ? estimateCostCny(job.params.model) : undefined,
+    errorCategory: status === 'failed' ? classifyError(job.error ?? '') : undefined,
+    errorMessage: status === 'failed' ? job.error : undefined,
+  })
+})
 
 const app = express()
 app.disable('x-powered-by')
@@ -84,6 +126,31 @@ setInterval(() => void refreshStatus(), 10_000)
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, provider: provider.name, backend: providerStatus })
+})
+
+// 指标聚合(可评测):成功率 / 延迟分位 / 费用 / 错误分布 / 保留率
+app.get('/api/metrics', async (req, res) => {
+  const days = Math.min(90, Math.max(1, Number(req.query.days) || 7))
+  res.json({ metrics: await traces.aggregate(days) })
+})
+
+// 隐式反馈:画布上删除生成结果 → 保留率信号(与 trace.imageId 关联)
+app.post('/api/feedback', express.json(), async (req, res) => {
+  const body = (req.body ?? {}) as { imageId?: unknown; action?: unknown; model?: unknown }
+  if (typeof body.imageId !== 'string' || body.imageId.length > 64) {
+    return res.status(400).json({ error: 'imageId 必须是非空字符串' })
+  }
+  if (body.action !== 'deleted') {
+    return res.status(400).json({ error: 'action 仅支持 deleted' })
+  }
+  await traces.append({
+    ts: new Date().toISOString(),
+    kind: 'feedback',
+    action: 'deleted',
+    imageId: body.imageId,
+    model: typeof body.model === 'string' ? body.model.slice(0, 200) : undefined,
+  })
+  return res.json({ ok: true })
 })
 
 app.get('/api/models', async (_req, res) => {
