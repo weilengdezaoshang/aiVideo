@@ -579,3 +579,78 @@ kbd {
 .offline-banner button:hover {
   background: rgba(138, 91, 0, 0.08);
 }
+
+/* ---------- 素材库抽屉(线框 S17) ---------- */
+
+.library-drawer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 300px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-right: 1px solid var(--gc-hairline);
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+}
+
+.library-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--gc-hairline);
+  font-size: 14px;
+}
+
+.library-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 10px;
+  align-content: start;
+}
+
+.library-item {
+  position: relative;
+  border: 1px solid var(--gc-hairline);
+  border-radius: var(--gc-radius-md);
+  overflow: hidden;
+  cursor: grab;
+  background: var(--gc-pearl);
+}
+
+.library-item:active {
+  cursor: grabbing;
+}
+
+.library-item img {
+  display: block;
+  width: 100%;
+  height: 84px;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.library-item .library-kind {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  padding: 1px 6px;
+  border-radius: var(--gc-radius-pill);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 11px;
+}
+
+.library-empty {
+  grid-column: 1 / -1;
+  padding: 32px 12px;
+  text-align: center;
+  color: var(--gc-ink-muted);
+  font-size: 14px;
+}

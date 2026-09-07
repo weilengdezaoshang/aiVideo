@@ -72,8 +72,8 @@
 - [x] **T13** `feat(config)`: BYOK 设置界面(S2/S2a/S2b)+ provider 热切换端点 + 首启引导(S1)→ **服务端(c50d07a:src/config.ts + /api/config*/JobManager.setProvider)与设置 UI(42c1696:settings.js + S1 引导)已完成;消费端(模型列表随 provider 刷新)归 T8/T9 接线**
 - [x] **T14** `feat(web)`: 断线横幅 + 自动重连对账联动(S15/S16)+ 多开检测
 - [x] **T15** `feat(web)`: P1——SVG 导出面板 → **完成(9e7d1f2):引擎最终采用 imagetracerjs(vtracer 因上游 wasm 聚类 panic 弃用,见 §3);S12 面板(原图/实时预览/三滑杆/导出下载)+ 右键菜单接线,浏览器 E2E 全链路验证通过**
-- [ ] **T16** `feat(web)`: P1——素材库入口与拖入画布(S17)
-- [ ] **T17** `feat(web)`: P1——变体批生成 ×4(4 独立任务)
+- [x] **T16** `feat(web)`: P1——素材库入口与拖入画布(S17)
+- [x] **T17** `feat(web)`: P1——变体批生成 ×4(4 独立任务)
 - [ ] **T18** P2——提示词收藏复用 / 草稿模式 / 种子锁定(按 PRD §5.5)
 
 > 提交模块名对照 AGENTS.md:`store`(持久化)、`server`(API)、`web`(前端)、`config`(配置)、`project`(仓库级)。

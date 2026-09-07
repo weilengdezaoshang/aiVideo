@@ -11,6 +11,7 @@ import { submitGeneration, cancelPlaceholder } from './flows/generate.js'
 import { initContextMenu } from './flows/context-menu.js'
 import { createInpaintSession } from './flows/inpaint.js'
 import { watchDuplicateTabs } from './state/duplicate-tabs.js'
+import { initLibrary } from './flows/library.js'
 import { initSettings } from './settings.js'
 
 /** @param {string} sel @returns {HTMLElement} */
@@ -232,6 +233,37 @@ async function bootDocument() {
       setInpaintUi(true)
     }
   })
+  // 素材库抽屉(T16,线框 S17):拖入/点击加入画布
+  const library = initLibrary({
+    getDocStore: () => store,
+    /** @param {any} item @param {{ x: number, y: number } | null} world */
+    onAddToCanvas: (item, world) => {
+      if (!docStore) {
+        return
+      }
+      const cam = engine.getCam()
+      const anchor = world ?? {
+        x: cam.x + engine.stage.width() / cam.scale / 2 - item.width / 2,
+        y: cam.y + engine.stage.height() / cam.scale / 2 - item.height / 2,
+      }
+      store.apply({
+        type: 'addObjects',
+        objects: [
+          {
+            id: `lib-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`,
+            kind: item.kind,
+            x: anchor.x,
+            y: anchor.y,
+            width: item.width,
+            height: item.height,
+            src: item.url,
+          },
+        ],
+      })
+    },
+  })
+  library.attachDropTarget(engine)
+
   // SSE 生成事件驱动占位状态机(T7):进度/落位/失败/对账
   generationEvents = connectGenerationEvents({
     docStore: store,
@@ -612,11 +644,68 @@ async function objectToDataUrl(obj) {
   return rasterizeToPng(url)
 }
 
+// 生成变体 ×4(T17,PRD §5.5):4 个独立 i2i 任务,源图右侧 2×2 平铺
+/** @param {any} srcObj */
+async function generateVariants(srcObj) {
+  const store = getDocStore()
+  if (!store) {
+    return
+  }
+  let initImage
+  try {
+    initImage = { dataUrl: await objectToDataUrl(srcObj) }
+  } catch {
+    return
+  }
+  const model = /** @type {any} */ ($('#prompt-model'))?.value || undefined
+  const baseSeed = Math.floor(Math.random() * 2 ** 31)
+  const offsets = [
+    [0, 0],
+    [srcObj.width + 40, 0],
+    [0, srcObj.height + 40],
+    [srcObj.width + 40, srcObj.height + 40],
+  ]
+  for (let i = 0; i < 4; i++) {
+    const genParams = {
+      prompt: srcObj.lineage?.params?.prompt || '生成一张变体',
+      negativePrompt: '',
+      model,
+      width: srcObj.width,
+      height: srcObj.height,
+      steps: 20,
+      cfgScale: 7,
+      seed: baseSeed + i,
+      sampler: 'euler',
+      scheduler: 'normal',
+      denoise: 0.75,
+      kind: 'image',
+      durationSec: 4,
+      fps: 16,
+    }
+    await submitGeneration({
+      docStore: store,
+      anchor: {
+        x: srcObj.x + srcObj.width + 40 + offsets[i][0],
+        y: srcObj.y + offsets[i][1],
+      },
+      genParams,
+      initImage,
+      lineage: { fromId: srcObj.id, params: { ...genParams } },
+    })
+  }
+}
+
 const contextMenu = initContextMenu({
   getDocStore: () => docStore,
   onUseAsReference: (/** @type {string} */ objId) => {
     setReference(objId)
     setPanelOpen(true)
+  },
+  onVariants: (/** @type {string} */ objId) => {
+    const obj = docStore?.doc.objects[objId]
+    if (obj && obj.kind === 'image') {
+      void generateVariants(obj)
+    }
   },
 })
 

@@ -31,6 +31,11 @@
       </sl-menu>
     </sl-dropdown>
 
+    <sl-button size="small" id="library-open">
+      <sl-icon slot="prefix" name="grid-3x3-gap"></sl-icon>
+      素材库
+    </sl-button>
+
     <sl-select id="model-select" size="small" placeholder="模型" style="width: 12rem;">
       <sl-option value="flux">FLUX</sl-option>
     </sl-select>
@@ -129,12 +134,25 @@
     <!-- 对象右键菜单(线框 S8):以图生图/局部重绘/生成视频/转矢量/下载/删除 -->
     <nav class="context-menu" id="context-menu" hidden>
       <button class="context-menu-item" id="ctx-ref" type="button">以此为参考生成</button>
+      <button class="context-menu-item" id="ctx-variants" type="button">生成变体(×4)</button>
       <button class="context-menu-item" id="ctx-inpaint" type="button">局部重绘</button>
       <button class="context-menu-item" id="ctx-video" type="button">生成视频</button>
       <button class="context-menu-item" id="ctx-vector" type="button">转矢量(SVG)</button>
       <button class="context-menu-item" id="ctx-download" type="button">下载</button>
       <button class="context-menu-item context-menu-danger" id="ctx-delete" type="button">删除</button>
     </nav>
+
+    <!-- 素材库抽屉(线框 S17):历史网格,拖入画布或点击加入 -->
+    <aside class="library-drawer" id="library-drawer" hidden>
+      <header class="library-head">
+        <b>素材库</b>
+        <sl-input id="library-search" size="small" placeholder="搜索历史…" style="flex: 1;"></sl-input>
+        <sl-icon-button id="library-close" name="x-lg" label="关闭素材库"></sl-icon-button>
+      </header>
+      <div class="library-grid" id="library-grid">
+        <div class="library-empty">暂无素材,去画布生成第一张</div>
+      </div>
+    </aside>
 
     <!-- 缩放控件(右下角);引擎接线在 T4 -->
     <nav class="zoom-controls" aria-label="缩放控制">

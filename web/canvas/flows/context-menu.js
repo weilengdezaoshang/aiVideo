@@ -7,6 +7,7 @@ import { openSvgExportDialog } from '../svg-export.js'
  * @param {{
  *   getDocStore: () => any,
  *   onUseAsReference: (objId: string) => void,
+ *   onVariants?: (objId: string) => void,
  * }} options
  */
 export function initContextMenu(options) {
@@ -82,6 +83,13 @@ export function initContextMenu(options) {
       document.querySelector('#ctx-ref')?.addEventListener('click', () => {
         if (targetObjId) {
           options.onUseAsReference(targetObjId)
+        }
+        close()
+      })
+      document.querySelector('#ctx-variants')?.addEventListener('click', () => {
+        const obj = targetObjId ? options.getDocStore()?.doc.objects[targetObjId] : null
+        if (obj && obj.kind === 'image' && targetObjId) {
+          options.onVariants?.(targetObjId)
         }
         close()
       })
