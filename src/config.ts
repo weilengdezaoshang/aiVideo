@@ -17,6 +17,8 @@ export interface AppConfig {
   cloudBaseUrl: string
   /** 云端模型名(如 cogview-4-250304) */
   cloudModel: string
+  /** 云端文本模型(中译英用;留空 = 关闭翻译直通) */
+  cloudTextModel: string
   port: number
   /** ComfyUI 图像任务整体超时(分钟) */
   imageTimeoutMin: number
@@ -76,6 +78,7 @@ export function loadConfig(rootDir: string): AppConfig {
   const cloudVendor = cloudVendorRaw as CloudVendorId
   const cloudBaseUrl = readOptionalString('SWARMUI_CLOUD_BASE_URL', file.cloudBaseUrl)
   const cloudModel = readOptionalString('SWARMUI_CLOUD_MODEL', file.cloudModel)
+  const cloudTextModel = readOptionalString('SWARMUI_CLOUD_TEXT_MODEL', file.cloudTextModel)
   const comfyUrl = process.env.SWARMUI_COMFY_URL ?? file.comfyUrl ?? 'http://127.0.0.1:8188'
   if (provider === 'comfyui' && !/^https?:\/\//.test(comfyUrl)) {
     throw new Error(`配置错误:comfyUrl 必须以 http:// 或 https:// 开头,当前为 "${comfyUrl}"`)
@@ -107,6 +110,7 @@ export function loadConfig(rootDir: string): AppConfig {
     cloudVendor,
     cloudBaseUrl: cloudBaseUrl || CLOUD_VENDORS[cloudVendor].defaultBaseUrl,
     cloudModel: cloudModel || CLOUD_VENDORS[cloudVendor].defaultModel,
+    cloudTextModel,
   }
 }
 
@@ -119,6 +123,7 @@ export type ConfigPatch = {
   cloudVendor?: unknown
   cloudBaseUrl?: unknown
   cloudModel?: unknown
+  cloudTextModel?: unknown
 }
 
 /** 本次实际变更、允许写回 config.json 的字段集合 */
@@ -132,6 +137,7 @@ export type ConfigFilePatch = Partial<
     | 'cloudVendor'
     | 'cloudBaseUrl'
     | 'cloudModel'
+    | 'cloudTextModel'
   >
 >
 
@@ -207,6 +213,15 @@ export function applyConfigPatch(
     const cloudModel = patch.cloudModel.trim().slice(0, 200)
     if (cloudModel && cloudModel !== current.cloudModel) {
       filePatch.cloudModel = cloudModel
+    }
+  }
+  if (patch.cloudTextModel !== undefined) {
+    if (typeof patch.cloudTextModel !== 'string') {
+      return { ok: false, error: '配置错误:cloudTextModel 必须是字符串' }
+    }
+    const cloudTextModel = patch.cloudTextModel.trim().slice(0, 200)
+    if (cloudTextModel !== current.cloudTextModel) {
+      filePatch.cloudTextModel = cloudTextModel
     }
   }
   const keyEnvNames = { imageApiKey: 'SWARMUI_IMAGE_API_KEY', videoApiKey: 'SWARMUI_VIDEO_API_KEY' }
@@ -299,6 +314,7 @@ export function publicConfig(config: AppConfig) {
     cloudVendor: config.cloudVendor,
     cloudBaseUrl: config.cloudBaseUrl,
     cloudModel: config.cloudModel,
+    cloudTextModel: config.cloudTextModel,
     imageApiKeyMasked: maskKey(config.imageApiKey),
     videoApiKeyMasked: maskKey(config.videoApiKey),
     hasImageKey: Boolean(config.imageApiKey),

@@ -150,7 +150,7 @@ test('i2i/蒙版请求:显式报错(当前云 API 不通用)', async () => {
   })
   await assert.rejects(
     () => provider.generate(params(), ctx, { data: Buffer.from('x'), ext: 'png' }),
-    /仅支持纯文生图/,
+    /暂不支持参考图/,
   )
   await assert.rejects(() => provider.generateVideo(), /视频生成暂未接入/)
   assert.equal(calls.length, 0, '不支持的能力不应发出请求')
@@ -180,4 +180,99 @@ test('status 不发网络请求:有 Key 正常,无 Key 提示配置', async () =
   assert.equal(bad.ok, false)
   assert.match(bad.detail, /未配置图像 API Key/)
   assert.equal(calls.length, 0, '健康检查绝不产生计费请求')
+})
+
+test('硅基流动 i2i:Kontext 模型 + image 参数(dataURL)', async () => {
+  const { impl, calls } = stubFetch([
+    { status: 200, body: { images: [{ url: 'https://cdn.example/i2i.png' }] } },
+    { status: 200, body: pngBytes, headers: { 'content-type': 'image/png' } },
+  ])
+  const provider = new CloudImagesProvider({
+    vendor: 'siliconflow',
+    baseUrl: 'https://api.siliconflow.cn/v1',
+    model: 'black-forest-labs/FLUX.1-schnell',
+    apiKey: 'sk-test',
+    imageTimeoutMs: 5000,
+    fetchImpl: impl,
+  })
+  const initImage = { data: Buffer.from('src-bytes'), ext: 'png' as const }
+  const image = await provider.generate(params(), ctx, initImage)
+  assert.equal(image.ext, 'png')
+  const req = JSON.parse(String(calls[0].init.body))
+  assert.equal(req.model, 'black-forest-labs/FLUX.1-Kontext-dev', 'i2i 自动切 Kontext 模型')
+  assert.match(String(req.image), /^data:image\/png;base64,/)
+  assert.equal(req.image_size, '1024x768')
+})
+
+test('硅基流动蒙版重绘:Fill 模型 + image_mask(白 = 重绘)', async () => {
+  const { impl, calls } = stubFetch([
+    { status: 200, body: { images: [{ url: 'https://cdn.example/fill.png' }] } },
+    { status: 200, body: pngBytes, headers: { 'content-type': 'image/png' } },
+  ])
+  const provider = new CloudImagesProvider({
+    vendor: 'siliconflow',
+    baseUrl: 'https://api.siliconflow.cn/v1',
+    model: 'black-forest-labs/FLUX.1-schnell',
+    apiKey: 'sk-test',
+    imageTimeoutMs: 5000,
+    fetchImpl: impl,
+  })
+  const initImage = { data: Buffer.from('src'), ext: 'png' as const }
+  const maskImage = { data: Buffer.from('mask'), ext: 'png' as const }
+  const image = await provider.generate(params(), ctx, initImage, maskImage)
+  assert.equal(image.ext, 'png')
+  const req = JSON.parse(String(calls[0].init.body))
+  assert.equal(req.model, 'black-forest-labs/FLUX.1-Fill-dev', '蒙版重绘自动切 Fill 模型')
+  assert.match(String(req.image), /^data:image\/png;base64,/)
+  assert.match(String(req.image_mask), /^data:image\/png;base64,/)
+})
+
+test('智谱蒙版重绘:不支持则显式报错', async () => {
+  const { impl, calls } = stubFetch([])
+  const provider = new CloudImagesProvider({
+    vendor: 'zhipu',
+    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    model: 'cogview-4-250304',
+    apiKey: 'sk-test',
+    imageTimeoutMs: 5000,
+    fetchImpl: impl,
+  })
+  await assert.rejects(
+    () =>
+      provider.generate(
+        params(),
+        ctx,
+        { data: Buffer.from('s'), ext: 'png' },
+        { data: Buffer.from('m'), ext: 'png' },
+      ),
+    /暂不支持蒙版局部重绘/,
+  )
+  assert.equal(calls.length, 0)
+})
+
+test('翻译:中文检测与 chat/completions 请求形状', async () => {
+  const { hasChinese, translateToEnglish } =
+    await import('../src/services/providers/cloud-provider.js')
+  assert.equal(hasChinese('一只戴墨镜的猫'), true)
+  assert.equal(hasChinese('a cat with sunglasses'), false)
+
+  const { impl, calls } = stubFetch([
+    {
+      status: 200,
+      body: { choices: [{ message: { content: 'A cat wearing sunglasses, bokeh lights' } }] },
+    },
+  ])
+  const translated = await translateToEnglish({
+    apiKey: 'sk-test',
+    baseUrl: 'https://api.siliconflow.cn/v1',
+    model: 'Qwen/Qwen2.5-7B-Instruct',
+    prompt: '一只戴墨镜的猫',
+    signal: new AbortController().signal,
+    fetchImpl: impl,
+  })
+  assert.equal(translated, 'A cat wearing sunglasses, bokeh lights')
+  const req = JSON.parse(String(calls[0].init.body))
+  assert.equal(req.model, 'Qwen/Qwen2.5-7B-Instruct')
+  assert.equal(req.temperature, 0.1, '确定性翻译用低温')
+  assert.match(req.messages[0].content, /Translate the user text to English/)
 })

@@ -38,6 +38,7 @@ const baseConfig = (): AppConfig => ({
   cloudVendor: 'zhipu' as CloudVendorId,
   cloudBaseUrl: 'https://open.bigmodel.cn/api/paas/v4',
   cloudModel: 'cogview-4-250304',
+  cloudTextModel: '',
 })
 
 /** 临时设置/还原环境变量,保证测试互不污染 */

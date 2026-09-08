@@ -56,6 +56,10 @@
 
 ## 三、TODO 清单
 
+> **T21(硅基流动深化)**:云端 i2i(FLUX.1-Kontext-dev)与蒙版局部重绘(FLUX.1-Fill-dev,
+> 白 = 重绘,与画布蒙版语义一致);提示词中译英层(cloudTextModel 配置,Qwen 系,
+> 确定性翻译不改写,失败降级原文),translated 字段进追踪(保留率可按 开/关 分组评测)。
+
 > **T20(可评测可追踪)**:src/traces.ts 生成链路追踪(JSONL,含 promptHash/seed/排队与生成
 > 分离计时/错误分类/费用估算,预留 origin=user|agent 给未来 agent 编排层)、删除反馈
 > (POST /api/feedback)沉淀隐式保留率、GET /api/metrics 指标聚合、scripts/eval-prompts.mjs

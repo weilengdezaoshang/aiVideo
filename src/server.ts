@@ -7,7 +7,11 @@ import { logger } from './logger.js'
 import { AssetStore } from './assets.js'
 import { DocumentStore } from './documents.js'
 import { JobManager } from './services/job-manager.js'
-import { CloudImagesProvider } from './services/providers/cloud-provider.js'
+import {
+  CloudImagesProvider,
+  hasChinese,
+  translateToEnglish,
+} from './services/providers/cloud-provider.js'
 import { ComfyUIProvider } from './services/providers/comfyui-provider.js'
 import { MockProvider } from './services/providers/mock-provider.js'
 import type { GenerationProvider } from './services/providers/provider.js'
@@ -80,8 +84,9 @@ jobs.on('job', (job: Job) => {
     vendor: provider.name === 'cloud' ? config.cloudVendor : undefined,
     model: job.params.model,
     origin: 'user',
-    promptHash: promptHash(job.params.prompt),
-    promptChars: job.params.prompt.length,
+    translated: Boolean(job.params.sourcePrompt),
+    promptHash: promptHash(job.params.sourcePrompt || job.params.prompt),
+    promptChars: (job.params.sourcePrompt || job.params.prompt).length,
     seed: job.params.seed,
     width: job.params.width,
     height: job.params.height,
@@ -231,7 +236,7 @@ app.post('/api/config/test', async (req, res) => {
   return res.json({ ok: status.ok, detail: status.detail, provider: probe.name })
 })
 
-app.post('/api/generate', (req, res) => {
+app.post('/api/generate', async (req, res) => {
   if (jobs.listActive().length >= MAX_ACTIVE_JOBS) {
     return res.status(429).json({ error: `队列已满(${MAX_ACTIVE_JOBS} 个进行中任务),请稍后再试` })
   }
@@ -249,6 +254,24 @@ app.post('/api/generate', (req, res) => {
   }
   if (maskParsed.mask && !initParsed.image) {
     return res.status(400).json({ error: '局部重绘需要同时携带参考图(initImage)' })
+  }
+  // 提示词中译英(可评测):仅云端 + 配置了文本模型 + 含中文时触发;
+  // 确定性翻译不改写语义;失败降级原文,不阻塞生成。
+  if (provider.name === 'cloud' && config.cloudTextModel && hasChinese(parsed.params.prompt)) {
+    try {
+      const sourcePrompt = parsed.params.prompt
+      parsed.params.prompt = await translateToEnglish({
+        apiKey: config.imageApiKey,
+        baseUrl: config.cloudBaseUrl,
+        model: config.cloudTextModel,
+        prompt: sourcePrompt,
+        signal: AbortSignal.timeout(15_000),
+      })
+      parsed.params.sourcePrompt = sourcePrompt
+      logger.info('提示词已中译英', { chars: sourcePrompt.length })
+    } catch (err) {
+      logger.warn('翻译失败,使用原文继续', { err })
+    }
   }
   if (maskParsed.mask) {
     // 蒙版标记由服务端写入,不信任客户端声明;用于历史与前端展示

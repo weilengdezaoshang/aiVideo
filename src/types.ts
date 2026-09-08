@@ -26,6 +26,8 @@ export interface GenParams {
   durationSec: number
   /** 视频帧率,4..30 */
   fps: number
+  /** 中译英前的原始提示词(云端翻译开启时由服务端写入,用于追踪与复现) */
+  sourcePrompt?: string
 }
 
 /** 图生图的参考图(仅在内存中传递,不进入历史记录)。 */

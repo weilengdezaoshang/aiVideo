@@ -34,6 +34,8 @@ export interface GenTrace {
   model: string
   /** 预留 agent 编排层:直通= user;agent 改写= agent(可分别评测) */
   origin: 'user' | 'agent'
+  /** 提示词是否经过中译英(质量评测的分组维度) */
+  translated?: boolean
   promptHash: string
   promptChars: number
   seed: number

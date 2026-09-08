@@ -1,4 +1,4 @@
-import type { BackendStatus, GenParams, ModelInfo, SamplerOptions } from '../../types.js'
+import type { BackendStatus, GenParams, InitImage, ModelInfo, SamplerOptions } from '../../types.js'
 import type { GenContext, GeneratedImage, GenerationProvider } from './provider.js'
 
 export type CloudVendorId = 'zhipu' | 'siliconflow' | 'openai'
@@ -26,6 +26,89 @@ export interface CloudVendorProfile {
   }
   /** 从响应体解析图像(厂商错误形状在此抛中文错误) */
   parse(body: unknown): { url?: string; b64?: string }
+  /** 图生图(无蒙版,指令编辑);不支持的厂商不实现 */
+  requestI2I?(args: { baseUrl: string; prompt: string; size: string; initImage: InitImage }): {
+    url: string
+    body: Record<string, unknown>
+  }
+  /** 蒙版重绘(白 = 重绘区域);不支持的厂商不实现 */
+  requestInpaint?(args: {
+    baseUrl: string
+    prompt: string
+    size: string
+    initImage: InitImage
+    maskImage: InitImage
+  }): { url: string; body: Record<string, unknown> }
+}
+
+/** 是否包含中文(触发中译英的判定) */
+export function hasChinese(text: string): boolean {
+  return /[\u4e00-\u9fff]/.test(text)
+}
+
+export interface TranslateOptions {
+  apiKey: string
+  baseUrl: string
+  model: string
+  prompt: string
+  signal: AbortSignal
+  fetchImpl?: typeof fetch
+}
+
+/**
+ * 提示词中译英(确定性翻译,temperature≈0,只输出译文):
+ * 国外模型对英文跟随显著更好;翻译≠改写,不引入语义幻觉增量。
+ * 网络失败向上抛,调用方降级回原文。
+ */
+export async function translateToEnglish(options: TranslateOptions): Promise<string> {
+  const {
+    apiKey,
+    baseUrl,
+    model,
+    prompt,
+    signal,
+    fetchImpl = (...args) => fetch(...args),
+  } = options
+  const res = await fetchImpl(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    signal,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.1,
+      max_tokens: 500,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a translator for image-generation prompts. Translate the user text to English literally. Keep style words, counts, positions and named entities. Output ONLY the translation, no explanations, no quotes.',
+        },
+        { role: 'user', content: prompt },
+      ],
+    }),
+  })
+  const body = (await res.json().catch(() => ({}))) as {
+    choices?: Array<{ message?: { content?: string } }>
+    error?: { message?: string }
+    message?: string
+  }
+  if (!res.ok) {
+    throw new Error(body?.error?.message || body?.message || `翻译失败(HTTP ${res.status})`)
+  }
+  const text = body?.choices?.[0]?.message?.content?.trim()
+  if (!text) {
+    throw new Error('翻译结果为空')
+  }
+  return text
+}
+
+/** InitImage → data URL(厂商 API 接受 base64 内联图) */
+function toDataUrl(image: InitImage): string {
+  const mime = image.ext === 'jpg' ? 'image/jpeg' : `image/${image.ext}`
+  return `data:${mime};base64,${image.data.toString('base64')}`
 }
 
 function parseOpenAiLike(body: unknown): { url?: string; b64?: string } {
@@ -75,6 +158,29 @@ export const CLOUD_VENDORS: Record<CloudVendorId, CloudVendorProfile> = {
       }
       return parseOpenAiLike(body)
     },
+    /** 图生图:Kontext(指令编辑,无蒙版);模型固定为托管 Kontext */
+    requestI2I: ({ baseUrl, prompt, size, initImage }) => ({
+      url: `${baseUrl}/images/generations`,
+      body: {
+        model: 'black-forest-labs/FLUX.1-Kontext-dev',
+        prompt,
+        image: toDataUrl(initImage),
+        image_size: size,
+        batch_size: 1,
+      },
+    }),
+    /** 蒙版重绘:Fill-dev(白 = 重绘区域,与画布蒙版语义一致) */
+    requestInpaint: ({ baseUrl, prompt, size, initImage, maskImage }) => ({
+      url: `${baseUrl}/images/generations`,
+      body: {
+        model: 'black-forest-labs/FLUX.1-Fill-dev',
+        prompt,
+        image: toDataUrl(initImage),
+        image_mask: toDataUrl(maskImage),
+        image_size: size,
+        batch_size: 1,
+      },
+    }),
   },
   openai: {
     id: 'openai',
@@ -134,32 +240,58 @@ export class CloudImagesProvider implements GenerationProvider {
   async generate(
     params: GenParams,
     ctx: GenContext,
-    initImage?: unknown,
-    maskImage?: unknown,
+    initImage?: InitImage,
+    maskImage?: InitImage,
   ): Promise<GeneratedImage> {
-    if (initImage || maskImage) {
-      throw new Error('当前云端模型仅支持纯文生图:参考图/局部重绘请切换支持的厂商,或使用演示模式')
-    }
     const prompt = params.prompt.trim()
     if (!prompt) {
       throw new Error('提示词为空')
     }
     const signal = AbortSignal.any([ctx.signal, AbortSignal.timeout(this.opts.imageTimeoutMs)])
-    ctx.onProgress(0.15, `请求 ${this.opts.model}`)
-    const { url, body } = this.profile.request({
-      baseUrl: this.opts.baseUrl,
-      model: this.opts.model,
-      prompt,
-      size: `${params.width}x${params.height}`,
-    })
-    const res = await this.fetchImpl(url, {
+    const size = `${params.width}x${params.height}`
+    let spec: { url: string; body: Record<string, unknown> }
+    if (initImage && maskImage) {
+      if (!this.profile.requestInpaint) {
+        throw new Error(
+          `当前厂商(${this.profile.label})暂不支持蒙版局部重绘,请使用硅基流动或本地后端`,
+        )
+      }
+      ctx.onProgress(0.1, '局部重绘(FLUX.1-Fill)')
+      spec = this.profile.requestInpaint({
+        baseUrl: this.opts.baseUrl,
+        prompt,
+        size,
+        initImage,
+        maskImage,
+      })
+    } else if (initImage) {
+      if (!this.profile.requestI2I) {
+        throw new Error(`当前厂商(${this.profile.label})暂不支持参考图,请使用纯文生图`)
+      }
+      ctx.onProgress(0.1, '以图生图(FLUX.1-Kontext)')
+      spec = this.profile.requestI2I({
+        baseUrl: this.opts.baseUrl,
+        prompt,
+        size,
+        initImage,
+      })
+    } else {
+      ctx.onProgress(0.15, `请求 ${this.opts.model}`)
+      spec = this.profile.request({
+        baseUrl: this.opts.baseUrl,
+        model: this.opts.model,
+        prompt,
+        size,
+      })
+    }
+    const res = await this.fetchImpl(spec.url, {
       method: 'POST',
       signal,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.opts.apiKey}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(spec.body),
     })
     const raw = await res.text()
     let payload: unknown

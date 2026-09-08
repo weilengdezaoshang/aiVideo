@@ -54,6 +54,7 @@ export async function initSettings(hooks = {}) {
   const cloudVendor = /** @type {any} */ ($('#settings-cloud-vendor'))
   const cloudBaseUrl = /** @type {any} */ ($('#settings-cloud-base-url'))
   const cloudModel = /** @type {any} */ ($('#settings-cloud-model'))
+  const cloudTextModel = /** @type {any} */ ($('#settings-cloud-text-model'))
   const testButton = /** @type {any} */ ($('#settings-test'))
   const testResult = $('#settings-test-result')
   const imageKey = /** @type {any} */ ($('#settings-image-key'))
@@ -89,6 +90,7 @@ export async function initSettings(hooks = {}) {
     cloudVendor.value = config.cloudVendor || 'zhipu'
     cloudBaseUrl.value = config.cloudBaseUrl || ''
     cloudModel.value = config.cloudModel || ''
+    cloudTextModel.value = config.cloudTextModel || ''
     syncRowVisibility()
     showTestResult()
     imageKey.value = ''
@@ -128,6 +130,7 @@ export async function initSettings(hooks = {}) {
           cloudVendor: cloudVendor.value,
           cloudBaseUrl: cloudBaseUrl.value.trim(),
           cloudModel: cloudModel.value.trim(),
+          cloudTextModel: cloudTextModel.value.trim(),
         }),
       })
       showTestResult(result)
@@ -155,6 +158,7 @@ export async function initSettings(hooks = {}) {
       payload.cloudVendor = cloudVendor.value
       payload.cloudBaseUrl = cloudBaseUrl.value.trim()
       payload.cloudModel = cloudModel.value.trim()
+      payload.cloudTextModel = cloudTextModel.value.trim()
       if (!String(cloudModel.value || '').trim()) {
         toast('请填写云端模型名(如 cogview-4-250304)', 'warning')
         cloudModel.focus()
