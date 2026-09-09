@@ -58,12 +58,26 @@ export function cmdUpdateObject(id, patch, prevPatch) {
 }
 
 /**
+ * 批量原子命令:顺序应用、一次撤销(PRD §6/A09:撤销派生结果时
+ * 同时撤销其布局变更/顺延位移,不留半步)。invert = 逆序逐条取逆。
+ * @param {any[]} commands
+ */
+export function cmdBatch(commands) {
+  return { type: 'batch', commands }
+}
+
+/**
  * 就地应用命令到 doc(直接变更,DocStore 负责通知);未知命令抛错防御。
  * @param {{ objects: Record<string, CanvasObj>, order: string[] }} doc
  * @param {any} cmd
  */
 export function applyCommand(doc, cmd) {
   switch (cmd.type) {
+    case 'batch':
+      for (const child of cmd.commands) {
+        applyCommand(doc, child)
+      }
+      break
     case 'addObjects':
       for (const obj of cmd.objects) {
         // 浅克隆:命令载荷不与文档活对象共享引用,后续瞬态变更(SSE 落位)
@@ -105,7 +119,7 @@ export function applyCommand(doc, cmd) {
   }
 }
 
-/** 逆命令(用于撤销);幂等要求命令生成时带上完整前后值 @param {any} cmd */
+/** 逆命令(用于撤销);幂等要求命令生成时带上完整前后值。 @param {any} cmd @returns {any} */
 export function invertCommand(cmd) {
   switch (cmd.type) {
     case 'addObjects':
@@ -124,6 +138,8 @@ export function invertCommand(cmd) {
       )
     case 'updateObject':
       return cmdUpdateObject(cmd.id, cmd.prevPatch, cmd.patch)
+    case 'batch':
+      return cmdBatch([...cmd.commands].reverse().map((/** @type {any} */ child) => invertCommand(child)))
     default:
       throw new Error(`未知命令类型:${cmd.type}`)
   }
