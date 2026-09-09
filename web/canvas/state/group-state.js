@@ -83,7 +83,9 @@ export function groupTransitions(doc, slots, groupId) {
   for (const job of slots) {
     const objId = job.clientRef
     const obj = objId ? doc.objects[objId] : null
-    if (!obj || obj.kind !== 'placeholder' || obj.groupId !== groupId) {
+    // 槽位以唯一 clientRef(= 占位对象 id)对齐;本地 groupId 与服务端 groupId
+    // 各自生成,不做相等性比较(客户端本地占位先于服务端任务创建)
+    if (!obj || obj.kind !== 'placeholder') {
       continue // 槽位对象不存在或已被替换:跳过,不复活
     }
     if (!terminal) {

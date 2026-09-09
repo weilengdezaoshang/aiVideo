@@ -7,7 +7,8 @@
 
 /* ---------- 内联 SVG 作品(本地生成,无外部资源、无模型调用) ---------- */
 
-const svgUrl = (svg) => `data:image/svg+xml;utf8,${encodeURIComponent(svg.replace(/\s+/g, ' ').trim())}`
+const svgUrl = (svg) =>
+  `data:image/svg+xml;utf8,${encodeURIComponent(svg.replace(/\s+/g, ' ').trim()).replace(/'/g, '%27')}`
 
 /** @param {string} stops @param {string} shapes */
 const art = (stops, shapes) =>

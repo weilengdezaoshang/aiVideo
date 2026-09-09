@@ -312,6 +312,7 @@ section[id] {
 }
 
 .work-card .art {
+  display: block;
   aspect-ratio: 1;
   background-size: cover;
   background-position: center;
