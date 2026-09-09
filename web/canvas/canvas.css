@@ -59,6 +59,21 @@
   color-scheme: dark;
 }
 
+/* Shoelace 组件主色对齐 studio 强调色(默认主题蓝与 #356DF3 不一致) */
+:root {
+  --sl-color-primary-50: #eceffe;
+  --sl-color-primary-100: #d9e0fd;
+  --sl-color-primary-200: #b3c1fb;
+  --sl-color-primary-300: #8da1f8;
+  --sl-color-primary-400: #6183f6;
+  --sl-color-primary-500: #356df3;
+  --sl-color-primary-600: #2b5bd7;
+  --sl-color-primary-700: #2447ab;
+  --sl-color-primary-800: #1d3a8a;
+  --sl-color-primary-900: #162c68;
+  --sl-color-primary-950: #0e1d47;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
