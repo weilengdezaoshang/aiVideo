@@ -72,6 +72,8 @@ let inpaint = null
 let chat = null
 /** @type {ReturnType<typeof initLibrary> | null} 素材库抽屉(导入资产入口) */
 let libraryDrawer = null
+/** 微任务合并去重标记;引擎构造即触发 onCamMove,须先于引擎声明 */
+let frameQueued = false
 /** @type {string | null} 正在编辑的文字对象 id */
 let editingTextId = null
 
@@ -89,9 +91,17 @@ const engine = createCanvasEngine(rootEl, surfaceEl, {
 // 初始视野:世界原点居中;文档加载后若已有对象会重定位
 engine.centerOn({ x: 0, y: 0 }, 1)
 
-/** 微任务合并高频刷新(隐藏标签页里 rAF 不触发,会让操作栏位置卡死)。 @param {() => void} fn */
+/** 微任务合并高频刷新(隐藏标签页里 rAF 不触发,会让操作栏位置卡死)。 */
+/** @param {() => void} fn */
 function queueFrame(fn) {
-  queueMicrotask(() => fn())
+  if (frameQueued) {
+    return
+  }
+  frameQueued = true
+  queueMicrotask(() => {
+    frameQueued = false
+    fn()
+  })
 }// 缩放控件:以视口中心为锚
 const viewportCenter = () => ({ x: engine.stage.width() / 2, y: engine.stage.height() / 2 })
 $('#zoom-in').addEventListener('click', () => engine.zoomBy(1.2, viewportCenter()))
@@ -389,6 +399,7 @@ async function startEditor(doc) {
       ext,
       width,
       height,
+      hasThumbs,
     }) => {
       if (failed) {
         chat?.addError('抠图失败:原蒙版草稿已保留,可修正后再次提交')
@@ -405,6 +416,7 @@ async function startEditor(doc) {
           ext,
           width,
           height,
+          hasThumbs,
         })
         return
       }
@@ -860,7 +872,7 @@ function centerWorld() {
 /**
  * 把"已生成未落位"的抠图结果放入当前视口(PRD §6:结果可显式放置,不复活已删对象)。
  * @param {any} store
- * @param {{ assetId?: string, ext?: string, width?: number, height?: number, sessionId?: string }} info
+ * @param {{ assetId?: string, ext?: string, width?: number, height?: number, sessionId?: string, hasThumbs?: boolean }} info
  */
 function placeCutoutResult(store, info) {
   if (!info.assetId) {
@@ -882,7 +894,7 @@ function placeCutoutResult(store, info) {
         height,
         assetId: info.assetId,
         ext: info.ext || 'png',
-        hasThumbs: true,
+        hasThumbs: info.hasThumbs !== false,
       },
     ]),
   )

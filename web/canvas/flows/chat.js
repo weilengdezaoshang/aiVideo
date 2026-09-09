@@ -19,7 +19,7 @@ function localId(prefix) {
  *     openMask?: (objId: string, maskUrl?: string, sessionId?: string) => void,
  *     regenerateGroup?: (groupId: string) => void,
  *     confirmGroup?: (groupId: string) => void,
- *     placeResult?: (info: { assetId: string, ext: string, width: number, height: number, sessionId?: string }) => void,
+ *     placeResult?: (info: { assetId: string, ext: string, width: number, height: number, sessionId?: string, hasThumbs?: boolean }) => void,
  *     addToConversation?: (objId: string) => void,
  *   },
  * }} options
@@ -80,7 +80,8 @@ export function createChat({ docStore, container, actions = {} }) {
    * 抠图结果卡(PRD §6:对话展示预览和"来自图片 N")。
    * pendingPlace:资产已生成但占位对象已不在画布(被删除)→ 提供"放入画布"。
    * @param {{ objId?: string, assetUrl?: string, sourceLabel?: string, sessionId?: string,
-   *           pendingPlace?: boolean, assetId?: string, ext?: string, width?: number, height?: number }} options
+   *           pendingPlace?: boolean, assetId?: string, ext?: string, width?: number, height?: number,
+   *           hasThumbs?: boolean }} options
    */
   const addResultCard = (options) =>
     push({
@@ -95,6 +96,7 @@ export function createChat({ docStore, container, actions = {} }) {
       ext: options.ext,
       width: options.width,
       height: options.height,
+      hasThumbs: options.hasThumbs,
     })
 
   /** 放置完成:更新同一结果卡为已落位。 @param {string} sessionId @param {string} objId */
@@ -298,6 +300,7 @@ export function createChat({ docStore, container, actions = {} }) {
           width: entry.width,
           height: entry.height,
           sessionId: entry.sessionId,
+          hasThumbs: entry.hasThumbs,
         }),
       )
       meta.append(place)

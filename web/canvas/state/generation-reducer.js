@@ -163,6 +163,10 @@ export function markDisconnected(doc) {
     if (obj.kind !== 'placeholder' || !obj.gen?.jobId) {
       continue
     }
+    // 本地任务(如抠图合成)不走 SSE,断线不影响其执行,不改写文案
+    if (String(obj.gen.jobId).startsWith('local-')) {
+      continue
+    }
     if (obj.gen.message !== DISCONNECTED_MESSAGE) {
       obj.gen = { ...obj.gen, progress: undefined, message: DISCONNECTED_MESSAGE }
       changed.push(obj.id)

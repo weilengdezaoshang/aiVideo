@@ -260,10 +260,14 @@ test('markDisconnected:绑定任务的占位统一切换断线文案,未绑定�
       a: { id: 'a', kind: 'placeholder', x: 0, y: 0, width: 10, height: 10, gen: { jobId: 'j1', message: '生成中…' } },
       b: { id: 'b', kind: 'placeholder', x: 0, y: 0, width: 10, height: 10, gen: { jobId: '', message: '准备中' } },
       c: { id: 'c', kind: 'image', x: 0, y: 0, width: 10, height: 10 },
+      d: { id: 'd', kind: 'placeholder', x: 0, y: 0, width: 10, height: 10, gen: { jobId: 'local-x', message: '正在抠图' } },
     } as Record<string, ReconcileObj>,
   }
   const changed = markDisconnected(doc)
+  // 本地任务(抠图合成等)不走 SSE,断线不改写其文案
   assert.deepEqual(changed, ['a'])
+  const d = doc.objects.d as ReconcileObj
+  assert.equal(d.gen?.message, '正在抠图')
   const a = doc.objects.a as ReconcileObj & { gen: { message: string } }
   const b = doc.objects.b as ReconcileObj & { gen: { message: string } }
   assert.equal(a.gen.message, '连接中断,正在查询')
