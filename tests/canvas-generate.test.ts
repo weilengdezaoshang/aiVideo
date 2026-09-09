@@ -1,6 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { findFreePosition, overlapsAny } from '../web/canvas/state/placement.js'
+import {
+  findFreePosition,
+  overlapsAny,
+  variantRowAnchors,
+} from '../web/canvas/state/placement.js'
 import { submitGeneration, cancelPlaceholder } from '../web/canvas/flows/generate.js'
 import { createDocStore } from '../web/canvas/state/doc-store.js'
 import { cmdAddObjects } from '../web/canvas/state/commands.js'
@@ -63,6 +67,16 @@ test('overlapsAny 保留 GAP 间距', () => {
   assert.equal(overlapsAny(boxes, { x: 140, y: 0, width: 100, height: 100 }, 40), false)
 })
 
+test('生成四个变体时占位锚点在源图右侧同一行', () => {
+  const anchors = variantRowAnchors({ x: 100, y: 80, width: 256, height: 192 }, 4, 40)
+  assert.deepEqual(anchors, [
+    { x: 396, y: 80 },
+    { x: 692, y: 80 },
+    { x: 988, y: 80 },
+    { x: 1284, y: 80 },
+  ])
+})
+
 /* ---------- submitGeneration(依赖注入 fetch) ---------- */
 
 interface FetchCall {
@@ -85,16 +99,21 @@ function fakeFetch(responses: Array<{ status: number; body: any }>) {
 test('提交成功:占位入 undo 栈 + jobId 回填 + batchCount 强制 1', async () => {
   const store = createDocStore({ id: 'd', name: 't', objects: {}, order: [] })
   const { impl, calls } = fakeFetch([{ status: 202, body: { jobId: 'job-77' } }])
+  let createdId = ''
 
   const result = await submitGeneration({
     docStore: store,
     genParams: { prompt: '猫', width: 512, height: 512, batchCount: 4 },
     anchor: { x: 0, y: 0 },
+    onPlaceholderCreated: (placeholder: { id: string }) => {
+      createdId = placeholder.id
+    },
     fetchImpl: impl,
   })
   assert.equal(result.ok, true)
   assert.equal(result.jobId, 'job-77')
   const objId = result.objId!
+  assert.equal(createdId, objId, '提交请求前即可定位新占位卡')
   assert.equal(store.doc.objects[objId].kind, 'placeholder')
   assert.equal(store.doc.objects[objId].gen?.jobId, 'job-77')
 
