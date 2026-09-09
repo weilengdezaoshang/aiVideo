@@ -1,4 +1,4 @@
-import { cmdAddObjects, cmdMoveObjects } from '../state/commands.js'
+import { cmdAddObjects, cmdBatch, cmdMoveObjects } from '../state/commands.js'
 import { groupInsertion } from '../state/placement.js'
 import { ensureAsset } from './asset-util.js'
 
@@ -25,8 +25,8 @@ const draftKey = (assetId) => `gencanvas.maskDraft.${assetId}`
  *   只有"抠图"按钮显式提交 → 透明 PNG 相邻落位(组内顺延)。
  * 蒙版历史与画布撤销相互隔离;保存草稿不会自动生成。
  */
-/** @param {{ getDocStore: () => any, engine: any, onResult?: (info: {objId: string, assetUrl: string, sourceLabel: string, sessionId?: string, failed?: boolean, missing?: boolean, assetId?: string, ext?: string, width?: number, height?: number, hasThumbs?: boolean}) => void, toast?: (text: string) => void }} options */
-export function createCutoutSession({ getDocStore, engine, onResult = () => {}, toast = () => {} }) {
+/** @param {{ getDocStore: () => any, engine: any, onResult?: (info: {objId: string, assetUrl: string, sourceLabel: string, sessionId?: string, failed?: boolean, missing?: boolean, assetId?: string, ext?: string, width?: number, height?: number, hasThumbs?: boolean}) => void, onSuggest?: (text: string) => void, toast?: (text: string) => void }} options */
+export function createCutoutSession({ getDocStore, engine, onResult = () => {}, onSuggest = () => {}, toast = () => {} }) {
   const bar = $('#cutout-bar')
   const status = $('#cutout-status')
   const applyButton = $('#cutout-apply')
@@ -81,9 +81,10 @@ export function createCutoutSession({ getDocStore, engine, onResult = () => {}, 
     removeOverlay()
     engine.contentLayer.listening(true)
     engine.contentLayer.drawHit()
+    let draftSaved = true
     if (sourceObject?.assetId) {
       // 蒙版历史与草稿在离开时持久化;不生成任何结果(PRD §6)
-      saveDraft()
+      draftSaved = saveDraft()
     }
     sourceObject = null
     agentSessionId = null
@@ -93,14 +94,17 @@ export function createCutoutSession({ getDocStore, engine, onResult = () => {}, 
       bar.hidden = true
       emitMaskMode(false)
     }
+    return draftSaved
   }
 
-  /** 用户显式退出:保存草稿并提示(PRD §6 退出编辑态)。 */
+  /** 用户显式退出:保存草稿并提示(PRD §6 退出编辑态;仅保存失败时给出警示)。 */
   function exit() {
     const hadSession = Boolean(sourceObject?.assetId)
-    teardown()
-    if (hadSession) {
+    const saved = teardown()
+    if (hadSession && saved) {
       toast('草稿已保留')
+    } else if (hadSession) {
+      toast('草稿保存失败,未保存的笔画将丢失')
     }
   }
 
@@ -172,8 +176,10 @@ export function createCutoutSession({ getDocStore, engine, onResult = () => {}, 
     }
     try {
       localStorage.setItem(draftKey(sourceObject?.assetId || ''), maskCanvas.toDataURL('image/png'))
+      return true
     } catch {
-      // 本机存储失败:草稿只活到关闭页
+      // 本机存储失败(配额满/隐私模式):草稿只活到关闭页
+      return false
     }
   }
 
@@ -362,19 +368,24 @@ export function createCutoutSession({ getDocStore, engine, onResult = () => {}, 
     // 派生结果紧邻源图右侧;组内后续成员顺延(PRD §6,间距 24 世界单位)
     const insertion = groupInsertion(store.doc, source.id, { width, height })
     const id = `cutout-${Date.now().toString(36)}`
-    store.apply(cmdAddObjects([{
-      id,
-      kind: 'placeholder',
-      x: insertion.x,
-      y: insertion.y,
-      width,
-      height,
-      gen: { jobId: `local-${id}`, message: '正在抠图' },
-      lineage: { fromId: source.id, params: { operation: 'cutout' } },
-    }]))
+    // 新增派生对象与组内顺延位移作为一个原子命令:一次撤销同时撤掉两者(A09)
+    /** @type {any[]} */
+    const commands = [
+      cmdAddObjects([{
+        id,
+        kind: 'placeholder',
+        x: insertion.x,
+        y: insertion.y,
+        width,
+        height,
+        gen: { jobId: `local-${id}`, message: '正在抠图' },
+        lineage: { fromId: source.id, params: { operation: 'cutout' } },
+      }]),
+    ]
     if (insertion.moves.length > 0) {
-      store.apply(cmdMoveObjects(insertion.moves))
+      commands.push(cmdMoveObjects(insertion.moves))
     }
+    store.apply(commands.length > 1 ? cmdBatch(commands) : commands[0])
     const maskDataUrl = maskCanvas.toDataURL('image/png')
     saving = true
     exit()
@@ -405,6 +416,28 @@ export function createCutoutSession({ getDocStore, engine, onResult = () => {}, 
         }
         delete result.gen
       })
+      if (landed) {
+        // 扩展与其他组相交时给出"整理位置"建议(PRD §6):只提示,不自动搬动用户布局
+        const result = store.doc.objects[id]
+        const srcGroup = source.groupId || ''
+        const crossed = Object.values(store.doc.objects).find((/** @type {any} */ o) => {
+          if (o.id === id || o.id === source.id) {
+            return false
+          }
+          if ((o.groupId || '') === srcGroup) {
+            return false
+          }
+          return !(
+            o.x >= result.x + result.width ||
+            o.x + o.width <= result.x ||
+            o.y >= result.y + result.height ||
+            o.y + o.height <= result.y
+          )
+        })
+        if (crossed) {
+          onSuggest('派生结果与画布上的其他对象重叠,建议整理位置后再继续。')
+        }
+      }
       onResult({
         objId: landed ? id : '',
         assetUrl: `/assets/${body.asset.id}/t256.webp`,

@@ -7,7 +7,12 @@
 //   - 选中框画在独立覆盖层(overlayLayer),不污染缓存内容;
 //   - 视口裁剪:远缩放全覆盖时靠位图缓存兜底,近景靠 visible 剔除。 
 
-import { cmdMoveObjects, cmdRemoveObjects, cmdUpdateObject } from '../state/commands.js'
+import {
+  cmdBatch,
+  cmdMoveObjects,
+  cmdRemoveObjects,
+  cmdUpdateObject,
+} from '../state/commands.js'
 
 /**
  * @typedef {import('../state/commands.js').CanvasObj} CanvasObj
@@ -745,24 +750,28 @@ export function createObjectLayer(options) {
       const w = Math.max(48, Math.round(obj.width * ratio))
       const h = Math.max(48, Math.round(obj.height * ratio))
       const delta = w - obj.width
-      const moves = obj.groupId
-        ? Object.values(getDoc().objects)
-            .filter(
-              (/** @type {any} */ m) =>
-                m.id !== id && m.groupId === obj.groupId && m.x >= obj.x + obj.width,
-            )
-            .map((/** @type {any} */ m) => ({
-              id: m.id,
-              from: { x: m.x, y: m.y },
-              to: { x: m.x + delta, y: m.y },
-            }))
-        : []
-      if (moves.length > 0) {
-        options.applyCommand?.(cmdMoveObjects(moves))
+      /** @type {any[]} */
+      const commands = []
+      if (obj.groupId) {
+        const moves = Object.values(getDoc().objects)
+          .filter(
+            (/** @type {any} */ m) =>
+              m.id !== id && m.groupId === obj.groupId && m.x >= obj.x + obj.width,
+          )
+          .map((/** @type {any} */ m) => ({
+            id: m.id,
+            from: { x: m.x, y: m.y },
+            to: { x: m.x + delta, y: m.y },
+          }))
+        if (moves.length > 0) {
+          commands.push(cmdMoveObjects(moves))
+        }
       }
-      options.applyCommand?.(
+      commands.push(
         cmdUpdateObject(id, { width: w, height: h }, { width: obj.width, height: obj.height }),
       )
+      // 顺延位移与尺寸变更一次撤销(PRD §6/A09)
+      options.applyCommand?.(commands.length > 1 ? cmdBatch(commands) : commands[0])
       ratio = 1
     })
   }

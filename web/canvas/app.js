@@ -388,6 +388,8 @@ async function startEditor(doc) {
     getDocStore: () => store,
     engine,
     toast,
+    // 整理位置建议(PRD §6):派生结果与其他组相交时给出提示,不自动搬动
+    onSuggest: (text) => chat?.addSystem(text),
     onResult: ({
       objId,
       assetUrl,
