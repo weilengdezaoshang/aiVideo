@@ -4,11 +4,17 @@
 import { createCanvasEngine } from './engine/stage.js'
 import { createDocStore } from './state/doc-store.js'
 import { createAutoSaver } from './state/autosave.js'
-import { openDocument, renameDocument, DocumentMissingError } from './state/document-api.js'
+import {
+  openDocument,
+  renameDocument,
+  DocumentMissingError,
+  loadLocalDraft,
+  clearLocalDraft,
+} from './state/document-api.js'
 import { createObjectLayer } from './engine/object-layer.js'
 import { connectGenerationEvents } from './state/generation-events.js'
 import { submitGeneration, cancelPlaceholder } from './flows/generate.js'
-import { submitGroupGeneration, regenerateGroup } from './flows/group-generate.js'
+import { submitGroupGeneration, regenerateGroup, confirmPendingGroup } from './flows/group-generate.js'
 import { initContextMenu } from './flows/context-menu.js'
 import { createInpaintSession } from './flows/inpaint.js'
 import { watchDuplicateTabs } from './state/duplicate-tabs.js'
@@ -83,9 +89,9 @@ const engine = createCanvasEngine(rootEl, surfaceEl, {
 // 初始视野:世界原点居中;文档加载后若已有对象会重定位
 engine.centerOn({ x: 0, y: 0 }, 1)
 
-/** rAF 合并高频刷新。 @param {() => void} fn */
+/** 微任务合并高频刷新(隐藏标签页里 rAF 不触发,会让操作栏位置卡死)。 @param {() => void} fn */
 function queueFrame(fn) {
-  requestAnimationFrame(() => fn())
+  queueMicrotask(() => fn())
 }// 缩放控件:以视口中心为锚
 const viewportCenter = () => ({ x: engine.stage.width() / 2, y: engine.stage.height() / 2 })
 $('#zoom-in').addEventListener('click', () => engine.zoomBy(1.2, viewportCenter()))
@@ -169,6 +175,7 @@ function showDocProblem(title, hint) {
   const overlay = $('#doc-missing')
   $('#doc-missing-title').textContent = title
   $('#doc-missing-hint').textContent = hint
+  $('#doc-draft-recover').hidden = true
   overlay.hidden = false
   $('#composer').hidden = true
 }
@@ -180,21 +187,50 @@ const stressCount = Math.max(
 )
 
 async function bootDocument() {
-  let doc
   if (stressCount > 0) {
-    doc = { id: 'stress', name: '压力测试', objects: {}, order: [], revision: 1 }
-  } else {
-    try {
-      doc = await openDocument()
-    } catch (err) {
-      if (err instanceof DocumentMissingError) {
-        showDocProblem('文档不存在', '链接指向的画布已被删除或从未创建。 ')
-      } else {
-        showDocProblem('画布读取失败', err instanceof Error ? err.message : String(err))
+    await startEditor({ id: 'stress', name: '压力测试', objects: {}, order: [], revision: 1 })
+    return
+  }
+  try {
+    const doc = await openDocument()
+    // 服务端读取成功:本机草稿已被覆盖为最新,清掉兜底
+    clearLocalDraft(doc.id)
+    await startEditor(doc)
+  } catch (err) {
+    if (err instanceof DocumentMissingError) {
+      const docId = new URLSearchParams(location.search).get('doc') || ''
+      if (docId) {
+        clearLocalDraft(docId)
       }
+      showDocProblem('文档不存在', '链接指向的画布已被删除或从未创建。 ')
       return
     }
+    // 服务端读取失败(PRD §9/A13):有本机草稿时提供恢复入口
+    const docId = new URLSearchParams(location.search).get('doc') || localStorage.getItem('gencanvas.docId') || ''
+    const draft = docId ? loadLocalDraft(docId) : null
+    if (draft && draft.id === docId) {
+      const overlay = $('#doc-missing')
+      $('#doc-missing-title').textContent = '画布读取失败'
+      $('#doc-missing-hint').textContent =
+        '服务暂不可用。已找到本机草稿,可先恢复继续编辑;保存恢复后会再与服务端同步。 '
+      const recover = $('#doc-draft-recover')
+      recover.hidden = false
+      recover.onclick = () => {
+        overlay.hidden = true
+        $('#composer').hidden = false
+        void startEditor(draft)
+      }
+      overlay.hidden = false
+      $('#composer').hidden = true
+    } else {
+      showDocProblem('画布读取失败', err instanceof Error ? err.message : String(err))
+    }
   }
+}
+
+/** 编辑器启动主体:文档来源(服务端/本机草稿/压测)确定后走到这里。 */
+/** @param {any} doc */
+async function startEditor(doc) {
   docNameInput.value = doc.name || '未命名画布'
   const store = createDocStore(doc)
   const saver =
@@ -208,6 +244,8 @@ async function bootDocument() {
   autoSaver = saver
 
   // 对话栏(先于 cutout:抠图结果要写进对话)
+  /** @type {ReturnType<typeof connectGenerationEvents> | null} 结果待确认查询后手动触发对账 */
+  let genEvents = null
   chat = createChat({
     docStore: store,
     container: $('#chat-messages'),
@@ -223,6 +261,18 @@ async function bootDocument() {
         toast('已提交新的一组生成(将产生新的生成调用)')
         void regenerateGroup({ docStore: store, groupId, chat, engine })
       },
+      confirmGroup: (groupId) => {
+        void confirmPendingGroup({ docStore: store, groupId, chat }).then((result) => {
+          if (result.found) {
+            // 服务端确实已接受:交还给对账/事件流接管(A06)
+            toast('已找到该次请求,继续生成流程')
+            void genEvents?.reconcileNow()
+          }
+        })
+      },
+      placeResult: (info) => {
+        placeCutoutResult(store, info)
+      },
     },
   })
 
@@ -233,7 +283,8 @@ async function bootDocument() {
     applyCommand: (cmd) => store.apply(cmd),
     onSelectionChange: (ids) => {
       selection = ids
-      queueFrame(() => objectActions?.refresh())
+      // 选择变化时允许"轻移视口"给操作栏腾出空间(PRD §4.1)
+      queueFrame(() => objectActions?.refresh({ pan: true }))
     },
     onCancelPlaceholder: (objId) => {
       void cancelPlaceholder({ docStore: store, objId })
@@ -327,9 +378,34 @@ async function bootDocument() {
     getDocStore: () => store,
     engine,
     toast,
-    onResult: ({ objId, assetUrl, sourceLabel, sessionId, failed }) => {
+    onResult: ({
+      objId,
+      assetUrl,
+      sourceLabel,
+      sessionId,
+      failed,
+      missing,
+      assetId,
+      ext,
+      width,
+      height,
+    }) => {
       if (failed) {
         chat?.addError('抠图失败:原蒙版草稿已保留,可修正后再次提交')
+        return
+      }
+      if (missing) {
+        // 资产已生成但占位被删:保留结果,由用户显式放入(PRD §6)
+        chat?.addResultCard({
+          assetUrl,
+          sourceLabel: sourceLabel || '画布源图',
+          sessionId,
+          pendingPlace: true,
+          assetId,
+          ext,
+          width,
+          height,
+        })
         return
       }
       if (sessionId && agentFlow) {
@@ -447,7 +523,7 @@ async function bootDocument() {
   })
 
   // SSE 生成事件驱动占位状态机:进度/整组发布/失败/对账
-  connectGenerationEvents({
+  genEvents = connectGenerationEvents({
     docStore: store,
     onConnectionChange: (connected) => {
       const banner = $('#offline-banner')
@@ -504,7 +580,50 @@ function collapseChat(collapse) {
   $('#chat-expand').hidden = !collapse
 }
 
-/** 视野框住全部对象(首次加载) @param {{ objects: Record<string, any> }} doc */
+/* ---------- 对话栏宽度可调(280–360,PRD §4.1;偏好本机记忆) ---------- */
+
+const CHAT_WIDTH_KEY = 'gencanvas.chatWidth'
+function initChatResize() {
+  const panel = /** @type {HTMLElement} */ ($('#chat-panel'))
+  panel.style.position = 'relative'
+  try {
+    const saved = Number(localStorage.getItem(CHAT_WIDTH_KEY))
+    if (Number.isFinite(saved) && saved >= 280 && saved <= 360) {
+      panel.style.width = `${saved}px`
+    }
+  } catch {
+    // 本机存储不可用:保持默认 320
+  }
+  const grip = document.createElement('div')
+  grip.className = 'chat-resizer'
+  grip.title = '拖拽调整对话栏宽度'
+  grip.addEventListener('pointerdown', (/** @type {PointerEvent} */ e) => {
+    e.preventDefault()
+    grip.setPointerCapture(e.pointerId)
+    const move = (/** @type {PointerEvent} */ ev) => {
+      const width = Math.min(360, Math.max(280, window.innerWidth - ev.clientX - 12))
+      panel.style.width = `${width}px`
+    }
+    const up = (/** @type {PointerEvent} */ ev) => {
+      grip.removeEventListener('pointermove', move)
+      grip.removeEventListener('pointerup', up)
+      try {
+        localStorage.setItem(CHAT_WIDTH_KEY, panel.style.width.replace('px', ''))
+      } catch {
+        // 本机存储不可用:宽度仅本次会话生效
+      }
+      void ev
+    }
+    grip.addEventListener('pointermove', move)
+    grip.addEventListener('pointerup', up)
+  })
+  panel.append(grip)
+}
+initChatResize()
+
+/* ---------- 视野框住全部对象(首次加载) ---------- */
+
+/** @param {{ objects: Record<string, any> }} doc */
 function fitToContent(doc) {
   const list = Object.values(doc.objects)
   if (list.length === 0) {
@@ -736,6 +855,40 @@ function centerWorld() {
     x: cam.x + engine.stage.width() / cam.scale / 2,
     y: cam.y + engine.stage.height() / cam.scale / 2,
   }
+}
+
+/**
+ * 把"已生成未落位"的抠图结果放入当前视口(PRD §6:结果可显式放置,不复活已删对象)。
+ * @param {any} store
+ * @param {{ assetId?: string, ext?: string, width?: number, height?: number, sessionId?: string }} info
+ */
+function placeCutoutResult(store, info) {
+  if (!info.assetId) {
+    return
+  }
+  const scale = Math.min(1, 640 / Math.max(info.width || 512, 1))
+  const width = Math.max(64, Math.round((info.width || 512) * scale))
+  const height = Math.max(64, Math.round((info.height || 512) * scale))
+  const pos = findFreePosition(store.doc, centerWorld(), { width, height })
+  const objId = `cut-put-${Date.now().toString(36)}`
+  store.apply(
+    cmdAddObjects([
+      {
+        id: objId,
+        kind: 'image',
+        x: pos.x,
+        y: pos.y,
+        width,
+        height,
+        assetId: info.assetId,
+        ext: info.ext || 'png',
+        hasThumbs: true,
+      },
+    ]),
+  )
+  chat?.markPlaced(info.sessionId || '', objId)
+  toast('已放入画布')
+  focusObject(objId)
 }
 
 const uploadInput = /** @type {HTMLInputElement} */ ($('#upload-input'))
@@ -1043,11 +1196,13 @@ $('#video-generate').addEventListener('click', async () => {
   })
 })
 
-/** 视频对象播放 @param {any} obj */
+/** 视频对象播放(带来源辨认,PRD §8:无源图即为文字描述,不伪造图生视频) @param {any} obj */
 function playVideo(obj) {
   if (!obj) {
     return
   }
+  const fromImage = Boolean(obj.lineage?.fromId)
+  playerDialog.label = `视频预览 · 来源:${fromImage ? '画布图片(图生视频)' : '文字描述'}`
   const url = obj.assetId ? `/assets/${obj.assetId}/original.${obj.ext || 'mp4'}` : obj.src
   if (!url) {
     return

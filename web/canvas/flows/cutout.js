@@ -25,7 +25,7 @@ const draftKey = (assetId) => `gencanvas.maskDraft.${assetId}`
  *   只有"抠图"按钮显式提交 → 透明 PNG 相邻落位(组内顺延)。
  * 蒙版历史与画布撤销相互隔离;保存草稿不会自动生成。
  */
-/** @param {{ getDocStore: () => any, engine: any, onResult?: (info: {objId: string, assetUrl: string, sourceLabel: string, sessionId?: string, failed?: boolean}) => void, toast?: (text: string) => void }} options */
+/** @param {{ getDocStore: () => any, engine: any, onResult?: (info: {objId: string, assetUrl: string, sourceLabel: string, sessionId?: string, failed?: boolean, missing?: boolean, assetId?: string, ext?: string, width?: number, height?: number}) => void, toast?: (text: string) => void }} options */
 export function createCutoutSession({ getDocStore, engine, onResult = () => {}, toast = () => {} }) {
   const bar = $('#cutout-bar')
   const status = $('#cutout-status')
@@ -386,9 +386,14 @@ export function createCutoutSession({ getDocStore, engine, onResult = () => {}, 
       })
       const body = await response.json()
       if (!response.ok) {throw new Error(body.error || '抠图失败')}
+      let landed = true
       store.mutateTransient((/** @type {any} */ doc) => {
         const result = doc.objects[id]
-        if (!result) {return}
+        if (!result) {
+          // 源对象/占位在提交期间被删除:资产已生成但未落位(PRD §6)
+          landed = false
+          return
+        }
         result.kind = 'image'
         result.assetId = body.asset.id
         result.ext = body.asset.ext
@@ -401,10 +406,15 @@ export function createCutoutSession({ getDocStore, engine, onResult = () => {}, 
         delete result.gen
       })
       onResult({
-        objId: id,
+        objId: landed ? id : '',
         assetUrl: `/assets/${body.asset.id}/t256.webp`,
         sourceLabel: '画布源图',
         sessionId: boundSessionId || undefined,
+        missing: !landed,
+        assetId: body.asset.id,
+        ext: body.asset.ext,
+        width: body.asset.width,
+        height: body.asset.height,
       })
       // 用过的草稿完成使命:清掉,避免下一次会话误恢复旧选区
       try {

@@ -5,6 +5,47 @@
 // 单标签页是 v1 约束(PRD §9);多开检测在 duplicate-tabs.js。 
 
 const DOC_ID_KEY = 'gencanvas.docId'
+const DRAFT_PREFIX = 'gencanvas.docDraft.'
+
+/**
+ * 本机草稿(PRD §9/A13):自动保存前先把快照落 localStorage,作为服务端不可用时的安全网;
+ * 与主题偏好一样属于本机存储,与文档服务端存储分离。
+ * @param {string} docId @param {any} snapshot @returns {boolean} 是否写入成功
+ */
+export function writeLocalDraft(docId, snapshot) {
+  try {
+    localStorage.setItem(
+      DRAFT_PREFIX + docId,
+      JSON.stringify({ at: new Date().toISOString(), snapshot }),
+    )
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** @param {string} docId @returns {any | null} 本机草稿快照(无则 null) */
+export function loadLocalDraft(docId) {
+  try {
+    const raw = localStorage.getItem(DRAFT_PREFIX + docId)
+    if (!raw) {
+      return null
+    }
+    const parsed = JSON.parse(raw)
+    return parsed?.snapshot && typeof parsed.snapshot === 'object' ? parsed.snapshot : null
+  } catch {
+    return null
+  }
+}
+
+/** @param {string} docId */
+export function clearLocalDraft(docId) {
+  try {
+    localStorage.removeItem(DRAFT_PREFIX + docId)
+  } catch {
+    // 清理失败无碍:草稿只作为兜底
+  }
+}
 
 /** @typedef {{ missing?: boolean, loadError?: boolean }} OpenFailure */
 /** 文档不存在(404):调用方显示"文档不存在",绝不自动新建 */

@@ -4,6 +4,10 @@
 // 客户端保留本机草稿并提示,不用最后写入静默覆盖。
 // fetch/beacon 依赖注入,便于 node:test。
 
+// 本机草稿(PRD §9/A13):每次冲刷前先落 localStorage——服务端写失败/进程崩溃时
+// 最多丢最近一次防抖窗口内的修改,且可在"服务端读取失败"时恢复。
+import { writeLocalDraft } from './document-api.js'
+
 const DEBOUNCE_MS = 1000
 
 /**
@@ -51,6 +55,8 @@ export function createAutoSaver(options) {
     if (!force) {
       snapshot.baseRevision = snapshot.revision
     }
+    // 服务端写入前先落本机草稿(写失败只影响兜底,不阻塞保存)
+    writeLocalDraft(docId, snapshot)
     try {
       const res = await fetchImpl(url, {
         method: 'POST',
@@ -118,6 +124,7 @@ export function createAutoSaver(options) {
       try {
         const snapshot = JSON.parse(JSON.stringify(getDoc()))
         snapshot.baseRevision = snapshot.revision
+        writeLocalDraft(docId, snapshot)
         const ok = beaconImpl(url, new Blob([JSON.stringify(snapshot)], { type: 'application/json' }))
         if (!ok) {
           // beacon 排队失败(极少见):退回 keepalive fetch

@@ -14,6 +14,10 @@ import { ensureAsset, objectThumbUrl } from './asset-util.js'
  * }} options
  */
 export function createAgentFlow({ docStore, chat, fetchImpl = (...args) => fetch(...args) }) {
+  // 执行中暂停第二个执行请求(PRD §7):避免上下文与计划交错;
+  // 停止/等待期间不删除任何已完成产物。
+  let running = false
+
   /** @param {string} path @param {RequestInit} [init] */
   async function api(path, init) {
     const res = await fetchImpl(path, init)
@@ -30,6 +34,23 @@ export function createAgentFlow({ docStore, chat, fetchImpl = (...args) => fetch
     if (!text) {
       return { ok: false }
     }
+    if (running) {
+      chat.addSystem('助手正在执行上一个任务;完成后再发送下一条,避免计划交错。')
+      return { ok: false, busy: true }
+    }
+    running = true
+    try {
+      return await runSend(text, refObjId)
+    } finally {
+      running = false
+    }
+  }
+
+  /**
+   * @param {string} text
+   * @param {string | null | undefined} refObjId
+   */
+  async function runSend(text, refObjId) {
     chat.addUser(text)
     const refObj = refObjId ? docStore.doc.objects[refObjId] : null
     let assetId
