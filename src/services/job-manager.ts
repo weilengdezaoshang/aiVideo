@@ -108,6 +108,7 @@ export class JobManager extends EventEmitter {
     initImage?: InitImage,
     maskImage?: InitImage,
     clientRef?: string,
+    group?: { groupId: string; slot: number; directionTitle: string },
   ): Job {
     const job: Job = {
       id: randomUUID(),
@@ -120,6 +121,11 @@ export class JobManager extends EventEmitter {
       message: '排队中',
       images: [],
       createdAt: new Date().toISOString(),
+    }
+    if (group) {
+      job.groupId = group.groupId
+      job.slot = group.slot
+      job.directionTitle = group.directionTitle
     }
     this.jobs.set(job.id, job)
     if (initImage) {

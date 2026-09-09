@@ -75,6 +75,12 @@ export interface Job {
   hasInitImage: boolean
   /** 客户端透传引用(画布占位对象 id):事件先于 POST 响应到达时靠它对齐 */
   clientRef?: string
+  /** 四方向组 id(PRD §5):同一需求的四个创意方向任务共享;普通单图任务无此字段 */
+  groupId?: string
+  /** 组内槽位 0..3(横排顺序固定) */
+  slot?: number
+  /** 方向标题(占位标签与组卡片展示) */
+  directionTitle?: string
   /** 0..1,按 (已完成张数 + 当前张进度) / 总张数 计算 */
   progress: number
   message: string
