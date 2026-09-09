@@ -6,8 +6,9 @@ import { openSvgExportDialog } from '../svg-export.js'
 /**
  * @param {{
  *   getDocStore: () => any,
- *   onUseAsReference: (objId: string) => void,
+ *   onAddToChat?: (objId: string) => void,
  *   onVariants?: (objId: string) => void,
+ *   onCutout?: (objId: string) => void,
  * }} options
  */
 export function initContextMenu(options) {
@@ -80,9 +81,9 @@ export function initContextMenu(options) {
       })
 
       // 菜单项
-      document.querySelector('#ctx-ref')?.addEventListener('click', () => {
+      document.querySelector('#ctx-add-chat')?.addEventListener('click', () => {
         if (targetObjId) {
-          options.onUseAsReference(targetObjId)
+          options.onAddToChat?.(targetObjId)
         }
         close()
       })
@@ -90,6 +91,13 @@ export function initContextMenu(options) {
         const obj = targetObjId ? options.getDocStore()?.doc.objects[targetObjId] : null
         if (obj && obj.kind === 'image' && targetObjId) {
           options.onVariants?.(targetObjId)
+        }
+        close()
+      })
+      document.querySelector('#ctx-cutout')?.addEventListener('click', () => {
+        const obj = targetObjId ? options.getDocStore()?.doc.objects[targetObjId] : null
+        if (obj && obj.kind === 'image' && targetObjId) {
+          options.onCutout?.(targetObjId)
         }
         close()
       })

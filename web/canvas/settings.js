@@ -51,6 +51,7 @@ export async function initSettings(hooks = {}) {
   const comfyUrl = /** @type {any} */ ($('#settings-comfy-url'))
   const cloudRow = $('#settings-cloud-row')
   const cloudUrlRow = $('#settings-cloud-url-row')
+  const cloudTextRow = $('#settings-cloud-text-row')
   const cloudVendor = /** @type {any} */ ($('#settings-cloud-vendor'))
   const cloudBaseUrl = /** @type {any} */ ($('#settings-cloud-base-url'))
   const cloudModel = /** @type {any} */ ($('#settings-cloud-model'))
@@ -70,6 +71,7 @@ export async function initSettings(hooks = {}) {
     const isCloud = providerSelect.value === 'cloud'
     cloudRow.hidden = !isCloud
     cloudUrlRow.hidden = !isCloud
+    cloudTextRow.hidden = !isCloud || cloudVendor.value === 'aliyun'
   }
 
   /** @param {{ ok: boolean, detail: string }} [result] 测试结果条(S2a loading / S2b 失败 / 成功) */
@@ -80,7 +82,7 @@ export async function initSettings(hooks = {}) {
     }
     testResult.hidden = false
     testResult.classList.toggle('error', !result.ok)
-    testResult.textContent = result.ok ? `连接成功:${result.detail}` : `连接失败:${result.detail}`
+    testResult.textContent = result.ok ? `检查通过:${result.detail}` : `检查失败:${result.detail}`
   }
 
   async function refreshConfigView() {
@@ -131,6 +133,11 @@ export async function initSettings(hooks = {}) {
           cloudBaseUrl: cloudBaseUrl.value.trim(),
           cloudModel: cloudModel.value.trim(),
           cloudTextModel: cloudTextModel.value.trim(),
+          ...(clearImageKey
+            ? { imageApiKey: '' }
+            : imageKey.value.trim()
+              ? { imageApiKey: imageKey.value.trim() }
+              : {}),
         }),
       })
       showTestResult(result)
@@ -138,11 +145,27 @@ export async function initSettings(hooks = {}) {
       showTestResult({ ok: false, detail: err instanceof Error ? err.message : String(err) })
     } finally {
       testButton.loading = false
-      testButton.textContent = '测试连接'
+      testButton.textContent = '检查配置 / 连接'
     }
   })
 
   providerSelect.addEventListener('sl-change', syncRowVisibility)
+  cloudVendor.addEventListener('sl-change', () => {
+    /** @type {Record<string, string[]>} */
+    const defaults = {
+      aliyun: ['https://dashscope.aliyuncs.com/api/v1', 'qwen-image-2.0'],
+      zhipu: ['https://open.bigmodel.cn/api/paas/v4', 'cogview-4-250304'],
+      siliconflow: ['https://api.siliconflow.cn/v1', 'black-forest-labs/FLUX.1-schnell'],
+      openai: ['https://api.openai.com/v1', 'gpt-image-1'],
+    }
+    const selected = defaults[cloudVendor.value]
+    if (selected) {
+      cloudBaseUrl.value = selected[0]
+      cloudModel.value = selected[1]
+      cloudTextModel.value = ''
+    }
+    syncRowVisibility()
+  })
 
   /* ---------- 保存:POST /api/config,热切换由服务端完成 ---------- */
 
@@ -252,6 +275,15 @@ export async function initSettings(hooks = {}) {
   onboarding.addEventListener('sl-after-hide', markOnboarded)
 
   if (!localStorage.getItem(ONBOARDED_KEY)) {
-    onboarding.show()
+    try {
+      const { config } = await api('/api/config')
+      if (config.provider === 'mock') {
+        onboarding.show()
+      } else {
+        markOnboarded()
+      }
+    } catch {
+      onboarding.show()
+    }
   }
 }

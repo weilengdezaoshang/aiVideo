@@ -79,10 +79,10 @@ export function initLibrary(options) {
     }
   }
 
-  // 搜索防抖
+  // 搜索防抖(原生 input;历史版本用 sl-input 事件名,两者都挂)
   /** @type {ReturnType<typeof setTimeout> | null} */
   let searchTimer = null
-  searchInput.addEventListener('sl-input', () => {
+  const onSearch = () => {
     if (searchTimer) {
       clearTimeout(searchTimer)
     }
@@ -90,7 +90,9 @@ export function initLibrary(options) {
       query = String(searchInput.value || '').trim()
       void load()
     }, 300)
-  })
+  }
+  searchInput.addEventListener('input', onSearch)
+  searchInput.addEventListener('sl-input', onSearch)
 
   $('#library-open').addEventListener('click', () => {
     drawer.hidden = !drawer.hidden

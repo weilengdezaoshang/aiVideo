@@ -11,6 +11,11 @@ const WHEEL_ZOOM_STEP = 1.1
 const DOT_BASE = 18
 const ZOOM_LEVELS = [0.05, 0.125, 0.25, 0.5, 1, 2, 4, 8]
 
+/** wheel/pinch 的统一缩放方向：负值放大，正值缩小。 @param {number} deltaY */
+export function wheelZoomFactor(deltaY) {
+  return deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP
+}
+
 /**
  * @param {HTMLElement} rootEl 画布容器(.canvas-root,网点背景作用其上)
  * @param {HTMLElement} surfaceEl Konva 舞台宿主;必须是空元素(Stage 构造会清空其内容)
@@ -65,6 +70,14 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
     layer.scale({ x: cam.scale, y: cam.scale })
     layer.position({ x: -cam.x * cam.scale, y: -cam.y * cam.scale })
     layer.batchDraw()
+  }
+
+  /** @param {any} layer */
+  function unregisterCamLayer(layer) {
+    const index = camLayers.indexOf(layer)
+    if (index >= 0) {
+      camLayers.splice(index, 1)
+    }
   }
 
   /** 网点背景(Figma 风格):点距屏幕恒定,平移随世界移动,跨缩放阈值切换密度 */
@@ -138,7 +151,7 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
     const ev = e.evt
     ev.preventDefault()
     if (ev.ctrlKey || ev.metaKey) {
-      zoomBy(ev.deltaY < 0 ? 1 / WHEEL_ZOOM_STEP : WHEEL_ZOOM_STEP, pointerOrCenter())
+      zoomBy(wheelZoomFactor(ev.deltaY), pointerOrCenter())
       return
     }
     if (Math.abs(ev.deltaX) > 0 || !Number.isInteger(ev.deltaY) || Math.abs(ev.deltaY) < 40) {
@@ -147,7 +160,7 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
       applyCam()
       return
     }
-    zoomBy(ev.deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP, pointerOrCenter())
+    zoomBy(wheelZoomFactor(ev.deltaY), pointerOrCenter())
   })
 
   /* ---------- 手势:空格+拖 / 中键拖 ---------- */
@@ -231,6 +244,7 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
     stage,
     contentLayer,
     registerCamLayer,
+    unregisterCamLayer,
     getCam: () => ({ ...cam }),
     /** 平移手势进行中(空格按住 / 中键拖动);对象层的框选需避开 */
     isPanActive: () => panning || spaceHeld,

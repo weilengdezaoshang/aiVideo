@@ -76,3 +76,52 @@ export function findFreePosition(doc, anchor, size, opts = {}) {
   // 探测失败:锚点直接落位(允许重叠,极端画布下的兜底)
   return { x: anchor.x, y: anchor.y }
 }
+
+/**
+ * 在源对象右侧生成一行等间距锚点。
+ * @param {Box} source
+ * @param {number} count
+ * @param {number} [gap]
+ */
+export function variantRowAnchors(source, count, gap = 40) {
+  return Array.from({ length: count }, (_, index) => ({
+    x: source.x + source.width + gap + index * (source.width + gap),
+    y: source.y,
+  }))
+}
+
+/**
+ * 派生结果(抠图)插入源图右侧,组内后续成员顺延(PRD §6):
+ *   - 源图属于某组 → 插入点 = 源图右邻(间距 24 世界单位),
+ *     同组中位于源图右侧的成员整体右移,腾出一个槽位;
+ *   - 组外对象与源图本身都不移动;独立图片直接右邻放置。
+ * @param {{ objects: Record<string, Box & { id?: string, groupId?: string }> }} doc
+ * @param {string} sourceId
+ * @param {{ width: number, height: number }} insertSize
+ * @param {{ gap?: number }} [opts]
+ * @returns {{ x: number, y: number, moves: Array<{ id: string, from: {x:number,y:number}, to: {x:number,y:number} }> }}
+ */
+export function groupInsertion(doc, sourceId, insertSize, opts = {}) {
+  const gap = opts.gap ?? 24
+  const source = doc.objects[sourceId]
+  if (!source) {
+    return { x: 0, y: 0, moves: [] }
+  }
+  const insertX = source.x + source.width + gap
+  /** @type {Array<{ id: string, from: {x:number,y:number}, to: {x:number,y:number} }>} */
+  const moves = []
+  if (source.groupId) {
+    const shift = insertSize.width + gap
+    for (const obj of Object.values(doc.objects)) {
+      if (
+        obj.id &&
+        obj.id !== sourceId &&
+        obj.groupId === source.groupId &&
+        obj.x >= source.x + source.width
+      ) {
+        moves.push({ id: obj.id, from: { x: obj.x, y: obj.y }, to: { x: obj.x + shift, y: obj.y } })
+      }
+    }
+  }
+  return { x: insertX, y: source.y, moves }
+}

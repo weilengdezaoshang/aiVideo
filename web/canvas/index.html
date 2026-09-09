@@ -1,170 +1,199 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GenCanvas · 生成式创作画布</title>
+  <script>
+    // 主题偏好先于样式生效,避免深色用户首帧闪白(偏好与文档存储分离,PRD §4.1.1)
+    try {
+      const pref = localStorage.getItem('gencanvas.editorTheme')
+      if (pref === 'dark') {
+        document.documentElement.dataset.theme = 'dark'
+      }
+    } catch {}
+  </script>
   <link rel="stylesheet" href="/vendor/shoelace/cdn/themes/light.css">
+  <link rel="stylesheet" href="/vendor/shoelace/cdn/themes/dark.css">
   <link rel="stylesheet" href="canvas.css">
   <script src="/vendor/konva/konva.min.js"></script>
   <script src="/vendor/imagetracerjs/imagetracer_v1.2.6.js"></script>
-  <script type="module" src="/vendor/shoelace/cdn/shoelace-autoloader.js"></script></head>
+  <script type="module" src="/vendor/shoelace/cdn/shoelace-autoloader.js"></script>
+</head>
 <body>
   <!-- 断线横幅(线框 S15) -->
   <div class="offline-banner" id="offline-banner" hidden>
-    <sl-icon name="wifi-off"></sl-icon>
     <span>连接断开,正在重连…</span>
     <button id="offline-retry" type="button">立即重试</button>
   </div>
 
-  <!-- 顶栏:画布切换 / 模型选择 / 进行中任务数 / 保存状态(线框 S3) -->
+  <!-- 顶栏:返回我的画布 / 文档名 / 主题 / 设置 / 任务与保存状态(PRD §3/§4.1) -->
   <header class="topbar">
-    <sl-dropdown>
-      <sl-button slot="trigger" caret size="small" variant="default">画布</sl-button>
-      <sl-menu id="canvas-menu">
-        <sl-menu-item>未命名画布</sl-menu-item>
-        <sl-divider></sl-divider>
-        <sl-menu-item id="canvas-new">
-          <sl-icon slot="prefix" name="plus-lg"></sl-icon>
-          新建画布
-        </sl-menu-item>
-      </sl-menu>
-    </sl-dropdown>
-
-    <sl-button size="small" id="library-open">
-      <sl-icon slot="prefix" name="grid-3x3-gap"></sl-icon>
-      素材库
-    </sl-button>
-
-    <sl-select id="model-select" size="small" placeholder="模型" style="width: 12rem;">
-      <sl-option value="flux">FLUX</sl-option>
-    </sl-select>
-
+    <a class="back-link" id="back-to-workspace" href="/workspace?tab=canvas">← 返回我的画布</a>
+    <input class="doc-name" id="doc-name" value="未命名画布" maxlength="100"
+      aria-label="画布名称" autocomplete="off" spellcheck="false">
     <span class="topbar-spacer"></span>
-
-    <sl-icon-button id="settings-open" name="gear" label="设置(BYOK / 后端)"></sl-icon-button>
-    <span class="topbar-status" id="job-count" title="进行中的任务数">
-      <sl-icon name="hourglass-split"></sl-icon>
-      <span id="job-count-value">0</span>
-    </span>
+    <button class="ghost-btn" id="theme-toggle" type="button" title="切换浅色 / 深色(仅编辑器记住偏好)">深色</button>
+    <button class="ghost-btn" id="library-open" type="button">素材库</button>
+    <button class="icon-btn" id="settings-open" type="button" title="设置(BYOK / 后端)" aria-label="设置">⚙</button>
+    <span class="topbar-status" id="job-count" title="进行中的任务数">⏳ <span id="job-count-value">0</span></span>
     <span class="topbar-status" id="save-status">已保存</span>
   </header>
 
-  <!-- 画布区:灰底网点 + 空态引导;Konva 舞台挂载在专用空容器(Stage 构造会清空宿主) -->
-  <main class="canvas-root" id="canvas-root">
-    <div class="canvas-surface" id="canvas-surface"></div>
-    <div class="canvas-empty" id="canvas-empty">
-      <p class="canvas-empty-title">画布是空的</p>
-      <p class="canvas-empty-hint">按 <kbd>Tab</kbd> 呼出提示词面板,开始第一张图</p>
-    </div>
+  <!-- 保存冲突横幅(PRD §9 A13):不用最后写入静默覆盖 -->
+  <div class="conflict-banner" id="conflict-banner" hidden>
+    <span>文档已在其他标签页被修改。本机改动已保留,未覆盖服务端版本。</span>
+    <button id="conflict-reload" type="button">重新加载服务端版本</button>
+    <button id="conflict-dismiss" type="button">留在画布</button>
+  </div>
 
-    <!-- 提示词面板:收起态为一个按钮,Tab 展开(T8 接生成闭环) -->
-    <section class="prompt-panel" id="prompt-panel" hidden>
-      <sl-textarea id="prompt-input" placeholder="输入提示词…(例:一只戴墨镜的猫在沙滩上)"
-        rows="3" autofocus></sl-textarea>
-      <div class="prompt-panel-row">
-        <sl-select id="prompt-model" size="small" placeholder="模型" style="width: 9rem;">
-          <sl-option value="flux">FLUX</sl-option>
-        </sl-select>
-        <sl-select id="prompt-size" size="small" placeholder="尺寸" style="width: 8rem;">
-          <sl-option value="1024">1024</sl-option>
-        </sl-select>
-        <sl-input id="prompt-seed" size="small" placeholder="种子:随机" style="width: 8rem;"></sl-input>
-      </div>
-      <!-- 参考图槽位(线框 S9):以图生图时挂载画布选中图 -->
-      <div class="ref-chip" id="ref-chip" hidden>
-        <img class="ref-thumb" id="ref-thumb" alt="参考图">
-        <span>来自画布选中图</span>
-        <button class="ref-remove" id="ref-remove" type="button" title="移除参考图">×</button>
-      </div>
-      <button class="dropzone" id="ref-dropzone" type="button">
-        <sl-icon name="image"></sl-icon>
-        拖入参考图(可选,留空 = 文生图)
+  <div class="editor-body" id="editor-body">
+    <!-- 左侧悬浮工具条:严格四项(PRD §2 不可变约束 2) -->
+    <nav class="tool-rail" aria-label="添加内容">
+      <button class="rail-btn" id="tool-upload" type="button" title="本地上传(PNG / JPEG / WebP)">
+        <span class="rail-icon">⬆</span><span class="rail-label">上传</span>
       </button>
-      <div class="prompt-panel-row prompt-panel-actions">
-        <sl-button size="small" id="prompt-collapse">收起</sl-button>
-        <sl-button size="small" variant="primary" id="prompt-generate">
-          <sl-icon slot="prefix" name="stars"></sl-icon>
-          生成
-        </sl-button>
-      </div>
-    </section>
-
-    <!-- 重绘模式工具栏(线框 S10) -->
-    <section class="inpaint-bar" id="inpaint-bar" hidden>
-      <span class="inpaint-tag">重绘模式</span>
-      <label class="inpaint-brush">
-        笔刷
-        <input type="range" id="inpaint-brush-size" min="16" max="200" value="64">
-      </label>
-      <sl-button size="small" id="inpaint-erase">擦除</sl-button>
-      <sl-button size="small" id="inpaint-clear">清空</sl-button>
-      <sl-input id="inpaint-prompt" size="small" placeholder="这块区域变成:皮衣…" style="flex: 1; min-width: 10rem;"></sl-input>
-      <sl-button size="small" variant="primary" id="inpaint-generate">
-        <sl-icon slot="prefix" name="stars"></sl-icon>
-        生成
-      </sl-button>
-      <sl-button size="small" id="inpaint-exit">退出</sl-button>
-    </section>
-
-    <!-- 图生视频参数(线框 S11;完整参数项 PRD 待定,先提供时长) -->
-    <sl-dialog id="video-dialog" label="生成视频" style="--width: 22rem;">
-      <div class="video-dialog-row">
-        <span>源图</span>
-        <img class="video-src-thumb" id="video-src-thumb" alt="源图">
-      </div>
-      <div class="video-dialog-row">
-        <span>时长</span>
-        <sl-select id="video-duration" size="small" value="4" style="width: 8rem;">
-          <sl-option value="2">2 秒</sl-option>
-          <sl-option value="4">4 秒</sl-option>
-          <sl-option value="6">6 秒</sl-option>
-          <sl-option value="8">8 秒</sl-option>
-        </sl-select>
-      </div>
-      <sl-button slot="footer" size="small" id="video-cancel">取消</sl-button>
-      <sl-button slot="footer" size="small" variant="primary" id="video-generate">生成视频</sl-button>
-    </sl-dialog>
-
-    <!-- 视频播放(点击视频对象) -->
-    <sl-dialog id="video-player" label="视频播放" style="--width: 48rem;">
-      <div id="video-player-body" class="video-player-body"></div>
-    </sl-dialog>
-
-    <!-- 对象右键菜单(线框 S8):以图生图/局部重绘/生成视频/转矢量/下载/删除 -->
-    <nav class="context-menu" id="context-menu" hidden>
-      <button class="context-menu-item" id="ctx-ref" type="button">以此为参考生成</button>
-      <button class="context-menu-item" id="ctx-variants" type="button">生成变体(×4)</button>
-      <button class="context-menu-item" id="ctx-inpaint" type="button">局部重绘</button>
-      <button class="context-menu-item" id="ctx-video" type="button">生成视频</button>
-      <button class="context-menu-item" id="ctx-vector" type="button">转矢量(SVG)</button>
-      <button class="context-menu-item" id="ctx-download" type="button">下载</button>
-      <button class="context-menu-item context-menu-danger" id="ctx-delete" type="button">删除</button>
+      <button class="rail-btn" id="tool-import" type="button" title="从素材库导入已有资产">
+        <span class="rail-icon">▦</span><span class="rail-label">导入资产</span>
+      </button>
+      <button class="rail-btn" id="tool-board" type="button" title="在视口中心添加 1024×1024 画板">
+        <span class="rail-icon">▭</span><span class="rail-label">画板</span>
+      </button>
+      <button class="rail-btn" id="tool-text" type="button" title="添加可编辑文字">
+        <span class="rail-icon">T</span><span class="rail-label">文字</span>
+      </button>
     </nav>
+    <input type="file" id="upload-input" accept="image/png,image/jpeg,image/webp" hidden>
 
-    <!-- 素材库抽屉(线框 S17):历史网格,拖入画布或点击加入 -->
-    <aside class="library-drawer" id="library-drawer" hidden>
-      <header class="library-head">
-        <b>素材库</b>
-        <sl-input id="library-search" size="small" placeholder="搜索历史…" style="flex: 1;"></sl-input>
-        <sl-icon-button id="library-close" name="x-lg" label="关闭素材库"></sl-icon-button>
-      </header>
-      <div class="library-grid" id="library-grid">
-        <div class="library-empty">暂无素材,去画布生成第一张</div>
+    <!-- 画布区:灰底网点 + 空态引导;Konva 舞台挂载在专用空容器 -->
+    <main class="canvas-root" id="canvas-root">
+      <div class="canvas-surface" id="canvas-surface"></div>
+      <div class="canvas-empty" id="canvas-empty">
+        <p class="canvas-empty-title">画布是空的</p>
+        <p class="canvas-empty-hint">在下方输入需求,一轮生成 4 个创意方向</p>
       </div>
-    </aside>
 
-    <!-- 缩放控件(右下角);引擎接线在 T4 -->
-    <nav class="zoom-controls" aria-label="缩放控制">
-      <sl-button-group>
-        <sl-button size="small" id="zoom-out"><sl-icon name="zoom-out"></sl-icon></sl-button>
+      <!-- 文档不存在 / 读取失败(PRD §3:不能用新建文档兜底) -->
+      <div class="doc-missing" id="doc-missing" hidden>
+        <p class="doc-missing-title" id="doc-missing-title">文档不存在</p>
+        <p class="doc-missing-hint" id="doc-missing-hint">链接指向的画布已被删除或从未创建。</p>
+        <a class="primary-btn" href="/workspace?tab=canvas">返回我的画布</a>
+      </div>
+
+      <!-- 底部输入区:画布区域底部居中(PRD 约束 3) -->
+      <section class="composer" id="composer">
+        <div class="composer-modes" role="tablist" aria-label="输入模式">
+          <button class="mode-btn active" id="mode-generate" type="button" role="tab" aria-selected="true">生成图片</button>
+          <button class="mode-btn" id="mode-agent" type="button" role="tab" aria-selected="false">创作助手</button>
+        </div>
+        <!-- 显式引用缩略图(助手模式;添加到对话产生,可移除) -->
+        <div class="ref-chip" id="composer-ref" hidden>
+          <img class="ref-thumb" id="composer-ref-thumb" alt="引用图">
+          <span class="ref-name" id="composer-ref-name">来自画布选中图</span>
+          <button class="ref-remove" id="composer-ref-remove" type="button" title="移除引用" aria-label="移除引用">×</button>
+        </div>
+        <textarea class="composer-input" id="composer-input" rows="2"
+          placeholder="描述你想要的画面,例如:一只戴墨镜的猫在沙滩上"></textarea>
+        <div class="composer-row">
+          <label class="composer-size">尺寸
+            <select id="composer-size">
+              <option value="1024x1024">1:1 · 1024</option>
+              <option value="1024x576">16:9 · 1024×576</option>
+              <option value="576x1024">9:16 · 576×1024</option>
+              <option value="768x768">1:1 · 768</option>
+            </select>
+          </label>
+          <span class="composer-hint" id="composer-hint">4 个方向 × 每方向 1 张</span>
+          <span class="composer-spacer"></span>
+          <button class="primary-btn" id="composer-submit" type="button" disabled>生成 4 张</button>
+        </div>
+      </section>
+
+      <!-- 重绘模式工具栏(线框 S10) -->
+      <section class="inpaint-bar" id="inpaint-bar" hidden>
+        <span class="inpaint-tag">重绘模式</span>
+        <label class="inpaint-brush">
+          笔刷
+          <input type="range" id="inpaint-brush-size" min="16" max="200" value="64">
+        </label>
+        <button class="ghost-btn" id="inpaint-erase" type="button">擦除</button>
+        <button class="ghost-btn" id="inpaint-clear" type="button">清空</button>
+        <input class="text-input" id="inpaint-prompt" placeholder="这块区域变成:皮衣…">
+        <button class="primary-btn" id="inpaint-generate" type="button">生成</button>
+        <button class="ghost-btn" id="inpaint-exit" type="button">退出</button>
+      </section>
+
+      <!-- 智能抠图:Mask 直接覆盖源图;只有"抠图"按钮显式提交(PRD 约束 7) -->
+      <section class="inpaint-bar cutout-bar" id="cutout-bar" aria-label="智能抠图蒙版编辑" hidden>
+        <span class="inpaint-tag" id="cutout-status">正在识别主体…</span>
+        <button class="ghost-btn" id="cutout-erase" type="button">橡皮擦</button>
+        <button class="ghost-btn" id="cutout-restore" type="button">恢复</button>
+        <label class="inpaint-brush">笔刷 <input id="cutout-brush" type="range" min="4" max="160" value="40" /></label>
+        <span class="cutout-spacer"></span>
+        <button class="ghost-btn" id="cutout-undo" type="button" title="撤销笔画">撤销</button>
+        <button class="ghost-btn" id="cutout-redo" type="button" title="重做笔画">重做</button>
+        <button class="ghost-btn" id="cutout-cancel" type="button">取消</button>
+        <button class="primary-btn" id="cutout-apply" disabled>抠图</button>
+      </section>
+
+      <!-- 选中对象操作栏:贴图下方;图片为 添加到对话 / 抠图 / 下载(PRD §4.2) -->
+      <div class="obj-actions" id="obj-actions" hidden>
+        <button class="ghost-btn" id="obj-add-chat" type="button">添加到对话</button>
+        <button class="ghost-btn" id="obj-cutout" type="button">抠图</button>
+        <button class="ghost-btn" id="obj-download" type="button">下载</button>
+      </div>
+
+      <!-- 轻提示(下载"已开始下载"、草稿保留等) -->
+      <div class="toast" id="toast" hidden></div>
+
+      <!-- 右键菜单:保留已实现的真实能力入口 -->
+      <nav class="context-menu" id="context-menu" hidden>
+        <button class="context-menu-item" id="ctx-add-chat" type="button">添加到对话</button>
+        <button class="context-menu-item" id="ctx-variants" type="button">生成变体(×4)</button>
+        <button class="context-menu-item" id="ctx-cutout" type="button">智能抠图</button>
+        <button class="context-menu-item" id="ctx-inpaint" type="button">局部重绘</button>
+        <button class="context-menu-item" id="ctx-video" type="button">生成视频</button>
+        <button class="context-menu-item" id="ctx-vector" type="button">转矢量(SVG)</button>
+        <button class="context-menu-item" id="ctx-download" type="button">下载</button>
+        <button class="context-menu-item context-menu-danger" id="ctx-delete" type="button">删除</button>
+      </nav>
+
+      <!-- 素材库抽屉:历史生成 + 已上传资产,拖入画布或点击加入(导入资产) -->
+      <aside class="library-drawer" id="library-drawer" hidden>
+        <header class="library-head">
+          <b>素材库</b>
+          <input class="text-input" id="library-search" placeholder="搜索历史…">
+          <button class="icon-btn" id="library-close" type="button" aria-label="关闭素材库">✕</button>
+        </header>
+        <div class="library-grid" id="library-grid">
+          <div class="library-empty">暂无素材,去画布生成第一张</div>
+        </div>
+      </aside>
+
+      <!-- 缩放控件(右下角) -->
+      <nav class="zoom-controls" aria-label="缩放控制">
+        <button class="ghost-btn" id="zoom-out" type="button" aria-label="缩小">−</button>
         <span class="zoom-value" id="zoom-value">100%</span>
-        <sl-button size="small" id="zoom-in"><sl-icon name="zoom-in"></sl-icon></sl-button>
-      </sl-button-group>
-    </nav>
-  </main>
+        <button class="ghost-btn" id="zoom-in" type="button" aria-label="放大">+</button>
+      </nav>
 
-  <!-- BYOK 设置对话框(线框 S2/S2a/S2b):后端热切换 + 测试连接 + API Key 管理 -->
+      <!-- 文字对象编辑浮层 -->
+      <textarea class="text-editor" id="text-editor" hidden></textarea>
+    </main>
+
+    <!-- 右侧对话栏:消息、任务与结果(PRD 约束 3) -->
+    <aside class="chat-panel" id="chat-panel" aria-label="对话与任务">
+      <header class="chat-head">
+        <b>对话</b>
+        <span class="chat-head-hint">任务与结果同组呈现</span>
+        <button class="icon-btn" id="chat-collapse" type="button" title="收起对话栏" aria-label="收起对话栏">»</button>
+      </header>
+      <div class="chat-messages" id="chat-messages"></div>
+    </aside>
+    <button class="chat-expand" id="chat-expand" type="button" title="展开对话栏" hidden>« 对话</button>
+  </div>
+
+  <!-- BYOK 设置对话框(线框 S2/S2a/S2b) -->
   <sl-dialog id="settings-dialog" label="设置" style="--width: 30rem;">
     <div class="settings-section">
       <div class="settings-title">生成后端</div>
@@ -180,6 +209,7 @@
           <sl-option value="zhipu">智谱 CogView</sl-option>
           <sl-option value="siliconflow">硅基流动 FLUX</sl-option>
           <sl-option value="openai">OpenAI 兼容</sl-option>
+          <sl-option value="aliyun">阿里云百炼</sl-option>
         </sl-select>
         <sl-input id="settings-cloud-model" size="small" placeholder="模型名,如 cogview-4-250304"
           style="width: 12rem;"></sl-input>
@@ -188,7 +218,7 @@
         <sl-input id="settings-cloud-base-url" size="small" placeholder="API 地址(留空 = 厂商默认)"
           style="width: 100%;"></sl-input>
       </div>
-      <div class="settings-row" id="settings-cloud-url-row" hidden>
+      <div class="settings-row" id="settings-cloud-text-row" hidden>
         <sl-input id="settings-cloud-text-model" size="small"
           placeholder="中译英文本模型,如 Qwen/Qwen2.5-7B-Instruct(留空 = 关闭翻译)"
           style="width: 100%;"></sl-input>
@@ -196,7 +226,9 @@
       <div class="settings-row" id="settings-comfy-row">
         <sl-input id="settings-comfy-url" size="small" placeholder="http://127.0.0.1:8188"
           style="flex: 1;"></sl-input>
-        <sl-button size="small" id="settings-test">测试连接</sl-button>
+      </div>
+      <div class="settings-row">
+        <sl-button size="small" id="settings-test">检查配置 / 连接</sl-button>
       </div>
       <div class="settings-test-result" id="settings-test-result" hidden></div>
     </div>
@@ -224,10 +256,10 @@
     <sl-button slot="footer" variant="primary" id="settings-save">保存</sl-button>
   </sl-dialog>
 
-  <!-- 首次启动引导(线框 S1):三选一进入设置或直接体验 -->
+  <!-- 首次启动引导(线框 S1) -->
   <sl-dialog id="onboarding-dialog" no-header style="--width: 26rem;">
     <div class="onb-head">欢迎使用 GenCanvas</div>
-    <div class="onb-sub">选择一个生成后端开始(可随时在右下角设置中更改)</div>
+    <div class="onb-sub">选择一个生成后端开始(可随时在顶部设置中更改)</div>
     <button class="onb-card" id="onb-comfy" type="button">
       <b>① 连接本地 ComfyUI</b>
       <span>输入地址,如 http://127.0.0.1:8188</span>
@@ -242,7 +274,7 @@
     </button>
   </sl-dialog>
 
-  <!-- SVG 导出调参面板(线框 S12):左原图 / 右实时预览 / 三滑杆;入口由右键菜单(T9)接线 -->
+  <!-- SVG 导出调参面板(线框 S12) -->
   <sl-dialog id="svg-dialog" label="转为矢量图(SVG)" style="--width: 34rem;">
     <div class="svg-body">
       <div class="svg-pane">
@@ -284,6 +316,30 @@
 
     <sl-button slot="footer" id="svg-cancel">取消</sl-button>
     <sl-button slot="footer" variant="primary" id="svg-export">导出 SVG</sl-button>
+  </sl-dialog>
+
+  <!-- 图生视频参数(保留已验证入口,PRD §8) -->
+  <sl-dialog id="video-dialog" label="生成视频" style="--width: 22rem;">
+    <div class="video-dialog-row">
+      <span>源图</span>
+      <img class="video-src-thumb" id="video-src-thumb" alt="源图">
+    </div>
+    <div class="video-dialog-row">
+      <span>时长</span>
+      <sl-select id="video-duration" size="small" value="4" style="width: 8rem;">
+        <sl-option value="2">2 秒</sl-option>
+        <sl-option value="4">4 秒</sl-option>
+        <sl-option value="6">6 秒</sl-option>
+        <sl-option value="8">8 秒</sl-option>
+      </sl-select>
+    </div>
+    <sl-button slot="footer" size="small" id="video-cancel">取消</sl-button>
+    <sl-button slot="footer" size="small" variant="primary" id="video-generate">生成视频</sl-button>
+  </sl-dialog>
+
+  <!-- 视频播放(点击视频对象) -->
+  <sl-dialog id="video-player" label="视频播放" style="--width: 48rem;">
+    <div id="video-player-body" class="video-player-body"></div>
   </sl-dialog>
 
   <script type="module" src="app.js"></script>

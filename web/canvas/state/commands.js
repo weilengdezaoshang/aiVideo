@@ -8,7 +8,7 @@
 /**
  * @typedef {Object} CanvasObj 画布对象(PRD §7.1)
  * @property {string} id
- * @property {'image'|'video'|'placeholder'|'error'} kind
+ * @property {'image'|'video'|'placeholder'|'error'|'board'|'text'} kind
  * @property {number} x
  * @property {number} y
  * @property {number} width
@@ -21,6 +21,14 @@
  * @property {string} [imageId] 历史记录 id(隐式反馈关联用)
  * @property {{fromId: string, params: object}} [lineage]
  * @property {{jobId: string, progress?: number, message?: string}} [gen]
+ * @property {string} [groupId] 四方向组 id(PRD §5)
+ * @property {number} [slot] 组内槽位 0..3(横排顺序固定)
+ * @property {string} [directionTitle] 方向标题(槽位左上标签)
+ * @property {string} [name] 画板名称
+ * @property {string} [text] 文字内容
+ * @property {number} [fontSize] 文字字号
+ * @property {string} [fill] 文字颜色(空 = 跟随主题默认)
+ * @property {{originalAssetId: string, originalExt: string, maskAssetId: string}} [cutout] 抠图谱系
  */
 
 /** 添加对象(含 order 追加);invert = 移除 @param {CanvasObj[]} objects */

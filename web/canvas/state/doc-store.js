@@ -7,7 +7,7 @@ import { applyCommand, canCoalesce, coalesceInto, invertCommand } from './comman
 
 /**
  * @typedef {import('./commands.js').CanvasObj} CanvasObj
- * @typedef {{ id: string, name: string, objects: Record<string, CanvasObj>, order: string[] }} CanvasDocData
+ * @typedef {{ id: string, name: string, objects: Record<string, CanvasObj>, order: string[], revision?: number, groups?: Record<string, any>, chat?: any[] }} CanvasDocData
  * @typedef {{ type: 'command' | 'transient', doc: CanvasDocData }} DocStoreEvent
  */
 

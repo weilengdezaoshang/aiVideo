@@ -17,6 +17,7 @@ let localSeq = 0
  *   initImage?: { dataUrl: string },
  *   maskImage?: { dataUrl: string },
  *   lineage?: { fromId: string, params?: object },
+ *   onPlaceholderCreated?: (placeholder: any) => void,
  *   fetchImpl?: typeof fetch,
  * }} options
  * @returns {Promise<{ ok: boolean, objId?: string, jobId?: string, error?: string }>}
@@ -29,6 +30,7 @@ export async function submitGeneration(options) {
     initImage,
     maskImage,
     lineage,
+    onPlaceholderCreated = () => {},
     fetchImpl = (...args) => fetch(...args),
   } = options
 
@@ -48,6 +50,7 @@ export async function submitGeneration(options) {
     lineage: lineage && { params: {}, ...lineage },
   }
   docStore.apply(cmdAddObjects([placeholder]))
+  onPlaceholderCreated(placeholder)
 
   try {
     const res = await fetchImpl('/api/generate', {

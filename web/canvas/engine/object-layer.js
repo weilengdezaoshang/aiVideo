@@ -1,13 +1,13 @@
-// 对象层:把 DocStore 的对象渲染为 Konva 节点,承载选择/框选/拖动/删除交互。
-// 选择集合是 TransientStore 语义(不进 undo、不入文档)。
+// 对象层:把 DocStore 的对象渲染为 Konva 节点,承载选择/框选/拖动/删除交互。 
+// 选择集合是 TransientStore 语义(不进 undo、不入文档)。 
 // 性能(F1:500 对象 + 50 张 2048px 图 ≥55fps):
 //   - 静态对象(image/video)整组 cache() 成位图,绘制退化为一次 drawImage;
 //     相机缩放跨越 2× 阈值时限流重烘;
 //   - 占位/错误卡数量少且内容常变,不缓存;
 //   - 选中框画在独立覆盖层(overlayLayer),不污染缓存内容;
-//   - 视口裁剪:远缩放全覆盖时靠位图缓存兜底,近景靠 visible 剔除。
+//   - 视口裁剪:远缩放全覆盖时靠位图缓存兜底,近景靠 visible 剔除。 
 
-import { cmdMoveObjects, cmdRemoveObjects } from '../state/commands.js'
+import { cmdMoveObjects, cmdRemoveObjects, cmdUpdateObject } from '../state/commands.js'
 
 /**
  * @typedef {import('../state/commands.js').CanvasObj} CanvasObj
@@ -20,14 +20,44 @@ const THUMB256_MAX_PX = 384
 const THUMB1024_MAX_PX = 1536
 const RECACHE_BUDGET_PER_FRAME = 6 // 每帧最多重烘数量,防止缩放风暴
 const DPR = typeof devicePixelRatio === 'number' ? devicePixelRatio : 1
+/** 组标题与内容/派生标签的视觉常量(PRD §4.2/§6) */
+const GROUP_TITLE_OFFSET = 26
 
 /** @param {CanvasObj} obj @returns {boolean} 内容是否静态可缓存 */
 const isCacheable = (obj) => obj.kind === 'image' || obj.kind === 'video'
 
+/** 主题感知的画板底色(随 data-theme 变化,内容由文档持有)。  */
+function boardFill() {
+  return document.documentElement.dataset.theme === 'dark' ? '#25262c' : '#ffffff'
+}
+
+/** 主题感知的画布文字默认色;已保存的文字对象颜色不随主题改变。  */
+function textInk() {
+  return document.documentElement.dataset.theme === 'dark' ? '#f0f1f4' : '#202124'
+}
+
+/**
+ * 使用 Konva 节点的实时坐标同步选中框。 拖动结束前文档坐标仍是旧值，不能作为位置来源。 
+ * @param {Set<string>} selected
+ * @param {Map<string, any>} selectionRects
+ * @param {Map<string, any>} groups
+ * @param {{ batchDraw: () => void }} overlayLayer
+ */
+export function syncSelectionRectPositions(selected, selectionRects, groups, overlayLayer) {
+  for (const id of selected) {
+    const rect = selectionRects.get(id)
+    const group = groups.get(id)
+    if (rect && group) {
+      rect.position({ x: group.x(), y: group.y() })
+    }
+  }
+  overlayLayer.batchDraw()
+}
+
 /**
  * @param {{
  *   engine: any,
- *   getDoc: () => { objects: Record<string, CanvasObj>, order: string[] },
+ *   getDoc: () => { objects: Record<string, CanvasObj>, order: string[], groups?: Record<string, any> },
  *   applyCommand?: (cmd: any) => void,
  *   onSelectionChange?: (ids: string[]) => void,
  *   onCancelPlaceholder?: (objId: string) => void,
@@ -135,6 +165,39 @@ export function createObjectLayer(options) {
         playIcon.position({ x: obj.width / 2, y: obj.height / 2 })
         group.add(playIcon)
       }
+    } else if (obj.kind === 'board') {
+      // 画板 = 背景容器:不裁剪、不自动收养重叠对象(PRD §4.2)
+      bg.fill(boardFill())
+      bg.stroke('rgba(53,109,243,0.35)')
+      bg.cornerRadius(12)
+      const name = new Konva.Text({
+        text: obj.name || '画板',
+        x: 12,
+        y: 10,
+        fontSize: 13,
+        fontStyle: '600',
+        fill: textInk(),
+        listening: false,
+        opacity: 0.72,
+      })
+      group.add(name)
+      group.setAttr('boardName', name)
+      group.setAttr('bgRect', bg)
+    } else if (obj.kind === 'text') {
+      bg.fill('rgba(0,0,0,0)')
+      bg.stroke('rgba(0,0,0,0)')
+      const textNode = new Konva.Text({
+        text: obj.text || '',
+        fontSize: obj.fontSize || 32,
+        fontFamily: 'inherit',
+        lineHeight: 1.3,
+        fill: obj.fill || textInk(),
+        align: 'left',
+        listening: true,
+        perfectDrawEnabled: false,
+      })
+      group.add(textNode)
+      group.setAttr('textNode', textNode)
     } else if (obj.kind === 'placeholder') {
       const spinner = new Konva.Arc({
         x: obj.width / 2,
@@ -147,7 +210,7 @@ export function createObjectLayer(options) {
         listening: false,
       })
       const label = new Konva.Text({
-        text: '排队中',
+        text: obj.gen?.message || '准备中',
         width: obj.width,
         align: 'center',
         y: obj.height / 2 + 12,
@@ -158,6 +221,13 @@ export function createObjectLayer(options) {
       group.add(spinner, label)
       group.setAttr('spinner', spinner)
       group.setAttr('label', label)
+      // 方向标签(四方向槽位左上,PRD §5.1)
+      if (obj.directionTitle) {
+        group.add(directionChip(obj.directionTitle, obj.width))
+      }
+      if (obj.groupId) {
+        group.add(slotChip((obj.slot ?? 0) + 1, obj.width))
+      }
     } else if (obj.kind === 'error') {
       bg.dash([6, 4])
       bg.stroke('#d63031')
@@ -181,9 +251,43 @@ export function createObjectLayer(options) {
         listening: false,
       })
       group.add(title, detail)
+      if (obj.directionTitle) {
+        group.add(directionChip(obj.directionTitle, obj.width))
+      }
     }
     wireGroupEvents(group)
     return group
+  }
+
+  /** 方向标签(左上角小胶囊)。 @param {string} title @param {number} width */
+  function directionChip(title, width) {
+    const text = String(title).slice(0, 8)
+    const chip = new Konva.Label({
+      x: 8,
+      y: 8,
+      opacity: 0.9,
+      listening: false,
+      perfectDrawEnabled: false,
+    })
+    chip.add(new Konva.Tag({ fill: '#1d1d1f', cornerRadius: 8 }))
+    chip.add(new Konva.Text({ text, padding: 3, fontSize: 11, fill: '#fff' }))
+    // 超宽图上标签贴左上即可,不需要特殊处理宽度
+    void width
+    return chip
+  }
+
+  /** 槽位序号标签。 @param {number} slot @param {number} width */
+  function slotChip(slot, width) {
+    const chip = new Konva.Label({
+      x: Math.max(8, width - 30),
+      y: 8,
+      opacity: 0.85,
+      listening: false,
+      perfectDrawEnabled: false,
+    })
+    chip.add(new Konva.Tag({ fill: 'rgba(53,109,243,0.9)', cornerRadius: 8 }))
+    chip.add(new Konva.Text({ text: String(slot), padding: 3, fontSize: 11, fill: '#fff' }))
+    return chip
   }
 
   /* ---------- 位图缓存管理 ---------- */
@@ -359,18 +463,18 @@ export function createObjectLayer(options) {
   /* ---------- 框选(空白处按下拖出) ---------- */
 
   const marquee = new Konva.Rect({
-    stroke: '#0066cc',
+    stroke: '#356df3',
     strokeWidth: 1,
     dash: [4, 3],
-    fill: 'rgba(0,102,204,0.06)',
+    fill: 'rgba(53,109,243,0.06)',
     visible: false,
     listening: false,
   })
   overlayLayer.add(marquee)
 
-  // 空白处按下(target = Stage,不经过 Layer 冒泡)开始框选。
+  // 空白处按下(target = Stage,不经过 Layer 冒泡)开始框选。 
   // 移动/抬起监听 window:指针移出画布甚至窗口后松开也能正常收尾;
-  // 会话序号保证残留的旧监听自废弃;平移手势(空格/中键)期间不启动。
+  // 会话序号保证残留的旧监听自废弃;平移手势(空格/中键)期间不启动。 
   let marqueeSeq = 0
   engine.stage.on('mousedown touchstart', (/** @type {{ target: any, evt: any }} */ e) => {
     const button = e.evt.button
@@ -440,13 +544,7 @@ export function createObjectLayer(options) {
   /* ---------- 选择呈现(覆盖层矩形,不碰缓存) ---------- */
 
   function syncSelectionRects() {
-    for (const id of selected) {
-      const rect = selectionRects.get(id)
-      const o = nodeById(id)
-      if (rect && o) {
-        rect.position({ x: o.x, y: o.y })
-      }
-    }
+    syncSelectionRectPositions(selected, selectionRects, groups, overlayLayer)
   }
 
   function applySelection() {
@@ -466,7 +564,7 @@ export function createObjectLayer(options) {
         y: o.y,
         width: o.width,
         height: o.height,
-        stroke: '#0066cc',
+        stroke: '#356df3',
         strokeWidth: 2,
         strokeScaleEnabled: false,
         cornerRadius: 6,
@@ -475,8 +573,70 @@ export function createObjectLayer(options) {
       selectionRects.set(id, rect)
       overlayLayer.add(rect)
     }
+    syncResizeHandles()
     overlayLayer.batchDraw()
     onSelectionChange([...selected])
+  }
+
+  /* ---------- 画板缩放把手(PRD §4.2:画板可改尺寸) ---------- */
+
+  /** @type {Map<string, any>} */
+  const resizeHandles = new Map()
+
+  function syncResizeHandles() {
+    for (const [id, handle] of resizeHandles) {
+      const o = nodeById(id)
+      if (!selected.has(id) || !o || o.kind !== 'board') {
+        handle.destroy()
+        resizeHandles.delete(id)
+        continue
+      }
+      handle.position({ x: o.x + o.width, y: o.y + o.height })
+    }
+    for (const id of selected) {
+      const o = nodeById(id)
+      if (!o || o.kind !== 'board' || resizeHandles.has(id)) {
+        continue
+      }
+      const handle = new Konva.Rect({
+        x: o.x + o.width,
+        y: o.y + o.height,
+        width: 12,
+        height: 12,
+        fill: '#ffffff',
+        stroke: '#356df3',
+        strokeWidth: 2,
+        cornerRadius: 3,
+        draggable: true,
+      })
+      handle.on('dragmove', () => {
+        const obj = nodeById(id)
+        const g = groups.get(id)
+        const bg = g?.getAttr('bgRect')
+        if (!obj || !bg) {
+          return
+        }
+        const w = Math.max(64, handle.x() - obj.x)
+        const h = Math.max(64, handle.y() - obj.y)
+        bg.width(w)
+        bg.height(h)
+        overlayLayer.batchDraw()
+      })
+      handle.on('dragend', () => {
+        const obj = nodeById(id)
+        const bg = groups.get(id)?.getAttr('bgRect')
+        if (!obj || !bg) {
+          return
+        }
+        const w = Math.max(64, Math.round(handle.x() - obj.x))
+        const h = Math.max(64, Math.round(handle.y() - obj.y))
+        options.applyCommand?.(
+          cmdUpdateObject(id, { width: w, height: h }, { width: obj.width, height: obj.height }),
+        )
+      })
+      resizeHandles.set(id, handle)
+      overlayLayer.add(handle)
+    }
   }
 
   /* ---------- 视口裁剪与占位转圈动画 ---------- */
@@ -518,6 +678,143 @@ export function createObjectLayer(options) {
       spinnerAnim.stop()
       spinnerAnimRunning = false
     }
+  }
+
+  /* ---------- 组标题(PRD §4.2:点组标题选组,拖组标题移动整组) ---------- */
+
+  /** @type {Map<string, any>} groupId → 标题 Konva.Label */
+  const titleNodes = new Map()
+
+  /** 每次同步重建组标题(组数量少,重建成本可忽略;成员边界实时计算)。  */
+  function syncGroupTitles() {
+    const doc = getDoc()
+    const memberBounds = new Map()
+    for (const obj of Object.values(doc.objects)) {
+      if (!obj.groupId) {
+        continue
+      }
+      const b = memberBounds.get(obj.groupId) ?? {
+        minX: Infinity,
+        minY: Infinity,
+        maxX: -Infinity,
+      }
+      b.minX = Math.min(b.minX, obj.x)
+      b.minY = Math.min(b.minY, obj.y)
+      b.maxX = Math.max(b.maxX, obj.x + obj.width)
+      memberBounds.set(obj.groupId, b)
+    }
+    const seen = new Set()
+    for (const [groupId, bounds] of memberBounds) {
+      seen.add(groupId)
+      const title = doc.groups?.[groupId]?.title || '四方向生成'
+      let node = titleNodes.get(groupId)
+      const wanted = `${title}`
+      if (node && node.getAttr('title') !== wanted) {
+        node.destroy()
+        node = null
+      }
+      if (!node) {
+        node = new Konva.Label({
+          x: bounds.minX,
+          y: bounds.minY - GROUP_TITLE_OFFSET,
+          draggable: true,
+        })
+        node.add(
+          new Konva.Tag({
+            fill: 'rgba(32,33,36,0.66)',
+            cornerRadius: 9,
+          }),
+        )
+        node.add(
+          new Konva.Text({
+            text: wanted,
+            padding: 4,
+            fontSize: 12,
+            fill: '#fff',
+          }),
+        )
+        node.setAttr('title', wanted)
+        node.setAttr('groupId', groupId)
+        wireTitleEvents(node, groupId)
+        titleNodes.set(groupId, node)
+        layer.add(node)
+      }
+      node.position({ x: bounds.minX, y: bounds.minY - GROUP_TITLE_OFFSET })
+      node.moveToTop()
+    }
+    for (const [groupId, node] of titleNodes) {
+      if (!seen.has(groupId)) {
+        node.destroy()
+        titleNodes.delete(groupId)
+        selected.delete(`title:${groupId}`)
+      }
+    }
+  }
+
+  /**
+   * 标题节点交互:点 = 选整组;拖 = 移动整组(一个命令,可撤销)。 
+   * @param {any} node @param {string} groupId
+   */
+  function wireTitleEvents(node, groupId) {
+    const memberIds = () =>
+      Object.values(getDoc().objects)
+        .filter((o) => o.groupId === groupId)
+        .map((o) => o.id)
+
+    node.on('mousedown touchstart', (/** @type {any} */ e) => {
+      if (e.evt.button === 2) {
+        return
+      }
+      e.cancelBubble = true
+      selected.clear()
+      for (const id of memberIds()) {
+        selected.add(id)
+      }
+      applySelection()
+    })
+
+    /** @type {{ from: Map<string, {x:number,y:number}>, origin: {x:number,y:number} } | null} */
+    let titleDrag = null
+    node.on('dragstart', () => {
+      const from = new Map()
+      for (const id of memberIds()) {
+        const o = getDoc().objects[id]
+        const g = groups.get(id)
+        from.set(id, { x: o.x, y: o.y })
+        // 视觉先行:命令在 dragend 提交
+        if (g) {
+          g.setAttr('titleDragPeer', true)
+        }
+      }
+      titleDrag = { from, origin: { x: node.x(), y: node.y() } }
+    })
+    node.on('dragmove', () => {
+      if (!titleDrag) {
+        return
+      }
+      const dx = node.x() - titleDrag.origin.x
+      const dy = node.y() - titleDrag.origin.y
+      for (const [id, pos] of titleDrag.from) {
+        groups.get(id)?.position({ x: pos.x + dx, y: pos.y + dy })
+      }
+      syncSelectionRects()
+    })
+    node.on('dragend', () => {
+      if (!titleDrag) {
+        return
+      }
+      const dx = node.x() - titleDrag.origin.x
+      const dy = node.y() - titleDrag.origin.y
+      const moves = [...titleDrag.from.entries()]
+        .map(([id, pos]) => ({ id, from: pos, to: { x: pos.x + dx, y: pos.y + dy } }))
+        .filter((m) => m.from.x !== m.to.x || m.from.y !== m.to.y)
+      titleDrag = null
+      if (moves.length > 0) {
+        options.applyCommand?.(cmdMoveObjects(moves))
+      } else {
+        sync()
+      }
+    })
   }
 
   /* ---------- 全量同步(doc → 节点) ---------- */
@@ -569,6 +866,7 @@ export function createObjectLayer(options) {
     }
     recomputeVisibility()
     refreshStaleCaches()
+    syncGroupTitles()
     applySelection()
     // 同步 draw + hit:Konva 10 的 hit 画布是惰性重绘(等真实指针事件),
     // 文档变更后必须显式刷新,否则命中检测漏掉新建/重建的对象
@@ -577,8 +875,18 @@ export function createObjectLayer(options) {
     overlayLayer.draw()
   }
 
+  // 主题切换:重建画板底色 / 未定制文字颜色(视觉内容像素不随主题变化,PRD §4.1.1)
+  document.addEventListener('gencanvas:themechange', () => {
+    for (const [id, group] of groups) {
+      group.destroy()
+      groups.delete(id)
+      cachedAtScale.delete(id)
+    }
+    sync()
+  })
+
   /**
-   * 内容级刷新:图片 URL 按显示尺寸升级、占位进度文案、缓存触发。
+   * 内容级刷新:图片 URL 按显示尺寸升级、占位进度文案、缓存触发。 
    * @param {CanvasObj} obj @param {any} group
    */
   function refreshContent(obj, group) {
@@ -606,10 +914,11 @@ export function createObjectLayer(options) {
       }
     } else if (obj.kind === 'placeholder') {
       const label = group.getAttr('label')
+      // 组槽位只显示统一状态文案(不虚构百分比);单图任务保留进度百分比
       const text =
-        obj.gen?.progress != null
+        obj.gen?.progress != null && !obj.groupId
           ? `${obj.gen.message || '生成中'} ${Math.round(obj.gen.progress * 100)}%`
-          : '排队中'
+          : obj.gen?.message || '排队中'
       if (label && label.text() !== text) {
         label.text(text)
       }
@@ -619,6 +928,30 @@ export function createObjectLayer(options) {
       if (detail && detail.text() !== text) {
         detail.text(text)
       }
+    } else if (obj.kind === 'text') {
+      const textNode = group.getAttr('textNode')
+      if (textNode) {
+        if (textNode.text() !== (obj.text || '')) {
+          textNode.text(obj.text || '')
+        }
+        if (!obj.fill && textNode.fill() !== textInk()) {
+          textNode.fill(textInk())
+        }
+        group.width?.(Math.max(obj.width, textNode.width() || 0))
+      }
+      // 文字对象没有位图背景:命中交给 textNode
+    } else if (obj.kind === 'board') {
+      const name = group.getAttr('boardName')
+      const bgRect = group.getAttr('bgRect')
+      if (name) {
+        if (name.text() !== (obj.name || '画板')) {
+          name.text(obj.name || '画板')
+        }
+        if (name.fill() !== textInk()) {
+          name.fill(textInk())
+        }
+      }
+      bgRect?.fill(boardFill())
     }
   }
 

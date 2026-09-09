@@ -1,0 +1,156 @@
+// 创作助手流程(PRD §7 首条 Agent 用例 A):
+//   显式引用一张图 → 提出需求 → 计划卡 → 服务端自动准备蒙版(最多一次)→
+//   等待用户在画布检查蒙版并点击蒙版栏"抠图" → 结果落位 + 结果卡。
+// 边界:聊天侧任何入口都不绕过"抠图"按钮;"检查主体选区"只定位源图与已有蒙版;
+// 刷新后从服务端会话恢复状态,不自动重提、不二次识别。
+
+import { ensureAsset, objectThumbUrl } from './asset-util.js'
+
+/**
+ * @param {{
+ *   docStore: any,
+ *   chat: any,
+ *   fetchImpl?: typeof fetch,
+ * }} options
+ */
+export function createAgentFlow({ docStore, chat, fetchImpl = (...args) => fetch(...args) }) {
+  /** @param {string} path @param {RequestInit} [init] */
+  async function api(path, init) {
+    const res = await fetchImpl(path, init)
+    const body = await res.json().catch(() => ({}))
+    return { ok: res.ok, status: res.status, body }
+  }
+
+  /**
+   * 助手消息入口(底部输入区"创作助手"模式)。
+   * @param {{ request: string, refObjId?: string | null }} input
+   */
+  async function send({ request, refObjId }) {
+    const text = request.trim()
+    if (!text) {
+      return { ok: false }
+    }
+    chat.addUser(text)
+    const refObj = refObjId ? docStore.doc.objects[refObjId] : null
+    let assetId
+    if (refObj && refObj.kind === 'image') {
+      try {
+        chat.addSystem('正在引用所选图片…')
+        const asset = await ensureAsset(refObj)
+        assetId = asset.id
+      } catch (err) {
+        chat.addError(`引用图片失败:${err instanceof Error ? err.message : String(err)}`)
+        return { ok: false }
+      }
+    }
+    const created = await api('/api/agent/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ docId: docStore.doc.id, assetId, request: text }),
+    })
+    if (created.status === 422) {
+      // 零工具调用的澄清路径:缺引用 / 超范围 / 含糊
+      chat.addError(created.body.error || '这个请求需要先澄清,助手没有执行任何操作。')
+      return { ok: false }
+    }
+    if (!created.ok) {
+      chat.addError(created.body.error || `助手服务不可用(HTTP ${created.status})`)
+      return { ok: false }
+    }
+    const session = created.body.session
+    chat.addPlanCard(session.id, session.plan, text, refObj ? objectThumbUrl(refObj) : '')
+    chat.addSystem(
+      `计划已就绪(${session.plannedBy === 'model' ? '模型规划' : '规则规划'}),准备蒙版中…`,
+      // 挂到同会话,后续状态更新合并展示
+    )
+    chat.updateSession(session.id, { planObjId: refObjId })
+    return prepareMask(session.id, refObjId)
+  }
+
+  /**
+   * 准备蒙版(幂等:服务端只在 planned 状态识别一次)。
+   * @param {string} sessionId
+   * @param {string | null | undefined} refObjId
+   */
+  async function prepareMask(sessionId, refObjId) {
+    const prepared = await api(`/api/agent/sessions/${sessionId}/prepare`, { method: 'POST' })
+    const session = prepared.body?.session
+    if (!prepared.ok) {
+      chat.addError(prepared.body?.error || '主体识别失败,可稍后重试')
+      return { ok: false }
+    }
+    if (session.status === 'waiting_mask') {
+      chat.updateSession(sessionId, {
+        waitingMask: true,
+        objId: refObjId,
+        maskUrl: prepared.body?.urls?.original,
+      })
+      chat.addSystem('蒙版已就绪。请在画布检查主体选区,点击蒙版栏"抠图"继续。')
+      return { ok: true, waiting: true }
+    }
+    if (session.status === 'completed') {
+      // 已完成(恢复场景):补结果卡
+      markCompleted(sessionId, session.resultAssetId)
+      return { ok: true, completed: true }
+    }
+    if (session.status === 'failed') {
+      chat.addError(session.error || '主体识别失败')
+      return { ok: false }
+    }
+    return { ok: true }
+  }
+
+  /**
+   * 用户点击蒙版栏"抠图"后,由 cutout 流程回调:回写结果。
+   * @param {string} sessionId
+   * @param {string} assetUrl
+   * @param {string} [objId]
+   */
+  function markCompleted(sessionId, assetUrl, objId) {
+    chat.updateSession(sessionId, { waitingMask: false, completed: true })
+    chat.addResultCard({
+      objId,
+      assetUrl: assetUrl || '',
+      sourceLabel: '对话引用图片',
+      sessionId,
+    })
+  }
+
+  /** 刷新/重启恢复(PRD A11):以服务端会话校准对话卡,不重提、不二次识别。 */
+  async function recover() {
+    try {
+      const res = await fetchImpl(
+        `/api/agent/sessions?docId=${encodeURIComponent(docStore.doc.id)}`,
+      )
+      if (!res.ok) {
+        return
+      }
+      const { sessions } = await res.json()
+      for (const session of sessions || []) {
+        const known = (docStore.doc.chat || []).find((/** @type {any} */ m) => m.sessionId === session.id)
+        if (!known) {
+          // 有会话历史但消息缺失(如保存失败):重建计划卡
+          chat.addPlanCard(session.id, session.plan, session.request)
+        }
+        const objId = known?.objId || known?.planObjId
+        if (session.status === 'waiting_mask') {
+          chat.updateSession(session.id, {
+            waitingMask: true,
+            objId,
+            maskUrl: session.maskAssetId ? `/assets/${session.maskAssetId}/original.png` : undefined,
+          })
+        } else if (session.status === 'completed') {
+          markCompleted(
+            session.id,
+            session.resultAssetId ? `/assets/${session.resultAssetId}/t256.webp` : '',
+            objId,
+          )
+        }
+      }
+    } catch {
+      // 恢复失败不阻塞编辑
+    }
+  }
+
+  return { send, recover, markCompleted }
+}
