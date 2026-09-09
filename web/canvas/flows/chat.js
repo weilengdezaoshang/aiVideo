@@ -203,11 +203,7 @@ export function createChat({ docStore, container, actions = {} }) {
     })
     card.append(steps)
     card.append(
-      el(
-        'div',
-        'plan-meta',
-        `源图 1 张 · 输出 1 张 · 需要你确认蒙版${entry.plan?.plannedBy === 'model' ? '' : ''}`,
-      ),
+      el('div', 'plan-meta', '源图 1 张 · 输出 1 张 · 需要你确认蒙版'),
     )
     // 等待蒙版:提供"检查主体选区"入口(仅定位,不绕过抠图按钮,PRD §7)
     if (entry.waitingMask && entry.objId) {

@@ -153,6 +153,10 @@ export function createObjectLayer(options) {
         perfectDrawEnabled: false,
       })
       group.add(imageNode)
+      // 组内方向标签在发布后保留(图片标签在左上,PRD §4.2)
+      if (obj.directionTitle) {
+        group.add(directionChip(obj.directionTitle, obj.width))
+      }
       if (obj.kind === 'video') {
         const playIcon = new Konva.Text({
           text: '▶',

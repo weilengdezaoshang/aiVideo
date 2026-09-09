@@ -1049,7 +1049,7 @@ html.sl-theme-dark {
   align-items: center;
   gap: 4px;
   position: absolute;
-  top: 12px;
+  top: 64px; /* 固定顶栏(52px)之下,避免遮挡 */
   right: 12px;
   padding: 5px 12px;
   border: 1px solid var(--studio-hairline);

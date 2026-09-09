@@ -38,12 +38,24 @@ export function initObjectActions({
   function refresh() {
     const selection = getSelection()
     const single = selection.length === 1 ? getDocStore()?.doc.objects[selection[0]] : null
-    if (!single || single.kind === 'placeholder') {
+    if (
+      !single ||
+      single.kind === 'placeholder' ||
+      // 蒙版 / 重绘栏显示期间不呈现操作栏(避免浮层叠浮层)
+      !/** @type {HTMLElement} */ (document.querySelector('#cutout-bar')).hidden ||
+      !/** @type {HTMLElement} */ (document.querySelector('#inpaint-bar')).hidden
+    ) {
       bar.hidden = true
       return
     }
+    const hasFile = single.kind === 'image' || single.kind === 'video'
     addChatBtn.hidden = !isImageLike(single)
     cutoutBtn.hidden = !isImageLike(single)
+    downloadBtn.hidden = !hasFile // 画板/文字没有可下载的原文件(PRD §8)
+    if (downloadBtn.hidden && addChatBtn.hidden && cutoutBtn.hidden) {
+      bar.hidden = true
+      return
+    }
     // 位置:贴对象下方,左右夹紧画布安全边界(PRD §4.1)
     const cam = engine.getCam()
     const screen = engine.worldToScreen({ x: single.x, y: single.y })

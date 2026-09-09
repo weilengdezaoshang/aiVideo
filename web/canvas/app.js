@@ -428,8 +428,7 @@ async function bootDocument() {
   })
   library.attachDropTarget(engine)
   libraryDrawer = library
-  // 顶部「素材库」按钮(导入资产入口之一)
-  $('#library-open').addEventListener('click', () => libraryDrawer?.open())
+  // 顶部「素材库」按钮的开关逻辑由 library.js 自管(避免重复绑定导致抽屉关不上)
 
   // 选中对象操作栏
   objectActions = initObjectActions({
@@ -928,12 +927,25 @@ function renameBoard(objId) {
 /* ---------- 局部重绘 UI(保留已验证能力) ---------- */
 
 const inpaintBar = $('#inpaint-bar')
+let inpaintBarActive = false
+let maskBarActive = false
+
+/** 底部浮层互斥:输入区在重绘/蒙版栏显示期间让位(PRD §4.1 安全区) */
+function syncBottomPanels() {
+  $('#composer').hidden = inpaintBarActive || maskBarActive
+}
+
+// 蒙版栏由 cutout 会话内部开关,通过事件通知输入区
+document.addEventListener('gencanvas:maskmode', (/** @type {Event} */ ev) => {
+  maskBarActive = Boolean((/** @type {CustomEvent} */ (ev)).detail?.active)
+  syncBottomPanels()
+})
 
 /** @param {boolean} active */
 function setInpaintUi(active) {
+  inpaintBarActive = active
   inpaintBar.hidden = !active
-  // 重绘工具栏与输入区同处底部:互斥显示
-  $('#composer').hidden = active
+  syncBottomPanels()
 }
 
 $('#inpaint-brush-size').addEventListener('input', (e) => {
