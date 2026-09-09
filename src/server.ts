@@ -1,15 +1,20 @@
 import express from 'express'
 import path from 'node:path'
+import { randomUUID } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { applyConfigPatch, loadConfig, publicConfig, saveConfigPatch } from './config.js'
 import type { AppConfig, ConfigPatch } from './config.js'
 import { logger } from './logger.js'
 import { AssetStore } from './assets.js'
-import { DocumentStore } from './documents.js'
+import { DocumentConflictError, DocumentStore } from './documents.js'
 import { JobManager } from './services/job-manager.js'
+import { planDirections } from './services/direction-planner.js'
+import { AgentStore } from './services/agent/agent-store.js'
+import { planAgentAction } from './services/agent/agent-planner.js'
 import {
   CloudImagesProvider,
   hasChinese,
+  resolveCloudImageModel,
   translateToEnglish,
 } from './services/providers/cloud-provider.js'
 import { ComfyUIProvider } from './services/providers/comfyui-provider.js'
@@ -19,6 +24,8 @@ import { Store } from './store.js'
 import { classifyError, estimateCostCny, promptHash, TraceStore } from './traces.js'
 import type { BackendStatus, Job } from './types.js'
 import { parseGenParams, parseInitImage, parseMaskImage } from './validate.js'
+import { RembgCutoutProvider } from './services/cutout/rembg-provider.js'
+import { applyCutoutMask } from './services/cutout/apply-mask.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const rootDir = path.resolve(__dirname, '..')
@@ -56,8 +63,14 @@ let provider = buildProvider(config)
 const dataDir = path.join(rootDir, 'data')
 const store = new Store(path.join(dataDir, 'images'), path.join(dataDir, 'history.json'))
 const assets = new AssetStore(path.join(dataDir, 'assets'))
+const cutout = new RembgCutoutProvider({
+  serviceUrl: process.env.CUTOUT_SERVICE_URL || 'http://127.0.0.1:7100',
+  model: process.env.CUTOUT_MODEL || 'birefnet-portrait',
+})
 const documents = new DocumentStore(path.join(dataDir, 'documents'))
 const jobs = new JobManager(provider, store, path.join(dataDir, 'jobs.json'))
+// Agent 会话(用例 A):计划与人工暂停点跨重启可恢复
+const agentSessions = new AgentStore(path.join(dataDir, 'agent-sessions.json'))
 // 生成链路追踪(PRD 目标:质量可评测、行为可追踪)
 const traces = new TraceStore(path.join(dataDir, 'traces.jsonl'))
 
@@ -194,8 +207,20 @@ app.post('/api/config', async (req, res) => {
     return res.status(500).json({ error: `配置写入失败:${(err as Error).message}` })
   }
   const previousProvider = provider.name
-  config = patch.config
-  const switched = patch.filePatch.provider !== undefined || patch.filePatch.comfyUrl !== undefined
+  config = loadConfig(rootDir)
+  for (const field of Object.keys(patch.filePatch) as Array<keyof typeof patch.filePatch>) {
+    if (config[field] !== patch.filePatch[field] && !patch.envOverridden.includes(field)) {
+      patch.envOverridden.push(field)
+    }
+  }
+  const switched = [
+    'provider',
+    'comfyUrl',
+    'cloudVendor',
+    'cloudBaseUrl',
+    'cloudModel',
+    'imageApiKey',
+  ].some((field) => field in patch.filePatch)
   if (switched) {
     provider = buildProvider(config)
     jobs.setProvider(provider)
@@ -221,7 +246,7 @@ app.post('/api/config/test', async (req, res) => {
   if (!candidate.ok) {
     return res.status(400).json({ error: candidate.error })
   }
-  const merged = { ...config, ...candidate.filePatch }
+  const merged = candidate.config
   if (merged.provider === 'cloud' && !merged.imageApiKey) {
     // status() 不发网络请求(避免计费),Key 缺失在这里直接给出结论
     return res.json({ ok: false, detail: '未配置图像 API Key', provider: 'cloud' })
@@ -257,7 +282,12 @@ app.post('/api/generate', async (req, res) => {
   }
   // 提示词中译英(可评测):仅云端 + 配置了文本模型 + 含中文时触发;
   // 确定性翻译不改写语义;失败降级原文,不阻塞生成。
-  if (provider.name === 'cloud' && config.cloudTextModel && hasChinese(parsed.params.prompt)) {
+  if (
+    provider.name === 'cloud' &&
+    config.cloudVendor !== 'aliyun' &&
+    config.cloudTextModel &&
+    hasChinese(parsed.params.prompt)
+  ) {
     try {
       const sourcePrompt = parsed.params.prompt
       parsed.params.prompt = await translateToEnglish({
@@ -283,6 +313,14 @@ app.post('/api/generate', async (req, res) => {
     typeof clientRefRaw === 'string' && clientRefRaw.trim()
       ? clientRefRaw.trim().slice(0, 64)
       : undefined
+  if (provider.name === 'cloud' && parsed.params.kind === 'image') {
+    // 队列、历史和追踪记录必须与实际发给上游的模型一致。
+    parsed.params.model = resolveCloudImageModel(
+      config.cloudVendor,
+      config.cloudModel,
+      Boolean(initParsed.image && !maskParsed.mask),
+    )
+  }
   const job = jobs.createJob(parsed.params, initParsed.image, maskParsed.mask, clientRef)
   logger.info('已接受生成任务', {
     jobId: job.id,
@@ -318,6 +356,167 @@ app.delete('/api/jobs/:id', (req, res) => {
   return res.json({ job })
 })
 
+// 四方向生成(PRD §5):一个需求 → 规划器输出四条结构化方向 → 四个独立任务(同组)。
+// 每方向一个 jobId,前端四占位同步呈现;服务端只保证"同组同源、方向互异"。
+app.post('/api/generate/group', async (req, res) => {
+  if (jobs.listActive().length + 4 > MAX_ACTIVE_JOBS) {
+    return res.status(429).json({ error: `队列已满(${MAX_ACTIVE_JOBS} 个进行中任务),请稍后再试` })
+  }
+  const body = (req.body ?? {}) as Record<string, unknown>
+  const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : ''
+  if (!prompt) {
+    return res.status(400).json({ error: '提示词(prompt)不能为空' })
+  }
+  if (prompt.length > 4000) {
+    return res.status(400).json({ error: '提示词过长(上限 4000 字符)' })
+  }
+  const clientRefs = Array.isArray(body.clientRefs) ? body.clientRefs : []
+  if (
+    clientRefs.length !== 4 ||
+    clientRefs.some((r) => typeof r !== 'string' || !r.trim() || r.length > 64)
+  ) {
+    return res.status(400).json({ error: 'clientRefs 必须是 4 个非空字符串(每个 ≤64 字符)' })
+  }
+  const plan = planDirections(prompt)
+  const groupId = randomUUID()
+  const slots = []
+  for (const direction of plan.directions) {
+    const parsed = parseGenParams({
+      ...body,
+      prompt: direction.prompt,
+      batchCount: 1,
+      seed: -1,
+    })
+    if (!parsed.ok) {
+      return res.status(400).json({ error: parsed.error })
+    }
+    if (provider.name === 'cloud' && parsed.params.kind === 'image') {
+      parsed.params.model = resolveCloudImageModel(config.cloudVendor, config.cloudModel, false)
+    }
+    const clientRef = (clientRefs[direction.slot] as string).trim().slice(0, 64)
+    const job = jobs.createJob(parsed.params, undefined, undefined, clientRef, {
+      groupId,
+      slot: direction.slot,
+      directionTitle: direction.title,
+    })
+    slots.push({
+      slot: direction.slot,
+      title: direction.title,
+      dimension: direction.dimension,
+      prompt: direction.prompt,
+      jobId: job.id,
+      clientRef,
+    })
+    logger.info('四方向任务已入组', { groupId, slot: direction.slot, jobId: job.id })
+  }
+  return res.status(202).json({
+    groupId,
+    subject: plan.subject,
+    constraints: plan.constraints,
+    slots,
+  })
+})
+
+// Agent 会话(用例 A):显式引用 + 请求 → 计划;没有引用时不执行(PRD §7)
+app.post('/api/agent/sessions', async (req, res) => {
+  const body = (req.body ?? {}) as Record<string, unknown>
+  const docId = typeof body.docId === 'string' ? body.docId : ''
+  const assetId = typeof body.assetId === 'string' ? body.assetId.trim() : ''
+  const request = typeof body.request === 'string' ? body.request.trim().slice(0, 4000) : ''
+  if (!docId) {
+    return res.status(400).json({ error: '缺少 docId' })
+  }
+  if (!request) {
+    return res.status(400).json({ error: '请求内容(request)不能为空' })
+  }
+  if (!assetId) {
+    // 零工具调用:缺显式引用时先要求选图
+    return res.status(422).json({
+      error: '请先在画布选择一张图片,点"添加到对话"后再让助手执行',
+      reason: 'need_reference',
+    })
+  }
+  const asset = assets.get(assetId)
+  if (!asset || asset.kind !== 'image') {
+    return res.status(404).json({ error: '引用的图片资产不存在' })
+  }
+  // 模型规划:与中译英同一开关条件(云端文本模型可用时);失败降级规则规划
+  const useModel =
+    provider.name === 'cloud' && config.cloudVendor !== 'aliyun' && Boolean(config.cloudTextModel)
+  const plan = await planAgentAction(request, {
+    apiKey: useModel ? config.imageApiKey : undefined,
+    baseUrl: useModel ? config.cloudBaseUrl : undefined,
+    model: useModel ? config.cloudTextModel : undefined,
+  })
+  if (!plan.ok) {
+    return res.status(422).json({ error: plan.message, reason: plan.reason })
+  }
+  const session = agentSessions.create({
+    docId,
+    assetId,
+    assetExt: asset.ext,
+    request,
+    plan: plan.plan,
+    plannedBy: plan.plannedBy,
+  })
+  logger.info('Agent 会话已创建', { sessionId: session.id, plannedBy: plan.plannedBy })
+  return res.status(201).json({ session })
+})
+
+app.get('/api/agent/sessions', (req, res) => {
+  const docId = typeof req.query.docId === 'string' ? req.query.docId : ''
+  if (!docId) {
+    return res.status(400).json({ error: '缺少 docId 查询参数' })
+  }
+  return res.json({ sessions: agentSessions.listByDoc(docId) })
+})
+
+app.get('/api/agent/sessions/:id', (req, res) => {
+  const session = agentSessions.get(req.params.id)
+  if (!session) {
+    return res.status(404).json({ error: 'Agent 会话不存在' })
+  }
+  return res.json({ session })
+})
+
+// 准备蒙版(自动、最多一次):识别成功进入 waiting_mask;
+// 重复调用直接返回现态(恢复后不自动识别第二次,PRD §7)
+app.post('/api/agent/sessions/:id/prepare', async (req, res) => {
+  const session = agentSessions.get(req.params.id)
+  if (!session) {
+    return res.status(404).json({ error: 'Agent 会话不存在' })
+  }
+  if (session.status === 'waiting_mask' || session.status === 'completed') {
+    return res.json({ session })
+  }
+  if (session.status !== 'planned') {
+    return res.status(409).json({ error: `会话状态 ${session.status} 不允许准备蒙版`, session })
+  }
+  const source = await assets.read(session.assetId)
+  if (!source) {
+    agentSessions.update(session.id, { status: 'failed', error: '源图资产已不存在' })
+    return res.status(404).json({ error: '源图资产已不存在' })
+  }
+  agentSessions.update(session.id, { status: 'preparing' })
+  try {
+    const contentType = source.record.ext === 'jpg' ? 'image/jpeg' : `image/${source.record.ext}`
+    const result = await cutout.createMask(source.data, contentType, AbortSignal.timeout(120_000))
+    const mask = await assets.save(result.data, 'png', 'image')
+    const updated = agentSessions.update(session.id, {
+      status: 'waiting_mask',
+      maskAssetId: mask.id,
+    })
+    return res.json({ session: updated, mask, urls: assets.urls(mask.id) })
+  } catch (err) {
+    logger.warn('Agent 蒙版准备失败', { sessionId: session.id, err })
+    const updated = agentSessions.update(session.id, {
+      status: 'failed',
+      error: (err as Error).message || '主体识别失败',
+    })
+    return res.status(502).json({ error: (err as Error).message, session: updated })
+  }
+})
+
 app.get('/api/history', (req, res) => {
   const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 100))
   const kind = req.query.kind === 'image' || req.query.kind === 'video' ? req.query.kind : undefined
@@ -347,6 +546,17 @@ app.put('/api/images/:id/star', async (req, res) => {
     return res.status(404).json({ error: '图片不存在' })
   }
   return res.json({ image: record })
+})
+
+// 资产列表("导入资产"抽屉):新的在前,可按类型过滤
+app.get('/api/assets', (req, res) => {
+  const kind = req.query.kind === 'video' ? 'video' : req.query.kind === 'image' ? 'image' : undefined
+  const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 200))
+  const items = assets.list(kind, limit).map((record) => ({
+    asset: record,
+    urls: assets.urls(record.id),
+  }))
+  return res.json({ assets: items })
 })
 
 // 二进制资产上传:画布参考图 / 蒙版等大文件走原始字节,替换 base64 JSON,避开 body 限制
@@ -381,13 +591,85 @@ app.get('/api/assets/:id', (req, res) => {
   return res.json({ asset: record, urls: assets.urls(record.id) })
 })
 
+// 主体识别只生成可编辑 Mask，不改变原图；模型由 CutoutProvider 隔离。
+app.post('/api/cutout/detect/:assetId', async (req, res) => {
+  const source = await assets.read(req.params.assetId)
+  if (!source || source.record.kind !== 'image') {
+    return res.status(404).json({ error: '原图资产不存在' })
+  }
+  try {
+    const contentType = source.record.ext === 'jpg' ? 'image/jpeg' : `image/${source.record.ext}`
+    const result = await cutout.createMask(source.data, contentType, AbortSignal.timeout(120_000))
+    const mask = await assets.save(result.data, 'png', 'image')
+    return res.json({
+      mask,
+      urls: assets.urls(mask.id),
+      provider: cutout.name,
+      model: result.model,
+    })
+  } catch (err) {
+    logger.warn('主体识别失败', { assetId: req.params.assetId, err })
+    return res.status(502).json({ error: (err as Error).message })
+  }
+})
+
+// 用户确认编辑后的 Mask 后执行像素合成；无需调用生成大模型。
+// Agent 用例 A 的显式提交走同一端点:?sessionId= 标记本次提交来自会话,
+// 服务端校验会话必须处于 waiting_mask 且引用一致,完成后回写结果资产。
+app.post(
+  '/api/cutout/apply/:assetId',
+  express.raw({ type: () => true, limit: '20mb' }),
+  async (req, res) => {
+    const source = await assets.read(req.params.assetId)
+    if (!source || source.record.kind !== 'image') {
+      return res.status(404).json({ error: '原图资产不存在' })
+    }
+    const sessionId = typeof req.query.sessionId === 'string' ? req.query.sessionId : ''
+    let session = undefined
+    if (sessionId) {
+      session = agentSessions.get(sessionId)
+      if (!session) {
+        return res.status(404).json({ error: 'Agent 会话不存在' })
+      }
+      if (session.status !== 'waiting_mask' || session.assetId !== req.params.assetId) {
+        return res.status(409).json({ error: 'Agent 会话不在等待蒙版确认状态' })
+      }
+    }
+    const mask = req.body as Buffer | undefined
+    if (!Buffer.isBuffer(mask) || mask.length === 0) {
+      return res.status(400).json({ error: '请求体必须是 PNG Mask' })
+    }
+    try {
+      const output = await applyCutoutMask(source.data, mask)
+      const asset = await assets.save(output, 'png', 'image')
+      const savedMask = await assets.save(mask, 'png', 'image')
+      if (session) {
+        agentSessions.update(session.id, {
+          status: 'completed',
+          resultAssetId: asset.id,
+          resultExt: asset.ext,
+        })
+      }
+      return res.status(201).json({ asset, mask: savedMask, urls: assets.urls(asset.id) })
+    } catch (err) {
+      return res.status(400).json({ error: (err as Error).message })
+    }
+  },
+)
+
 // 画布文档 CRUD:客户端防抖全量快照保存;POST 保存路径同时兼容 sendBeacon 冲刷
 app.get('/api/documents', async (_req, res) => {
   res.json({ documents: await documents.listAll() })
 })
 
+// 幂等创建(PRD §3 A01):同一 Idempotency-Key 只产出一份文档,
+// 连续点击 / 超时重试 / 丢响应后重发都返回第一次的文档
 app.post('/api/documents', async (req, res) => {
-  const doc = await documents.create((req.body as Record<string, unknown>)?.name)
+  const key = req.header('idempotency-key')?.trim()
+  if (key && key.length > 128) {
+    return res.status(400).json({ error: 'Idempotency-Key 过长(上限 128 字符)' })
+  }
+  const doc = await documents.create((req.body as Record<string, unknown>)?.name, key || undefined)
   return res.status(201).json({ document: doc })
 })
 
@@ -407,8 +689,22 @@ app.post('/api/documents/:id', async (req, res) => {
     }
     return res.json({ document: doc })
   } catch (err) {
+    if (err instanceof DocumentConflictError) {
+      // 乐观并发冲突(PRD §9 A13):不覆盖服务端新结果,把服务端版本交还客户端
+      return res.status(409).json({ error: err.message, document: err.serverDoc })
+    }
     return res.status(400).json({ error: (err as Error).message })
   }
+})
+
+// 重命名:只动名称,不需要全量快照,也绕开内容冲突
+app.put('/api/documents/:id/rename', async (req, res) => {
+  const name = (req.body as Record<string, unknown> | undefined)?.name
+  const doc = await documents.rename(req.params.id, name)
+  if (!doc) {
+    return res.status(404).json({ error: '文档不存在' })
+  }
+  return res.json({ document: doc })
 })
 
 app.delete('/api/documents/:id', async (req, res) => {
@@ -451,6 +747,16 @@ app.get('/api/events', (req, res) => {
   })
 })
 
+// 页面路由(PRD §3):介绍页 / · 工作台 /workspace · 编辑器 /canvas?doc=<id> ·
+// 旧版实验入口 /legacy。静态目录兜底 /index.html 等直链。
+const sendPage = (relPath: string) => (_req: express.Request, res: express.Response) => {
+  res.sendFile(path.join(rootDir, 'web', relPath))
+}
+app.get('/', sendPage(path.join('landing', 'index.html')))
+app.get('/workspace', sendPage(path.join('workspace', 'index.html')))
+app.get('/canvas', sendPage(path.join('canvas', 'index.html')))
+app.get('/legacy', sendPage('index.html'))
+
 app.use('/images', express.static(path.join(dataDir, 'images'), { maxAge: '1d' }))
 app.use('/assets', express.static(path.join(dataDir, 'assets'), { maxAge: '1y', immutable: true }))
 app.use(express.static(path.join(rootDir, 'web')))
@@ -481,9 +787,10 @@ app.use(
 await store.init()
 await assets.init()
 await documents.init()
+await agentSessions.init()
 await jobs.restore()
 await refreshStatus()
-const server = app.listen(config.port, () => {
+const server = app.listen(config.port, '127.0.0.1', () => {
   logger.info(`SwarmUI-MVP 已启动: http://127.0.0.1:${config.port}`)
   logger.info(
     `provider=${provider.name}${config.provider === 'comfyui' ? ` comfyUrl=${config.comfyUrl}` : ''}`,
@@ -494,7 +801,7 @@ const server = app.listen(config.port, () => {
 function shutdown(signal: string): void {
   logger.info(`收到 ${signal},正在关闭`)
   // 优雅关闭:任务快照与进行中的请求先冲刷再退出
-  void jobs.flush().finally(() => {
+  void Promise.all([jobs.flush(), agentSessions.flush()]).finally(() => {
     server.close(() => {
       logger.info('服务已关闭')
       process.exit(0)
