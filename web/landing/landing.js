@@ -5,90 +5,27 @@
 //   - 后台/离开(pagehide)取消动画与观察;减少动态偏好即时取消;
 //   - 「查看示例画布」只创建明确标识的本机示例(幂等 key 固定),不调用模型。
 
-/* ---------- 内联 SVG 作品(本地生成,无外部资源、无模型调用) ---------- */
+/* ---------- 展示素材(PRD §3.1:使用已有 Unsplash 展示素材与实际编辑器截图) ---------- */
 
-const svgUrl = (svg) =>
-  `data:image/svg+xml;utf8,${encodeURIComponent(svg.replace(/\s+/g, ' ').trim()).replace(/'/g, '%27')}`
-
-/** @param {string} stops @param {string} shapes */
-const art = (stops, shapes) =>
-  svgUrl(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 1000'>
-    <defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>${stops}</linearGradient></defs>
-    <rect width='1600' height='1000' fill='url(#g)'/>${shapes}</svg>`)
-
-const ocean = art(
-  `<stop offset='0' stop-color='#0b3d5c'/><stop offset='.55' stop-color='#1f7a99'/><stop offset='1' stop-color='#e8d9b8'/>`,
-  `<circle cx='1180' cy='260' r='86' fill='#f6e9c8' opacity='.92'/>
-   <path d='M0 640 Q400 560 800 640 T1600 640 V1000 H0 Z' fill='#0d2f45' opacity='.85'/>
-   <path d='M0 740 Q400 660 800 740 T1600 740 V1000 H0 Z' fill='#0a2436' opacity='.9'/>
-   <path d='M0 560 Q400 500 800 560 T1600 560' stroke='#bfe3ea' stroke-width='6' fill='none' opacity='.5'/>`,
-)
-
-const city = art(
-  `<stop offset='0' stop-color='#2b2f3a'/><stop offset='1' stop-color='#c98a4b'/>`,
-  `<rect x='120' y='430' width='180' height='570' fill='#1d2027'/>
-   <rect x='360' y='300' width='150' height='700' fill='#262a34'/>
-   <rect x='560' y='520' width='220' height='480' fill='#181b22'/>
-   <rect x='840' y='240' width='170' height='760' fill='#22262f'/>
-   <rect x='1060' y='470' width='240' height='530' fill='#1a1d25'/>
-   <rect x='1350' y='350' width='160' height='650' fill='#262a34'/>
-   <g fill='#f3d9a4' opacity='.85'>
-     <rect x='390' y='340' width='16' height='16'/><rect x='430' y='340' width='16' height='16'/>
-     <rect x='880' y='290' width='16' height='16'/><rect x='920' y='330' width='16' height='16'/>
-     <rect x='1100' y='520' width='16' height='16'/><rect x='1390' y='400' width='16' height='16'/>
-   </g>`,
-)
-
-const flower = art(
-  `<stop offset='0' stop-color='#5a2540'/><stop offset='.6' stop-color='#a34a63'/><stop offset='1' stop-color='#e8b88a'/>`,
-  `<g transform='translate(800 520)'>
-     <g fill='#f2d7dd'>
-       <ellipse rx='70' ry='190' transform='rotate(0)'/><ellipse rx='70' ry='190' transform='rotate(45)'/>
-       <ellipse rx='70' ry='190' transform='rotate(90)'/><ellipse rx='70' ry='190' transform='rotate(135)'/>
-     </g>
-     <circle r='86' fill='#e8b455'/>
-     <circle r='46' fill='#a3552f'/>
-   </g>
-   <g fill='#7c2f47' opacity='.7'>
-     <circle cx='300' cy='220' r='46'/><circle cx='1330' cy='820' r='60'/><circle cx='1240' cy='160' r='30'/>
-   </g>`,
-)
-
-const dune = art(
-  `<stop offset='0' stop-color='#7a4a2b'/><stop offset='1' stop-color='#e6c68f'/>`,
-  `<path d='M0 700 Q500 520 1000 680 T1600 640 V1000 H0 Z' fill='#5d3a22'/>
-   <path d='M0 820 Q600 680 1600 800 V1000 H0 Z' fill='#43291a'/>
-   <circle cx='420' cy='240' r='70' fill='#f7e7c3' opacity='.9'/>`,
-)
-
-const tide = art(
-  `<stop offset='0' stop-color='#123f4d'/><stop offset='1' stop-color='#9ec8c3'/>`,
-  `<g stroke='#eef7f2' fill='none' opacity='.6'>
-     <path d='M0 300 Q400 220 800 300 T1600 300' stroke-width='8'/>
-     <path d='M0 520 Q400 440 800 520 T1600 520' stroke-width='6'/>
-     <path d='M0 740 Q400 660 800 740 T1600 740' stroke-width='4'/>
-   </g>`,
-)
-
-const bloom = art(
-  `<stop offset='0' stop-color='#33445f'/><stop offset='1' stop-color='#d9a7c7'/>`,
-  `<g fill='#f4e3ef' opacity='.9'>
-     <circle cx='520' cy='420' r='150'/><circle cx='700' cy='560' r='110'/><circle cx='380' cy='600' r='90'/>
-   </g>
-   <circle cx='560' cy='500' r='60' fill='#d9856b'/>`,
-)
+const ASSETS = {
+  ocean: '/landing/assets/ocean.jpg',
+  architecture: '/landing/assets/architecture.jpg',
+  flower: '/landing/assets/flower.jpg',
+  plant: '/landing/assets/plant.jpg',
+  editor: '/landing/assets/editor.jpg',
+}
 
 const SCENES = [
-  { name: '海面之上', caption: '海面之上 · 远景留白把环境交还给光', art: ocean },
-  { name: '城市几何', caption: '城市几何 · 方向光切割体块的秩序', art: city },
-  { name: '花与光', caption: '花与光 · 特写聚焦最具辨识度的细节', art: flower },
+  { name: '海面之上', caption: '海面之上 · 远景留白,把环境交还给光(演示素材)', art: ASSETS.ocean },
+  { name: '大漠几何', caption: '大漠几何 · 体块与方向光的秩序(演示素材)', art: ASSETS.architecture },
+  { name: '花与光', caption: '花与光 · 特写聚焦最具辨识度的细节(演示素材)', art: ASSETS.flower },
 ]
 
 const WORKS = [
-  { title: '沙丘 · 黄昏', caption: '展示图:暖调风景', art: dune },
-  { title: '潮汐 · 线', caption: '展示图:抽象海浪', art: tide },
-  { title: '绽放 · 粉', caption: '展示图:静物花', art: bloom },
-  { title: '城市 · 光', caption: '展示图:建筑几何', art: city },
+  { title: '演示素材 · 建筑', caption: '展示图:建筑与几何', art: ASSETS.architecture },
+  { title: '演示素材 · 花', caption: '展示图:静物花', art: ASSETS.flower },
+  { title: '演示素材 · 海', caption: '展示图:海面肌理', art: ASSETS.ocean },
+  { title: '演示素材 · 绿', caption: '展示图:绿植静物', art: ASSETS.plant },
 ]
 
 /** @param {string} sel @returns {HTMLElement} */
@@ -341,7 +278,7 @@ for (const el of [...workCards, $('#feature-reveal'), ...document.querySelectorA
 
 /* ---------- 查看示例画布:固定幂等 key,只创建一个本机示例 ---------- */
 
-$('#open-example').addEventListener('click', async () => {
+async function openExample() {
   const btn = /** @type {HTMLButtonElement} */ ($('#open-example'))
   const hint = $('#example-hint')
   btn.disabled = true
@@ -363,7 +300,11 @@ $('#open-example').addEventListener('click', async () => {
     hint.hidden = false
     btn.disabled = false
   }
-})
+}
+
+$('#open-example').addEventListener('click', () => void openExample())
+// 点击编辑器截图同样进入示例(PRD §3.1:点击截图或入口进入 example)
+$('#editor-shot').addEventListener('click', () => void openExample())
 
 /* ---------- 离开页面:取消动画与观察,作废未完成的切换 ---------- */
 
