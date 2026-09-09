@@ -1,7 +1,7 @@
 import type { BackendStatus, GenParams, InitImage, ModelInfo, SamplerOptions } from '../../types.js'
 import type { GenContext, GeneratedImage, GenerationProvider } from './provider.js'
 
-export type CloudVendorId = 'zhipu' | 'siliconflow' | 'openai'
+export type CloudVendorId = 'zhipu' | 'siliconflow' | 'openai' | 'aliyun'
 
 /**
  * 云端生图厂商适配(PRD BYOK,§11-4 首批清单):
@@ -20,14 +20,29 @@ export interface CloudVendorProfile {
   defaultBaseUrl: string
   defaultModel: string
   /** 构造请求:返回完整 URL 与请求体 */
-  request(args: { baseUrl: string; model: string; prompt: string; size: string }): {
+  request(args: {
+    baseUrl: string
+    model: string
+    prompt: string
+    size: string
+    negativePrompt?: string
+    seed?: number
+  }): {
     url: string
     body: Record<string, unknown>
   }
   /** 从响应体解析图像(厂商错误形状在此抛中文错误) */
   parse(body: unknown): { url?: string; b64?: string }
   /** 图生图(无蒙版,指令编辑);不支持的厂商不实现 */
-  requestI2I?(args: { baseUrl: string; prompt: string; size: string; initImage: InitImage }): {
+  requestI2I?(args: {
+    baseUrl: string
+    model: string
+    prompt: string
+    size: string
+    negativePrompt?: string
+    seed?: number
+    initImage: InitImage
+  }): {
     url: string
     body: Record<string, unknown>
   }
@@ -39,6 +54,17 @@ export interface CloudVendorProfile {
     initImage: InitImage
     maskImage: InitImage
   }): { url: string; body: Record<string, unknown> }
+}
+
+/** 当前默认文生图模型的参考图编辑使用经实测的 Edit 模型；显式配置的其他模型保持原样。 */
+export function resolveCloudImageModel(
+  vendor: CloudVendorId,
+  model: string,
+  hasReference: boolean,
+): string {
+  return vendor === 'aliyun' && model === 'qwen-image-2.0' && hasReference
+    ? 'qwen-image-edit-plus'
+    : model
 }
 
 /** 是否包含中文(触发中译英的判定) */
@@ -131,6 +157,86 @@ function parseOpenAiLike(body: unknown): { url?: string; b64?: string } {
 }
 
 export const CLOUD_VENDORS: Record<CloudVendorId, CloudVendorProfile> = {
+  aliyun: {
+    id: 'aliyun',
+    label: '阿里云百炼',
+    defaultBaseUrl: 'https://dashscope.aliyuncs.com/api/v1',
+    defaultModel: 'qwen-image-2.0',
+    request: ({ baseUrl, model, prompt, size, negativePrompt, seed }) => {
+      const [width, height] = size.split('x').map(Number)
+      if (!width || !height || width * height < 512 ** 2 || width * height > 2048 ** 2) {
+        throw new Error('百炼文生图尺寸总像素需在 512×512 至 2048×2048 之间,建议先用 1024×1024')
+      }
+      const base = baseUrl.replace(/\/+$/, '')
+      const endpoint = '/services/aigc/multimodal-generation/generation'
+      return {
+        url: base.endsWith(endpoint)
+          ? base
+          : `${base.endsWith('/api/v1') ? base : `${base}/api/v1`}${endpoint}`,
+        body: {
+          model,
+          input: { messages: [{ role: 'user', content: [{ text: prompt }] }] },
+          parameters: {
+            size: `${width}*${height}`,
+            n: 1,
+            prompt_extend: false,
+            watermark: false,
+            negative_prompt: negativePrompt || '',
+            ...(seed !== undefined && seed >= 0 && seed <= 2147483647 ? { seed } : {}),
+          },
+        },
+      }
+    },
+    parse: (body) => {
+      const b = body as {
+        code?: string
+        message?: string
+        output?: { choices?: Array<{ message?: { content?: Array<{ image?: string }> } }> }
+      }
+      if (b?.code) {
+        throw new Error(`百炼 ${b.code}: ${b.message || '生成失败'}`)
+      }
+      const url = b?.output?.choices
+        ?.flatMap((c) => c.message?.content ?? [])
+        .find((c) => typeof c.image === 'string' && c.image)?.image
+      if (!url) {
+        throw new Error(b?.message || '百炼响应中没有生成图片,请检查模型是否支持同步文生图')
+      }
+      return { url }
+    },
+    requestI2I: ({ baseUrl, model, prompt, size, negativePrompt, seed, initImage }) => {
+      const [width, height] = size.split('x').map(Number)
+      if (!width || !height || width * height < 512 ** 2 || width * height > 2048 ** 2) {
+        throw new Error('百炼图像编辑尺寸总像素需在 512×512 至 2048×2048 之间')
+      }
+      const base = baseUrl.replace(/\/+$/, '')
+      const endpoint = '/services/aigc/multimodal-generation/generation'
+      return {
+        url: base.endsWith(endpoint)
+          ? base
+          : `${base.endsWith('/api/v1') ? base : `${base}/api/v1`}${endpoint}`,
+        body: {
+          model,
+          input: {
+            messages: [
+              {
+                role: 'user',
+                content: [{ image: toDataUrl(initImage) }, { text: prompt }],
+              },
+            ],
+          },
+          parameters: {
+            size: `${width}*${height}`,
+            n: 1,
+            prompt_extend: false,
+            watermark: false,
+            negative_prompt: negativePrompt || '',
+            ...(seed !== undefined && seed >= 0 && seed <= 2147483647 ? { seed } : {}),
+          },
+        },
+      }
+    },
+  },
   zhipu: {
     id: 'zhipu',
     label: '智谱 CogView',
@@ -224,7 +330,10 @@ export class CloudImagesProvider implements GenerationProvider {
     if (!this.opts.apiKey) {
       return { ok: false, detail: '未配置图像 API Key(设置中填写后即可生成)' }
     }
-    return { ok: true, detail: `${this.profile.label} · ${this.opts.model}(按张计费)` }
+    return {
+      ok: true,
+      detail: `${this.profile.label} · ${this.opts.model}:已配置 Key,未验证鉴权或额度;请生成 1 张图片验证(按张计费)`,
+    }
   }
 
   async listModels(): Promise<ModelInfo[]> {
@@ -236,7 +345,7 @@ export class CloudImagesProvider implements GenerationProvider {
     return { samplers: ['euler'], schedulers: ['default'] }
   }
 
-  /** 提示词直通文生图。i2i/蒙版:当前三家云 API 均不通用,显式报错交给画布错误卡 */
+  /** 提示词直通文生图；图生图与蒙版按厂商能力选择对应协议。 */
   async generate(
     params: GenParams,
     ctx: GenContext,
@@ -246,6 +355,9 @@ export class CloudImagesProvider implements GenerationProvider {
     const prompt = params.prompt.trim()
     if (!prompt) {
       throw new Error('提示词为空')
+    }
+    if (!this.opts.apiKey) {
+      throw new Error('未配置图像 API Key,请先完成本机配置')
     }
     const signal = AbortSignal.any([ctx.signal, AbortSignal.timeout(this.opts.imageTimeoutMs)])
     const size = `${params.width}x${params.height}`
@@ -268,11 +380,15 @@ export class CloudImagesProvider implements GenerationProvider {
       if (!this.profile.requestI2I) {
         throw new Error(`当前厂商(${this.profile.label})暂不支持参考图,请使用纯文生图`)
       }
-      ctx.onProgress(0.1, '以图生图(FLUX.1-Kontext)')
+      const editModel = resolveCloudImageModel(this.opts.vendor, this.opts.model, true)
+      ctx.onProgress(0.1, `以图生图(${this.profile.label} · ${editModel})`)
       spec = this.profile.requestI2I({
         baseUrl: this.opts.baseUrl,
+        model: editModel,
         prompt,
         size,
+        negativePrompt: params.negativePrompt,
+        seed: ctx.seed,
         initImage,
       })
     } else {
@@ -282,6 +398,8 @@ export class CloudImagesProvider implements GenerationProvider {
         model: this.opts.model,
         prompt,
         size,
+        negativePrompt: params.negativePrompt,
+        seed: ctx.seed,
       })
     }
     const res = await this.fetchImpl(spec.url, {
@@ -298,13 +416,24 @@ export class CloudImagesProvider implements GenerationProvider {
     try {
       payload = JSON.parse(raw)
     } catch {
-      throw new Error(`云端响应不是 JSON(HTTP ${res.status}):${raw.slice(0, 120)}`)
+      throw new Error(`云端响应不是 JSON(HTTP ${res.status}),请检查 API 地址`)
     }
     if (!res.ok) {
-      const b = payload as { error?: { message?: string }; message?: string }
-      throw new Error(b?.error?.message || b?.message || `云端生成失败(HTTP ${res.status})`)
+      const b = payload as { error?: { message?: string }; message?: string; code?: string }
+      const detail = b?.error?.message || b?.message || '云端生成失败'
+      throw new Error(
+        `HTTP ${res.status}${b?.code ? ` ${b.code}` : ''}: ${detail}`.replaceAll(
+          this.opts.apiKey,
+          '[REDACTED]',
+        ),
+      )
     }
-    const parsed = this.profile.parse(payload)
+    let parsed: { url?: string; b64?: string }
+    try {
+      parsed = this.profile.parse(payload)
+    } catch (err) {
+      throw new Error((err as Error).message.replaceAll(this.opts.apiKey, '[REDACTED]'))
+    }
     ctx.onProgress(0.75, '下载图像')
     if (parsed.b64) {
       const data = Buffer.from(parsed.b64, 'base64')

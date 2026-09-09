@@ -1,3 +1,7 @@
 node_modules/
+.venv-cutout/
 data/
 .DS_Store
+.env
+.env.*
+!.env.*.example

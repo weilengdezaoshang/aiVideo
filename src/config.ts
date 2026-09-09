@@ -11,7 +11,7 @@ import type { CloudVendorId } from './services/providers/cloud-provider.js'
 export interface AppConfig {
   provider: 'mock' | 'comfyui' | 'cloud'
   comfyUrl: string
-  /** 云端生图厂商(zhipu/siliconflow/openai) */
+  /** 云端生图厂商(zhipu/siliconflow/openai/aliyun) */
   cloudVendor: CloudVendorId
   /** 云端 API 地址(厂商默认可覆盖,兼容自建网关) */
   cloudBaseUrl: string
@@ -274,9 +274,18 @@ export function applyConfigPatch(
 
   return {
     ok: true,
-    config: { ...current, ...filePatch },
+    config: resolveCloudDefaults({ ...current, ...filePatch }),
     filePatch,
     envOverridden,
+  }
+}
+
+/** 空 API 地址使用当前厂商默认值,与启动读取配置的行为保持一致。 */
+function resolveCloudDefaults(config: AppConfig): AppConfig {
+  return {
+    ...config,
+    cloudBaseUrl: config.cloudBaseUrl || CLOUD_VENDORS[config.cloudVendor].defaultBaseUrl,
+    cloudModel: config.cloudModel || CLOUD_VENDORS[config.cloudVendor].defaultModel,
   }
 }
 

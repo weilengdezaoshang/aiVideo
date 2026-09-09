@@ -7,6 +7,10 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
+    "bailian": "node scripts/start-bailian.mjs",
+    "start:bailian": "node --env-file=.env.bailian.local --import tsx src/server.ts",
+    "cutout": "node scripts/start-cutout.mjs",
+    "bailian:cutout": "node scripts/start-bailian-cutout.mjs",
     "test": "LOG_LEVEL=error node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

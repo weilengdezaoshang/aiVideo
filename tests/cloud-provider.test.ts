@@ -1,7 +1,16 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { CloudImagesProvider } from '../src/services/providers/cloud-provider.js'
+import {
+  CloudImagesProvider,
+  resolveCloudImageModel,
+} from '../src/services/providers/cloud-provider.js'
 import type { GenParams } from '../src/types.js'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
+import { JobManager } from '../src/services/job-manager.js'
+import { Store } from '../src/store.js'
+import type { Job } from '../src/types.js'
 
 const params = (): GenParams => ({
   prompt: '一只戴墨镜的猫',
@@ -55,6 +64,146 @@ function stubFetch(
 }
 
 const pngBytes = Buffer.from('89504e47', 'hex')
+
+const bailianUrl = 'https://ws-test.cn-beijing.maas.aliyuncs.com/api/v1'
+const bailianResult = {
+  output: {
+    choices: [
+      { message: { content: [{ text: 'done' }, { image: 'https://cdn.example/qwen.png' }] } },
+    ],
+  },
+}
+
+function bailian(fetchImpl: typeof fetch, baseUrl = bailianUrl, apiKey = 'sk-test') {
+  return new CloudImagesProvider({
+    vendor: 'aliyun',
+    baseUrl,
+    model: 'qwen-image-2.0',
+    apiKey,
+    imageTimeoutMs: 5000,
+    fetchImpl,
+  })
+}
+
+test('百炼:原生协议、尺寸、种子、单张请求与无鉴权图片下载', async () => {
+  const { impl, calls } = stubFetch([
+    { status: 200, body: bailianResult },
+    { status: 200, body: pngBytes },
+  ])
+  const image = await bailian(impl).generate(params(), ctx)
+  assert.deepEqual(image.data, pngBytes)
+  assert.equal(calls[0].url, `${bailianUrl}/services/aigc/multimodal-generation/generation`)
+  const req = JSON.parse(String(calls[0].init.body))
+  assert.equal(req.model, 'qwen-image-2.0')
+  assert.deepEqual(req.input.messages, [{ role: 'user', content: [{ text: params().prompt }] }])
+  assert.deepEqual(req.parameters, {
+    size: '1024*768',
+    n: 1,
+    prompt_extend: false,
+    watermark: false,
+    negative_prompt: '模糊',
+    seed: 1,
+  })
+  assert.equal(new Headers(calls[0].init.headers).get('Authorization'), 'Bearer sk-test')
+  assert.equal(new Headers(calls[1].init.headers).get('Authorization'), null)
+})
+
+test('百炼:完整 endpoint 与域名两种配置均不会重复拼接路径', async () => {
+  const endpoint = `${bailianUrl}/services/aigc/multimodal-generation/generation`
+  for (const base of [`${endpoint}/`, 'https://ws-test.cn-beijing.maas.aliyuncs.com/']) {
+    const { impl, calls } = stubFetch([
+      { status: 200, body: bailianResult },
+      { status: 200, body: pngBytes },
+    ])
+    await bailian(impl, base).generate(params(), ctx)
+    assert.equal(calls[0].url, endpoint)
+  }
+})
+
+test('百炼:参考图使用多模态编辑协议', async () => {
+  const { impl, calls } = stubFetch([
+    { status: 200, body: bailianResult },
+    { status: 200, body: pngBytes },
+  ])
+  const image = { data: pngBytes, ext: 'png' as const }
+  await bailian(impl).generate(params(), ctx, image)
+
+  const req = JSON.parse(String(calls[0].init.body))
+  assert.equal(req.model, 'qwen-image-edit-plus')
+  assert.match(req.input.messages[0].content[0].image, /^data:image\/png;base64,/)
+  assert.deepEqual(req.input.messages[0].content[1], { text: params().prompt })
+  assert.equal(req.parameters.size, '1024*768')
+  assert.equal(req.parameters.seed, 1)
+})
+
+test('百炼:配置检查零请求;无 Key、不支持蒙版和非法尺寸不请求上游', async () => {
+  const { impl, calls } = stubFetch([])
+  const provider = bailian(impl)
+  assert.match((await provider.status()).detail, /未验证鉴权/)
+  await assert.rejects(bailian(impl, bailianUrl, '').generate(params(), ctx), /未配置/)
+  await assert.rejects(provider.generate({ ...params(), width: 64, height: 64 }, ctx), /尺寸/)
+  const image = { data: pngBytes, ext: 'png' as const }
+  await assert.rejects(provider.generate(params(), ctx, image, image), /暂不支持蒙版/)
+  assert.equal(calls.length, 0)
+})
+
+test('百炼:鉴权错误和 HTTP 200 业务错误均失败且脱敏,不自动重试', async () => {
+  for (const status of [401, 200]) {
+    const { impl, calls } = stubFetch([
+      { status, body: { code: 'InvalidApiKey', message: 'invalid sk-test' } },
+    ])
+    await assert.rejects(bailian(impl).generate(params(), ctx), (err: Error) => {
+      assert.match(err.message, /InvalidApiKey/)
+      assert.ok(!err.message.includes('sk-test'))
+      return true
+    })
+    assert.equal(calls.length, 1)
+  }
+})
+
+test('百炼:缺失图片与下载失败均不能报告成功', async () => {
+  const missing = stubFetch([{ status: 200, body: { output: { choices: [] } } }])
+  await assert.rejects(bailian(missing.impl).generate(params(), ctx), /没有生成图片/)
+  const download = stubFetch([
+    { status: 200, body: bailianResult },
+    { status: 403, body: 'expired' },
+  ])
+  await assert.rejects(bailian(download.impl).generate(params(), ctx), /图像下载失败/)
+})
+
+test('百炼桩响应集成:任务完成、PNG 落盘、历史重新加载', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'aivideo-bailian-'))
+  try {
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',
+      'base64',
+    )
+    const { impl } = stubFetch([
+      { status: 200, body: bailianResult },
+      { status: 200, body: png },
+    ])
+    const store = new Store(path.join(dir, 'images'), path.join(dir, 'history.json'))
+    await store.init()
+    const manager = new JobManager(bailian(impl), store)
+    const done = new Promise<Job>((resolve) =>
+      manager.on('job', (job: Job) => {
+        if (job.status === 'completed' || job.status === 'failed') {
+          resolve(job)
+        }
+      }),
+    )
+    manager.createJob({ ...params(), model: 'qwen-image-2.0' })
+    const job = await done
+    assert.equal(job.status, 'completed', job.error)
+    assert.equal(job.images.length, 1)
+    assert.deepEqual(await readFile(path.join(store.imagesDir, job.images[0].file)), png)
+    const restored = new Store(store.imagesDir, path.join(dir, 'history.json'))
+    await restored.init()
+    assert.equal(restored.list()[0].params.model, 'qwen-image-2.0')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
 
 test('智谱:请求体形状与 data[].url 下载链路', async () => {
   const { impl, calls } = stubFetch([
@@ -275,4 +424,11 @@ test('翻译:中文检测与 chat/completions 请求形状', async () => {
   assert.equal(req.model, 'Qwen/Qwen2.5-7B-Instruct')
   assert.equal(req.temperature, 0.1, '确定性翻译用低温')
   assert.match(req.messages[0].content, /Translate the user text to English/)
+})
+
+test('百炼模型路由：参考图选 Edit，文生图及显式编辑模型保持不变', () => {
+  assert.equal(resolveCloudImageModel('aliyun', 'qwen-image-2.0', true), 'qwen-image-edit-plus')
+  assert.equal(resolveCloudImageModel('aliyun', 'qwen-image-2.0', false), 'qwen-image-2.0')
+  assert.equal(resolveCloudImageModel('aliyun', 'qwen-image-edit-max', true), 'qwen-image-edit-max')
+  assert.equal(resolveCloudImageModel('openai', 'qwen-image-2.0', true), 'qwen-image-2.0')
 })

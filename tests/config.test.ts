@@ -95,6 +95,26 @@ test('loadConfig 非法 provider 快速失败', () => {
 
 /* ---------- applyConfigPatch ---------- */
 
+test('百炼配置:环境变量选择厂商和模型,空地址补丁使用默认 API', () => {
+  withEnv(
+    {
+      SWARMUI_CLOUD_VENDOR: 'aliyun',
+      SWARMUI_CLOUD_MODEL: 'qwen-image-2.0',
+      SWARMUI_CLOUD_BASE_URL: 'https://ws-test.cn-beijing.maas.aliyuncs.com/api/v1',
+    },
+    () => {
+      const config = loadConfig('/nonexistent-aivideo-config-test')
+      assert.equal(config.cloudVendor, 'aliyun')
+      assert.equal(config.cloudModel, 'qwen-image-2.0')
+      assert.equal(config.cloudBaseUrl, 'https://ws-test.cn-beijing.maas.aliyuncs.com/api/v1')
+      const result = applyConfigPatch(config, { cloudBaseUrl: '' }, {})
+      assert.ok(result.ok)
+      if (result.ok)
+        {assert.equal(result.config.cloudBaseUrl, 'https://dashscope.aliyuncs.com/api/v1')}
+    },
+  )
+})
+
 test('applyConfigPatch:切换 provider 与 comfyUrl 合并生效', () => {
   withEnv({ SWARMUI_PROVIDER: undefined, SWARMUI_COMFY_URL: undefined }, () => {
     const result = applyConfigPatch(
