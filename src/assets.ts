@@ -15,6 +15,7 @@ export interface AssetRecord {
   height: number
   /** 缩略图是否生成成功;失败时降级为只存原图,不阻塞生成主流程 */
   hasThumbs: boolean
+  createdAt?: string
 }
 
 export interface AssetUrls {
@@ -60,6 +61,24 @@ export class AssetStore {
 
   get(id: string): AssetRecord | undefined {
     return this.meta.get(id)
+  }
+
+  /** 列出资产(新的在前),供"导入资产"抽屉浏览;旧资产缺 createdAt 排在后。 */
+  list(kind?: AssetKind, limit = 200): AssetRecord[] {
+    return [...this.meta.values()]
+      .filter((r) => !kind || r.kind === kind)
+      .sort((a, b) => ((a.createdAt ?? '') < (b.createdAt ?? '') ? 1 : -1))
+      .slice(0, limit)
+  }
+
+  /** 读取资产原始字节；只接受索引中存在的合法资产。 */
+  async read(id: string): Promise<{ record: AssetRecord; data: Buffer } | undefined> {
+    const record = this.meta.get(id)
+    const file = this.filePath(id, 'original')
+    if (!record || !file) {
+      return undefined
+    }
+    return { record, data: await fs.readFile(file) }
   }
 
   /** HTTP 路径(供前端直接引用);id 非法或不存在时返回 undefined。 */
@@ -130,7 +149,15 @@ export class AssetStore {
       }
     }
 
-    const record: AssetRecord = { id, kind, ext: storedExt, width, height, hasThumbs }
+    const record: AssetRecord = {
+      id,
+      kind,
+      ext: storedExt,
+      width,
+      height,
+      hasThumbs,
+      createdAt: new Date().toISOString(),
+    }
     await fs.writeFile(path.join(dir, 'meta.json'), JSON.stringify(record, null, 2))
     this.meta.set(id, record)
     logger.debug('资产已保存', { assetId: id, kind, bytes: data.length, hasThumbs })
