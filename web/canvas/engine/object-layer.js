@@ -581,10 +581,16 @@ export function createObjectLayer(options) {
     }
     for (const id of selected) {
       const o = nodeById(id)
-      if (!o || selectionRects.has(id)) {
+      if (!o) {
         continue
       }
-      const rect = new Konva.Rect({
+      const rect = selectionRects.get(id)
+      if (rect) {
+        // 已存在的选框同步最新几何(缩放/改尺寸后不残留旧框)
+        rect.setAttrs({ x: o.x, y: o.y, width: o.width, height: o.height })
+        continue
+      }
+      const created = new Konva.Rect({
         x: o.x,
         y: o.y,
         width: o.width,
@@ -595,8 +601,8 @@ export function createObjectLayer(options) {
         cornerRadius: 6,
         listening: false,
       })
-      selectionRects.set(id, rect)
-      overlayLayer.add(rect)
+      selectionRects.set(id, created)
+      overlayLayer.add(created)
     }
     syncResizeHandles()
     overlayLayer.batchDraw()
@@ -955,8 +961,14 @@ export function createObjectLayer(options) {
       }
       seen.add(id)
       let group = groups.get(id)
-      // 占位 → 图片/错误卡等 kind 迁移需要重建组(spinner 等子节点无法复用)
-      if (group && group.getAttr('builtKind') !== obj.kind) {
+      // kind 迁移(占位→图片)或尺寸变化(等比缩放/画板改尺寸)需要重建组:
+      // 子节点(背景矩形/图片/角标)的尺寸在 build 时固定,无法就地复用
+      if (
+        group &&
+        (group.getAttr('builtKind') !== obj.kind ||
+          group.getAttr('builtW') !== obj.width ||
+          group.getAttr('builtH') !== obj.height)
+      ) {
         group.destroy()
         groups.delete(id)
         cachedAtScale.delete(id)
@@ -965,6 +977,8 @@ export function createObjectLayer(options) {
       if (!group) {
         group = buildGroup(obj)
         group.setAttr('builtKind', obj.kind)
+        group.setAttr('builtW', obj.width)
+        group.setAttr('builtH', obj.height)
         groups.set(id, group)
         layer.add(group)
       }
