@@ -11,7 +11,9 @@ async function api(path, options) {
   const res = await fetch(path, options)
   const body = await res.json().catch(() => ({}))
   if (!res.ok) {
-    throw new Error(body.error || `请求失败 HTTP ${res.status}`)
+    const err = new Error(body.error || `请求失败 HTTP ${res.status}`)
+    err.status = res.status
+    throw err
   }
   return body
 }
@@ -183,13 +185,22 @@ async function createDocument() {
     pendingCreateKey = null
     location.href = `/canvas?doc=${encodeURIComponent(body.document.id)}`
   } catch (err) {
-    // 创建接口不可用:说明原因,保留 key 供下次点击续查
     const alert = $('#create-alert')
-    alert.textContent = `创建请求未完成:${err instanceof Error ? err.message : String(err)};已保留本次请求标识,再次点击「新建画布」会继续查询同一请求,不会重复创建。`
+    const networkError = !(err instanceof Error && 'status' in err)
+    if (networkError) {
+      // 创建结果待确认(§3 列表状态):请求可能已到达服务端,
+      // 保留请求标识,续查同一次创建(A01),不新建第二份
+      btn.textContent = '查询创建结果'
+      alert.textContent = '创建结果待确认:网络请求未收到回应,服务端可能已创建。点击「查询创建结果」核对同一请求;确认未创建后可放弃本次标识重新新建。'
+    } else {
+      // 服务端明确拒绝:本次 key 作废,下次用新 key
+      pendingCreateKey = null
+      btn.textContent = '新建画布'
+      alert.textContent = `创建失败:${err instanceof Error ? err.message : String(err)}`
+    }
     alert.hidden = false
     creating = false
     btn.disabled = false
-    btn.textContent = '新建画布'
   }
 }
 
