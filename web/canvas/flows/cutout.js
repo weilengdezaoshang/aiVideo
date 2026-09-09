@@ -67,7 +67,14 @@ export function createCutoutSession({ getDocStore, engine, onResult = () => {}, 
     overlayNode = null
   }
 
-  function exit() {
+  /** 通知底部输入区让位/恢复(蒙版栏与输入区同处底部,PRD §4.1 安全区) */
+  /** @param {boolean} active */
+  function emitMaskMode(active) {
+    document.dispatchEvent(new CustomEvent('gencanvas:maskmode', { detail: { active } }))
+  }
+
+  /** 静默收尾:恢复画布交互并保留草稿,不弹提示(open 切换会话时复用)。 */
+  function teardown() {
     revision++
     controller.abort()
     drawing = false
@@ -75,15 +82,26 @@ export function createCutoutSession({ getDocStore, engine, onResult = () => {}, 
     engine.contentLayer.listening(true)
     engine.contentLayer.drawHit()
     if (sourceObject?.assetId) {
-      // 退出编辑默认保留草稿(不自动生成);下次进入可继续
+      // 蒙版历史与草稿在离开时持久化;不生成任何结果(PRD §6)
       saveDraft()
-      toast('草稿已保留')
     }
     sourceObject = null
     agentSessionId = null
     history = []
     redoStack = []
-    bar.hidden = true
+    if (!bar.hidden) {
+      bar.hidden = true
+      emitMaskMode(false)
+    }
+  }
+
+  /** 用户显式退出:保存草稿并提示(PRD §6 退出编辑态)。 */
+  function exit() {
+    const hadSession = Boolean(sourceObject?.assetId)
+    teardown()
+    if (hadSession) {
+      toast('草稿已保留')
+    }
   }
 
   /** @returns {string} 当前蒙版 dataURL */
@@ -262,12 +280,13 @@ export function createCutoutSession({ getDocStore, engine, onResult = () => {}, 
    */
   async function open(obj, prepared = undefined) {
     if (saving) {return}
-    exit()
+    teardown()
     const currentRevision = revision
     controller = new AbortController()
     sourceObject = { ...obj }
     agentSessionId = prepared?.sessionId ?? null
     bar.hidden = false
+    emitMaskMode(true)
     try {
       const original = obj.cutout
         ? { id: obj.cutout.originalAssetId, ext: obj.cutout.originalExt }
@@ -334,6 +353,8 @@ export function createCutoutSession({ getDocStore, engine, onResult = () => {}, 
     const store = getDocStore()
     if (!store || !sourceObject?.assetId || saving || !overlayNode) {return}
     const source = { ...sourceObject }
+    // 必须在 exit()/teardown() 之前捕获:它们会清空 agentSessionId
+    const boundSessionId = agentSessionId
     const current = store.doc.objects[source.id]
     if (!current) {return}
     const width = current.width
@@ -359,7 +380,7 @@ export function createCutoutSession({ getDocStore, engine, onResult = () => {}, 
     exit()
     try {
       const blob = await (await fetch(maskDataUrl)).blob()
-      const sessionQuery = agentSessionId ? `?sessionId=${encodeURIComponent(agentSessionId)}` : ''
+      const sessionQuery = boundSessionId ? `?sessionId=${encodeURIComponent(boundSessionId)}` : ''
       const response = await fetch(`/api/cutout/apply/${source.assetId}${sessionQuery}`, {
         method: 'POST', headers: { 'Content-Type': 'image/png' }, body: blob,
       })
@@ -383,7 +404,7 @@ export function createCutoutSession({ getDocStore, engine, onResult = () => {}, 
         objId: id,
         assetUrl: `/assets/${body.asset.id}/t256.webp`,
         sourceLabel: '画布源图',
-        sessionId: agentSessionId || undefined,
+        sessionId: boundSessionId || undefined,
       })
       // 用过的草稿完成使命:清掉,避免下一次会话误恢复旧选区
       try {
@@ -400,12 +421,11 @@ export function createCutoutSession({ getDocStore, engine, onResult = () => {}, 
         result.errorDetail = error instanceof Error ? error.message : String(error)
         delete result.gen
       })
-      if (agentSessionId) {
-        onResult({ objId: '', assetUrl: '', sourceLabel: '', sessionId: agentSessionId, failed: true })
+      if (boundSessionId) {
+        onResult({ objId: '', assetUrl: '', sourceLabel: '', sessionId: boundSessionId, failed: true })
       }
     } finally {
       saving = false
-      agentSessionId = null
     }
   })
 

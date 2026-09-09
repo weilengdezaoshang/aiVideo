@@ -127,7 +127,11 @@ export function createAgentFlow({ docStore, chat, fetchImpl = (...args) => fetch
       }
       const { sessions } = await res.json()
       for (const session of sessions || []) {
-        const known = (docStore.doc.chat || []).find((/** @type {any} */ m) => m.sessionId === session.id)
+        const history = /** @type {any[]} */ (docStore.doc.chat || [])
+        const known = history.find((m) => m.sessionId === session.id)
+        const hasResult = history.some(
+          (m) => m.sessionId === session.id && (m.kind === 'result' || m.completed),
+        )
         if (!known) {
           // 有会话历史但消息缺失(如保存失败):重建计划卡
           chat.addPlanCard(session.id, session.plan, session.request)
@@ -139,7 +143,8 @@ export function createAgentFlow({ docStore, chat, fetchImpl = (...args) => fetch
             objId,
             maskUrl: session.maskAssetId ? `/assets/${session.maskAssetId}/original.png` : undefined,
           })
-        } else if (session.status === 'completed') {
+        } else if (session.status === 'completed' && !hasResult) {
+          // 只补缺失的结果卡;已呈现过的会话不重复追加(每次刷新各来一张)
           markCompleted(
             session.id,
             session.resultAssetId ? `/assets/${session.resultAssetId}/t256.webp` : '',

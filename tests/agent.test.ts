@@ -140,3 +140,26 @@ test('Agent 会话:prepare 一次性语义 + 完成回写 + 跨重启恢复', as
   assert.equal(restored?.status, 'completed')
   assert.equal(restored?.plan.steps.length, 3)
 })
+
+test('Agent 会话:启动时把卡在 preparing 的会话回退为 planned(识别中断可重试)', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'gencanvas-agent-'))
+  const file = path.join(dir, 'sessions.json')
+  const stuck = {
+    id: 's-stuck',
+    docId: 'doc-9',
+    assetId: 'asset-9',
+    assetExt: 'png',
+    request: '抠出主体',
+    status: 'preparing',
+    plan: buildUseCaseAPlan(),
+    plannedBy: 'rules',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+  await fs.writeFile(file, JSON.stringify({ sessions: [stuck] }))
+  const reborn = new AgentStore(file)
+  await reborn.init()
+  const restored = reborn.get('s-stuck')
+  assert.equal(restored?.status, 'planned')
+  assert.match(restored?.error ?? '', /中断/)
+})
