@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>aiVideo · 让灵感自由成形</title>
+  <meta name="description" content="aiVideo 生成式创作画布:以画布为文档,一轮生成四个创意方向,蒙版抠图与创作助手在本机完成闭环。">
+  <link rel="stylesheet" href="/landing/landing.css">
+</head>
+<body>
+  <!-- 固定导航:滚动后背景过渡 + 当前章节提示(PRD §3.1 章节衔接补充) -->
+  <header class="nav" id="nav">
+    <a class="nav-brand" href="/">ai<b>Video</b></a>
+    <nav class="nav-links" aria-label="页面章节">
+      <a href="#scenes" data-anchor>场景</a>
+      <a href="#works" data-anchor>作品</a>
+      <a href="#canvas-feature" data-anchor>智能画布</a>
+      <a href="#agent" data-anchor>创作助手</a>
+    </nav>
+    <span class="nav-spacer"></span>
+    <span class="nav-current" id="nav-current" aria-hidden="true"></span>
+    <a class="nav-cta" href="/workspace">开始创作</a>
+  </header>
+
+  <!-- 首屏:左两行标题 + 左下三缩略图;顶部右侧唯一暖白入口(PRD §3.1) -->
+  <section class="hero" id="hero" aria-label="首屏">
+    <div class="hero-stage" id="hero-stage">
+      <div class="hero-media" id="hero-media" aria-hidden="true"></div>
+      <div class="hero-veil" aria-hidden="true"></div>
+    </div>
+    <div class="hero-copy">
+      <h1 class="hero-title" id="hero-title">
+        <span class="line">让灵感</span>
+        <span class="line">自由成形。</span>
+      </h1>
+      <p class="hero-sub">生成式创作画布 · 一轮四个方向,把想法落成画面。</p>
+    </div>
+    <div class="hero-scenes" role="tablist" aria-label="展示场景切换" id="scene-tabs">
+      <button class="scene-tab is-active" role="tab" aria-selected="true" data-scene="0" type="button">
+        <span class="scene-thumb" data-thumb="0"></span>
+        <span class="scene-name">海面之上</span>
+      </button>
+      <button class="scene-tab" role="tab" aria-selected="false" data-scene="1" type="button">
+        <span class="scene-thumb" data-thumb="1"></span>
+        <span class="scene-name">城市几何</span>
+      </button>
+      <button class="scene-tab" role="tab" aria-selected="false" data-scene="2" type="button">
+        <span class="scene-thumb" data-thumb="2"></span>
+        <span class="scene-name">花与光</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- 场景章节:三场景大图 + 说明;快速切换以请求序号防乱序(PRD A19) -->
+  <section class="section" id="scenes" aria-label="场景">
+    <h2 class="section-title">三个场景,一种成像语言</h2>
+    <p class="section-sub">点击缩略图切换;图片仅展示视觉风格,不是同一次任务的生成结果。</p>
+    <div class="stage" id="scene-stage" aria-live="polite">
+      <div class="stage-media" id="scene-media"></div>
+      <p class="stage-caption" id="scene-caption"></p>
+    </div>
+  </section>
+
+  <!-- 作品章节:四张素材卡 + 大图 dialog(200/150ms 过渡,焦点返回) -->
+  <section class="section" id="works" aria-label="作品">
+    <h2 class="section-title">作品选辑</h2>
+    <p class="section-sub">照片仅用于展示视觉风格;点击放大,Esc 或关闭按钮返回。</p>
+    <div class="works" id="works-grid"></div>
+  </section>
+
+  <!-- 智能画布章节:编辑器示意 + 进入本机示例画布 -->
+  <section class="section" id="canvas-feature" aria-label="智能画布">
+    <h2 class="section-title">一块画布,装下整个创作过程</h2>
+    <p class="section-sub">四方向同组生成、蒙版确认抠图、素材与文档一起保存;刷新与断线都可恢复。</p>
+    <div class="feature" id="feature-reveal">
+      <div class="editor-mock" aria-hidden="true">
+        <div class="mock-top">aiVideo · 画布</div>
+        <div class="mock-body">
+          <div class="mock-rail"><i></i><i></i><i></i><i></i></div>
+          <div class="mock-canvas">
+            <span class="mock-label">生成组 · 4/4 已生成</span>
+            <div class="mock-imgs">
+              <i class="mi mi-a"></i><i class="mi mi-b"></i><i class="mi mi-c"></i><i class="mi mi-d"></i>
+              <i class="mi mi-e"></i>
+            </div>
+          </div>
+          <div class="mock-chat">
+            <b>对话</b>
+            <span class="mc user">一只戴墨镜的猫在沙滩上</span>
+            <span class="mc">4 个方向已就绪</span>
+            <span class="mc">抠图完成 · 来自图片 1</span>
+          </div>
+        </div>
+      </div>
+      <div class="feature-side">
+        <h3>四方向生成</h3>
+        <p>一次提交,同一任务的四个创意方向:构图、光线、场景与表达,围绕你给出的共同主体变化。</p>
+        <h3>蒙版确认抠图</h3>
+        <p>识别主体后先检查蒙版;只有你点击「抠图」才会生成透明素材,原图始终保留。</p>
+        <button class="cta" id="open-example" type="button">查看示例画布</button>
+        <p class="cta-hint" id="example-hint" hidden></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Agent 章节:静态步骤说明,不自动执行任何任务(PRD §3.1) -->
+  <section class="section" id="agent" aria-label="创作助手">
+    <h2 class="section-title">创作助手:引用一张图,完成一次闭环</h2>
+    <p class="section-sub">助手只执行结构化计划;每一步都可见,等待你的确认。</p>
+    <ol class="agent-steps" id="agent-steps">
+      <li>
+        <span class="step-no">1</span>
+        <b>显式引用</b>
+        <p>在画布选中图片,点「添加到对话」;没有引用时助手不会执行。</p>
+      </li>
+      <li>
+        <span class="step-no">2</span>
+        <b>给出计划</b>
+        <p>识别主体 → 请你检查蒙版 → 生成透明图片并放到原图右侧。</p>
+      </li>
+      <li>
+        <span class="step-no">3</span>
+        <b>准备蒙版</b>
+        <p>意图明确后自动准备最多一次蒙版;歧义请求会先澄清,不消耗生成调用。</p>
+      </li>
+      <li>
+        <span class="step-no">4</span>
+        <b>等待你的「抠图」</b>
+        <p>助手不会替你提交;检查蒙版后,由你点击蒙版栏「抠图」完成生成与落位。</p>
+      </li>
+    </ol>
+  </section>
+
+  <footer class="footer">
+    <p>aiVideo · 生成式创作画布 — 本页照片仅展示视觉风格。<a href="/workspace">进入工作台 →</a></p>
+  </footer>
+
+  <!-- 大图预览 dialog:200ms 进入 / 150ms 退出,Esc 与关闭共用退出流程 -->
+  <div class="lightbox" id="lightbox" hidden>
+    <div class="lightbox-mask" id="lightbox-mask"></div>
+    <figure class="lightbox-body" role="dialog" aria-modal="true" aria-label="作品大图">
+      <div class="lightbox-media" id="lightbox-media"></div>
+      <figcaption id="lightbox-caption"></figcaption>
+    </figure>
+    <button class="lightbox-close" id="lightbox-close" type="button" aria-label="关闭大图">✕</button>
+  </div>
+
+  <script type="module" src="landing.js"></script>
+</body>
+</html>

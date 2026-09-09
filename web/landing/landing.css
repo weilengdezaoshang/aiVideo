@@ -1,0 +1,695 @@
+/* 介绍页(PRD §3.1):暗色影像展厅,深炭灰 + 暖白文字 + 原色作品;
+   仅本页使用该外观,不跟随编辑器深色开关,也不影响工作台与列表。 */
+
+:root {
+  --land-bg: #101114;
+  --land-bg-soft: #17181c;
+  --land-ink: #f3efe6;
+  --land-ink-muted: rgba(243, 239, 230, 0.62);
+  --land-hairline: rgba(243, 239, 230, 0.14);
+  --land-warm: #f3efe6;
+  --land-radius: 16px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  font-family: 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', system-ui,
+    sans-serif;
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--land-ink);
+  background: var(--land-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* 章节锚点不被固定导航遮挡(PRD A19) */
+section[id] {
+  scroll-margin-top: 76px;
+}
+
+/* ---------- 固定导航:滚动后背景过渡 ---------- */
+
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  height: 60px;
+  padding: 0 32px;
+  transition:
+    background-color 0.35s ease,
+    border-color 0.35s ease,
+    backdrop-filter 0.35s ease;
+  border-bottom: 1px solid transparent;
+}
+
+.nav.scrolled {
+  background: rgba(16, 17, 20, 0.82);
+  backdrop-filter: saturate(160%) blur(18px);
+  border-color: var(--land-hairline);
+}
+
+.nav-brand {
+  font-size: 17px;
+  letter-spacing: 0.01em;
+}
+
+.nav-brand b {
+  font-weight: 700;
+  color: var(--land-warm);
+}
+
+.nav-links {
+  display: flex;
+  gap: 22px;
+  font-size: 13px;
+  color: var(--land-ink-muted);
+}
+
+.nav-links a {
+  padding: 4px 0;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s ease;
+}
+
+.nav-links a:hover,
+.nav-links a.current {
+  color: var(--land-ink);
+  border-bottom-color: var(--land-ink);
+}
+
+.nav-spacer {
+  flex: 1;
+}
+
+.nav-current {
+  font-size: 12px;
+  color: var(--land-ink-muted);
+}
+
+.nav-cta {
+  padding: 8px 22px;
+  border-radius: 999px;
+  background: var(--land-warm);
+  color: #17181c;
+  font-size: 13px;
+  font-weight: 600;
+  transition: transform 0.15s ease, filter 0.2s ease;
+}
+
+.nav-cta:hover {
+  filter: brightness(1.05);
+}
+
+.nav-cta:active {
+  transform: scale(0.97);
+}
+
+/* ---------- 首屏 ---------- */
+
+.hero {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.hero-stage {
+  position: absolute;
+  inset: 0;
+}
+
+.hero-media {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transform-origin: 50% 60%;
+}
+
+.hero-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(16, 17, 20, 0.55) 0%, rgba(16, 17, 20, 0) 32%),
+    linear-gradient(0deg, rgba(16, 17, 20, 0.92) 4%, rgba(16, 17, 20, 0.1) 58%);
+}
+
+.hero-copy {
+  position: relative;
+  z-index: 2;
+  padding: 0 6vw;
+  margin-bottom: auto;
+  padding-top: max(19vh, 130px);
+}
+
+.hero-title {
+  display: flex;
+  flex-direction: column;
+  font-size: clamp(44px, 7.2vw, 96px);
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  color: var(--land-ink);
+  text-shadow: 0 2px 28px rgba(0, 0, 0, 0.35);
+}
+
+.hero-sub {
+  margin-top: 18px;
+  font-size: 15px;
+  color: var(--land-ink-muted);
+  letter-spacing: 0.06em;
+}
+
+/* 左下三缩略图:海洋 / 建筑 / 花卉 */
+.hero-scenes {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: 16px;
+  padding: 0 6vw 7vh;
+}
+
+.scene-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 6px;
+  border: 1px solid var(--land-hairline);
+  border-radius: 999px;
+  background: rgba(16, 17, 20, 0.4);
+  backdrop-filter: blur(6px);
+  color: var(--land-ink-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.scene-tab:hover,
+.scene-tab.is-active {
+  border-color: rgba(243, 239, 230, 0.6);
+  color: var(--land-ink);
+}
+
+.scene-tab[aria-selected='true'] .scene-name {
+  font-weight: 600;
+}
+
+.scene-thumb {
+  width: 52px;
+  height: 38px;
+  border-radius: 999px;
+  background-size: cover;
+  background-position: center;
+  flex: none;
+}
+
+/* ---------- 章节 ---------- */
+
+.section {
+  width: min(1120px, calc(100% - 12vw));
+  margin: 0 auto;
+  padding: 9vh 0 4vh;
+}
+
+.section-title {
+  font-size: clamp(32px, 3.4vw, 48px);
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+.section-sub {
+  margin-top: 10px;
+  margin-bottom: 34px;
+  font-size: 14px;
+  color: var(--land-ink-muted);
+}
+
+/* 场景大图 */
+.stage {
+  position: relative;
+  border-radius: var(--land-radius);
+  overflow: hidden;
+  background: var(--land-bg-soft);
+  border: 1px solid var(--land-hairline);
+}
+
+.stage-media {
+  aspect-ratio: 16 / 8.4;
+  background-size: cover;
+  background-position: center;
+  transition: opacity 650ms ease;
+}
+
+.stage-media.is-swapping {
+  opacity: 0;
+}
+
+.stage-caption {
+  position: absolute;
+  left: 22px;
+  bottom: 18px;
+  font-size: 12px;
+  color: var(--land-ink-muted);
+  background: rgba(16, 17, 20, 0.55);
+  padding: 4px 12px;
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+}
+
+/* 作品网格 */
+.works {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.work-card {
+  position: relative;
+  border: 1px solid var(--land-hairline);
+  border-radius: var(--land-radius);
+  overflow: hidden;
+  background: var(--land-bg-soft);
+  padding: 0;
+  cursor: zoom-in;
+  font: inherit;
+  color: inherit;
+}
+
+.work-card .art {
+  aspect-ratio: 1;
+  background-size: cover;
+  background-position: center;
+  transition: transform 0.5s ease;
+}
+
+/* 悬停放大仅在精细指针 + hover 环境(PRD A19:无自动轮播) */
+@media (hover: hover) and (pointer: fine) {
+  .work-card:hover .art {
+    transform: scale(1.045);
+  }
+}
+
+.work-card figcaption {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  font-size: 12px;
+  color: var(--land-ink);
+  background: rgba(16, 17, 20, 0.55);
+  padding: 3px 12px;
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+}
+
+@media (max-width: 900px) {
+  .works {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 智能画布特性 */
+.feature {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 36px;
+  align-items: center;
+}
+
+.feature-side h3 {
+  margin-top: 20px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.feature-side h3:first-child {
+  margin-top: 0;
+}
+
+.feature-side p {
+  font-size: 14px;
+  color: var(--land-ink-muted);
+  margin-top: 4px;
+}
+
+.cta {
+  margin-top: 26px;
+  padding: 11px 30px;
+  border: none;
+  border-radius: 999px;
+  background: var(--land-warm);
+  color: #17181c;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.2s ease, transform 0.15s ease;
+}
+
+.cta:hover {
+  filter: brightness(1.05);
+}
+
+.cta:active {
+  transform: scale(0.97);
+}
+
+.cta:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.cta-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--land-ink-muted);
+}
+
+.cta-hint.error {
+  color: #ff9d9d;
+}
+
+/* 编辑器示意(纯 CSS,标注为示意) */
+.editor-mock {
+  border: 1px solid var(--land-hairline);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f5f5f7;
+  color: #202124;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+}
+
+.mock-top {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #3c4043;
+  background: #fff;
+  border-bottom: 1px solid #e3e4e8;
+}
+
+.mock-body {
+  display: grid;
+  grid-template-columns: 34px 1fr 120px;
+  min-height: 240px;
+}
+
+.mock-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  background: #fff;
+  border-right: 1px solid #e3e4e8;
+}
+
+.mock-rail i {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: #e3e4e8;
+}
+
+.mock-canvas {
+  position: relative;
+  background-image: radial-gradient(#c9cbd1 1px, transparent 1px);
+  background-size: 14px 14px;
+  padding: 18px;
+}
+
+.mock-label {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  font-size: 10px;
+  color: #3c4043;
+  background: rgba(32, 33, 36, 0.75);
+  color: #fff;
+  padding: 2px 9px;
+  border-radius: 999px;
+}
+
+.mock-imgs {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  height: 100%;
+}
+
+.mi {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  flex: 1;
+}
+
+.mi-a { background: linear-gradient(135deg, #2f6fb2, #9fd0e8); }
+.mi-b { background: linear-gradient(135deg, #d9863c, #f2d5a0); }
+.mi-c { background: linear-gradient(135deg, #4c8a55, #cfe6b8); }
+.mi-d { background: linear-gradient(135deg, #7a5fa0, #e0c9f0); }
+.mi-e {
+  flex: 0.9;
+  background:
+    repeating-conic-gradient(#f0f0f0 0% 25%, #fff 0% 50%) 0 0 / 12px 12px;
+  border: 1px dashed #9aa0a8;
+}
+
+.mock-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: #fff;
+  border-left: 1px solid #e3e4e8;
+  font-size: 10px;
+}
+
+.mock-chat b {
+  font-size: 11px;
+}
+
+.mc {
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #f5f5f7;
+  color: #3c4043;
+  line-height: 1.4;
+}
+
+.mc.user {
+  background: #356df3;
+  color: #fff;
+}
+
+@media (max-width: 900px) {
+  .feature {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Agent 步骤 */
+.agent-steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  counter-reset: step;
+}
+
+.agent-steps li {
+  padding: 20px;
+  background: var(--land-bg-soft);
+  border: 1px solid var(--land-hairline);
+  border-radius: var(--land-radius);
+}
+
+.step-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(243, 239, 230, 0.5);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.agent-steps b {
+  display: block;
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+
+.agent-steps p {
+  font-size: 13px;
+  color: var(--land-ink-muted);
+}
+
+@media (max-width: 900px) {
+  .agent-steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- 页脚 ---------- */
+
+.footer {
+  padding: 48px 6vw 56px;
+  font-size: 12px;
+  color: var(--land-ink-muted);
+  border-top: 1px solid var(--land-hairline);
+  margin-top: 6vh;
+}
+
+.footer a {
+  color: var(--land-ink);
+  border-bottom: 1px solid var(--land-hairline);
+}
+
+/* ---------- 大图 dialog:200ms 进入 / 150ms 退出 + scale(.98) ---------- */
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbox[hidden] {
+  display: none;
+}
+
+.lightbox-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 8, 10, 0.78);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.lightbox-body {
+  position: relative;
+  width: min(880px, calc(100vw - 48px));
+  transform: scale(0.98);
+  opacity: 0;
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+
+.lightbox.open .lightbox-mask {
+  opacity: 1;
+  transition-duration: 200ms;
+}
+
+.lightbox.open .lightbox-body {
+  opacity: 1;
+  transform: scale(1);
+  transition-duration: 200ms;
+}
+
+.lightbox-media {
+  aspect-ratio: 16 / 10;
+  border-radius: 12px;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid var(--land-hairline);
+}
+
+.lightbox-body figcaption {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--land-ink-muted);
+  text-align: center;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: max(18px, env(safe-area-inset-top));
+  right: 22px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--land-hairline);
+  background: rgba(16, 17, 20, 0.6);
+  color: var(--land-ink);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.lightbox-close:hover {
+  background: rgba(16, 17, 20, 0.9);
+}
+
+/* ---------- 窄屏(PRD §3.1:介绍页适配窄屏,无页面级溢出) ---------- */
+
+@media (max-width: 760px) {
+  .nav {
+    padding: 0 16px;
+    gap: 14px;
+  }
+
+  .nav-links,
+  .nav-current {
+    display: none;
+  }
+
+  .hero-copy {
+    padding-top: max(16vh, 110px);
+  }
+
+  .hero-scenes {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .section {
+    width: calc(100% - 40px);
+  }
+
+  .stage-media {
+    aspect-ratio: 4 / 3;
+  }
+}

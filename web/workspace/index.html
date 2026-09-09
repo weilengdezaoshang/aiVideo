@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>工作台 · aiVideo</title>
+  <link rel="stylesheet" href="/workspace/workspace.css">
+</head>
+<body>
+  <header class="ws-topbar">
+    <a class="brand" href="/">
+      <span class="brand-mark">ai</span><span class="brand-name">Video</span>
+      <span class="brand-sub">创作工作台</span>
+    </a>
+    <nav class="ws-tabs" aria-label="工作台模块">
+      <a class="ws-tab" id="tab-overview" href="/workspace?tab=overview">概览</a>
+      <a class="ws-tab" id="tab-canvas" href="/workspace?tab=canvas">画布</a>
+    </nav>
+    <span class="ws-spacer"></span>
+    <a class="ws-legacy" href="/legacy" title="旧版实验入口(单张 / 串行生成)">旧版体验(实验)</a>
+  </header>
+
+  <main class="ws-main">
+    <!-- 概览:画布入口 + 最近文档 + 已有图片/视频入口(PRD §2 页面补充) -->
+    <section class="ws-panel" id="panel-overview" hidden>
+      <h1 class="ws-title">晚上好,从一块画布开始</h1>
+      <p class="ws-sub">生成、加工与整理你的视觉素材;所有内容保存在本机服务。</p>
+      <div class="ov-grid">
+        <a class="ov-card ov-primary" href="/workspace?tab=canvas">
+          <span class="ov-icon">▦</span>
+          <b>我的画布</b>
+          <span class="ov-desc">新建或继续一幅生成画布</span>
+        </a>
+        <a class="ov-card" id="ov-latest-canvas" href="/canvas">
+          <span class="ov-icon">✎</span>
+          <b>最近画布</b>
+          <span class="ov-desc" id="ov-latest-name">加载中…</span>
+        </a>
+        <a class="ov-card" href="/legacy">
+          <span class="ov-icon">▶</span>
+          <b>已有图片 / 视频</b>
+          <span class="ov-desc">旧版生成入口与历史记录(实验)</span>
+        </a>
+      </div>
+      <h2 class="ws-h2">最近文档</h2>
+      <div class="recent-row" id="recent-docs">
+        <div class="ws-skeleton-row"><span></span><span></span><span></span></div>
+      </div>
+    </section>
+
+    <!-- 我的画布:列表 / 新建 / 重命名 / 删除(PRD §3) -->
+    <section class="ws-panel" id="panel-canvas" hidden>
+      <div class="canvas-toolbar">
+        <div>
+          <h1 class="ws-title">我的画布</h1>
+          <p class="ws-sub" id="canvas-count">共 0 幅</p>
+        </div>
+        <button class="primary-btn" id="create-btn" type="button">新建画布</button>
+      </div>
+      <div class="ws-alert" id="create-alert" hidden></div>
+      <div class="doc-grid" id="doc-grid">
+        <div class="ws-skeleton-row"><span></span><span></span><span></span></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="ws-footer">aiVideo · 生成式创作画布 — 服务运行在本机,数据不出本机。</footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
