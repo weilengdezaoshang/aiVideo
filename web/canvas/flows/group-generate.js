@@ -83,7 +83,7 @@ export async function submitGroupGeneration(options) {
   chat?.addGroupCard(groupId, slotIds, String(genParams.prompt || ''))
   onPlaceholderCreated(slotIds)
 
-  /** 提交失败:撤下四个占位;保留组元数据,组卡呈现失败态且可"另生成一组" */
+  /** 提交失败(明确 4xx/5xx,服务端已拒绝):撤下四个占位;保留组元数据可重试 */
   /** @param {string} message */
   function abort(message) {
     docStore.apply(
@@ -98,6 +98,27 @@ export async function submitGroupGeneration(options) {
     )
     chat?.addError(message)
     return { ok: false, error: message }
+  }
+
+  /**
+   * 提交未收到确认(网络错误/超时,请求可能已到达服务端,PRD §5.2 A06):
+   * 占位保留为"结果待确认",由组卡「查询结果」显式核对,不自动重提、不重复提交。
+   */
+  /** @param {string} detail */
+  function markPendingConfirm(detail) {
+    docStore.mutateTransient((/** @type {any} */ doc) => {
+      for (const id of slotIds) {
+        const o = doc.objects[id]
+        if (o && o.kind === 'placeholder') {
+          o.gen = { jobId: '', message: '结果待确认' }
+          o.pendingConfirm = true
+        }
+      }
+    })
+    chat?.addSystem(
+      `提交未收到确认(${detail})。占位已保留,请用组卡「查询结果」核对;确认前请勿重复提交。`,
+    )
+    return { ok: false, pendingConfirm: true, groupId, slotIds }
   }
 
   try {
@@ -130,8 +151,70 @@ export async function submitGroupGeneration(options) {
     })
     return { ok: true, groupId, slotIds }
   } catch (err) {
-    return abort((err instanceof Error ? err.message : String(err)) || '网络错误')
+    // fetch 抛错 = 网络层失败,请求可能已到达服务端:进入"结果待确认"(A06)
+    return markPendingConfirm((err instanceof Error ? err.message : String(err)) || '网络错误')
   }
+}
+
+/**
+ * 「查询结果」(A06:未知请求只查询,不自动重发):
+ * 按槽位 clientRef 在服务端任务列表中核对本次提交。
+ *   - 找到任务 → 清除待确认标记并交还给对账流程(整组语义接管);
+ *   - 确认未入队 → 安全清理占位(保留组元数据,可"另生成一组")。
+ * @param {{
+ *   docStore: any,
+ *   groupId: string,
+ *   chat?: any,
+ *   fetchImpl?: typeof fetch,
+ * }} options
+ * @returns {Promise<{ ok: boolean, found?: boolean }>}
+ */
+export async function confirmPendingGroup(options) {
+  const { docStore, groupId, chat, fetchImpl = (...args) => fetch(...args) } = options
+  const meta = docStore.doc.groups?.[groupId]
+  const slotIds = /** @type {string[]} */ (meta?.slots) || []
+  if (!Array.isArray(slotIds) || slotIds.length === 0) {
+    return { ok: false }
+  }
+  /** @type {any[]} */
+  let jobs = []
+  try {
+    const res = await fetchImpl('/api/jobs?all=1&limit=100')
+    const body = await res.json()
+    jobs = body.jobs || []
+  } catch (err) {
+    chat?.addError(
+      `查询失败:${err instanceof Error ? err.message : String(err)},请稍后再次查询`,
+    )
+    return { ok: false }
+  }
+  const mine = jobs.filter((/** @type {any} */ j) => slotIds.includes(j.clientRef))
+  if (mine.length === 0) {
+    docStore.apply(
+      cmdRemoveObjects(
+        slotIds
+          .filter((/** @type {string} */ id) => docStore.doc.objects[id])
+          .map((/** @type {string} */ id) => ({
+            object: docStore.doc.objects[id],
+            orderIndex: docStore.doc.order.indexOf(id),
+          })),
+      ),
+    )
+    chat?.addSystem('服务端没有该次请求的记录,已清理占位;可从组卡「另生成一组」重新生成。')
+    return { ok: true, found: false }
+  }
+  docStore.mutateTransient((/** @type {any} */ doc) => {
+    for (const id of slotIds) {
+      const o = doc.objects[id]
+      if (o) {
+        o.pendingConfirm = false
+        if (o.gen) {
+          o.gen.message = '准备中'
+        }
+      }
+    }
+  })
+  return { ok: true, found: true }
 }
 
 /**

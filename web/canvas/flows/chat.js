@@ -18,6 +18,8 @@ function localId(prefix) {
  *     focusObject?: (objId: string) => void,
  *     openMask?: (objId: string, maskUrl?: string, sessionId?: string) => void,
  *     regenerateGroup?: (groupId: string) => void,
+ *     confirmGroup?: (groupId: string) => void,
+ *     placeResult?: (info: { assetId: string, ext: string, width: number, height: number, sessionId?: string }) => void,
  *     addToConversation?: (objId: string) => void,
  *   },
  * }} options
@@ -76,7 +78,9 @@ export function createChat({ docStore, container, actions = {} }) {
 
   /**
    * 抠图结果卡(PRD §6:对话展示预览和"来自图片 N")。
-   * @param {{ objId?: string, assetUrl?: string, sourceLabel?: string, sessionId?: string }} options
+   * pendingPlace:资产已生成但占位对象已不在画布(被删除)→ 提供"放入画布"。
+   * @param {{ objId?: string, assetUrl?: string, sourceLabel?: string, sessionId?: string,
+   *           pendingPlace?: boolean, assetId?: string, ext?: string, width?: number, height?: number }} options
    */
   const addResultCard = (options) =>
     push({
@@ -86,7 +90,25 @@ export function createChat({ docStore, container, actions = {} }) {
       assetUrl: options.assetUrl,
       sourceLabel: options.sourceLabel,
       sessionId: options.sessionId,
+      pendingPlace: options.pendingPlace,
+      assetId: options.assetId,
+      ext: options.ext,
+      width: options.width,
+      height: options.height,
     })
+
+  /** 放置完成:更新同一结果卡为已落位。 @param {string} sessionId @param {string} objId */
+  const markPlaced = (sessionId, objId) => {
+    docStore.mutateTransient(() => {
+      for (const entry of doc().chat) {
+        if (entry.sessionId === sessionId && entry.kind === 'result') {
+          entry.pendingPlace = false
+          entry.objId = objId
+        }
+      }
+    })
+    render()
+  }
 
   /* ---------- 渲染 ---------- */
 
@@ -114,7 +136,10 @@ export function createChat({ docStore, container, actions = {} }) {
       .filter(Boolean)
     const pending = slots.filter((/** @type {any} */ o) => o.kind === 'placeholder')
     let state = { key: 'running', label: pending[0]?.gen?.message || '生成中…' }
-    if (pending.length === 0) {
+    if (pending.some((/** @type {any} */ o) => o.pendingConfirm)) {
+      // 提交未收到确认:等待用户显式查询(A06),不显示进度也不提供重试
+      state = { key: 'pending', label: '结果待确认' }
+    } else if (pending.length === 0) {
       const fake = slots.map((/** @type {any} */ o) => ({
         status: o.kind === 'image' ? 'completed' : 'failed',
       }))
@@ -160,6 +185,8 @@ export function createChat({ docStore, container, actions = {} }) {
       } else if (obj.kind === 'error') {
         cell.classList.add('fail')
         cell.append(el('span', null, obj.errorDetail || '生成失败'))
+      } else if (obj.pendingConfirm) {
+        cell.append(el('span', 'cell-state', '结果待确认'))
       } else {
         cell.append(el('span', 'cell-state', obj.gen?.message || '准备中'))
       }
@@ -171,8 +198,26 @@ export function createChat({ docStore, container, actions = {} }) {
     prompt.title = entry.prompt || ''
     card.append(prompt)
 
+    // 任务详情展开(§5.1):完整需求 + 四条方向(标题/维度/提示词全文)
+    if (entry.expanded && Array.isArray(groupMeta?.directions)) {
+      const detail = el('div', 'chat-card-detail')
+      for (const dir of groupMeta.directions) {
+        const row = el('div', 'detail-direction')
+        row.append(el('b', null, `${dir.slot + 1}. ${dir.title} · ${dir.dimension}`))
+        row.append(el('p', null, dir.prompt))
+        detail.append(row)
+      }
+      card.append(detail)
+    }
+
     if (slots.length > 0) {
       const actionsRow = el('div', 'chat-card-actions')
+      if (state.key === 'pending') {
+        const check = el('button', 'chat-mini-btn', '查询结果')
+        check.title = '只查询服务端是否已接受本次请求,不会重复提交'
+        check.addEventListener('click', () => actions.confirmGroup?.(entry.groupId))
+        actionsRow.append(check)
+      }
       if (state.key === 'partial' || state.key === 'failed') {
         const again = el('button', 'chat-mini-btn', '另生成一组 4 张')
         again.title = '将发起一次新的生成,可能产生新的调用费用'
@@ -183,6 +228,16 @@ export function createChat({ docStore, container, actions = {} }) {
         const view = el('button', 'chat-mini-btn', '在画布中查看')
         view.addEventListener('click', () => actions.focusObject?.(entry.slotObjIds[0]))
         actionsRow.append(view)
+      }
+      if (Array.isArray(groupMeta?.directions)) {
+        const toggle = el('button', 'chat-mini-btn', entry.expanded ? '收起详情' : '任务详情')
+        toggle.addEventListener('click', () => {
+          docStore.mutateTransient(() => {
+            entry.expanded = !entry.expanded
+          })
+          render()
+        })
+        actionsRow.append(toggle)
       }
       if (actionsRow.childElementCount > 0) {
         card.append(actionsRow)
@@ -220,7 +275,7 @@ export function createChat({ docStore, container, actions = {} }) {
   /** @param {any} entry */
   function buildResultCard(entry) {
     const card = el('div', 'chat-card')
-    card.append(el('div', 'chat-card-title', '抠图完成'))
+    card.append(el('div', 'chat-card-title', entry.pendingPlace ? '结果已生成,尚未加入画布' : '抠图完成'))
     const row = el('div', 'result-preview')
     if (entry.assetUrl) {
       const img = document.createElement('img')
@@ -231,7 +286,22 @@ export function createChat({ docStore, container, actions = {} }) {
     }
     const meta = el('div', 'result-source')
     meta.append(el('div', null, `来自 ${entry.sourceLabel || '引用图片'}`))
-    if (entry.objId) {
+    if (entry.pendingPlace) {
+      // 源对象被删除/撤销:资产保留,由用户显式放置(PRD §6,不复活已删对象)
+      const hint = el('div', null, '原对象已不在画布;资产已保留,可显式放入。')
+      meta.append(hint)
+      const place = el('button', 'chat-mini-btn', '放入画布')
+      place.addEventListener('click', () =>
+        actions.placeResult?.({
+          assetId: entry.assetId,
+          ext: entry.ext,
+          width: entry.width,
+          height: entry.height,
+          sessionId: entry.sessionId,
+        }),
+      )
+      meta.append(place)
+    } else if (entry.objId) {
       const locate = el('button', 'chat-mini-btn', '定位到画布')
       locate.addEventListener('click', () => actions.focusObject?.(entry.objId))
       meta.append(locate)
@@ -263,7 +333,9 @@ export function createChat({ docStore, container, actions = {} }) {
       return
     }
     renderQueued = true
-    requestAnimationFrame(() => {
+    // 用微任务而不是 rAF 合并同帧多次渲染:后台/隐藏标签页里 rAF 永不触发,
+    // 会导致消息渲染"卡住"(提交后组卡不出现、状态不刷新)。
+    queueMicrotask(() => {
       renderQueued = false
       renderNow()
     })
@@ -287,8 +359,18 @@ export function createChat({ docStore, container, actions = {} }) {
     for (const entry of messages) {
       try {
         container.append(buildEntry(entry))
-      } catch {
-        // 单条消息渲染失败不拖垮整栏
+      } catch (err) {
+        // 单条消息渲染失败不拖垮整栏,但要可见地暴露出来(便于定位)
+        console.error('chat 消息渲染失败', entry?.kind, err)
+        const bubble = el('div', 'chat-msg system')
+        bubble.append(
+          el(
+            'div',
+            'bubble',
+            `[消息渲染失败:${err instanceof Error ? err.message : String(err)}]`,
+          ),
+        )
+        container.append(bubble)
       }
     }
     if (nearBottom) {
@@ -311,6 +393,7 @@ export function createChat({ docStore, container, actions = {} }) {
     addPlanCard,
     updateSession,
     addResultCard,
+    markPlaced,
     render,
   }
 }

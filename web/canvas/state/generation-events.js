@@ -7,6 +7,7 @@ import {
   applyTransition,
   imageRecordToAsset,
   jobEventToTransition,
+  markDisconnected,
   reconcile,
 } from './generation-reducer.js'
 import { applyGroupJobs, sweepLostGroupSlots } from './group-state.js'
@@ -168,6 +169,8 @@ export function connectGenerationEvents(options) {
     es.addEventListener('error', () => {
       // EventSource 自动重连;服务端 retry: 3000
       onConnectionChange(false)
+      // 生成中的占位统一切到"连接中断,正在查询"(A05):不编造进度、不自动重提
+      docStore.mutateTransient((/** @type {any} */ doc) => markDisconnected(doc))
     })
   }
 

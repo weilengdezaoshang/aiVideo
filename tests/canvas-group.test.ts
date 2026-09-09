@@ -246,6 +246,120 @@ interface ReconcileObj {
   width: number
   height: number
   groupId?: string
-  gen?: { jobId: string }
+  gen?: { jobId: string, message?: string }
   errorDetail?: string
 }
+
+import { markDisconnected } from '../web/canvas/state/generation-reducer.js'
+import { applyCommand } from '../web/canvas/state/commands.js'
+import { confirmPendingGroup } from '../web/canvas/flows/group-generate.js'
+
+test('markDisconnected:绑定任务的占位统一切换断线文案,未绑定的不动', () => {
+  const doc = {
+    objects: {
+      a: { id: 'a', kind: 'placeholder', x: 0, y: 0, width: 10, height: 10, gen: { jobId: 'j1', message: '生成中…' } },
+      b: { id: 'b', kind: 'placeholder', x: 0, y: 0, width: 10, height: 10, gen: { jobId: '', message: '准备中' } },
+      c: { id: 'c', kind: 'image', x: 0, y: 0, width: 10, height: 10 },
+    } as Record<string, ReconcileObj>,
+  }
+  const changed = markDisconnected(doc)
+  assert.deepEqual(changed, ['a'])
+  const a = doc.objects.a as ReconcileObj & { gen: { message: string } }
+  const b = doc.objects.b as ReconcileObj & { gen: { message: string } }
+  assert.equal(a.gen.message, '连接中断,正在查询')
+  assert.equal(b.gen.message, '准备中')
+  // 幂等:重复断线事件不反复改写
+  assert.deepEqual(markDisconnected(doc), [])
+})
+
+interface PendingDoc {
+  id: string
+  order: string[]
+  groups: Record<string, { title: string, prompt: string, slots: string[] }>
+  objects: Record<string, ReconcileObj & { pendingConfirm?: boolean }>
+}
+
+function fakeStore(doc: PendingDoc) {
+  return {
+    doc,
+    apply: (cmd: never) => applyCommand(doc, cmd),
+    mutateTransient: (fn: (d: PendingDoc) => unknown) => fn(doc),
+  }
+}
+
+test('confirmPendingGroup:服务端已接受 → 清除待确认标记并交还整组流程', async () => {
+  const doc: PendingDoc = {
+    order: [],
+    id: 'd1',
+    groups: { g1: { title: 'T', prompt: 'P', slots: ['s0', 's1', 's2', 's3'] } },
+    objects: {
+      s0: { id: 's0', kind: 'placeholder', x: 0, y: 0, width: 1, height: 1, groupId: 'g1', pendingConfirm: true, gen: { jobId: '', message: '结果待确认' } },
+      s1: { id: 's1', kind: 'placeholder', x: 0, y: 0, width: 1, height: 1, groupId: 'g1', pendingConfirm: true, gen: { jobId: '', message: '结果待确认' } },
+      s2: { id: 's2', kind: 'placeholder', x: 0, y: 0, width: 1, height: 1, groupId: 'g1', pendingConfirm: true, gen: { jobId: '', message: '结果待确认' } },
+      s3: { id: 's3', kind: 'placeholder', x: 0, y: 0, width: 1, height: 1, groupId: 'g1', pendingConfirm: true, gen: { jobId: '', message: '结果待确认' } },
+    },
+  }
+  const jobs = [
+    { id: 'j0', status: 'running', clientRef: 's0', groupId: 'srv-g1' },
+    { id: 'j1', status: 'running', clientRef: 's1', groupId: 'srv-g1' },
+  ]
+  const fetchImpl = (async () =>
+    ({ json: async () => ({ jobs }) })) as unknown as typeof fetch
+  const result = await confirmPendingGroup({
+    docStore: fakeStore(doc),
+    groupId: 'g1',
+    fetchImpl,
+  })
+  assert.equal(result.found, true)
+  const s0 = doc.objects.s0
+  const s3 = doc.objects.s3
+  assert.equal(s0.pendingConfirm, false)
+  assert.equal(s0.gen?.message, '准备中')
+  assert.equal(s3.pendingConfirm, false)
+  // 占位全部保留
+  assert.equal(Object.keys(doc.objects).length, 4)
+})
+
+test('confirmPendingGroup:确认未入队 → 清理占位、保留组元数据可重试', async () => {
+  const doc: PendingDoc = {
+    order: [],
+    id: 'd1',
+    groups: { g1: { title: 'T', prompt: 'P', slots: ['s0', 's1'] } },
+    objects: {
+      s0: { id: 's0', kind: 'placeholder', x: 0, y: 0, width: 1, height: 1, groupId: 'g1', pendingConfirm: true, gen: { jobId: '', message: '结果待确认' } },
+      s1: { id: 's1', kind: 'placeholder', x: 0, y: 0, width: 1, height: 1, groupId: 'g1', pendingConfirm: true, gen: { jobId: '', message: '结果待确认' } },
+    },
+  }
+  const fetchImpl = (async () =>
+    ({ json: async () => ({ jobs: [] }) })) as unknown as typeof fetch
+  const result = await confirmPendingGroup({
+    docStore: fakeStore(doc),
+    groupId: 'g1',
+    fetchImpl,
+  })
+  assert.equal(result.found, false)
+  assert.deepEqual(doc.objects, {})
+  // 组元数据保留:"另生成一组"仍可用
+  assert.equal(doc.groups.g1.prompt, 'P')
+})
+
+test('confirmPendingGroup:查询网络失败 → 不清理、可再次查询', async () => {
+  const doc: PendingDoc = {
+    order: [],
+    id: 'd1',
+    groups: { g1: { title: 'T', prompt: 'P', slots: ['s0'] } },
+    objects: {
+      s0: { id: 's0', kind: 'placeholder', x: 0, y: 0, width: 1, height: 1, groupId: 'g1', pendingConfirm: true, gen: { jobId: '' } },
+    },
+  }
+  const fetchImpl = (async () => {
+    throw new TypeError('network down')
+  }) as unknown as typeof fetch
+  const result = await confirmPendingGroup({
+    docStore: fakeStore(doc),
+    groupId: 'g1',
+    fetchImpl,
+  })
+  assert.equal(result.ok, false)
+  assert.equal(Object.keys(doc.objects).length, 1)
+})

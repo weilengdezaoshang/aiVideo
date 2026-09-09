@@ -152,6 +152,28 @@ export function reconcile(doc, serverJobs, resolveImage) {
 }
 
 /**
+ * SSE 断连(PRD §5.2 A05):把所有绑定任务的占位统一改为
+ * "连接中断,正在查询"——不编造进度、不自动重提;重连对账后由事件恢复常态文案。
+ * @param {{ objects: Record<string, CanvasObj> }} doc
+ * @returns {string[]} 被更新的占位 id
+ */
+export function markDisconnected(doc) {
+  const changed = []
+  for (const obj of Object.values(doc.objects)) {
+    if (obj.kind !== 'placeholder' || !obj.gen?.jobId) {
+      continue
+    }
+    if (obj.gen.message !== DISCONNECTED_MESSAGE) {
+      obj.gen = { ...obj.gen, progress: undefined, message: DISCONNECTED_MESSAGE }
+      changed.push(obj.id)
+    }
+  }
+  return changed
+}
+
+export const DISCONNECTED_MESSAGE = '连接中断,正在查询'
+
+/**
  * 从完成的 image 记录(服务端 ImageRecord)解析出对象所需字段。
  * 画布产物直接复用旧 images 存储;assetId 为空时用 url 直连。
  * @param {any} imageRecord

@@ -118,6 +118,13 @@ export function groupTransitions(doc, slots, groupId) {
   return { groupId, publishes: terminal, transitions }
 }
 
+/** 组任务真实接管占位后清除"结果待确认"标记(A06)。 @param {any} obj */
+function clearPendingConfirm(obj) {
+  if (obj.pendingConfirm) {
+    obj.pendingConfirm = false
+  }
+}
+
 /**
  * 对账兜底:组占位绑定的任务已不在服务端任务列表里(终结任务只保留最近 200 个,
  * 列表查询也有 limit)→ 转错误卡,避免永远停在"生成中…"。仍在线/已在列表中的不动。
@@ -162,6 +169,8 @@ export function applyGroupJobs(doc, serverJobs, resolveImage) {
       if (!obj) {
         continue
       }
+      // 服务端任务真实接管该槽位:待确认标记不再有意义(A06)
+      clearPendingConfirm(obj)
       if (transition.kind === 'progress') {
         obj.gen = {
           ...(obj.gen || {}),
