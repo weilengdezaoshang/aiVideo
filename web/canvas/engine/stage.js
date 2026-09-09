@@ -129,6 +129,14 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
     return { x: (point.x - cam.x) * cam.scale, y: (point.y - cam.y) * cam.scale }
   }
 
+  /** 按屏幕像素平移视图(操作栏"轻移视口腾出空间"用,PRD §4.1)。 */
+  /** @param {number} screenDx @param {number} screenDy */
+  function panBy(screenDx, screenDy) {
+    cam.x -= screenDx / cam.scale
+    cam.y -= screenDy / cam.scale
+    applyCam()
+  }
+
   /** 视野居中到世界坐标点(初始视图 / 100% 重置用) */
   /** @param {Point} world @param {number} [scale] */
   function centerOn(world, scale = cam.scale) {
@@ -251,6 +259,7 @@ export function createCanvasEngine(rootEl, surfaceEl, options = {}) {
     zoomBy,
     zoomToScale,
     centerOn,
+    panBy,
     screenToWorld,
     worldToScreen,
     clampScale,

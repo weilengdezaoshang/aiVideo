@@ -34,8 +34,11 @@ export function initObjectActions({
     return obj && obj.kind === 'image'
   }
 
-  /** 根据选中对象刷新按钮可见性与位置。 */
-  function refresh() {
+  /**
+   * 根据选中对象刷新按钮可见性与位置。
+   * @param {{ pan?: boolean }} [opts] pan:选择变化时允许轻移视口腾出空间(PRD §4.1)
+   */
+  function refresh(opts = {}) {
     const selection = getSelection()
     const single = selection.length === 1 ? getDocStore()?.doc.objects[selection[0]] : null
     if (
@@ -65,7 +68,13 @@ export function initObjectActions({
       Math.max(8, screen.x + (single.width * cam.scale - width) / 2),
       Math.max(8, rootEl.clientWidth - width - 8),
     )
-    const y = Math.min(bottom, Math.max(8, rootEl.clientHeight - 48))
+    let y = Math.min(bottom, Math.max(8, rootEl.clientHeight - 48))
+    if (opts.pan && bottom + 48 > rootEl.clientHeight) {
+      // 下方不足:轻移视口把对象底边抬进安全区,操作栏保持贴图下方
+      const overflow = bottom + 48 - rootEl.clientHeight
+      engine.panBy(0, overflow + 12)
+      y = rootEl.clientHeight - 48 - 8
+    }
     bar.style.left = `${x}px`
     bar.style.top = `${y}px`
     bar.hidden = false

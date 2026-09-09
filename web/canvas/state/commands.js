@@ -29,6 +29,7 @@
  * @property {number} [fontSize] 文字字号
  * @property {string} [fill] 文字颜色(空 = 跟随主题默认)
  * @property {{originalAssetId: string, originalExt: string, maskAssetId: string}} [cutout] 抠图谱系
+ * @property {number} [durationSec] 视频时长(角标辨认用,PRD §8)
  */
 
 /** 添加对象(含 order 追加);invert = 移除 @param {CanvasObj[]} objects */

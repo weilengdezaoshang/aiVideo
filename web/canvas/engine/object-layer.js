@@ -158,6 +158,27 @@ export function createObjectLayer(options) {
         group.add(directionChip(obj.directionTitle, obj.width))
       }
       if (obj.kind === 'video') {
+        // 视频辨认(PRD §8/A15):▶ + 时长与文件格式角标
+        const duration = Number(
+          obj.durationSec ?? (/** @type {any} */ (obj.lineage?.params))?.durationSec ?? 0,
+        )
+        const badge = new Konva.Label({
+          x: 8,
+          y: obj.height - 26,
+          opacity: 0.88,
+          listening: false,
+          perfectDrawEnabled: false,
+        })
+        badge.add(new Konva.Tag({ fill: 'rgba(0,0,0,0.62)', cornerRadius: 8 }))
+        badge.add(
+          new Konva.Text({
+            text: `${duration > 0 ? `${duration}s · ` : ''}${String(obj.ext || 'mp4').toUpperCase()}`,
+            padding: 3,
+            fontSize: 11,
+            fill: '#fff',
+          }),
+        )
+        group.add(badge)
         const playIcon = new Konva.Text({
           text: '▶',
           fontSize: Math.min(28, obj.height / 4),
@@ -582,12 +603,20 @@ export function createObjectLayer(options) {
     onSelectionChange([...selected])
   }
 
-  /* ---------- 画板缩放把手(PRD §4.2:画板可改尺寸) ---------- */
+  /* ---------- 对象把手:画板改尺寸 / 图片等比缩放(PRD §4.2) ---------- */
 
-  /** @type {Map<string, any>} */
+  /** @type {Map<string, any>} 画板右下角尺寸把手 */
   const resizeHandles = new Map()
+  /** @type {Map<string, any>} 图片/视频等比缩放把手(仅单选) */
+  const scaleHandles = new Map()
+
+  /** 控制点屏幕尺寸固定:世界尺寸随相机缩放反算(PRD §4.2)。 */
+  function handleSize() {
+    return 12 / Math.max(0.05, engine.getCam().scale)
+  }
 
   function syncResizeHandles() {
+    const size = handleSize()
     for (const [id, handle] of resizeHandles) {
       const o = nodeById(id)
       if (!selected.has(id) || !o || o.kind !== 'board') {
@@ -595,52 +624,141 @@ export function createObjectLayer(options) {
         resizeHandles.delete(id)
         continue
       }
-      handle.position({ x: o.x + o.width, y: o.y + o.height })
+      handle.setAttrs({ x: o.x + o.width, y: o.y + o.height, width: size, height: size })
+    }
+    for (const [id, handle] of scaleHandles) {
+      const o = nodeById(id)
+      const stillValid =
+        selected.has(id) && o && (o.kind === 'image' || o.kind === 'video') && selected.size === 1
+      if (!stillValid) {
+        handle.destroy()
+        scaleHandles.delete(id)
+        continue
+      }
+      handle.setAttrs({ x: o.x + o.width, y: o.y + o.height, width: size, height: size })
     }
     for (const id of selected) {
       const o = nodeById(id)
-      if (!o || o.kind !== 'board' || resizeHandles.has(id)) {
+      if (!o || resizeHandles.has(id)) {
         continue
       }
-      const handle = new Konva.Rect({
-        x: o.x + o.width,
-        y: o.y + o.height,
-        width: 12,
-        height: 12,
-        fill: '#ffffff',
-        stroke: '#356df3',
-        strokeWidth: 2,
-        cornerRadius: 3,
-        draggable: true,
-      })
-      handle.on('dragmove', () => {
-        const obj = nodeById(id)
-        const g = groups.get(id)
-        const bg = g?.getAttr('bgRect')
-        if (!obj || !bg) {
-          return
-        }
-        const w = Math.max(64, handle.x() - obj.x)
-        const h = Math.max(64, handle.y() - obj.y)
-        bg.width(w)
-        bg.height(h)
-        overlayLayer.batchDraw()
-      })
-      handle.on('dragend', () => {
-        const obj = nodeById(id)
-        const bg = groups.get(id)?.getAttr('bgRect')
-        if (!obj || !bg) {
-          return
-        }
-        const w = Math.max(64, Math.round(handle.x() - obj.x))
-        const h = Math.max(64, Math.round(handle.y() - obj.y))
-        options.applyCommand?.(
-          cmdUpdateObject(id, { width: w, height: h }, { width: obj.width, height: obj.height }),
-        )
-      })
-      resizeHandles.set(id, handle)
-      overlayLayer.add(handle)
+      if (o.kind === 'board') {
+        const handle = createHandle(id, o, 'board')
+        resizeHandles.set(id, handle)
+        overlayLayer.add(handle)
+      } else if ((o.kind === 'image' || o.kind === 'video') && selected.size === 1) {
+        const handle = createHandle(id, o, 'scale')
+        scaleHandles.set(id, handle)
+        overlayLayer.add(handle)
+      }
     }
+  }
+
+  /**
+   * @param {string} id
+   * @param {CanvasObj} o
+   * @param {'board' | 'scale'} kind
+   */
+  function createHandle(id, o, kind) {
+    const size = handleSize()
+    const handle = new Konva.Rect({
+      x: o.x + o.width,
+      y: o.y + o.height,
+      width: size,
+      height: size,
+      fill: kind === 'scale' ? '#356df3' : '#ffffff',
+      stroke: '#356df3',
+      strokeWidth: 2,
+      cornerRadius: 3,
+      draggable: true,
+    })
+    if (kind === 'board') {
+      wireBoardResize(handle, id)
+    } else {
+      wireUniformScale(handle, id)
+    }
+    return handle
+  }
+
+  /** @param {any} handle @param {string} id */
+  function wireBoardResize(handle, id) {
+    handle.on('dragmove', () => {
+      const obj = nodeById(id)
+      const bg = groups.get(id)?.getAttr('bgRect')
+      if (!obj || !bg) {
+        return
+      }
+      const min = 64 / Math.max(0.05, engine.getCam().scale)
+      const w = Math.max(min, handle.x() - obj.x)
+      const h = Math.max(min, handle.y() - obj.y)
+      bg.width(w)
+      bg.height(h)
+      overlayLayer.batchDraw()
+    })
+    handle.on('dragend', () => {
+      const obj = nodeById(id)
+      const bg = groups.get(id)?.getAttr('bgRect')
+      if (!obj || !bg) {
+        return
+      }
+      const min = 64 / Math.max(0.05, engine.getCam().scale)
+      const w = Math.max(min, Math.round(handle.x() - obj.x))
+      const h = Math.max(min, Math.round(handle.y() - obj.y))
+      options.applyCommand?.(
+        cmdUpdateObject(id, { width: w, height: h }, { width: obj.width, height: obj.height }),
+      )
+    })
+  }
+
+  /**
+   * 图片/视频等比缩放:拖角预览(组节点缩放),松手提交尺寸并让同组右侧成员顺延;
+   * 只改显示尺寸,不改资产分辨率(PRD §4.2)。
+   * @param {any} handle @param {string} id
+   */
+  function wireUniformScale(handle, id) {
+    let ratio = 1
+    handle.on('dragmove', () => {
+      const obj = nodeById(id)
+      const g = groups.get(id)
+      if (!obj || !g) {
+        return
+      }
+      const dx = (handle.x() - obj.x) / obj.width
+      const dy = (handle.y() - obj.y) / obj.height
+      ratio = Math.min(8, Math.max(0.1, Math.max(dx, dy)))
+      g.scale({ x: ratio, y: ratio })
+      overlayLayer.batchDraw()
+    })
+    handle.on('dragend', () => {
+      const obj = nodeById(id)
+      const g = groups.get(id)
+      if (!obj || !g) {
+        return
+      }
+      g.scale({ x: 1, y: 1 })
+      const w = Math.max(48, Math.round(obj.width * ratio))
+      const h = Math.max(48, Math.round(obj.height * ratio))
+      const delta = w - obj.width
+      const moves = obj.groupId
+        ? Object.values(getDoc().objects)
+            .filter(
+              (/** @type {any} */ m) =>
+                m.id !== id && m.groupId === obj.groupId && m.x >= obj.x + obj.width,
+            )
+            .map((/** @type {any} */ m) => ({
+              id: m.id,
+              from: { x: m.x, y: m.y },
+              to: { x: m.x + delta, y: m.y },
+            }))
+        : []
+      if (moves.length > 0) {
+        options.applyCommand?.(cmdMoveObjects(moves))
+      }
+      options.applyCommand?.(
+        cmdUpdateObject(id, { width: w, height: h }, { width: obj.width, height: obj.height }),
+      )
+      ratio = 1
+    })
   }
 
   /* ---------- 视口裁剪与占位转圈动画 ---------- */
@@ -663,6 +781,10 @@ export function createObjectLayer(options) {
     const minY = cam.y - pad
     const maxX = cam.x + engine.stage.width() / cam.scale + pad
     const maxY = cam.y + engine.stage.height() / cam.scale + pad
+    // 相机缩放后把手尺寸(屏幕恒定)需要重算
+    if (resizeHandles.size > 0 || scaleHandles.size > 0) {
+      syncResizeHandles()
+    }
     let spinnerVisible = false
     for (const [id, group] of groups) {
       const o = nodeById(id)
