@@ -379,35 +379,53 @@ app.post('/api/generate/group', async (req, res) => {
   }
   const plan = planDirections(prompt)
   const groupId = randomUUID()
-  const slots = []
-  for (const direction of plan.directions) {
+  // 两阶段:先完成全部方向的任务参数校验,再统一入队,避免校验中途失败留下半组任务。
+  // 四方向仅面向图片(PRD §5):即使请求携带 kind=video 也强制为 image。
+  const preparedSlots = plan.directions.map((direction) => {
     const parsed = parseGenParams({
       ...body,
       prompt: direction.prompt,
+      kind: 'image',
       batchCount: 1,
       seed: -1,
     })
     if (!parsed.ok) {
-      return res.status(400).json({ error: parsed.error })
+      return { ok: false as const, error: parsed.error }
     }
     if (provider.name === 'cloud' && parsed.params.kind === 'image') {
       parsed.params.model = resolveCloudImageModel(config.cloudVendor, config.cloudModel, false)
     }
-    const clientRef = (clientRefs[direction.slot] as string).trim().slice(0, 64)
-    const job = jobs.createJob(parsed.params, undefined, undefined, clientRef, {
+    return {
+      ok: true as const,
+      params: parsed.params,
+      clientRef: (clientRefs[direction.slot] as string).trim().slice(0, 64),
+      direction,
+    }
+  })
+  for (const slot of preparedSlots) {
+    if (!slot.ok) {
+      return res.status(400).json({ error: slot.error })
+    }
+  }
+  const slots = []
+  for (const slot of preparedSlots) {
+    if (!slot.ok) {
+      continue
+    }
+    const job = jobs.createJob(slot.params, undefined, undefined, slot.clientRef, {
       groupId,
-      slot: direction.slot,
-      directionTitle: direction.title,
+      slot: slot.direction.slot,
+      directionTitle: slot.direction.title,
     })
     slots.push({
-      slot: direction.slot,
-      title: direction.title,
-      dimension: direction.dimension,
-      prompt: direction.prompt,
+      slot: slot.direction.slot,
+      title: slot.direction.title,
+      dimension: slot.direction.dimension,
+      prompt: slot.direction.prompt,
       jobId: job.id,
-      clientRef,
+      clientRef: slot.clientRef,
     })
-    logger.info('四方向任务已入组', { groupId, slot: direction.slot, jobId: job.id })
+    logger.info('四方向任务已入组', { groupId, slot: slot.direction.slot, jobId: job.id })
   }
   return res.status(202).json({
     groupId,

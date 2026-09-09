@@ -56,9 +56,16 @@ export class AgentStore {
       const raw = JSON.parse(await fs.readFile(this.file, 'utf8')) as { sessions?: unknown }
       if (Array.isArray(raw.sessions)) {
         for (const session of raw.sessions as AgentSession[]) {
-          if (session && typeof session.id === 'string') {
-            this.sessions.set(session.id, session)
+          if (!session || typeof session.id !== 'string') {
+            continue
           }
+          if (session.status === 'preparing') {
+            // 服务在识别中途崩溃的会话:回到 planned,允许用户重新准备
+            // (waiting_mask 不在此列——已有结果,恢复后不自动识别第二次,PRD §7)
+            session.status = 'planned'
+            session.error = '上次识别被中断,可重新准备蒙版'
+          }
+          this.sessions.set(session.id, session)
         }
       }
     } catch {
