@@ -1,0 +1,94 @@
+/* A continuous dark gallery, with original artwork supplying the color. */
+#intro{--gallery-bg:#101214;--gallery-text:#f3f1eb;--gallery-muted:#a7abae;background:var(--gallery-bg);color:var(--gallery-text)}
+#intro .landing-nav{position:absolute;top:0;left:0;right:0;z-index:4;height:88px;padding:0 48px;display:flex;align-items:center;justify-content:space-between;gap:30px}
+#intro .landing-brand{color:var(--gallery-text);display:flex;align-items:center;gap:9px;font-size:26px;font-weight:700;text-decoration:none;letter-spacing:-.035em}.landing-brand svg{width:22px;height:22px}
+.landing-links{display:flex;gap:32px;align-items:center;margin:auto}#intro .landing-links a{color:#e2e4e3;text-decoration:none;font-size:14px}
+.landing-btn{display:inline-flex;align-items:center;justify-content:center;gap:14px;min-height:46px;padding:12px 22px;border-radius:5px;font-size:14px;text-decoration:none;white-space:nowrap}
+#intro .landing-primary{background:var(--gallery-text);color:#131617;border:1px solid transparent}#intro .landing-secondary{background:transparent;color:var(--gallery-text);border:1px solid #686c70}
+#intro :is(a,button,summary):focus-visible{outline:3px solid #fff;outline-offset:5px;box-shadow:0 0 0 7px #101214}
+.landing-hero{height:100svh;min-height:680px;max-height:1150px;position:relative;isolation:isolate;overflow:hidden;background:#101214}
+.landing-backdrop{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;object-position:62% 50%;opacity:0;transition:opacity 650ms cubic-bezier(.22,1,.36,1)}.landing-backdrop.is-scene-active{opacity:1}
+.landing-hero:after{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,#10121435 45%,#101214 100%),linear-gradient(90deg,#101214b8 0%,#10121455 47%,#10121408 80%)}
+.landing-title{position:absolute;top:31%;left:8%;width:75%;max-width:1000px}#intro .landing-title h1{color:var(--gallery-text);font-family:GalleryDisplay,"PingFang SC",sans-serif;font-size:clamp(64px,7.5vw,108px);line-height:1.18;font-weight:500;letter-spacing:-.015em;margin:0;text-wrap:balance}.landing-title h1 span{display:block}.landing-title p{font-size:16px;letter-spacing:.02em;color:#e0e3e2;margin:27px 0 0}
+.landing-scene-dock{position:absolute;left:8%;bottom:88px;display:flex;align-items:center;gap:24px}.landing-scenes{display:flex;gap:10px}#intro .landing-scenes button{padding:0;width:62px;height:46px;border-radius:4px;border:1px solid #ffffff60;background:#202527;opacity:.6;overflow:hidden}.landing-scenes img{width:100%;height:100%;object-fit:cover;display:block}#intro .landing-scenes button[aria-pressed="true"]{border-color:#fff;opacity:1;outline:1px solid #fff;outline-offset:4px}#landing-scene-copy{font-size:13px;color:#d3d7d6;margin:0}
+.landing-caption{position:absolute;bottom:30px;left:8%;color:#a7b1b2;font-size:11px;margin:0}#intro .landing-scroll{position:absolute;bottom:30px;right:48px;color:#dadfdf;display:inline-flex;align-items:center;gap:14px;text-decoration:none;font-size:12px}.landing-scroll svg{width:15px;height:15px;transform:rotate(135deg)}
+.landing-section{max-width:1440px;margin:auto;padding:110px 8%;scroll-margin-top:20px}.landing-section-title{max-width:760px;margin:0 0 44px}#intro .landing-section h2{font-family:GalleryDisplay,"PingFang SC",sans-serif;font-size:clamp(32px,3.4vw,48px);line-height:1.35;letter-spacing:0;color:var(--gallery-text);font-weight:500;margin:0}.landing-section-title p,.landing-copy>p{font-size:16px;line-height:1.8;color:var(--gallery-muted);margin:20px 0 0}
+.landing-art-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}#intro .landing-art{position:relative;border:0;background:#202426;padding:0;border-radius:5px;overflow:hidden;aspect-ratio:3/4;display:block;text-align:left}.landing-art img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s cubic-bezier(.22,1,.36,1)}.landing-art:after{content:'';position:absolute;inset:50% 0 0;background:linear-gradient(transparent,#0008);pointer-events:none}.landing-art span{position:absolute;z-index:1;bottom:18px;left:16px;right:16px;color:#fff;font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:10px}.landing-art span svg{width:15px;height:15px}.landing-art-note{margin:18px 0 0;color:var(--gallery-muted);font-size:12px;line-height:1.7}.landing-section-actions{display:flex;justify-content:flex-start;margin-top:30px;gap:12px}
+.landing-canvas-band{background:#16191b;border-block:1px solid #ffffff0c}.landing-canvas{display:grid;grid-template-columns:.72fr 1.28fr;gap:50px;align-items:center}.landing-copy .landing-btn{margin-top:27px}.landing-copy ul{list-style:none;margin:25px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px 20px;color:#c1c5c6;font-size:13px}.landing-copy li{display:flex;align-items:center;gap:7px}.landing-copy li svg{width:15px;height:15px;color:var(--gallery-muted)}.landing-editor-figure{margin:0;min-width:0}.landing-editor-shot{position:relative;display:block;padding:0;border:1px solid #ffffff30;border-radius:6px;overflow:hidden;background:#fff;box-shadow:0 24px 65px #0004;width:100%}.landing-editor-shot img{width:100%;display:block;height:auto}.landing-editor-figure figcaption{font-size:11px;color:var(--gallery-muted);margin-top:15px}
+.landing-agent{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center}.landing-agent-demo{padding:0 32px 0 0}.landing-agent-heading{display:flex;align-items:center;gap:10px;padding-bottom:23px;border-bottom:1px solid #ffffff25;font-size:14px;font-weight:600}.landing-agent-heading svg{color:#e3e5e0;width:19px;height:19px}.landing-request{padding:20px 0;font-size:16px;line-height:1.8;margin:13px 0 21px;color:#e4e7e5}.landing-agent-demo ol{list-style:none;padding:0;margin:0;counter-reset:steps}.landing-agent-demo li{counter-increment:steps;position:relative;padding:0 0 29px 38px;color:var(--gallery-text);font-size:14px}.landing-agent-demo li:before{content:counter(steps);position:absolute;left:0;top:1px;width:22px;height:22px;border:1px solid #6b7274;border-radius:50%;display:grid;place-items:center;color:#c1c5c6;font-size:11px}.landing-agent-demo li:last-child{padding-bottom:0}.landing-agent-demo li small{display:block;font-size:12px;color:var(--gallery-muted);margin-top:7px;line-height:1.7}.landing-agent-note{font-size:11px;color:var(--gallery-muted);border-top:1px solid #ffffff25;margin:30px 0 0;padding-top:18px}
+.landing-end{text-align:center;position:relative;padding:105px 28px;background:#181c1e;border-block:1px solid #ffffff12}#intro .landing-end h2{font-family:GalleryDisplay,"PingFang SC",sans-serif;font-size:clamp(32px,4vw,52px);color:var(--gallery-text);margin:0 0 32px;line-height:1.4}.landing-footer{max-width:1440px;margin:auto;padding:32px 48px 36px;display:flex;align-items:start;justify-content:space-between;gap:30px;font-size:11px;color:var(--gallery-muted)}.landing-footer a{color:inherit;text-underline-offset:4px}.landing-footer details{max-width:430px}.landing-footer summary{cursor:pointer}.landing-footer details p{line-height:1.8;margin-top:10px}
+.landing-lightbox{padding:0;border:1px solid #ffffff30;border-radius:8px;background:#181c1e;color:var(--gallery-text);width:min(1000px,calc(100vw - 40px));max-height:calc(100dvh - 40px);overflow:auto;box-shadow:0 20px 70px #0008}.landing-lightbox::backdrop{background:#080b0dee}.landing-lightbox header{display:flex;justify-content:space-between;align-items:center;padding:15px 22px;gap:15px;font-size:14px}.landing-lightbox header button{border:1px solid #6b7274;background:transparent;color:#f3f1eb;border-radius:4px;padding:7px 13px;font-size:12px}.landing-lightbox>img{display:block;width:100%;max-height:65dvh;object-fit:contain;background:#101214}.landing-lightbox footer{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:17px 22px;color:var(--gallery-muted);font-size:12px}
+@media(hover:hover) and (pointer:fine){#intro .landing-primary:hover{background:#d9d9d2}#intro .landing-links a:hover{text-decoration:underline;text-underline-offset:6px}#intro .landing-scenes button:hover{opacity:1}.landing-art:hover img{transform:scale(1.035)}}
+@media(max-width:1050px){#intro .landing-nav{padding:0 28px}.landing-links{gap:22px}.landing-canvas{gap:30px;grid-template-columns:.8fr 1.2fr}.landing-agent{gap:45px}.landing-section{padding:85px 6%}.landing-art-grid{gap:13px}.landing-scene-dock{left:6%}.landing-title{left:6%}.landing-caption{left:6%}}
+@media(max-width:760px){#intro .landing-nav{height:76px;padding:0 22px;gap:16px}.landing-links{display:none}#intro .landing-brand{font-size:23px}.landing-btn{font-size:13px;min-height:44px;padding:10px 16px}.landing-hero{height:100svh;min-height:670px;max-height:950px}.landing-title{top:29%;left:24px;width:calc(100% - 48px)}#intro .landing-title h1{font-size:clamp(46px,13.2vw,76px);line-height:1.25}.landing-title p{font-size:14px;letter-spacing:.02em;margin:22px 0 0}.landing-backdrop{object-position:59% 50%}.landing-hero:after{background:linear-gradient(180deg,#10121430 35%,#101214 100%),linear-gradient(90deg,#1012148c,#10121410)}.landing-scene-dock{left:24px;right:24px;bottom:94px;align-items:flex-start;flex-direction:column;gap:20px}.landing-scenes{gap:12px}#intro .landing-scenes button{width:60px;height:44px}#landing-scene-copy{font-size:12px}.landing-caption{bottom:28px;left:24px;max-width:205px;font-size:10px;line-height:1.6}#intro .landing-scroll{right:24px;bottom:30px;font-size:11px;gap:6px}.landing-section{padding:65px 24px;scroll-margin-top:10px}.landing-section-title{margin-bottom:29px}.landing-section-title p,.landing-copy>p{font-size:14px;line-height:1.85;margin-top:17px}.landing-art-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.landing-art-note{font-size:11px;line-height:1.8}.landing-art span{font-size:11px;left:10px;right:10px;bottom:13px;gap:6px}.landing-canvas{display:flex;flex-direction:column;align-items:stretch;gap:32px}.landing-copy ul{font-size:12px;gap:12px}.landing-agent{display:flex;flex-direction:column-reverse;gap:38px}.landing-agent-demo{padding:0;width:100%}.landing-agent-demo li{font-size:13px}.landing-end{padding:72px 24px}.landing-footer{padding:28px 24px;flex-direction:column;gap:16px}.landing-lightbox footer{display:block}.landing-lightbox footer .landing-btn{margin-top:13px}.landing-lightbox>img{max-height:58dvh}}
+@media(prefers-reduced-motion:reduce){.landing-backdrop,.landing-art img{transition:none}.landing-art:hover img{transform:none}}
+
+#intro[data-motion-paused="true"] .landing-backdrop{transition:none}
+@media(prefers-reduced-motion:reduce){#intro *,#intro *:before,#intro *:after{transition:none!important;animation:none!important}}
+
+@font-face{font-family:GalleryDisplay;src:url('{{MEDIUM_FONT}}') format('truetype');font-weight:500;font-style:normal;font-display:swap}
+html:has(#intro:not([hidden])){scroll-behavior:smooth}
+.landing-lightbox[open]::backdrop{animation:gallery-backdrop-in 200ms ease-out both}
+.landing-lightbox[open].is-closing::backdrop{animation:gallery-backdrop-out 150ms ease-out both}
+@keyframes gallery-backdrop-in{from{background-color:transparent}to{background-color:#080b0dee}}
+@keyframes gallery-backdrop-out{from{background-color:#080b0dee}to{background-color:transparent}}
+@media(prefers-reduced-motion:reduce){html:has(#intro:not([hidden])){scroll-behavior:auto}}
+#intro .landing-end h2{font-weight:500;letter-spacing:0}
+#intro .landing-caption,#intro .landing-footer,#intro .landing-art-note,.landing-editor-figure figcaption,.landing-agent-note{font-size:12px}
+@media(prefers-reduced-motion:reduce){#intro .landing-lightbox::backdrop{animation:none!important}}
+/* Persistent wayfinding connects the introduction chapters. */
+#intro .landing-nav{position:fixed;height:84px;transition:background-color 220ms ease,border-color 220ms ease;border-bottom:1px solid transparent}
+#intro .landing-nav.is-scrolled{background:#101214f5;border-bottom-color:#ffffff16}
+#intro .landing-links a{position:relative;padding:10px 0}
+#intro .landing-links a:after{content:'';position:absolute;left:0;right:0;bottom:3px;height:1px;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform 200ms cubic-bezier(.22,1,.36,1)}
+#intro .landing-links a[aria-current='location']:after{transform:scaleX(1)}
+#intro .landing-section{scroll-margin-top:84px}
+@media(max-width:760px){#intro .landing-nav{height:72px}#intro .landing-section{scroll-margin-top:72px}}
+@media(hover:hover) and (pointer:fine){#intro .landing-links a:hover:after{transform:scaleX(1)}}
+
+/* Hero composition and continuous, scroll-driven handoff to the gallery. */
+#intro .landing-hero{height:100svh;min-height:680px;max-height:none}
+#intro .landing-title{top:35%;left:12%;width:76%;max-width:none;text-align:center}
+#intro .landing-title h1{font-size:clamp(58px,6.4vw,96px);line-height:1.24;letter-spacing:.015em}
+#intro .landing-title h1 span{display:inline}
+#intro .landing-title h1 span+span:before{content:'，'}
+#intro .landing-title p{margin-top:26px;color:#e5e8e6;letter-spacing:.12em}
+#intro .landing-hero:after{background:linear-gradient(180deg,#10121440 0%,#10121455 34%,#10121450 62%,#101214 100%)}
+#intro .landing-scene-dock{left:auto;right:48px;bottom:160px;flex-direction:column;align-items:flex-end;gap:22px}
+#intro .landing-scenes{flex-direction:column;gap:16px}
+#intro .landing-scenes button{width:72px;height:52px;border-radius:7px}
+#intro #landing-scene-copy{max-width:220px;text-align:right}
+#intro .landing-caption{left:48px;bottom:90px}
+#intro .landing-scroll{left:50%;right:auto;bottom:86px;transform:translateX(-50%);flex-direction:column;gap:16px;letter-spacing:.12em}
+#intro #create-images{position:relative;margin-top:-28px;padding-top:64px}
+#intro #create-images .landing-section-title{margin-left:auto;margin-right:auto;text-align:center}
+@media(max-width:760px){
+ #intro .landing-title{top:29%;left:24px;width:calc(100% - 48px)}
+ #intro .landing-title h1{font-size:clamp(44px,11.5vw,68px);line-height:1.3}
+ #intro .landing-title h1 span{display:block}
+ #intro .landing-title h1 span+span:before{content:none}
+ #intro .landing-title p{font-size:13px;letter-spacing:.035em;line-height:1.8}
+ #intro .landing-scene-dock{left:24px;right:24px;bottom:172px;align-items:center;gap:16px}
+ #intro .landing-scenes{flex-direction:row}
+ #intro .landing-scenes button{width:58px;height:42px}
+ #intro #landing-scene-copy{text-align:center}
+ #intro .landing-caption{left:24px;bottom:32px;font-size:10px}
+ #intro .landing-scroll{bottom:77px;font-size:11px}
+ #intro #create-images{padding-top:48px}
+}
+
+/* The next chapter covers a briefly held hero; native scroll remains in control. */
+#intro .landing-hero-stage{height:calc(max(100svh, 680px) + 45svh);position:relative}
+#intro .landing-hero{position:sticky;top:0}
+#intro #create-images{max-width:none;margin-top:-45svh;background:var(--gallery-bg);border-radius:32px 32px 0 0;padding-top:76px;padding-bottom:100px;z-index:1;box-shadow:0 -24px 64px #0003}
+#intro #create-images>*{max-width:1200px;margin-left:auto;margin-right:auto}
+#intro #create-images .landing-section-title{max-width:760px}
+@media(max-width:760px){
+ #intro .landing-hero-stage{height:calc(max(100svh, 680px) + 45svh)}
+ #intro #create-images{border-radius:24px 24px 0 0;padding-top:48px;padding-bottom:64px}
+}
+@media(prefers-reduced-motion:reduce){
+ #intro .landing-hero-stage{height:auto;min-height:0}
+ #intro .landing-hero{position:relative}
+ #intro #create-images{margin-top:0;border-radius:0;box-shadow:none}
+}

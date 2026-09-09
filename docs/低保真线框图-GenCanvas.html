@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GenCanvas 低保真线框图(依据 PRD v0.1)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color:#111; background:#fff; padding:32px; max-width:1080px; margin:0 auto; line-height:1.6; }
+  h1 { font-size:24px; margin-bottom:4px; }
+  .meta { color:#777; font-size:13px; margin-bottom:24px; }
+  .phase { border-top:3px solid #111; margin:48px 0 8px; padding-top:12px; }
+  .phase h2 { font-size:18px; }
+  .phase .pos { color:#777; font-size:13px; }
+  .legend { border:1px solid #ccc; background:#f7f7f7; padding:12px 16px; font-size:13px; margin-bottom:8px; }
+  .screen { border:1px solid #111; margin:24px 0; }
+  .screen-head { display:flex; align-items:baseline; gap:12px; border-bottom:1px solid #111; padding:8px 14px; background:#f2f2f2; }
+  .screen-head .no { font-weight:700; }
+  .screen-head .name { font-weight:700; font-size:15px; }
+  .screen-head .pos { color:#777; font-size:12px; margin-left:auto; }
+  .screen-body { display:flex; gap:16px; padding:14px; flex-wrap:wrap; }
+  .wire { border:1.5px solid #111; background:#fff; flex:1 1 380px; min-width:320px; }
+  .ops { flex:1 1 260px; min-width:240px; font-size:13px; }
+  .ops h4 { font-size:13px; margin:6px 0 2px; }
+  .ops ul { margin-left:18px; }
+  .ops .to { background:#f2f2f2; border-left:3px solid #111; padding:4px 8px; margin-top:6px; }
+  .note { font-size:12px; color:#555; padding:8px 14px 12px; }
+  .wait { border:1.5px dashed #555 !important; background:#fafafa; }
+  .badge { display:inline-block; border:1px dashed #555; color:#555; font-size:11px; padding:0 6px; margin-left:6px; }
+  .btn { display:inline-block; border:1px solid #111; padding:2px 10px; font-size:12px; background:#fff; }
+  .btn-p { background:#111; color:#fff; }
+  .btn-ghost { border:1px dashed #777; color:#777; }
+  .topbar { display:flex; gap:8px; align-items:center; border-bottom:1px solid #111; padding:6px 10px; font-size:12px; background:#f7f7f7; }
+  .topbar .sp { flex:1; }
+  .canvas { position:relative; background:#fff radial-gradient(#c8c8c8 1px, transparent 1px); background-size:18px 18px; height:230px; }
+  .canvas.tall { height:270px; }
+  .obj { position:absolute; border:1.5px solid #111; background:#fff; }
+  .imgph { background: linear-gradient(to top right, transparent calc(50% - .75px), #111, transparent calc(50% + .75px)),
+                    linear-gradient(to bottom right, transparent calc(50% - .75px), #111, transparent calc(50% + .75px)); }
+  .sel { outline:2px solid #111; outline-offset:3px; }
+  .dim { color:#888; }
+  .panel { position:absolute; border:1.5px solid #111; background:#fff; padding:8px; font-size:12px; }
+  .row { display:flex; gap:6px; align-items:center; margin-top:6px; flex-wrap:wrap; }
+  .input { border:1px solid #777; padding:3px 6px; color:#888; font-size:12px; flex:1; background:#fff; }
+  .menu { border:1.5px solid #111; background:#fff; font-size:12px; }
+  .menu div { padding:4px 12px; border-bottom:1px solid #ddd; }
+  .menu div:last-child { border-bottom:none; }
+  .spin { display:inline-block; width:14px; height:14px; border:2px solid #111; border-radius:50%; border-right-color:transparent; vertical-align:-2px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; margin:12px 0 4px; }
+  th, td { border:1px solid #999; padding:5px 10px; text-align:left; }
+  th { background:#f2f2f2; }
+  .arrow { text-align:center; color:#555; font-size:13px; margin:-6px 0 18px; }
+  .footnote { color:#777; font-size:12px; margin-top:4px; }
+</style>
+</head>
+<body>
+
+<h1>GenCanvas · 低保真线框图</h1>
+<div class="meta">依据:《docs/PRD-生成式创作画布.md》v0.1 · 仅表达信息层级 / 核心文案 / 按钮位置 / 页面构图,非正式 UI</div>
+
+<div class="legend">
+  <b>图例</b>:实线框 = 页面 / 组件 &nbsp;|&nbsp; <span class="badge">待确认</span> = PRD 未明确,不擅自补全 &nbsp;|&nbsp; 叉线块 = 图片占位 &nbsp;|&nbsp; ▶ = 操作流向 &nbsp;|&nbsp; 灰底条 = 操作后的去向
+</div>
+
+<!-- ================= 阶段 A ================= -->
+<div class="phase">
+  <h2>阶段 A · 首次使用与配置</h2>
+  <div class="pos">位置:用户第一次打开产品;对应 PRD §4(自部署零门槛)、F8(BYOK 配置)</div>
+</div>
+
+<div class="screen">
+  <div class="screen-head"><span class="no">S1</span><span class="name">首次启动 · 后端引导</span><span class="pos">首次使用状态 · 无任何配置</span></div>
+  <div class="screen-body">
+    <div class="wire wait">
+      <div style="padding:28px; text-align:center;">
+        <div style="font-size:16px; font-weight:700; margin-bottom:6px;">欢迎使用 GenCanvas</div>
+        <div class="dim" style="font-size:12px;">选择一个生成后端开始(可随时在设置中更改)</div>
+        <div style="margin:16px auto; width:78%;">
+          <div class="obj" style="position:static; padding:10px; margin-bottom:8px; text-align:left;">
+            <b>① 连接本地 ComfyUI</b><br><span class="dim" style="font-size:12px;">输入地址,如 http://127.0.0.1:8188</span>
+          </div>
+          <div class="obj" style="position:static; padding:10px; margin-bottom:8px; text-align:left;">
+            <b>② 填写模型 API Key</b><br><span class="dim" style="font-size:12px;">使用云端模型(BYOK)</span>
+          </div>
+          <div class="obj" style="position:static; padding:10px; text-align:left;">
+            <b>③ 先用演示模式逛逛</b><br><span class="dim" style="font-size:12px;">内置 Mock 后端,不需要任何配置</span><span class="badge">待确认:PRD 未定义默认后端</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ops">
+      <h4>可执行操作</h4>
+      <ul>
+        <li>选 ① → 进入 S2(填 ComfyUI 地址)</li>
+        <li>选 ② → 进入 S2(填 API Key)</li>
+        <li>选 ③ → 直接进入 S4(空画布)</li>
+      </ul>
+      <h4>PRD 依据</h4>
+      <ul><li>F8 BYOK 配置界面(P0)</li></ul>
+      <div class="to">▶ 选择后 → S2 或 S4</div>
+    </div>
+  </div>
+  <div class="note">引导页本身的形式(全屏向导 / 弹窗)PRD 未说明。<span class="badge">待确认</span></div>
+</div>
+<div class="arrow">↓ 选「连接 ComfyUI / 填 API Key」</div>
+
+<div class="screen">
+  <div class="screen-head"><span class="no">S2</span><span class="name">BYOK 设置</span><span class="pos">含 加载中(S2a)/ 失败(S2b)两个子状态</span></div>
+  <div class="screen-body">
+    <div class="wire">
+      <div class="topbar"><b>设置</b><span class="sp"></span><span>生成后端</span><span>|</span><span>关于</span></div>
+      <div style="padding:14px; font-size:12px;">
+        <div style="font-weight:700; margin-bottom:6px;">ComfyUI</div>
+        <div class="row">地址 <span class="input">http://127.0.0.1:8188</span> <span class="btn">测试连接</span></div>
+        <div style="font-weight:700; margin:12px 0 6px;">云端模型 API Key(BYOK)</div>
+        <div class="row">图像 <span class="input">粘贴 API Key…</span></div>
+        <div class="row">视频 <span class="input">粘贴 API Key…</span><span class="badge">待确认:首批接哪两家(PRD §11-4)</span></div>
+        <div class="row" style="justify-content:flex-end;"><span class="btn btn-p">保存</span></div>
+      </div>
+    </div>
+    <div class="ops">
+      <h4>可执行操作</h4>
+      <ul>
+        <li>填写地址 / Key → 保存</li>
+        <li>点「测试连接」→ S2a 加载中</li>
+        <li>失败 → S2b;成功 → 提示后进入 S4</li>
+      </ul>
+      <div class="to">▶ 保存成功 → S4 空画布</div>
+    </div>
+  </div>
+  <div class="note">
+    <b>S2a 加载中</b>:「测试连接」按钮位置变为 <span class="spin"></span> 测试中…,其余禁用。
+    <b>S2b 失败</b>:按钮下方出现灰底错误条「连接失败:&lt;原因&gt;」+ [重试],留在本页。PRD §9 已列连接类失败。
+  </div>
+</div>
+<div class="arrow">↓ 配置成功(或选演示模式)</div>
+
+<!-- ================= 阶段 B ================= -->
+<div class="phase">
+  <h2>阶段 B · 画布核心流程</h2>
+  <div class="pos">位置:产品主界面;对应 PRD §5.1–5.6、§7、F1–F7、F9</div>
+</div>
+
+<div class="screen">
+  <div class="screen-head"><span class="no">S3</span><span class="name">画布主界面 · 空画布</span><span class="pos">无数据状态 · 一切流程的起点</span></div>
+  <div class="screen-body">
+    <div class="wire">
+      <div class="topbar">
+        <span class="btn">画布 ▾</span><span class="badge">待确认:切换形式(PRD §5.1 只写「画布切换」)</span>
+        <span class="sp"></span>
+        <span>[模型:FLUX ▾]</span><span>⏳ 0</span><span>已保存</span>
+      </div>
+      <div class="canvas">
+        <div style="position:absolute; top:42%; width:100%; text-align:center;" class="dim">
+          画布是空的<br>按 <b>Tab</b> 呼出提示词面板,开始第一张图
+        </div>
+        <div class="panel" style="left:12px; bottom:12px;"><span class="btn">✨ 提示词 ▴</span></div>
+        <div class="panel" style="right:12px; bottom:12px;"><span class="btn">−</span> 100% <span class="btn">+</span></div>
+      </div>
+    </div>
+    <div class="ops">
+      <h4>可执行操作</h4>
+      <ul>
+        <li>Tab / 点「提示词」→ S4 面板展开</li>
+        <li>顶栏「画布 ▾」→ 新建 / 切换画布(形式待确认)</li>
+        <li>滚轮 / 双指 → 缩放;空格+拖 → 平移</li>
+      </ul>
+      <div class="to">▶ Tab → S4</div>
+    </div>
+  </div>
+</div>
+<div class="arrow">↓ 呼出面板</div>
+
+<div class="screen">
+  <div class="screen-head"><span class="no">S4</span><span class="name">提示词面板展开(文生图起点)</span><span class="pos">流程 ① · PRD §5.3-①</span></div>
+  <div class="screen-body">
+    <div class="wire">
+      <div class="topbar"><span>← 画布</span><span class="sp"></span><span>[模型:FLUX ▾]</span><span>⏳ 0</span><span>已保存</span></div>
+      <div class="canvas">
+        <div class="panel" style="left:50%; top:24px; transform:translateX(-50%); width:300px;">
+          <div class="input" style="height:44px;">输入提示词…(例:一只戴墨镜的猫在沙滩上)</div>
+          <div class="row">模型 [FLUX ▾] · 尺寸 [1024 ▾] · 种子 [随机]</div>
+          <div class="row"><span class="btn btn-ghost" style="width:100%; text-align:center;">+ 拖入参考图(可选,留空 = 文生图)</span></div>
+          <div class="row" style="justify-content:flex-end;"><span class="btn">收起</span> <span class="btn btn-p">✨ 生成</span></div>
+        </div>
+        <div class="panel" style="right:12px; bottom:12px;"><span class="btn">−</span> 100% <span class="btn">+</span></div>
+      </div>
+    </div>
+    <div class="ops">
+      <h4>可执行操作</h4>
+      <ul>
+        <li>输入提示词、调参数</li>
+        <li>拖图进参考位 → 同一面板变为图生图(S9)</li>
+        <li>点「生成」→ 面板收起 → S5</li>
+      </ul>
+      <div class="to">▶ 生成 → S5 生成中</div>
+    </div>
+  </div>
+</div>
+<div class="arrow">↓ 点「✨ 生成」</div>
+
+<div class="screen">
+  <div class="screen-head"><span class="no">S5</span><span class="name">生成中(占位框)</span><span class="pos">流程 ① 关键状态 · PRD §5.4;画布不锁死,可并发</span></div>
+  <div class="screen-body">
+    <div class="wire">
+      <div class="topbar"><span>← 画布</span><span class="sp"></span><span>[模型:FLUX ▾]</span><span><b>⏳ 2</b></span><span>已保存</span></div>
+      <div class="canvas">
+        <div class="obj" style="left:36px; top:36px; width:120px; height:120px; text-align:center;">
+          <div style="margin-top:34px;"><span class="spin"></span></div>
+          <div style="font-size:12px; margin-top:6px;">生成中 42%</div>
+          <div style="font-size:11px;" class="dim">悬浮显示 [取消]</div>
+        </div>
+        <div class="obj" style="left:210px; top:70px; width:120px; height:120px; text-align:center;">
+          <div style="margin-top:34px;"><span class="spin"></span></div>
+          <div style="font-size:12px; margin-top:6px;">生成中 68%</div>
+        </div>
+        <div class="note" style="position:absolute; left:12px; bottom:8px;">占位框生成中<b>可拖动</b>(PRD §5.4)</div>
+      </div>
+    </div>
+    <div class="ops">
+      <h4>可执行操作</h4>
+      <ul>
+        <li>继续平移缩放画布、再发新任务(占位框并存)</li>
+        <li>拖动占位框 → 改变结果落位</li>
+        <li>悬浮点「取消」→ 占位框消失,任务级联取消</li>
+        <li>删除占位框 = 级联取消(PRD §5.4)</li>
+      </ul>
+      <div class="to">▶ 完成 → S6 &nbsp;|&nbsp; 失败 → S7 &nbsp;|&nbsp; 取消 → 占位消失</div>
+    </div>
+  </div>
+</div>
+<div class="arrow">↓ 生成完成</div>
+
+<div class="screen">
+  <div class="screen-head"><span class="no">S6</span><span class="name">生成完成(对象落位)</span><span class="pos">流程 ① 终态;空间谱系的起点</span></div>
+  <div class="screen-body">
+    <div class="wire">
+      <div class="topbar"><span>← 画布</span><span class="sp"></span><span>[模型:FLUX ▾]</span><span>⏳ 0</span><span>已保存</span></div>
+      <div class="canvas">
+        <div class="obj imgph sel" style="left:40px; top:40px; width:130px; height:110px;"></div>
+        <div class="obj imgph" style="left:230px; top:76px; width:130px; height:110px;"></div>
+        <div class="note" style="position:absolute; left:40px; top:158px;">选中态:图上有选中框;<br>结果落在源位旁第一个空位(螺旋探测,PRD §8.2)</div>
+      </div>
+    </div>
+    <div class="ops">
+      <h4>可执行操作</h4>
+      <ul>
+        <li>单击选中 / 拖动 / Delete 删除</li>
+        <li>右键对象 → S8 操作菜单</li>
+        <li>Tab 再生成下一张</li>
+      </ul>
+      <div class="to">▶ 右键 → S8</div>
+    </div>
+  </div>
+</div>
+<div class="arrow">↓ 也可来自:生成失败</div>
+
+<div class="screen">
+  <div class="screen-head"><span class="no">S7</span><span class="name">生成失败(错误卡)</span><span class="pos">失败状态 · PRD §5.4</span></div>
+  <div class="screen-body">
+    <div class="wire">
+      <div class="topbar"><span>← 画布</span><span class="sp"></span><span>⏳ 0</span><span>已保存</span></div>
+      <div class="canvas">
+        <div class="obj" style="left:60px; top:60px; width:170px; height:96px; border-style:dashed; text-align:center;">
+          <div style="margin-top:18px; font-size:12px;"><b>生成失败</b><br><span class="dim">后端超时</span></div>
+          <div class="row" style="justify-content:center;"><span class="btn">重试</span> <span class="btn">删除</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="ops">
+      <h4>可执行操作</h4>
+      <ul>
+        <li>「重试」→ 按谱系参数原样重发 → 回 S5</li>
+        <li>「删除」→ 移除错误卡</li>
+      </ul>
+      <div class="to">▶ 重试 → S5</div>
+    </div>
+  </div>
+</div>
+<div class="arrow">↓ 右键任意图像对象</div>
+
+<div class="screen">
+  <div class="screen-head"><span class="no">S8</span><span class="name">对象右键菜单</span><span class="pos">所有对象操作的统一入口 · PRD §5.3</span></div>
+  <div class="screen-body">
+    <div class="wire">
+      <div class="canvas" style="height:250px;">
+        <div class="obj imgph" style="left:36px; top:40px; width:130px; height:110px;"></div>
+        <div class="menu" style="position:absolute; left:180px; top:36px; width:210px;">
+          <div><b>以此为参考生成</b> → S9</div>
+          <div>生成变体(×4)<span class="badge">待确认:交互形式(P1)</span></div>
+          <div>局部重绘 → S10</div>
+          <div>生成视频 → S11</div>
+          <div>转矢量(SVG)→ S12</div>
+          <div>下载</div>
+          <div>删除</div>
+        </div>
+      </div>
+    </div>
+    <div class="ops">
+      <h4>菜单项与去向</h4>
+      <ul>
+        <li>参考生成 → S9</li>
+        <li>局部重绘 → S10</li>
+        <li>生成视频 → S11</li>
+        <li>转矢量 → S12</li>
+        <li>下载 / 删除 → 留在画布</li>
+      </ul>
+      <div class="to">▶ 各子流程</div>
+    </div>
+  </div>
+</div>
+<div class="arrow">↓ 选「以此为参考生成」</div>
+
+<div class="screen">
+  <div class="screen-head"><span class="no">S9</span><span class="name">以图生图(变体)</span><span class="pos">流程 ② · PRD §5.3-②;结果=新对象,源图不动</span></div>
+  <div class="screen-body">
+    <div class="wire">
+      <div class="topbar"><span>← 画布</span><span class="sp"></span><span>⏳ 1</span><span>已保存</span></div>
+      <div class="canvas">
+        <div class="panel" style="left:50%; top:16px; transform:translateX(-50%); width:300px;">
+          <div class="row">参考图:<span class="obj imgph" style="position:static; display:inline-block; width:34px; height:26px;"></span> <span class="dim">来自画布选中图</span> <span class="btn">×</span></div>
+          <div class="row"><span class="input">提示词:换成夜景,霓虹倒影…</span></div>
+          <div class="row" style="justify-content:flex-end;"><span class="btn btn-p">✨ 生成</span></div>
+        </div>
+        <div class="obj imgph" style="left:60px; top:140px; width:120px; height:100px;"></div>
+        <div class="obj imgph" style="left:240px; top:140px; width:120px; height:100px;"></div>
+        <div class="note" style="position:absolute; left:60px; top:246px;">左:源图(未动) 右:新结果,落在源图右侧空白位</div>
+      </div>
+    </div>
+    <div class="ops">
+      <h4>可执行操作</h4>
+      <ul>
+        <li>输入新提示词 → 生成 → 回 S5(占位)</li>
+        <li>移除参考图 → 退回纯文生图</li>
+      </ul>
+      <div class="to">▶ 完成 → S6(新对象携带谱系)</div>
+    </div>
+  </div>
+</div>
+<div class="arrow">↓ 选「局部重绘」</div>
+
+<div class="screen">
+  <div class="screen-head"><span class="no">S10</span><span class="name">局部重绘模式</span><span class="pos">流程 ③ · PRD §5.3-③;双击图也可进入</span></div>
+  <div class="screen-body">
+    <div class="wire">
+      <div class="topbar"><span>← 画布</span><span>重绘模式</span><span class="sp"></span><span>⏳ 1</span></div>
+      <div class="canvas">
+        <div class="obj imgph" style="left:80px; top:36px; width:150px; height:120px; opacity:.25;"></div>
+        <div class="obj" style="left:260px; top:36px; width:150px; height:120px; padding:0; overflow:hidden;">
+          <div class="imgph" style="width:100%; height:100%;"></div>
+          <div style="position:absolute; left:84px; top:30px; width:44px; height:34px; background:repeating-linear-gradient(45deg,#bbb 0 4px,#fff 4px 8px); border:1.5px solid #111;"></div>
+        </div>
+        <div class="note" style="position:absolute; left:260px; top:160px;">斜线块 = 涂抹的蒙版区域</div>
+        <div class="panel" style="left:50%; bottom:10px; transform:translateX(-50%); width:330px;">
+          <div class="row">笔刷 [●——] 大小 <span class="btn">擦除</span> <span class="btn">清空</span></div>
+          <div class="row"><span class="input">这块区域变成:皮衣…</span> <span class="btn btn-p">✨ 生成</span> <span class="btn">退出</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="ops">
+      <h4>可执行操作</h4>
+      <ul>
+        <li>涂抹 / 擦除 / 清空蒙版</li>
+        <li>填区域提示词 → 生成 → 回 S5(占位)</li>
+        <li>「退出」→ 返回普通画布</li>
+      </ul>
+      <div class="to">▶ 完成 → S6:<b>结果为新对象</b>,落在旁边,原图保留(PRD §5.3-③)</div>
+    </div>
+  </div>
+</div>
+<div class="arrow">↓ 选「生成视频」</div>
+
+<div class="screen">
+  <div class="screen-head"><span class="no">S11</span><span class="name">图生视频</span><span class="pos">流程 ④ · PRD §5.3-④</span></div>
+  <div class="screen-body">
+    <div class="wire">
+      <div class="topbar"><span>← 画布</span><span class="sp"></span><span>⏳ 1</span><span>已保存</span></div>
+      <div class="canvas">
+        <div class="panel" style="left:50%; top:14px; transform:translateX(-50%); width:250px;">
+          <div class="row">源图:<span class="obj imgph" style="position:static; display:inline-block; width:34px; height:26px;"></span></div>
+          <div class="row">时长 [4s ▾] <span class="badge">待确认:其余参数项(PRD 未列全)</span></div>
+          <div class="row" style="justify-content:flex-end;"><span class="btn">取消</span> <span class="btn btn-p">生成视频</span></div>
+        </div>
+        <div class="obj" style="left:80px; top:150px; width:140px; height:100px; text-align:center;">
+          <div style="margin-top:26px;"><span class="spin"></span> <span style="font-size:12px;">视频生成中</span></div>
+          <div class="dim" style="font-size:11px; margin-top:4px;">耗时较长</div>
+        </div>
+        <div class="obj" style="left:270px; top:150px; width:140px; height:100px;">
+          <div class="imgph" style="width:100%; height:80%;"></div>
+          <div style="text-align:center; font-size:12px;">▶ 点击播放</div>
+        </div>
+      </div>
+    </div>
+    <div class="ops">
+      <h4>可执行操作</h4>
+      <ul>
+        <li>选时长 → 生成 → 占位框(回 S5 形态)</li>
+        <li>完成后:点击视频对象播放 / 拖动 / 删除</li>
+      </ul>
+      <div class="to">▶ 完成落位为视频对象</div>
+    </div>
+  </div>
+</div>
+<div class="arrow">↓ 选「转矢量(SVG)」</div>
+
+<div class="screen">
+  <div class="screen-head"><span class="no">S12</span><span class="name">SVG 导出调参面板</span><span class="pos">流程 ⑤ · PRD §5.6;处理中状态含于预览区</span></div>
+  <div class="screen-body">
+    <div class="wire">
+      <div class="canvas" style="height:260px; background:#f7f7f7;">
+        <div class="panel" style="left:50%; top:20px; transform:translateX(-50%); width:430px;">
+          <div style="font-weight:700; margin-bottom:6px;">转为矢量图(SVG)</div>
+          <div class="row" style="align-items:stretch;">
+            <div style="flex:1;"><div class="obj imgph" style="position:static; width:100%; height:110px;"></div><div class="dim" style="font-size:11px; text-align:center;">原图</div></div>
+            <div style="align-self:center;">→</div>
+            <div style="flex:1;"><div class="obj" style="position:static; width:100%; height:110px; text-align:center; padding-top:44px;"><span class="spin"></span> <span style="font-size:12px;">预览生成中…</span></div><div class="dim" style="font-size:11px; text-align:center;">SVG 实时预览</div></div>
+          </div>
+          <div class="row">颜色层数 ———●—</div>
+          <div class="row">细节程度 —●————</div>
+          <div class="row">简化程度 ———●—</div>
+          <div class="dim" style="font-size:11px; margin-top:6px;">适用:logo / 图标 / 扁平插画;照片类图片效果差(PRD §5.6)</div>
+          <div class="row" style="justify-content:flex-end;"><span class="btn">取消</span> <span class="btn btn-p">导出 SVG</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="ops">
+      <h4>可执行操作</h4>
+      <ul>
+        <li>拖滑块 → 预览实时更新(加载中状态:预览区转圈)</li>
+        <li>「导出」→ 下载 SVG 文件,留在画布</li>
+        <li>「取消」→ 关闭面板</li>
+      </ul>
+      <div class="to">▶ 导出 → 浏览器下载;画布不变</div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 阶段 C ================= -->
+<div class="phase">
+  <h2>阶段 C · 保存 / 恢复 / 异常</h2>
+  <div class="pos">位置:贯穿所有画布页面;对应 PRD §5.3-⑤、§8.2、§9、F3</div>
+</div>
+
+<div class="screen">
+  <div class="screen-head"><span class="no">S13</span><span class="name">自动保存(顶栏状态)</span><span class="pos">常驻组件状态 · PRD §5.1 / F3</span></div>
+  <div class="screen-body">
+    <div class="wire">
+      <div style="padding:12px; font-size:12px;">
+        <div class="row">编辑中:顶栏显示 <b>「保存中…」</b>(2 秒防抖后写入)</div>
+        <div class="row">写入完成:顶栏显示 <b>「已保存」</b></div>
+        <div class="row">关闭页面:beforeunload 立即冲刷,不等防抖(PRD §8.4-崩溃窗口对策)</div>
+      </div>
+    </div>
+    <div class="ops">
+      <h4>用户可感知</h4>
+      <ul><li>无需手动保存;顶栏始终可见当前保存状态</li></ul>
+      <div class="to">▶ 无页面跳转</div>
+    </div>
+  </div>
+</div>
+
+<div class="screen">
+  <div class="screen-head"><span class="no">S14</span><span class="name">关闭后再打开(会话恢复)</span><span class="pos">流程 ⑤ · PRD §5.3-⑤、§8.2 对账</span></div>
+  <div class="screen-body">
+    <div class="wire">
+      <div class="topbar"><span>画布 ▾</span><span class="sp"></span><span>⏳ 1</span><span>已保存</span></div>
+      <div class="canvas">
+        <div class="obj imgph" style="left:40px; top:40px; width:120px; height:100px;"></div>
+        <div class="obj" style="left:230px; top:56px; width:120px; height:100px; text-align:center;">
+          <div style="margin-top:22px;"><span class="spin"></span></div>
+          <div style="font-size:12px; margin-top:4px;">生成中 42%<br><span class="dim">(昨天的任务,原地续转)</span></div>
+        </div>
+        <div class="note" style="position:absolute; left:40px; bottom:8px;">打开时拉取任务历史做<b>对账</b>,占位框恢复到正确状态</div>
+      </div>
+    </div>
+    <div class="ops">
+      <h4>恢复后的两种画面</h4>
+      <ul>
+        <li>任务仍在跑 → 占位框原地续转(本图)</li>
+        <li>期间已完成 → 直接变图落位</li>
+      </ul>
+      <div class="to">▶ 对账完成 → S5 或 S6</div>
+    </div>
+  </div>
+  <div class="note"><b>PRD §9 已标注高风险:</b>任务历史能否跨服务重启存续尚未核实(依赖 job-manager),对账兜底方案以其结论为准。<span class="badge">待确认:开工前验证</span></div>
+</div>
+<div class="arrow">↓ 若连接中断</div>
+
+<div class="screen">
+  <div class="screen-head"><span class="no">S15</span><span class="name">断线与自动重连</span><span class="pos">异常恢复 · PRD §8 非功能(5s 内重连并对账)</span></div>
+  <div class="screen-body">
+    <div class="wire">
+      <div class="topbar" style="background:#e8e8e8;"><b>⚠ 连接断开,正在重连…</b><span class="sp"></span><span class="btn">立即重试</span></div>
+      <div class="canvas" style="height:150px;">
+        <div class="obj imgph" style="left:40px; top:30px; width:120px; height:100px; opacity:.5;"></div>
+        <div class="note" style="position:absolute; left:40px; top:110px;">重连成功 → 自动对账 → 顶栏恢复正常,对象状态校正</div>
+      </div>
+    </div>
+    <div class="ops">
+      <h4>可执行操作</h4>
+      <ul><li>等待自动重连,或点「立即重试」</li></ul>
+      <div class="to">▶ 重连成功 → S14 对账流程</div>
+    </div>
+  </div>
+</div>
+<div class="arrow">↓ 若服务端任务已丢失(重启)</div>
+
+<div class="screen">
+  <div class="screen-head"><span class="no">S16</span><span class="name">任务丢失(兜底失败)</span><span class="pos">异常恢复 · PRD §8.2「任务丢失」</span></div>
+  <div class="screen-body">
+    <div class="wire">
+      <div class="canvas" style="height:170px;">
+        <div class="obj" style="left:70px; top:36px; width:200px; height:92px; border-style:dashed; text-align:center;">
+          <div style="margin-top:14px; font-size:12px;"><b>任务丢失</b><br><span class="dim">服务已重启,该任务未能找回</span></div>
+          <div class="row" style="justify-content:center;"><span class="btn">重试</span> <span class="btn">删除</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="ops">
+      <h4>可执行操作</h4>
+      <ul><li>「重试」→ 原参数重发(→ S5);「删除」移除</li></ul>
+      <div class="to">▶ 重试 → S5</div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 阶段 D ================= -->
+<div class="phase">
+  <h2>阶段 D · 素材库</h2>
+  <div class="pos">位置:画布之外的辅助页;对应 PRD F10(旧网格视图保留)</div>
+</div>
+
+<div class="screen">
+  <div class="screen-head"><span class="no">S17</span><span class="name">素材库(历史网格)</span><span class="pos">含无数据空态;与画布双向配合</span></div>
+  <div class="screen-body">
+    <div class="wire">
+      <div class="topbar"><b>素材库</b><span class="input" style="max-width:160px;">搜索历史…</span><span class="sp"></span><span class="btn btn-p">← 返回画布</span></div>
+      <div style="padding:12px;">
+        <div style="display:flex; gap:10px;">
+          <div class="obj imgph" style="position:static; width:96px; height:80px;"></div>
+          <div class="obj imgph" style="position:static; width:96px; height:80px;"></div>
+          <div class="obj imgph" style="position:static; width:96px; height:80px;"></div>
+          <div class="obj" style="position:static; width:96px; height:80px; display:flex; align-items:center; justify-content:center;"><span class="dim" style="font-size:12px;">拖我进画布 →</span></div>
+        </div>
+        <div class="dim" style="font-size:12px; margin-top:8px;">空态(无任何历史):「暂无素材,去画布生成第一张」+ [新建画布]</div>
+      </div>
+    </div>
+    <div class="ops">
+      <h4>可执行操作</h4>
+      <ul>
+        <li>搜索 / 过滤历史(复用现有能力)</li>
+        <li>拖拽缩略图 → 拖入画布成为对象(切回画布页)</li>
+      </ul>
+      <div class="to">▶ 拖入 → 画布(S3 形态,对象出现)</div>
+    </div>
+  </div>
+  <div class="note">素材库入口在顶栏的位置 PRD 未指定。<span class="badge">待确认</span></div>
+</div>
+
+<!-- ================= 汇总 ================= -->
+<div class="phase">
+  <h2>状态覆盖核对表(要求 ④)</h2>
+  <div class="pos">除正常流程外,PRD 涉及的全部状态与对应屏号</div>
+</div>
+<table>
+  <tr><th>状态类型</th><th>对应屏</th><th>说明</th></tr>
+  <tr><td>首次使用</td><td>S1、S2</td><td>无配置时的引导与 BYOK 设置</td></tr>
+  <tr><td>权限申请</td><td>—</td><td>PRD 未涉及(本地自部署 + BYOK 模式,无第三方授权流程)<span class="badge">待确认:是否需要浏览器级权限</span></td></tr>
+  <tr><td>加载中</td><td>S2a(测试连接)/ S5(生成占位)/ S12(SVG 预览生成中)</td><td>三类异步等待</td></tr>
+  <tr><td>无数据</td><td>S3(空画布)/ S17(空素材库)</td><td>均给出下一步引导文案</td></tr>
+  <tr><td>失败</td><td>S2b(连接失败)/ S7(生成失败)/ S16(任务丢失)</td><td>均带原因 + 重试</td></tr>
+  <tr><td>异常恢复</td><td>S13(自动保存)/ S14(会话恢复)/ S15(断线重连)</td><td>PRD §8.2 对账机制的三个触发场景</td></tr>
+</table>
+
+<div class="phase">
+  <h2>「待确认」清单(要求 ⑤:PRD 未明确,不擅自补全)</h2>
+</div>
+<table>
+  <tr><th>#</th><th>事项</th><th>涉及屏</th></tr>
+  <tr><td>1</td><td>首次启动引导的形式(全屏向导 / 弹窗)与默认后端(是否默认 Mock)</td><td>S1</td></tr>
+  <tr><td>2</td><td>顶栏「画布切换」的具体形式(下拉 / 独立列表页)</td><td>S3、S14</td></tr>
+  <tr><td>3</td><td>除 Tab / Delete 外的完整快捷键表(平移、缩放、撤销重做)</td><td>S3</td></tr>
+  <tr><td>4</td><td>撤销 / 重做的前端入口(按钮位置 / 快捷键)——PRD §8.3 只定了架构,未定交互</td><td>S3–S6</td></tr>
+  <tr><td>5</td><td>「生成变体 ×4」的入口与交互形式(P1,PRD §5.5 未细化)</td><td>S8</td></tr>
+  <tr><td>6</td><td>视频生成的完整参数项(PRD 仅示例「时长」)</td><td>S11</td></tr>
+  <tr><td>7</td><td>素材库在顶栏的入口位置</td><td>S17</td></tr>
+</table>
+
+<div class="meta" style="margin-top:24px;">
+  覆盖范围:S1–S17 共 17 屏,依据 PRD v0.1 的 §4、§5、§7、§8、§9、F1–F10;PRD 未写的功能本图一律未增加(要求 ⑤)。
+</div>
+
+</body>
+</html>

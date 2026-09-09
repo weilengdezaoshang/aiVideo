@@ -17,6 +17,8 @@
 
 ## 📸 界面预览
 
+百炼 `qwen-image-2.0` 文生图可运行 `npm run bailian` 一键启动，详见[完整配置步骤](docs/百炼生图接入.md)。后续多项目共用 Key 的规划：[统一模型网关方案](docs/统一模型网关方案.md)。
+
 | 主界面(网格 + 参数面板) | 工具栏(过滤 / 收藏 / 批量下载) |
 | --- | --- |
 | ![主界面](docs/screenshots/main-grid.png) | ![工具栏](docs/screenshots/toolbar-filters.png) |
@@ -49,6 +51,16 @@ npm run dev
 ```
 
 打开 <http://127.0.0.1:7801>,输入提示词,点击「✨ 生成」—— 内置 Mock 后端无需 GPU 即可体验完整流程。
+
+### 本地人像抠图
+
+运行 `npm run bailian:cutout` 同时启动应用与本地 Python 抠图服务。
+默认模型为 `birefnet-portrait`，首次使用会下载权重，之后离线推理，无需抠图 API Key。
+点击图片的「智能抠图」后自动生成红色主体蒙版，可擦除/恢复；确认后在原图右侧生成透明 PNG。
+人像模型以人物为目标，装饰和手持物品是否保留仍需检查实际选区。
+
+需要恢复通用抠图时，运行 `CUTOUT_MODEL=isnet-general-use npm run bailian:cutout`。
+`CUTOUT_MODEL` 应传给整个启动命令，使 Node 与 Python 使用同一模型。修改后需重启服务。
 
 ### Docker
 

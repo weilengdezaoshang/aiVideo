@@ -1,0 +1,72 @@
+{
+  "architecture": {
+    "author": "Zhao Yangyang",
+    "source": "https://unsplash.com/photos/DWp-OTxW2xo",
+    "image": "https://images.unsplash.com/photo-1780303063301-33ccfe1c56c2",
+    "file": "architecture.jpg",
+    "license": "https://unsplash.com/license",
+    "usage": "公开展示素材，非模型生成结果",
+    "retrieved": "2026-09-09"
+  },
+  "flower": {
+    "author": "Anya Chernykh",
+    "source": "https://unsplash.com/photos/EmX03PcKODk",
+    "image": "https://images.unsplash.com/photo-1767551715049-fcd9b818b2d4",
+    "file": "flower.jpg",
+    "license": "https://unsplash.com/license",
+    "usage": "公开展示素材，非模型生成结果",
+    "retrieved": "2026-09-09"
+  },
+  "ocean": {
+    "author": "Chris Grant",
+    "source": "https://unsplash.com/photos/gKv5lKr7Zgs",
+    "image": "https://images.unsplash.com/photo-1754455081636-93ad27fe6944",
+    "file": "ocean.jpg",
+    "license": "https://unsplash.com/license",
+    "usage": "公开展示素材，非模型生成结果",
+    "retrieved": "2026-09-09"
+  },
+  "tea": {
+    "author": "Edwin Petrus",
+    "source": "https://unsplash.com/photos/J1UDi6YvxRQ",
+    "image": "https://images.unsplash.com/photo-1722478347120-9cf07a219d9f",
+    "file": "tea.jpg",
+    "license": "https://unsplash.com/license",
+    "usage": "公开展示素材，非模型生成结果",
+    "retrieved": "2026-09-09"
+  },
+  "editorPreview": {
+    "file": "editor-preview.jpg",
+    "source": "本项目产品效果-创作平台-v0.5.html 的示例编辑器",
+    "usage": "当前可交互原型的实际截图，点击进入同一示例流程",
+    "captured": "2026-09-09"
+  },
+  "landingReference": {
+    "source": "https://jimeng.jianying.com/",
+    "usage": "仅参考官方介绍页的满屏作品、居中标题、场景切换和创作入口构图；未使用其品牌或媒体素材",
+    "reviewed": "2026-09-09"
+  },
+  "font": {
+    "file": "display.ttf",
+    "family": "Noto Sans SC",
+    "source": "https://fonts.google.com/noto/specimen/Noto+Sans+SC",
+    "license": "SIL Open Font License 1.1",
+    "usage": "中文标题子集"
+  },
+  "icons": {
+    "source": "web/vendor/shoelace/cdn/assets/icons",
+    "family": "Bootstrap Icons",
+    "license": "MIT",
+    "usage": "复用本仓库SVG图标"
+  },
+  "landingFont": {
+    "file": "display-medium.ttf",
+    "family": "Noto Sans SC",
+    "weight": 500,
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf",
+    "license": "SIL Open Font License 1.1",
+    "licenseFile": "NotoSansSC-OFL.txt",
+    "usage": "介绍页标题；从官方可变字体实例化为 500 字重并保留页面文本子集",
+    "retrieved": "2026-09-09"
+  }
+}

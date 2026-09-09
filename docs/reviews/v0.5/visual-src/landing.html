@@ -1,0 +1,42 @@
+<!--
+THESIS: An image-led introduction with one clear first-screen entry, replacing the floating start card.
+OWN-WORLD: Charcoal surfaces, warm white type and controls; photographs carry color. Scope is intro only.
+STORY: Explore artwork, understand the canvas and assistant, then enter the existing interactive workspace.
+FIRST VIEWPORT: Full-bleed photograph, left two-line title, lower-left scene index, upper-right creation action.
+FORM: Direct code-led dark gallery, selected as a reviewable proposal after user rejection; no randomized seed or approved comp.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+-->
+<section id="intro">
+<header class="landing-nav"><a class="landing-brand" href="#intro">{{ICON_GRID}} aiVideo</a><nav class="landing-links" aria-label="介绍页导航"><a href="#create-images">图片创作</a><a href="#create-canvas">智能画布</a><a href="#create-assistant">创作助手</a><a href="交互PRD-创作平台-v0.4.html">产品文档</a></nav><button class="landing-btn landing-primary" data-route="workspace">开始创作 {{ICON_ARROW}}</button></header>
+<main>
+<div class="landing-hero-stage"><section class="landing-hero" aria-label="创作灵感展示">
+<img class="landing-backdrop is-scene-active" id="landing-backdrop" data-hero-scene="ocean" src="{{ASSET_OCEAN}}" alt="航拍海浪展示素材"><img class="landing-backdrop" data-hero-scene="architecture" src="{{ASSET_ARCHITECTURE}}" alt="沙漠建筑展示素材" aria-hidden="true"><img class="landing-backdrop" data-hero-scene="flower" src="{{ASSET_FLOWER}}" alt="花卉静物展示素材" aria-hidden="true">
+<div class="landing-title"><h1><span>让灵感</span><span>自由成形</span></h1><p>图片创作 · 智能画布 · 创作助手</p></div>
+<div class="landing-scene-dock"><div class="landing-scenes" aria-label="切换首屏作品"><button data-scene="ocean" aria-label="海洋灵感" aria-pressed="true"><img src="{{ASSET_OCEAN}}" alt=""></button><button data-scene="architecture" aria-label="空间灵感" aria-pressed="false"><img src="{{ASSET_ARCHITECTURE}}" alt=""></button><button data-scene="flower" aria-label="花卉灵感" aria-pressed="false"><img src="{{ASSET_FLOWER}}" alt=""></button></div>
+<p id="landing-scene-copy" aria-live="polite">海浪之间，发现新的想象</p></div>
+<p class="landing-caption">公开展示素材 · 非本产品生成结果</p><a class="landing-scroll" href="#create-images">探索更多 {{ICON_ARROW}}</a>
+</section></div>
+<section class="landing-section" id="create-images">
+<div class="landing-section-title"><h2>让想法，看见更多可能。</h2><p>把抽象的想法展开成四个创意方向。<br>在同一组中比较，找到值得继续的那一张。</p></div>
+<div class="landing-art-grid">
+<button class="landing-art" data-art="architecture" data-title="空间光影" aria-label="放大查看空间建筑展示素材"><img src="{{ASSET_ARCHITECTURE}}" alt="沙漠中的混凝土建筑"><span>空间光影 {{ICON_ARROW}}</span></button>
+<button class="landing-art" data-art="flower" data-title="自然静物" aria-label="放大查看花卉展示素材"><img src="{{ASSET_FLOWER}}" alt="玻璃瓶中的橘色金盏花"><span>自然静物 {{ICON_ARROW}}</span></button>
+<button class="landing-art" data-art="ocean" data-title="山海之间" aria-label="放大查看海浪展示素材"><img src="{{ASSET_OCEAN}}" alt="碧蓝的海洋与浪花"><span>山海之间 {{ICON_ARROW}}</span></button>
+<button class="landing-art" data-art="tea" data-title="日常灵感" aria-label="放大查看饮品展示素材"><img src="{{ASSET_TEA}}" alt="盆栽旁的抹茶饮品"><span>日常灵感 {{ICON_ARROW}}</span></button>
+</div>
+<p class="landing-art-note">点击作品查看大图。以上照片用于展示视觉风格，非同一提示词的生成结果。</p>
+<div class="landing-section-actions"><button class="landing-btn landing-primary" data-route="example">体验四方向画布 {{ICON_ARROW}}</button></div>
+</section>
+<div class="landing-canvas-band"><section class="landing-section landing-canvas" id="create-canvas">
+<div class="landing-copy"><h2>创作，<br>在同一处继续。</h2><p>把素材留在画布上，选中、调整、整理。<br>原图与新结果相邻，每一步都有清楚的来源。</p><ul><li>{{ICON_GRID}}四方向同组</li><li>{{ICON_IMAGE}}蒙版精细调整</li><li>{{ICON_FOLDER}}文档持续保存</li></ul><button class="landing-btn landing-primary" data-route="example">打开示例画布 {{ICON_ARROW}}</button></div>
+<figure class="landing-editor-figure"><button class="landing-editor-shot" data-route="example" aria-label="进入画布，体验图中的编辑界面"><img src="{{EDITOR_PREVIEW}}" alt="aiVideo 原型编辑器，左侧工具、四张候选、底部输入与右侧对话"></button><figcaption>当前产品原型界面 · 点击进入交互体验</figcaption></figure>
+</section></div>
+<section class="landing-section landing-agent" id="create-assistant">
+<div class="landing-agent-demo"><div class="landing-agent-heading">{{ICON_SPARKLES}}创作助手</div><p class="landing-request">帮我去掉这张图片的背景，保留主体。</p><ol><li>理解你的需求<small>从明确引用的图片开始，确定处理对象。</small></li><li>准备主体蒙版<small>先检查保留范围，再用画笔或橡皮调整。</small></li><li>等待你的确认<small>点击蒙版栏“抠图”后，才产生透明结果。</small></li></ol><p class="landing-agent-note">协作流程示意 · 最终提交由你决定</p></div>
+<div class="landing-copy"><h2>说清想法，<br>一起完成下一步。</h2><p>把选中的图片添加到对话，告诉助手你想做什么。任务步骤与结果留在右侧，精细操作留在画布。</p><button class="landing-btn landing-primary" data-route="example">在画布中体验 {{ICON_ARROW}}</button></div>
+</section>
+<section class="landing-end"><h2>你的下一个想法，<br>从这里开始。</h2><button class="landing-btn landing-primary" data-route="workspace">进入创作空间 {{ICON_ARROW}}</button></section>
+</main>
+<footer class="landing-footer"><span>aiVideo · 视觉交互原型 v0.5</span><a href="交互PRD-创作平台-v0.4.html#tech">产品与技术方案</a><span>本机演示，不调用生成模型</span><details><summary>展示素材来源</summary><p>照片来自 Unsplash，按 <a href="https://unsplash.com/license" target="_blank" rel="noreferrer">Unsplash License</a> 使用：<a href="https://unsplash.com/photos/DWp-OTxW2xo" target="_blank" rel="noreferrer">Zhao Yangyang</a>、<a href="https://unsplash.com/photos/EmX03PcKODk" target="_blank" rel="noreferrer">Anya Chernykh</a>、<a href="https://unsplash.com/photos/gKv5lKr7Zgs" target="_blank" rel="noreferrer">Chris Grant</a>、<a href="https://unsplash.com/photos/J1UDi6YvxRQ" target="_blank" rel="noreferrer">Edwin Petrus</a>。界面图来自本项目原型。</p></details></footer>
+<dialog class="landing-lightbox" id="art-lightbox" aria-labelledby="art-lightbox-title"><header><strong id="art-lightbox-title">作品预览</strong><button type="button" id="close-art">关闭</button></header><img id="art-lightbox-image" alt=""><footer><span>公开展示素材，非本产品生成结果</span><button class="landing-btn landing-primary" data-route="example">进入示例画布 {{ICON_ARROW}}</button></footer></dialog>
+</section>
