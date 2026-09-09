@@ -9,7 +9,7 @@ import {
   jobEventToTransition,
   reconcile,
 } from './generation-reducer.js'
-import { applyGroupJobs } from './group-state.js'
+import { applyGroupJobs, sweepLostGroupSlots } from './group-state.js'
 
 /**
  * @param {{
@@ -108,9 +108,11 @@ export function connectGenerationEvents(options) {
       const result = /** @type {any} */ (
         docStore.mutateTransient((/** @type {any} */ doc) => {
           const single = reconcile(doc, jobs.filter((/** @type {any} */ j) => !j.groupId), resolveImage)
+          // 已终结且被服务端裁剪的组任务先兜底转错误卡,再整组应用现存任务
+          const swept = sweepLostGroupSlots(doc, jobs)
           const group = applyGroupJobs(doc, jobs, resolveImage)
           return {
-            changedIds: [...single.changedIds, ...group.changedObjIds],
+            changedIds: [...single.changedIds, ...swept.changedObjIds, ...group.changedObjIds],
             lostIds: single.lostIds,
             publishedGroups: group.publishedGroups,
           }
@@ -143,6 +145,7 @@ export function connectGenerationEvents(options) {
         const jobs = data.jobs || []
         docStore.mutateTransient((/** @type {any} */ doc) => {
           reconcile(doc, jobs.filter((/** @type {any} */ j) => !j.groupId), resolveImage)
+          sweepLostGroupSlots(doc, jobs)
           applyGroupJobs(doc, jobs, resolveImage)
         })
         // 首包也校准组缓冲(不触发发布回调:发布走 reconcileNow 的全量路径)

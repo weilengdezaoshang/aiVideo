@@ -119,7 +119,34 @@ export function groupTransitions(doc, slots, groupId) {
 }
 
 /**
- * 对账入口:把服务端任务列表按组应用(组任务整组语义,单任务走原 reconcile)。 
+ * 对账兜底:组占位绑定的任务已不在服务端任务列表里(终结任务只保留最近 200 个,
+ * 列表查询也有 limit)→ 转错误卡,避免永远停在"生成中…"。仍在线/已在列表中的不动。
+ * @param {{ objects: Record<string, any> }} doc
+ * @param {JobLike[]} serverJobs
+ * @returns {{ changedObjIds: string[] }}
+ */
+export function sweepLostGroupSlots(doc, serverJobs) {
+  const known = new Set(serverJobs.map((j) => j.id))
+  /** @type {string[]} */
+  const changedObjIds = []
+  for (const obj of Object.values(doc.objects)) {
+    if (obj.kind !== 'placeholder' || !obj.groupId || !obj.gen?.jobId) {
+      continue
+    }
+    if (known.has(obj.gen.jobId)) {
+      continue
+    }
+    obj.kind = 'error'
+    obj.errorDetail = '任务记录已过期,无法找回该方向的结果'
+    delete obj.gen
+    obj.height = Math.max(120, Math.min(obj.height, 160))
+    changedObjIds.push(obj.id)
+  }
+  return { changedObjIds }
+}
+
+/**
+ * 对账入口:把服务端任务列表按组应用(组任务整组语义,单任务走原 reconcile)。
  * @param {{ objects: Record<string, any> }} doc
  * @param {JobLike[]} serverJobs
  * @param {(image: any) => any} resolveImage

@@ -125,6 +125,11 @@ export function reconcile(doc, serverJobs, resolveImage) {
     if (obj.kind !== 'placeholder' || !obj.gen?.jobId) {
       continue
     }
+    if (obj.groupId) {
+      // 组槽位由 group-state 整组语义管理(reconcile 的单任务查无即丢会误伤:
+      // 传入的 serverJobs 已过滤掉组任务,组槽位在这里必然"查无")
+      continue
+    }
     const jobId = obj.gen.jobId
     const job = byJobId.get(jobId)
     if (!job) {

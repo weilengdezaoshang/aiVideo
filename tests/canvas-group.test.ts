@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { reconcile } from '../web/canvas/state/generation-reducer.js'
 import {
   applyGroupJobs,
   groupCardState,
@@ -7,6 +8,7 @@ import {
   groupTransitions,
   groupUnifiedMessage,
   isGroupTerminal,
+  sweepLostGroupSlots,
 } from '../web/canvas/state/group-state.js'
 import { groupInsertion } from '../web/canvas/state/placement.js'
 
@@ -157,3 +159,93 @@ test('groupInsertion:派生结果插入源图右侧,同组右侧成员顺延,组
   assert.equal(solo.x, 74)
   assert.equal(solo.moves.length, 0)
 })
+
+test('reconcile 不碰组槽位(单任务查无即丢的规则不适用于组)', () => {
+  const doc = {
+    objects: {
+      g: {
+        id: 'g',
+        kind: 'placeholder',
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+        groupId: 'grp-1',
+        gen: { jobId: 'j-group' },
+      },
+      s: {
+        id: 's',
+        kind: 'placeholder',
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+        gen: { jobId: 'j-single' },
+      },
+    } as Record<string, ReconcileObj>,
+  }
+  const result = reconcile(doc, [], undefined)
+  // 单任务占位被标记丢失;组槽位保持占位状态等待整组逻辑处理
+  assert.equal(doc.objects.s.kind, 'error')
+  assert.equal(doc.objects.g.kind, 'placeholder')
+  assert.deepEqual(result.lostIds, ['s'])
+})
+
+test('sweepLostGroupSlots:任务记录过期的组槽位转错误卡,在列的不动', () => {
+  const jobs = [{ id: 'alive', status: 'running', groupId: 'g1' }]
+  const doc = {
+    objects: {
+      aliveSlot: {
+        id: 'aliveSlot',
+        kind: 'placeholder',
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+        groupId: 'g1',
+        gen: { jobId: 'alive' },
+      },
+      staleSlot: {
+        id: 'staleSlot',
+        kind: 'placeholder',
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+        groupId: 'g1',
+        gen: { jobId: 'pruned' },
+      },
+      single: {
+        id: 'single',
+        kind: 'placeholder',
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+        gen: { jobId: 'pruned-too' },
+      },
+    } as Record<string, ReconcileObj>,
+  }
+  const result = sweepLostGroupSlots(doc, jobs as JobStub[])
+  const alive = doc.objects.aliveSlot
+  const stale = doc.objects.staleSlot
+  const single = doc.objects.single
+  assert.equal(alive.kind, 'placeholder')
+  assert.equal(stale.kind, 'error')
+  assert.ok((stale.errorDetail ?? '').includes('过期'))
+  // 单任务槽位不归 sweep 管(由 reconcile 兜底)
+  assert.equal(single.kind, 'placeholder')
+  assert.deepEqual(result.changedObjIds, ['staleSlot'])
+})
+
+interface ReconcileObj {
+  id: string
+  kind: 'image' | 'video' | 'placeholder' | 'error' | 'board' | 'text'
+  x: number
+  y: number
+  width: number
+  height: number
+  groupId?: string
+  gen?: { jobId: string }
+  errorDetail?: string
+}

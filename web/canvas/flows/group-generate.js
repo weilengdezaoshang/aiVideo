@@ -83,7 +83,7 @@ export async function submitGroupGeneration(options) {
   chat?.addGroupCard(groupId, slotIds, String(genParams.prompt || ''))
   onPlaceholderCreated(slotIds)
 
-  /** 提交失败:撤下四个占位,画布不留死槽 */
+  /** 提交失败:撤下四个占位;保留组元数据,组卡呈现失败态且可"另生成一组" */
   /** @param {string} message */
   function abort(message) {
     docStore.apply(
@@ -96,11 +96,6 @@ export async function submitGroupGeneration(options) {
           })),
       ),
     )
-    docStore.mutateTransient((/** @type {any} */ doc) => {
-      if (doc.groups?.[groupId]) {
-        delete doc.groups[groupId]
-      }
-    })
     chat?.addError(message)
     return { ok: false, error: message }
   }
