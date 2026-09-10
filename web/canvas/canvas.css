@@ -518,6 +518,23 @@ html.sl-theme-dark {
   flex: 1;
 }
 
+/* ---------- 输入框随对话栏(约束 3 修订):对话栏内为底部面板形态 ---------- */
+
+.chat-panel .composer {
+  position: static;
+  transform: none;
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--studio-hairline);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.chat-panel .composer-row {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
 /* ---------- 缩放控件(右下角) ---------- */
 
 .zoom-controls {

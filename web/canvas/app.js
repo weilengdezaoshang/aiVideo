@@ -560,6 +560,9 @@ async function startEditor(doc) {
     await installStress(stressCount, { store })
     fitToContent(store.doc)
   }
+
+  // 输入框初始落位:对话栏可见时置于对话栏底部(PRD 约束 3 修订)
+  syncComposerLocation()
 }
 
 /** @param {{ objects: Record<string, any> }} doc */
@@ -580,19 +583,63 @@ function focusObject(objId) {
   }
   objectLayer?.setSelected([objId])
   objectLayer?.revealObject(objId)
-  collapseChat(false)
+  setChatOpen(true)
 }
 
 /* ---------- 对话栏折叠(窄窗主动收起,PRD §4.1) ---------- */
 
-$('#chat-collapse').addEventListener('click', () => collapseChat(true))
-$('#chat-expand').addEventListener('click', () => collapseChat(false))
-/** @param {boolean} collapse */
-function collapseChat(collapse) {
-  $('#editor-body').classList.toggle('chat-collapsed', collapse)
-  $('#editor-body').classList.remove('chat-open-narrow')
-  $('#chat-expand').hidden = !collapse
+$('#chat-collapse').addEventListener('click', () => setChatOpen(false))
+$('#chat-expand').addEventListener('click', () => setChatOpen(true))
+
+/** 对话栏开合(宽/窄窗统一语义):开 = 移除折叠并在窄窗挂起浮层;关 = 折叠。 */
+/** @param {boolean} open */
+function setChatOpen(open) {
+  const body = $('#editor-body')
+  body.classList.toggle('chat-collapsed', !open)
+  body.classList.toggle('chat-open-narrow', open && narrowChatQuery.matches)
+  $('#chat-expand').hidden = open
+  syncComposerLocation()
 }
+
+/* ---------- 输入框位置(PRD 约束 3 修订:输入框随对话栏) ----------
+ * 对话栏可见 → 输入框作为对话栏底部的一部分;
+ * 对话栏收起或窄窗折叠 → 输入框回落画布底部居中,保证任意时刻可输入。 */
+
+/** @returns {boolean} 对话栏当前是否可见 */
+function isChatVisible() {
+  const body = $('#editor-body')
+  if (body.classList.contains('chat-collapsed')) {
+    return false
+  }
+  if (window.matchMedia('(max-width: 1023px)').matches) {
+    return body.classList.contains('chat-open-narrow')
+  }
+  return true
+}
+
+/** 把输入框迁移到对话栏内 / 画布底部,并维持工具栏互斥的显隐状态。 */
+function syncComposerLocation() {
+  const composer = $('#composer')
+  const target = isChatVisible() ? $('#chat-panel') : rootEl
+  if (composer.parentElement !== target) {
+    target.append(composer)
+  }
+  composer.hidden = inpaintBarActive || maskBarActive
+}
+
+const narrowChatQuery = window.matchMedia('(max-width: 1023px)')
+narrowChatQuery.addEventListener('change', () => syncComposerLocation())
+window.addEventListener('resize', () => syncComposerLocation())
+// 低频兜底:个别环境(如嵌入式视口)不派发 resize/媒体查询事件,靠轮询纠正落位
+let lastLocationCheck = { w: window.innerWidth, visible: isChatVisible() }
+setInterval(() => {
+  const w = window.innerWidth
+  const visible = isChatVisible()
+  if (w !== lastLocationCheck.w || visible !== lastLocationCheck.visible) {
+    lastLocationCheck = { w, visible }
+    syncComposerLocation()
+  }
+}, 1000)
 
 /* ---------- 对话栏宽度可调(280–360,PRD §4.1;偏好本机记忆) ---------- */
 
