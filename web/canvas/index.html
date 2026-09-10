@@ -81,32 +81,31 @@
         <a class="primary-btn" href="/workspace?tab=canvas">返回我的画布</a>
       </div>
 
-      <!-- 底部输入区:画布区域底部居中(PRD 约束 3) -->
+      <!-- 创作输入卡(即梦风格):输入域内嵌于卡片,模式/尺寸下拉 + 主生成按钮;
+           随对话栏呈现(约束 3 修订,见 PRD §4.1.2) -->
       <section class="composer" id="composer">
-        <div class="composer-modes" role="tablist" aria-label="输入模式">
-          <button class="mode-btn active" id="mode-generate" type="button" role="tab" aria-selected="true">生成图片</button>
-          <button class="mode-btn" id="mode-agent" type="button" role="tab" aria-selected="false">创作助手</button>
-        </div>
         <!-- 显式引用缩略图(助手模式;添加到对话产生,可移除) -->
         <div class="ref-chip" id="composer-ref" hidden>
           <img class="ref-thumb" id="composer-ref-thumb" alt="引用图">
           <span class="ref-name" id="composer-ref-name">来自画布选中图</span>
           <button class="ref-remove" id="composer-ref-remove" type="button" title="移除引用" aria-label="移除引用">×</button>
         </div>
-        <textarea class="composer-input" id="composer-input" rows="2"
-          placeholder="描述你想要的画面,例如:一只戴墨镜的猫在沙滩上"></textarea>
+        <textarea class="composer-input" id="composer-input" rows="3"
+          placeholder="描述你的想法…"></textarea>
         <div class="composer-row">
-          <label class="composer-size">尺寸
-            <select id="composer-size">
-              <option value="1024x1024">1:1 · 1024</option>
-              <option value="1024x576">16:9 · 1024×576</option>
-              <option value="576x1024">9:16 · 576×1024</option>
-              <option value="768x768">1:1 · 768</option>
-            </select>
-          </label>
+          <select class="mode-select" id="composer-mode" aria-label="创作模式">
+            <option value="generate">生成图片</option>
+            <option value="agent">创作助手</option>
+          </select>
+          <select class="size-select" id="composer-size" aria-label="尺寸比例">
+            <option value="1024x1024">1:1</option>
+            <option value="1024x576">16:9</option>
+            <option value="576x1024">9:16</option>
+            <option value="768x768">1:1 · 768</option>
+          </select>
           <span class="composer-hint" id="composer-hint">4 个方向 × 每方向 1 张</span>
           <span class="composer-spacer"></span>
-          <button class="primary-btn" id="composer-submit" type="button" disabled>生成 4 张</button>
+          <button class="primary-btn composer-submit" id="composer-submit" type="button" disabled>生成 4 张</button>
         </div>
       </section>
 
@@ -185,7 +184,7 @@
     <!-- 右侧对话栏:消息、任务与结果(PRD 约束 3) -->
     <aside class="chat-panel" id="chat-panel" aria-label="对话与任务">
       <header class="chat-head">
-        <b>对话</b>
+        <b>创作对话</b>
         <span class="chat-head-hint">任务与结果同组呈现</span>
         <button class="icon-btn" id="chat-collapse" type="button" title="收起对话栏" aria-label="收起对话栏">»</button>
       </header>

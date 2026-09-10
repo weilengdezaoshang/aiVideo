@@ -364,10 +364,9 @@ html.sl-theme-dark {
   inset: 0;
 }
 
-/* hidden 属性优先:避免 display:flex/... 覆盖 UA 的 [hidden] 规则 */
-.canvas-root [hidden],
-.settings-row[hidden],
-.settings-test-result[hidden] {
+/* hidden 属性优先:带 display 的类(如 .ref-chip/.composer)会覆盖 UA 的 [hidden] 规则,
+   输入框迁入对话栏后不再受 .canvas-root 作用域保护,统一全局兜底 */
+[hidden] {
   display: none !important;
 }
 
@@ -421,6 +420,7 @@ html.sl-theme-dark {
 
 /* ---------- 底部输入区(画布底部居中,PRD 约束 3) ---------- */
 
+/* 即梦风输入卡:输入域内嵌卡片,底部一行"模式/尺寸下拉 + 主生成按钮" */
 .composer {
   position: absolute;
   left: 50%;
@@ -429,51 +429,29 @@ html.sl-theme-dark {
   width: min(680px, calc(100% - 32px));
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px 14px;
+  gap: 6px;
+  padding: 10px 12px;
   background: var(--studio-panel);
   border: 1px solid var(--studio-hairline);
-  border-radius: var(--gc-radius-lg);
+  border-radius: 14px;
   box-shadow: var(--studio-shadow-pop);
   z-index: 6;
-}
-
-.composer-modes {
-  display: inline-flex;
-  gap: 4px;
-  align-self: flex-start;
-  padding: 3px;
-  background: var(--studio-bg);
-  border-radius: var(--gc-radius-pill);
-}
-
-.mode-btn {
-  padding: 4px 14px;
-  border: none;
-  border-radius: var(--gc-radius-pill);
-  background: transparent;
-  color: var(--studio-ink-muted);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.mode-btn.active {
-  background: var(--studio-panel);
-  color: var(--studio-ink);
-  font-weight: 600;
-  box-shadow: var(--studio-shadow);
 }
 
 .composer-input {
   width: 100%;
   resize: none;
-  padding: 8px 10px;
+  padding: 6px 8px;
   border: none;
   background: transparent;
   color: var(--studio-ink);
   font: inherit;
   font-size: 15px;
-  line-height: 1.5;
+  line-height: 1.55;
+}
+
+.composer-input::placeholder {
+  color: var(--studio-ink-muted);
 }
 
 .composer-input:focus {
@@ -486,22 +464,26 @@ html.sl-theme-dark {
   gap: 10px;
 }
 
-.composer-size {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--studio-ink-muted);
-  white-space: nowrap;
-}
-
+.mode-select,
 .composer-size select {
-  padding: 4px 8px;
+  padding: 5px 8px;
   border: 1px solid var(--studio-hairline);
   border-radius: var(--gc-radius-sm);
   background: var(--studio-panel);
-  color: var(--studio-ink);
+  color: var(--studio-ink-soft);
   font-size: 13px;
+  cursor: pointer;
+}
+
+.mode-select {
+  font-weight: 600;
+  color: var(--studio-ink);
+}
+
+.mode-select:focus,
+.composer-size select:focus {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: -1px;
 }
 
 .composer-hint {
@@ -516,6 +498,11 @@ html.sl-theme-dark {
 
 .composer-spacer {
   flex: 1;
+}
+
+.composer-submit {
+  border-radius: 10px;
+  padding: 8px 20px;
 }
 
 /* ---------- 输入框随对话栏(约束 3 修订):对话栏内为底部面板形态 ---------- */

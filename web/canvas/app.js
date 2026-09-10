@@ -800,17 +800,17 @@ const composerHint = $('#composer-hint')
 /** @param {'generate' | 'agent'} mode */
 function setComposerMode(mode) {
   composerMode = mode
-  $('#mode-generate').classList.toggle('active', mode === 'generate')
-  $('#mode-agent').classList.toggle('active', mode === 'agent')
-  $('#mode-generate').setAttribute('aria-selected', String(mode === 'generate'))
-  $('#mode-agent').setAttribute('aria-selected', String(mode === 'agent'))
+  const modeSelect = /** @type {HTMLSelectElement} */ (document.querySelector('#composer-mode'))
+  modeSelect.value = mode
   $('#composer-ref').hidden = !(mode === 'agent' && composerRefId)
   composerHint.textContent =
     mode === 'generate' ? '4 个方向 × 每方向 1 张' : '助手将先给出计划,蒙版需你确认'
   submitBtn.textContent = mode === 'generate' ? '生成 4 张' : '发送'
 }
-$('#mode-generate').addEventListener('click', () => setComposerMode('generate'))
-$('#mode-agent').addEventListener('click', () => setComposerMode('agent'))
+$('#composer-mode').addEventListener('change', (/** @type {Event} */ e) => {
+  const value = /** @type {HTMLSelectElement} */ (e.target).value
+  setComposerMode(value === 'agent' ? 'agent' : 'generate')
+})
 
 /** 添加到对话:显式引用(缩略图 + 名称,可移除;不随选择偷偷替换)。 @param {string} objId */
 function addToConversation(objId) {
