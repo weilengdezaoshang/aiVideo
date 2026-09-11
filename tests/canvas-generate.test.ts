@@ -4,10 +4,11 @@ import {
   findFreePosition,
   overlapsAny,
   variantRowAnchors,
-} from '../web/canvas/state/placement.js'
-import { submitGeneration, cancelPlaceholder } from '../web/canvas/flows/generate.js'
-import { createDocStore } from '../web/canvas/state/doc-store.js'
-import { cmdAddObjects } from '../web/canvas/state/commands.js'
+  clampIntoRect,
+} from '../apps/web/canvas/state/placement.js'
+import { submitGeneration, cancelPlaceholder } from '../apps/web/canvas/flows/generate.js'
+import { createDocStore } from '../apps/web/canvas/state/doc-store.js'
+import { cmdAddObjects } from '../apps/web/canvas/state/commands.js'
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- 测试对生成参数与文档结构使用宽类型 */
 
@@ -75,6 +76,34 @@ test('生成四个变体时占位锚点在源图右侧同一行', () => {
     { x: 988, y: 80 },
     { x: 1284, y: 80 },
   ])
+})
+
+/* ---------- 视野钳制(新建对象必须可见) ---------- */
+
+test('视野内的候选位原样保留', () => {
+  const view = { x: 0, y: 0, width: 1440, height: 900 }
+  const pos = clampIntoRect({ x: 100, y: 100 }, { width: 320, height: 320 }, view)
+  assert.deepEqual(pos, { x: 100, y: 100 })
+})
+
+test('螺旋走出视野上方(y 为负)时钳回视野内', () => {
+  const view = { x: 0, y: 0, width: 1440, height: 900 }
+  const pos = clampIntoRect({ x: 396, y: -196 }, { width: 320, height: 320 }, view)
+  assert.equal(pos.y, 24) // margin
+  assert.equal(pos.x, 396) // x 本就在视野内,不动
+})
+
+test('视野右/下越界钳到右/下边界内侧', () => {
+  const view = { x: 0, y: 0, width: 800, height: 600 }
+  const pos = clampIntoRect({ x: 760, y: 560 }, { width: 320, height: 320 }, view)
+  assert.equal(pos.x, 800 - 24 - 320)
+  assert.equal(pos.y, 600 - 24 - 320)
+})
+
+test('视野小于对象时落到左上角 margin 处(保证左上角可见)', () => {
+  const view = { x: 0, y: 0, width: 200, height: 200 }
+  const pos = clampIntoRect({ x: 5000, y: 5000 }, { width: 1024, height: 1024 }, view)
+  assert.deepEqual(pos, { x: 24, y: 24 })
 })
 
 /* ---------- submitGeneration(依赖注入 fetch) ---------- */
@@ -195,7 +224,7 @@ test('重试:错误卡原位转占位,按谱系参数重发并回填 jobId', asy
   )
   const { impl, calls } = fakeFetch([{ status: 202, body: { jobId: 'job-retry' } }])
 
-  const result = await import('../web/canvas/flows/generate.js').then((m) =>
+  const result = await import('../apps/web/canvas/flows/generate.js').then((m) =>
     m.retryError({
       docStore: store,
       objId: 'err-1',
@@ -232,7 +261,7 @@ test('重试携带参考图:源图可得时 initImage 透传', async () => {
     ]),
   )
   const { impl, calls } = fakeFetch([{ status: 202, body: { jobId: 'job-2' } }])
-  const result = await import('../web/canvas/flows/generate.js').then((m) =>
+  const result = await import('../apps/web/canvas/flows/generate.js').then((m) =>
     m.retryError({
       docStore: store,
       objId: 'err-2',
@@ -261,7 +290,7 @@ test('重试再次失败:回到错误卡并更新原因', async () => {
     ]),
   )
   const { impl } = fakeFetch([{ status: 500, body: { error: '后端超时' } }])
-  await import('../web/canvas/flows/generate.js').then((m) =>
+  await import('../apps/web/canvas/flows/generate.js').then((m) =>
     m.retryError({ docStore: store, objId: 'err-3', fetchImpl: impl }),
   )
   const obj = store.doc.objects['err-3'] as any
@@ -284,12 +313,12 @@ test('重试非错误卡/缺谱系:拒绝', async () => {
     ]),
   )
   const { impl } = fakeFetch([])
-  const r1 = await import('../web/canvas/flows/generate.js').then((m) =>
+  const r1 = await import('../apps/web/canvas/flows/generate.js').then((m) =>
     m.retryError({ docStore: store, objId: 'img-1', fetchImpl: impl }),
   )
   assert.equal(r1.ok, false)
   store.apply(cmdAddObjects([{ id: 'err-x', kind: 'error', x: 0, y: 0, width: 10, height: 10 }]))
-  const r2 = await import('../web/canvas/flows/generate.js').then((m) =>
+  const r2 = await import('../apps/web/canvas/flows/generate.js').then((m) =>
     m.retryError({ docStore: store, objId: 'err-x', fetchImpl: impl }),
   )
   assert.equal(r2.ok, false)
