@@ -97,9 +97,7 @@ class RecordingWriter:
         entry: dict = {
             "index": self.index,
             "trialId": trial_id,
-            "callSite": call_site
-            if call_site is not None
-            else request.headers.get("x-frayune-callsite"),
+            "callSite": call_site,
             "timestamp": now(),
             "request": {
                 "method": request.method,
@@ -182,10 +180,8 @@ class RecordingTransport(httpx.AsyncBaseTransport):
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         trial_id = self.context.trial_id if self.context else None
-        # 调用点是内部观测标记:捕获后立即剥离,不随真实请求发往上游(§16 不泄漏内部信息)。
-        call_site = request.headers.get("x-frayune-callsite")
-        if call_site is not None:
-            del request.headers["x-frayune-callsite"]
+        # 调用点由预算网关经 CallContext 传递;请求对象不再携带内部观测头,真实上游收到的请求保持干净。
+        call_site = self.context.current_call_site if self.context else None
         try:
             response = await self.inner.handle_async_request(request)
             await response.aread()  # 读入内存以便记录;业务代码仍读 response.content

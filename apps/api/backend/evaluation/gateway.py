@@ -59,10 +59,9 @@ class _BudgetedCore:
         self.ledger = ledger
         self.context = context
 
-    def _worst_cost(self, request) -> float | None:
+    def _worst_cost(self, call_site: str) -> float | None:
 
         prices = self.ledger.policy.prices
-        call_site = classify_call_site(request)
         worst = prices.get(call_site)
         if worst is None and not self.ledger.policy.estimated:
             raise PriceUnknown(
