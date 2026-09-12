@@ -5,15 +5,18 @@ import {
   applyTransition,
   reconcile,
   imageRecordToAsset,
-} from '../web/canvas/state/generation-reducer.js'
-import { connectGenerationEvents } from '../web/canvas/state/generation-events.js'
+} from '../apps/web/canvas/state/generation-reducer.js'
+import { connectGenerationEvents } from '../apps/web/canvas/state/generation-events.js'
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- 测试聚焦 reducer 语义,文档结构刻意宽松 */
-const anyDoc = (
-  objects: Record<string, any>,
-): { objects: Record<string, any>; order: string[] } => ({
+import type { CanvasDocData } from '../apps/web/canvas/state/doc-store.js'
+
+const anyDoc = (objects: Record<string, any>): CanvasDocData => ({
+  id: 'doc-test',
+  name: '测试文档',
   objects,
   order: Object.keys(objects),
+  revision: 0,
 })
 
 const placeholder = (id: string, jobId: string, x = 0, y = 0) => ({
@@ -45,9 +48,9 @@ test('场景① 提交:SSE 先于 POST 响应到达,clientRef 对齐占位对象
     undefined,
   )
   assert.equal(changed, true)
-  assert.equal(doc.objects.p1.gen.progress, 0)
+  assert.equal(doc.objects.p1.gen!.progress, 0)
   // 关键:gen.jobId 为空时必须用事件自带的 job.id 回填,否则对账/取消都找不到该占位
-  assert.equal(doc.objects.p1.gen.jobId, 'job-1')
+  assert.equal(doc.objects.p1.gen!.jobId, 'job-1')
 })
 
 test('场景② 进度:running 事件推进百分比与文案', () => {
@@ -62,8 +65,8 @@ test('场景② 进度:running 事件推进百分比与文案', () => {
       message: '生成中',
     }),
   )
-  assert.equal(doc.objects.p1.gen.progress, 0.42)
-  assert.equal(doc.objects.p1.gen.message, '生成中')
+  assert.equal(doc.objects.p1.gen!.progress, 0.42)
+  assert.equal(doc.objects.p1.gen!.message, '生成中')
 })
 
 test('场景③ 落位:completed → 图片对象(带谱系字段与资源引用)', () => {
@@ -142,11 +145,11 @@ test('场景⑥ 刷新恢复:对账把占位校正为 服务端状态/丢失', (
   const { changedIds, lostIds } = reconcile(doc, serverJobs, imageRecordToAsset)
 
   assert.equal(doc.objects.running.kind, 'placeholder')
-  assert.equal(doc.objects.running.gen.progress, 0.6)
+  assert.equal(doc.objects.running.gen!.progress, 0.6)
   assert.equal(doc.objects.done.kind, 'image')
   assert.equal(doc.objects.done.src, '/images/b.png')
   assert.equal(doc.objects.lost.kind, 'error')
-  assert.match(doc.objects.lost.errorDetail, /任务丢失/)
+  assert.match(doc.objects.lost.errorDetail!, /任务丢失/)
   assert.equal(doc.objects.normal.kind, 'image', '非占位对象不动')
   assert.ok(changedIds.includes('lost') && lostIds.includes('lost'))
 })

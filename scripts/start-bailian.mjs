@@ -81,7 +81,7 @@ try {
   }
 
   const port = process.env.SWARMUI_PORT || '7802'
-  const child = spawn(process.execPath, ['--watch', '--import', 'tsx', 'src/server.ts'], {
+  const child = spawn('python3', ['scripts/backend.py', '--reload'], {
     stdio: 'inherit',
     env: {
       ...process.env,

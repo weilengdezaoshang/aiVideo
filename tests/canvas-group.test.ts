@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { reconcile } from '../web/canvas/state/generation-reducer.js'
+import { reconcile, type ResolveImage } from '../apps/web/canvas/state/generation-reducer.js'
 import {
   applyGroupJobs,
   groupCardState,
@@ -9,8 +9,8 @@ import {
   groupUnifiedMessage,
   isGroupTerminal,
   sweepLostGroupSlots,
-} from '../web/canvas/state/group-state.js'
-import { groupInsertion } from '../web/canvas/state/placement.js'
+} from '../apps/web/canvas/state/group-state.js'
+import { groupInsertion } from '../apps/web/canvas/state/placement.js'
 
 interface JobStub {
   id: string
@@ -46,11 +46,14 @@ function job(over: Partial<JobStub>): JobStub {
   }
 }
 
-const resolve = (image: { url: string }) => ({
+const resolve: ResolveImage = (image) => ({
   kind: 'image',
-  src: image.url,
+  assetId: null,
+  src: image.url ?? '',
+  ext: 'png',
   width: 100,
   height: 100,
+  hasThumbs: false,
 })
 
 test('groupJobs 按 groupId 分桶并按 slot 排序', () => {
@@ -68,7 +71,23 @@ test('组未终结时四格统一状态,不逐张发布', () => {
   ]
   assert.equal(isGroupTerminal(slots), false)
   assert.equal(groupUnifiedMessage(slots), '生成中…')
-  const doc = { objects: Object.fromEntries([0, 1, 2, 3].map((i) => [`obj-${i}`, { id: `obj-${i}`, kind: 'placeholder', groupId: 'g1', gen: {} }])) }
+  const doc = {
+    objects: Object.fromEntries(
+      [0, 1, 2, 3].map((i) => [
+        `obj-${i}`,
+        {
+          id: `obj-${i}`,
+          kind: 'placeholder' as const,
+          x: 0,
+          y: 0,
+          width: 320,
+          height: 320,
+          groupId: 'g1',
+          gen: {},
+        },
+      ]),
+    ),
+  }
   const result = groupTransitions(doc, slots, 'g1')
   assert.equal(result.publishes, false)
   assert.equal(result.transitions.length, 4)
@@ -88,7 +107,19 @@ test('组全部终结时整组发布:完成槽落位、失败槽转错误卡', (
   ]
   const doc = {
     objects: Object.fromEntries(
-      [0, 1, 2, 3].map((i) => [`obj-${i}`, { id: `obj-${i}`, kind: 'placeholder', groupId: 'g1', gen: {} }]),
+      [0, 1, 2, 3].map((i) => [
+        `obj-${i}`,
+        {
+          id: `obj-${i}`,
+          kind: 'placeholder' as const,
+          x: 0,
+          y: 0,
+          width: 320,
+          height: 320,
+          groupId: 'g1',
+          gen: {},
+        },
+      ]),
     ),
   }
   const result = groupTransitions(doc, slots, 'g1')
@@ -114,7 +145,20 @@ test('被删除的槽位不复活;组卡状态分级正确', () => {
     job({ slot: 0, status: 'completed', images: [{ url: '/a.png' }], clientRef: 'gone' }),
     job({ slot: 1, status: 'failed', error: 'x' }),
   ]
-  const doc = { objects: { 'obj-1': { id: 'obj-1', kind: 'placeholder', groupId: 'g1', gen: {} } } }
+  const doc = {
+    objects: {
+      'obj-1': {
+        id: 'obj-1',
+        kind: 'placeholder' as const,
+        x: 0,
+        y: 0,
+        width: 320,
+        height: 320,
+        groupId: 'g1',
+        gen: {},
+      },
+    },
+  }
   const result = groupTransitions(doc, slots, 'g1')
   // 'gone' 对象不在文档里 → 只处理现存槽位
   assert.equal(result.transitions.length, 1)
@@ -152,10 +196,14 @@ test('groupInsertion:派生结果插入源图右侧,同组右侧成员顺延,组
   assert.equal(moved['below'], undefined)
 
   // 独立图片:直接右邻,不动任何人
-  const solo = groupInsertion({ objects: { s: { id: 's', x: 0, y: 0, width: 50, height: 50 } } }, 's', {
-    width: 50,
-    height: 50,
-  })
+  const solo = groupInsertion(
+    { objects: { s: { id: 's', x: 0, y: 0, width: 50, height: 50 } } },
+    's',
+    {
+      width: 50,
+      height: 50,
+    },
+  )
   assert.equal(solo.x, 74)
   assert.equal(solo.moves.length, 0)
 })
@@ -165,7 +213,7 @@ test('reconcile 不碰组槽位(单任务查无即丢的规则不适用于组)',
     objects: {
       g: {
         id: 'g',
-        kind: 'placeholder',
+        kind: 'placeholder' as const,
         x: 0,
         y: 0,
         width: 10,
@@ -175,7 +223,7 @@ test('reconcile 不碰组槽位(单任务查无即丢的规则不适用于组)',
       },
       s: {
         id: 's',
-        kind: 'placeholder',
+        kind: 'placeholder' as const,
         x: 0,
         y: 0,
         width: 10,
@@ -197,7 +245,7 @@ test('sweepLostGroupSlots:任务记录过期的组槽位转错误卡,在列的�
     objects: {
       aliveSlot: {
         id: 'aliveSlot',
-        kind: 'placeholder',
+        kind: 'placeholder' as const,
         x: 0,
         y: 0,
         width: 10,
@@ -207,7 +255,7 @@ test('sweepLostGroupSlots:任务记录过期的组槽位转错误卡,在列的�
       },
       staleSlot: {
         id: 'staleSlot',
-        kind: 'placeholder',
+        kind: 'placeholder' as const,
         x: 0,
         y: 0,
         width: 10,
@@ -217,7 +265,7 @@ test('sweepLostGroupSlots:任务记录过期的组槽位转错误卡,在列的�
       },
       single: {
         id: 'single',
-        kind: 'placeholder',
+        kind: 'placeholder' as const,
         x: 0,
         y: 0,
         width: 10,
@@ -246,21 +294,45 @@ interface ReconcileObj {
   width: number
   height: number
   groupId?: string
-  gen?: { jobId: string, message?: string }
+  gen?: { jobId: string; message?: string }
   errorDetail?: string
 }
 
-import { markDisconnected } from '../web/canvas/state/generation-reducer.js'
-import { applyCommand } from '../web/canvas/state/commands.js'
-import { confirmPendingGroup } from '../web/canvas/flows/group-generate.js'
+import { markDisconnected } from '../apps/web/canvas/state/generation-reducer.js'
+import { applyCommand } from '../apps/web/canvas/state/commands.js'
+import { confirmPendingGroup } from '../apps/web/canvas/flows/group-generate.js'
 
 test('markDisconnected:绑定任务的占位统一切换断线文案,未绑定的不动', () => {
   const doc = {
     objects: {
-      a: { id: 'a', kind: 'placeholder', x: 0, y: 0, width: 10, height: 10, gen: { jobId: 'j1', message: '生成中…' } },
-      b: { id: 'b', kind: 'placeholder', x: 0, y: 0, width: 10, height: 10, gen: { jobId: '', message: '准备中' } },
+      a: {
+        id: 'a',
+        kind: 'placeholder' as const,
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+        gen: { jobId: 'j1', message: '生成中…' },
+      },
+      b: {
+        id: 'b',
+        kind: 'placeholder' as const,
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+        gen: { jobId: '', message: '准备中' },
+      },
       c: { id: 'c', kind: 'image', x: 0, y: 0, width: 10, height: 10 },
-      d: { id: 'd', kind: 'placeholder', x: 0, y: 0, width: 10, height: 10, gen: { jobId: 'local-x', message: '正在抠图' } },
+      d: {
+        id: 'd',
+        kind: 'placeholder' as const,
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+        gen: { jobId: 'local-x', message: '正在抠图' },
+      },
     } as Record<string, ReconcileObj>,
   }
   const changed = markDisconnected(doc)
@@ -279,7 +351,7 @@ test('markDisconnected:绑定任务的占位统一切换断线文案,未绑定�
 interface PendingDoc {
   id: string
   order: string[]
-  groups: Record<string, { title: string, prompt: string, slots: string[] }>
+  groups: Record<string, { title: string; prompt: string; slots: string[] }>
   objects: Record<string, ReconcileObj & { pendingConfirm?: boolean }>
 }
 
@@ -297,18 +369,57 @@ test('confirmPendingGroup:服务端已接受 → 清除待确认标记并交还�
     id: 'd1',
     groups: { g1: { title: 'T', prompt: 'P', slots: ['s0', 's1', 's2', 's3'] } },
     objects: {
-      s0: { id: 's0', kind: 'placeholder', x: 0, y: 0, width: 1, height: 1, groupId: 'g1', pendingConfirm: true, gen: { jobId: '', message: '结果待确认' } },
-      s1: { id: 's1', kind: 'placeholder', x: 0, y: 0, width: 1, height: 1, groupId: 'g1', pendingConfirm: true, gen: { jobId: '', message: '结果待确认' } },
-      s2: { id: 's2', kind: 'placeholder', x: 0, y: 0, width: 1, height: 1, groupId: 'g1', pendingConfirm: true, gen: { jobId: '', message: '结果待确认' } },
-      s3: { id: 's3', kind: 'placeholder', x: 0, y: 0, width: 1, height: 1, groupId: 'g1', pendingConfirm: true, gen: { jobId: '', message: '结果待确认' } },
+      s0: {
+        id: 's0',
+        kind: 'placeholder' as const,
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+        groupId: 'g1',
+        pendingConfirm: true,
+        gen: { jobId: '', message: '结果待确认' },
+      },
+      s1: {
+        id: 's1',
+        kind: 'placeholder' as const,
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+        groupId: 'g1',
+        pendingConfirm: true,
+        gen: { jobId: '', message: '结果待确认' },
+      },
+      s2: {
+        id: 's2',
+        kind: 'placeholder' as const,
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+        groupId: 'g1',
+        pendingConfirm: true,
+        gen: { jobId: '', message: '结果待确认' },
+      },
+      s3: {
+        id: 's3',
+        kind: 'placeholder' as const,
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+        groupId: 'g1',
+        pendingConfirm: true,
+        gen: { jobId: '', message: '结果待确认' },
+      },
     },
   }
   const jobs = [
     { id: 'j0', status: 'running', clientRef: 's0', groupId: 'srv-g1' },
     { id: 'j1', status: 'running', clientRef: 's1', groupId: 'srv-g1' },
   ]
-  const fetchImpl = (async () =>
-    ({ json: async () => ({ jobs }) })) as unknown as typeof fetch
+  const fetchImpl = (async () => ({ json: async () => ({ jobs }) })) as unknown as typeof fetch
   const result = await confirmPendingGroup({
     docStore: fakeStore(doc),
     groupId: 'g1',
@@ -330,12 +441,31 @@ test('confirmPendingGroup:确认未入队 → 清理占位、保留组元数据�
     id: 'd1',
     groups: { g1: { title: 'T', prompt: 'P', slots: ['s0', 's1'] } },
     objects: {
-      s0: { id: 's0', kind: 'placeholder', x: 0, y: 0, width: 1, height: 1, groupId: 'g1', pendingConfirm: true, gen: { jobId: '', message: '结果待确认' } },
-      s1: { id: 's1', kind: 'placeholder', x: 0, y: 0, width: 1, height: 1, groupId: 'g1', pendingConfirm: true, gen: { jobId: '', message: '结果待确认' } },
+      s0: {
+        id: 's0',
+        kind: 'placeholder' as const,
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+        groupId: 'g1',
+        pendingConfirm: true,
+        gen: { jobId: '', message: '结果待确认' },
+      },
+      s1: {
+        id: 's1',
+        kind: 'placeholder' as const,
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+        groupId: 'g1',
+        pendingConfirm: true,
+        gen: { jobId: '', message: '结果待确认' },
+      },
     },
   }
-  const fetchImpl = (async () =>
-    ({ json: async () => ({ jobs: [] }) })) as unknown as typeof fetch
+  const fetchImpl = (async () => ({ json: async () => ({ jobs: [] }) })) as unknown as typeof fetch
   const result = await confirmPendingGroup({
     docStore: fakeStore(doc),
     groupId: 'g1',
@@ -353,7 +483,17 @@ test('confirmPendingGroup:查询网络失败 → 不清理、可再次查询', a
     id: 'd1',
     groups: { g1: { title: 'T', prompt: 'P', slots: ['s0'] } },
     objects: {
-      s0: { id: 's0', kind: 'placeholder', x: 0, y: 0, width: 1, height: 1, groupId: 'g1', pendingConfirm: true, gen: { jobId: '' } },
+      s0: {
+        id: 's0',
+        kind: 'placeholder' as const,
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+        groupId: 'g1',
+        pendingConfirm: true,
+        gen: { jobId: '' },
+      },
     },
   }
   const fetchImpl = (async () => {

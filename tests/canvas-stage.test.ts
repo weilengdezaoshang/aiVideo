@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { wheelZoomFactor } from '../web/canvas/engine/stage.js'
+import { wheelZoomFactor } from '../apps/web/canvas/engine/stage.js'
 
 test('触控板捏合方向：向外放大，向内缩小', () => {
   assert.ok(wheelZoomFactor(-1) > 1, '向外捏合产生负 deltaY，应放大画布')

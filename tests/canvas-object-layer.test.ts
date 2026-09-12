@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { syncSelectionRectPositions } from '../web/canvas/engine/object-layer.js'
+import { syncSelectionRectPositions } from '../apps/web/canvas/engine/object-layer.js'
 
 test('拖动期间选中框跟随节点实时坐标，而不是停留在提交前坐标', () => {
   const selected = new Set(['image-1', 'image-2'])

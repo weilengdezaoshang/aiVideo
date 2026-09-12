@@ -7,8 +7,8 @@ import {
   cmdMoveObjects,
   cmdUpdateObject,
   invertCommand,
-} from '../web/canvas/state/commands.js'
-import { createDocStore } from '../web/canvas/state/doc-store.js'
+} from '../apps/web/canvas/state/commands.js'
+import { createDocStore } from '../apps/web/canvas/state/doc-store.js'
 
 interface LooseObj {
   id: string

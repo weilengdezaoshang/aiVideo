@@ -8,9 +8,9 @@ import {
   invertCommand,
   canCoalesce,
   coalesceInto,
-} from '../web/canvas/state/commands.js'
-import { createDocStore } from '../web/canvas/state/doc-store.js'
-import { createAutoSaver } from '../web/canvas/state/autosave.js'
+} from '../apps/web/canvas/state/commands.js'
+import { createDocStore } from '../apps/web/canvas/state/doc-store.js'
+import { createAutoSaver } from '../apps/web/canvas/state/autosave.js'
 
 type ObjKind = 'image' | 'video' | 'placeholder' | 'error'
 const obj = (id: string, x = 0, y = 0, kind: ObjKind = 'image') => ({

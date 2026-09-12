@@ -13,6 +13,7 @@ import {
   DocumentMissingError,
   loadLocalDraft,
   clearLocalDraft,
+  resolveDraftOnOpen,
 } from './state/document-api.js'
 import { createObjectLayer, type ObjectLayer } from './engine/object-layer.js'
 import { connectGenerationEvents, type GenerationEventsHandle } from './state/generation-events.js'
@@ -283,6 +284,35 @@ function showDocProblem(title: string, hint: string) {
   $('#doc-missing-title').textContent = title
   $('#doc-missing-hint').textContent = hint
   $('#doc-draft-recover').hidden = true
+  $('#doc-server-open').hidden = true
+  overlay.hidden = false
+  $('#composer').hidden = true
+  void finishCanvasBoot()
+}
+
+/**
+ * 打开成功但存在与服务端不一致的未确认草稿:让用户显式选择(恢复草稿/打开服务端版本)。
+ * 两个方向都会保留草稿本身;草稿只在保存确认(或内容被服务端包含)时清除。
+ */
+function showDraftChoice(doc: CanvasDocData, draft: CanvasDocData) {
+  const overlay = $('#doc-missing')
+  $('#doc-missing-title').textContent = '发现未保存的本机草稿'
+  $('#doc-missing-hint').textContent =
+    '服务器上的版本与本机草稿不同,草稿可能包含尚未保存的修改(如上次保存失败或中断)。可恢复草稿继续编辑,或打开服务器版本;草稿会保留到下次保存确认。 '
+  const recover = $('#doc-draft-recover')
+  recover.hidden = false
+  recover.onclick = () => {
+    overlay.hidden = true
+    $('#composer').hidden = false
+    void startEditor(draft)
+  }
+  const openServer = $('#doc-server-open')
+  openServer.hidden = false
+  openServer.onclick = () => {
+    overlay.hidden = true
+    $('#composer').hidden = false
+    void startEditor(doc)
+  }
   overlay.hidden = false
   $('#composer').hidden = true
   void finishCanvasBoot()
@@ -301,8 +331,17 @@ async function bootDocument() {
   }
   try {
     const doc = await openDocument()
-    // 服务端读取成功:本机草稿已被覆盖为最新,清掉兜底
-    clearLocalDraft(doc.id)
+    const draft = loadLocalDraft(doc.id)
+    const resolution = resolveDraftOnOpen(doc, draft)
+    if (resolution.action === 'needs-choice') {
+      // 未确认草稿(保存失败/冲突/beacon 未送达):不静默清除,由用户显式选择(已知问题 #2)
+      showDraftChoice(doc, resolution.draft)
+      return
+    }
+    if (resolution.clearDraft) {
+      // 服务端已包含草稿内容(等价保存确认),清掉兜底
+      clearLocalDraft(doc.id)
+    }
     await startEditor(doc)
   } catch (err) {
     if (err instanceof DocumentMissingError) {

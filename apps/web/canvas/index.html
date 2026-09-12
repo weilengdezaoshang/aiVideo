@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>创作画布 · 帧屿集 FRAYUNE</title>
+  <script>
+    // 主题偏好先于样式生效,避免深色用户首帧闪白(偏好与文档存储分离,PRD §4.1.1)
+    try {
+      const pref = localStorage.getItem('gencanvas.editorTheme')
+      const root = document.documentElement
+      if (pref === 'dark') {
+        root.dataset.theme = 'dark'
+        root.classList.add('sl-theme-dark')
+        root.style.backgroundColor = '#191a1e'
+      } else {
+        root.style.backgroundColor = '#f5f5f7'
+      }
+    } catch {}
+  </script>
+  <link rel="stylesheet" href="/vendor/shoelace/cdn/themes/light.css">
+  <link rel="stylesheet" href="/vendor/shoelace/cdn/themes/dark.css">
+  <link rel="stylesheet" href="/canvas/canvas.css?v=content-nodes-2">
+  <link id="node-panel-styles" rel="stylesheet" href="/canvas/node-panel.css?v=2">
+  <script defer src="/vendor/konva/konva.min.js"></script>
+  <script defer src="/vendor/imagetracerjs/imagetracer_v1.2.6.js"></script>
+  <script type="module" src="/vendor/shoelace/cdn/shoelace-autoloader.js"></script>
+  <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
+  <link rel="stylesheet" href="/brand/brand.css">
+</head>
+<body>
+  <div class="canvas-boot" id="canvas-boot" role="status" aria-label="正在加载画布">
+    <span class="canvas-boot-mark" aria-hidden="true"></span>
+  </div>
+  <!-- 断线横幅(线框 S15) -->
+  <div class="offline-banner" id="offline-banner" hidden>
+    <span>连接断开,正在重连…</span>
+    <button id="offline-retry" type="button">立即重试</button>
+  </div>
+
+  <!-- 顶栏:返回我的画布 / 文档名 / 主题 / 设置 / 任务与保存状态(PRD §3/§4.1) -->
+  <header class="topbar">
+    <a class="back-link identity-brand identity-editor-brand" id="back-to-workspace" href="/workspace?tab=canvas" aria-label="返回我的画布" title="帧屿集 FRAYUNE · 返回我的画布"><span class="identity-mark" aria-hidden="true"></span><span class="identity-wordmark" aria-hidden="true"><span class="identity-en"></span><span class="identity-cn"></span></span></a>
+    <div class="canvas-title-group">
+      <input class="doc-name" id="doc-name" value="未命名画布" maxlength="60"
+        aria-label="画布名称" autocomplete="off" spellcheck="false">
+      <span class="topbar-status" id="save-status">已保存</span>
+    </div>
+    <span class="topbar-spacer"></span>
+    <div class="topbar-tools">
+      <button class="icon-btn" id="canvas-search-open" type="button" aria-label="搜索画布" title="搜索画布" aria-expanded="false" aria-controls="canvas-lookup"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
+      <button class="icon-btn" id="chat-history-open" type="button" aria-label="历史对话" title="历史对话" aria-expanded="false" aria-controls="canvas-lookup"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2 7M3 5v6h6m3-4v5l3 2"/></svg></button>
+      <span class="topbar-tool-separator" role="separator"></span>
+      <details class="user-menu" id="user-menu">
+        <summary class="icon-btn user-avatar-trigger" aria-label="用户菜单" aria-expanded="false">
+          <span class="user-avatar" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="3.25"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg></span>
+        </summary>
+        <div class="user-menu-popover" role="menu" aria-label="用户菜单">
+          <div class="user-menu-profile">
+            <span class="user-avatar user-avatar-large" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="3.25"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg></span>
+            <div><strong>用户</strong><small>帧屿集创作者</small></div>
+          </div>
+          <div class="user-menu-separator" role="separator"></div>
+          <button class="theme-toggle" id="theme-toggle" type="button" role="menuitem" aria-label="切换到深色主题">
+            <svg class="theme-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.1A8.5 8.5 0 0 1 9.9 3.5 8.5 8.5 0 1 0 20.5 14.1Z"/></svg>
+            <svg class="theme-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+            <span class="theme-menu-label">切换到深色主题</span>
+          </button>
+          <div class="user-menu-status" id="job-count" title="进行中的任务数"><span aria-hidden="true">◷</span><span>生成任务</span><strong id="job-count-value">0</strong></div>
+          <div class="user-menu-separator" role="separator"></div>
+          <button type="button" role="menuitem" id="user-menu-settings" hidden><span aria-hidden="true">⚙</span>设置</button>
+          <button type="button" role="menuitem" id="user-menu-shortcuts"><span aria-hidden="true">⌨</span>快捷键</button>
+          <a href="/workspace" role="menuitem"><span aria-hidden="true">⌂</span>返回工作台</a>
+        </div>
+      </details>
+    </div>
+    <section class="canvas-lookup" id="canvas-lookup" aria-label="画布搜索与历史对话" hidden>
+      <header><b id="canvas-lookup-title">搜索画布</b><button class="icon-btn" id="canvas-lookup-close" type="button" aria-label="关闭搜索与历史">×</button></header>
+      <input class="text-input" id="canvas-lookup-query" aria-label="搜索内容" placeholder="搜索素材名称或文字…">
+      <div id="canvas-lookup-results" class="canvas-lookup-results"></div>
+    </section>
+  </header>
+
+  <!-- 保存冲突横幅(PRD §9 A13):不用最后写入静默覆盖 -->
+  <div class="conflict-banner" id="conflict-banner" hidden>
+    <span>文档已在其他标签页被修改。本机改动已保留,未覆盖服务端版本。</span>
+    <button id="conflict-reload" type="button">重新加载服务端版本</button>
+    <button id="conflict-dismiss" type="button">留在画布</button>
+  </div>
+
+  <div class="editor-body chat-collapsed" id="editor-body">
+    <!-- 左侧悬浮工具条:严格四项(PRD §2 不可变约束 2) -->
+    <nav class="tool-rail" aria-label="添加内容">
+      <button class="rail-btn" id="tool-upload" type="button" aria-label="上传">
+        <svg class="rail-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5"/></svg><span class="rail-label">上传</span>
+      </button>
+      <button class="rail-btn" id="library-open" type="button" aria-label="素材库">
+        <svg class="rail-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h7l2 2h9v11H3Z"/><path d="M3 7V4h7l2 3h7v2"/></svg><span class="rail-label">素材库</span>
+      </button>
+      <button class="rail-btn" id="tool-board" type="button" aria-label="画板">
+        <svg class="rail-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/></svg><span class="rail-label">画板</span>
+      </button>
+      <button class="rail-btn" id="tool-text" type="button" aria-label="文字">
+        <svg class="rail-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16M12 5v15M8 20h8M4 5v3m16-3v3"/></svg><span class="rail-label">文字</span>
+      </button>
+    </nav>
+    <input type="file" id="upload-input" accept="image/png,image/jpeg,image/webp" hidden>
+
+    <!-- 画布区:灰底网点 + 空态引导;Konva 舞台挂载在专用空容器 -->
+    <main class="canvas-root" id="canvas-root">
+      <div class="canvas-surface" id="canvas-surface"></div>
+      <div class="canvas-empty" id="canvas-empty">
+        <p class="canvas-empty-title">画布是空的</p>
+        <p class="canvas-empty-hint">双击空白处新建文本、图片或视频，也可打开 AI 对话</p>
+      </div>
+
+      <!-- 文档不存在 / 读取失败(PRD §3:不能用新建文档兜底) -->
+      <div class="doc-missing" id="doc-missing" hidden>
+        <p class="doc-missing-title" id="doc-missing-title">文档不存在</p>
+        <p class="doc-missing-hint" id="doc-missing-hint">链接指向的画布已被删除或从未创建。</p>
+        <button class="primary-btn" id="doc-draft-recover" type="button" hidden>恢复本机草稿</button>
+        <button class="primary-btn" id="doc-server-open" type="button" hidden>打开服务器版本</button>
+        <a class="primary-btn" href="/workspace?tab=canvas">返回我的画布</a>
+      </div>
+
+      <!-- 创作输入卡(即梦风格):输入域内嵌于卡片,模式/尺寸下拉 + 主生成按钮;
+           随对话栏呈现(约束 3 修订,见 PRD §4.1.2) -->
+      <section class="composer" id="composer" aria-label="创作输入框">
+        <!-- 显式引用缩略图(助手模式;添加到对话产生,可移除) -->
+        <div class="ref-chip" id="composer-ref" hidden>
+          <img class="ref-thumb" id="composer-ref-thumb" alt="引用图">
+          <span class="ref-name" id="composer-ref-name">来自画布选中图</span>
+          <button class="ref-remove" id="composer-ref-remove" type="button" title="移除引用" aria-label="移除引用">×</button>
+        </div>
+        <textarea class="composer-input" id="composer-input" rows="3"
+          aria-label="创作需求" aria-describedby="composer-hint" placeholder="描述你想创作的画面，或将画布图片添加到对话…"></textarea>
+        <div class="composer-row">
+          <details class="composer-settings" id="composer-add">
+            <summary aria-label="添加内容" title="添加内容"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary>
+            <div class="composer-settings-popover">
+              <button type="button" id="composer-upload">从本地上传图片</button>
+              <button type="button" id="composer-assets">添加资产到画布</button>
+              <button type="button" id="composer-from-canvas">引用画布图片</button>
+            </div>
+          </details>
+          <details class="composer-settings" id="composer-skills">
+            <summary class="composer-skill-trigger" aria-label="使用技能">使用技能</summary>
+            <div class="composer-settings-popover">
+              <span class="composer-menu-label">内置技能</span>
+              <button type="button" data-composer-skill="image">图片创作</button>
+              <button type="button" data-composer-skill="poster">海报构思</button>
+              <button type="button" data-composer-skill="cutout">主体抠图 · 需引用图片</button>
+              <span class="composer-menu-label">创作参数</span>
+          <select class="mode-select" id="composer-mode" data-icon="image" aria-label="创作模式">
+            <option value="generate">生成图片</option>
+            <option value="video">生成视频</option>
+            <option value="agent">创作助手</option>
+          </select>
+          <select class="size-select" id="composer-size" data-icon="ratio" aria-label="尺寸比例">
+            <option value="1024x1024">1:1</option>
+            <option value="1024x576">16:9</option>
+            <option value="576x1024">9:16</option>
+            <option value="768x768">1:1 · 768</option>
+          </select>
+          <select class="size-select" id="composer-video-size" data-icon="video" aria-label="视频画幅" hidden></select>
+          <select class="size-select" id="composer-duration" data-icon="time" aria-label="视频时长" hidden></select>
+          <select class="size-select" id="composer-weight" data-icon="image" aria-label="参考程度" hidden>
+            <option value="low">参考程度 · 低</option>
+            <option value="medium" selected>参考程度 · 中</option>
+            <option value="high">参考程度 · 高</option>
+          </select>
+            </div>
+          </details>
+          <details class="composer-settings" id="composer-mentions">
+            <summary aria-label="引用图片给 Agent" title="引用图片给 Agent">@</summary>
+            <div class="composer-settings-popover" id="composer-reference-list"></div>
+          </details>
+          <span class="composer-spacer"></span>
+          <button class="primary-btn composer-submit" id="composer-submit" type="button" disabled>生成 4 张</button>
+        </div>
+        <div class="composer-footer">
+          <span class="composer-hint" id="composer-hint">4 个方向 × 每方向 1 张</span>
+          <span class="composer-shortcut" title="Command 或 Ctrl + Enter 发送">⌘ / Ctrl ↵</span>
+        </div>
+      </section>
+
+      <!-- 重绘模式工具栏(线框 S10) -->
+      <section class="inpaint-bar" id="inpaint-bar" hidden>
+        <span class="inpaint-tag">重绘模式</span>
+        <label class="inpaint-brush">
+          笔刷
+          <input type="range" id="inpaint-brush-size" min="16" max="200" value="64">
+        </label>
+        <button class="ghost-btn" id="inpaint-erase" type="button">擦除</button>
+        <button class="ghost-btn" id="inpaint-clear" type="button">清空</button>
+        <input class="text-input" id="inpaint-prompt" placeholder="这块区域变成:皮衣…">
+        <button class="primary-btn" id="inpaint-generate" type="button">生成</button>
+        <button class="ghost-btn" id="inpaint-exit" type="button">退出</button>
+      </section>
+
+      <!-- 智能抠图:Mask 直接覆盖源图;只有"抠图"按钮显式提交(PRD 约束 7) -->
+      <section class="inpaint-bar cutout-bar" id="cutout-bar" aria-label="智能抠图蒙版编辑" hidden>
+        <div class="cutout-tools" role="group" aria-label="选区工具">
+          <button class="ghost-btn cutout-tool" id="cutout-restore" type="button" aria-controls="cutout-brush-settings" aria-expanded="false" title="画笔" aria-label="画笔" aria-pressed="false"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-brush" viewBox="0 0 16 16">
+  <path d="M15.825.12a.5.5 0 0 1 .132.584c-1.53 3.43-4.743 8.17-7.095 10.64a6.1 6.1 0 0 1-2.373 1.534c-.018.227-.06.538-.16.868-.201.659-.667 1.479-1.708 1.74a8.1 8.1 0 0 1-3.078.132 4 4 0 0 1-.562-.135 1.4 1.4 0 0 1-.466-.247.7.7 0 0 1-.204-.288.62.62 0 0 1 .004-.443c.095-.245.316-.38.461-.452.394-.197.625-.453.867-.826.095-.144.184-.297.287-.472l.117-.198c.151-.255.326-.54.546-.848.528-.739 1.201-.925 1.746-.896q.19.012.348.048c.062-.172.142-.38.238-.608.261-.619.658-1.419 1.187-2.069 2.176-2.67 6.18-6.206 9.117-8.104a.5.5 0 0 1 .596.04M4.705 11.912a1.2 1.2 0 0 0-.419-.1c-.246-.013-.573.05-.879.479-.197.275-.355.532-.5.777l-.105.177c-.106.181-.213.362-.32.528a3.4 3.4 0 0 1-.76.861c.69.112 1.736.111 2.657-.12.559-.139.843-.569.993-1.06a3 3 0 0 0 .126-.75zm1.44.026c.12-.04.277-.1.458-.183a5.1 5.1 0 0 0 1.535-1.1c1.9-1.996 4.412-5.57 6.052-8.631-2.59 1.927-5.566 4.66-7.302 6.792-.442.543-.795 1.243-1.042 1.826-.121.288-.214.54-.275.72v.001l.575.575zm-4.973 3.04.007-.005zm3.582-3.043.002.001h-.002z"/>
+</svg></button><button class="ghost-btn cutout-tool" id="cutout-erase" type="button" aria-controls="cutout-brush-settings" aria-expanded="false" title="橡皮擦" aria-label="橡皮擦" aria-pressed="false"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eraser" viewBox="0 0 16 16">
+  <path d="M8.086 2.207a2 2 0 0 1 2.828 0l3.879 3.879a2 2 0 0 1 0 2.828l-5.5 5.5A2 2 0 0 1 7.879 15H5.12a2 2 0 0 1-1.414-.586l-2.5-2.5a2 2 0 0 1 0-2.828zm2.121.707a1 1 0 0 0-1.414 0L4.16 7.547l5.293 5.293 4.633-4.633a1 1 0 0 0 0-1.414zM8.746 13.547 3.453 8.254 1.914 9.793a1 1 0 0 0 0 1.414l2.5 2.5a1 1 0 0 0 .707.293H7.88a1 1 0 0 0 .707-.293z"/>
+</svg></button><button class="ghost-btn cutout-tool" id="cutout-detect" type="button" title="智能识别" aria-label="智能识别"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-bounding-box" viewBox="0 0 16 16">
+  <path d="M1.5 1a.5.5 0 0 0-.5.5v3a.5.5 0 0 1-1 0v-3A1.5 1.5 0 0 1 1.5 0h3a.5.5 0 0 1 0 1zM11 .5a.5.5 0 0 1 .5-.5h3A1.5 1.5 0 0 1 16 1.5v3a.5.5 0 0 1-1 0v-3a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 1-.5-.5M.5 11a.5.5 0 0 1 .5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 1 0 1h-3A1.5 1.5 0 0 1 0 14.5v-3a.5.5 0 0 1 .5-.5m15 0a.5.5 0 0 1 .5.5v3a1.5 1.5 0 0 1-1.5 1.5h-3a.5.5 0 0 1 0-1h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 1 .5-.5"/>
+  <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm8-9a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/>
+</svg></button><button class="ghost-btn cutout-tool" id="cutout-quick" type="button" title="快速选择：点击已识别主体增减选区" aria-label="快速选择：点击已识别主体增减选区" aria-pressed="false"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="16" height="17" rx="4" stroke-dasharray="3 4"/><path d="m11 9 10 5-5 1-2 6-3-12Z"/></svg></button>
+        </div>
+        <label class="inpaint-brush cutout-brush-settings" id="cutout-brush-settings" hidden>画笔大小 <input id="cutout-brush" type="range" min="4" max="160" value="40" aria-label="画笔大小" /></label>
+        <div class="cutout-history" role="group" aria-label="选区历史">
+          <button class="ghost-btn cutout-tool" id="cutout-undo" type="button" title="撤销选区修改" aria-label="撤销选区修改"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 4-5 5 5 5M4 9h10a6 6 0 0 1 0 12H6"/></svg></button><button class="ghost-btn cutout-tool" id="cutout-redo" type="button" title="重做选区修改" aria-label="重做选区修改"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 4 5 5-5 5m5-5H10a6 6 0 0 0 0 12h8"/></svg></button>
+        </div>
+        <span class="cutout-cost" aria-label="本次抠图消耗 0 积分" title="本次抠图不消耗积分"><svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1c1.8 6.8 4.2 9.2 11 11-6.8 1.8-9.2 4.2-11 11C10.2 16.2 7.8 13.8 1 12 7.8 10.2 10.2 7.8 12 1Z"/></svg><span>0</span></span>
+        <button class="primary-btn" id="cutout-apply" disabled>抠图</button>
+        <button class="ghost-btn cutout-tool" id="cutout-cancel" type="button" title="退出蒙版编辑" aria-label="退出蒙版编辑"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16">
+  <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z"/>
+</svg></button>
+        <span class="inpaint-tag" id="cutout-status" role="status"></span>
+      </section>
+
+      <!-- 选中对象操作栏:贴图下方;图片为 添加到对话 / 抠图 / 下载(PRD §4.2) -->
+      <div class="obj-actions" id="obj-actions" hidden>
+        <button class="ghost-btn" id="obj-add-chat" type="button">添加到对话</button>
+        <button class="ghost-btn" id="obj-cutout" type="button">抠图</button>
+        <button class="ghost-btn" id="obj-download" type="button">下载</button>
+      </div>
+
+      <!-- 轻提示(下载"已开始下载"、草稿保留等) -->
+      <div class="toast" id="toast" hidden></div>
+
+      <!-- 右键菜单:保留已实现的真实能力入口 -->
+      <nav class="context-menu" id="context-menu" hidden>
+        <button class="context-menu-item" id="ctx-add-chat" type="button">添加到对话</button>
+        <button class="context-menu-item" id="ctx-variants" type="button">生成变体(×4)</button>
+        <button class="context-menu-item" id="ctx-cutout" type="button">智能抠图</button>
+        <button class="context-menu-item" id="ctx-inpaint" type="button">局部重绘</button>
+        <button class="context-menu-item" id="ctx-video" type="button">生成视频</button>
+        <button class="context-menu-item" id="ctx-vector" type="button">转矢量(SVG)</button>
+        <button class="context-menu-item" id="ctx-download" type="button">下载</button>
+        <button class="context-menu-item context-menu-danger" id="ctx-delete" type="button">删除</button>
+      </nav>
+
+      <!-- 素材库抽屉:历史生成 + 已上传资产,拖入画布或点击加入(导入资产) -->
+      <aside class="library-drawer" id="library-drawer" hidden>
+        <header class="library-head">
+          <b>素材库</b>
+          <input class="text-input" id="library-search" placeholder="搜索历史…">
+          <button class="icon-btn" id="library-close" type="button" aria-label="关闭素材库">✕</button>
+        </header>
+        <div class="library-grid" id="library-grid">
+          <div class="library-empty">暂无素材,去画布生成第一张</div>
+        </div>
+      </aside>
+
+      <!-- 缩放控件(右下角) -->
+      <nav class="zoom-controls" aria-label="缩放控制">
+        <button class="icon-btn canvas-tool-toggle" id="canvas-tool-toggle" type="button" aria-label="切换为拖动工具" aria-pressed="false" title="选择工具 · 点击切换为拖动">
+          <svg class="select-tool-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="m5 3 14 9-7 1-3 7Z"/></svg>
+          <svg class="pan-tool-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 12V5a2 2 0 0 1 4 0v7-9a2 2 0 0 1 4 0v9-6a2 2 0 0 1 4 0v9c0 4-3 7-7 7h-1c-2 0-4-1-5-3l-4-6a2 2 0 0 1 3-2l2 2"/></svg>
+        </button>
+        <details class="zoom-menu" id="zoom-menu">
+          <summary aria-label="缩放比例"><span class="zoom-value" id="zoom-value">100%</span></summary>
+          <div class="zoom-options">
+            <button type="button" id="zoom-fit">适应画布</button>
+            <button type="button" data-zoom-scale="0.5">50%</button>
+            <button type="button" data-zoom-scale="1">100%</button>
+            <button type="button" data-zoom-scale="2">200%</button>
+          </div>
+        </details>
+
+      </nav>
+
+      <!-- 文字对象编辑浮层 -->
+      <textarea class="text-editor" id="text-editor" hidden></textarea>
+    </main>
+
+    <!-- 右侧对话栏:消息、任务与结果(PRD 约束 3) -->
+    <aside class="chat-panel" id="chat-panel" aria-label="对话与任务" aria-hidden="true" inert>
+      <header class="chat-head">
+        <div class="chat-heading"><b>创作对话</b>
+        <span class="chat-head-hint">想法、过程与作品，都在这里</span></div>
+        <button class="icon-btn" id="chat-collapse" type="button" title="收起对话栏" aria-label="收起对话栏"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v5H3m18 8h-5v5M8 8 3 3m13 13 5 5"/></svg></button>
+      </header>
+      <div class="chat-messages" id="chat-messages"></div>
+    </aside>
+    <button class="chat-expand" id="chat-expand" type="button" aria-label="与 AI 对话" aria-controls="chat-panel" aria-expanded="false">
+      <svg class="chat-expand-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-8 8H5l-3 2v-10a8 8 0 0 1 8-8h2"/><path d="m18 2 1.3 3.7L23 7l-3.7 1.3L18 12l-1.3-3.7L13 7l3.7-1.3Z"/><path d="M7 12h6M7 16h4"/></svg>
+      <span class="chat-expand-label" aria-hidden="true">与 AI 对话</span>
+    </button>
+  </div>
+
+  <!-- BYOK 设置对话框(线框 S2/S2a/S2b) -->
+  <sl-dialog id="settings-dialog" label="设置" style="--width: 30rem;">
+    <div class="settings-section">
+      <div class="settings-title">生成后端</div>
+      <div class="settings-row">
+        <select id="settings-provider" data-icon="model" aria-label="生成后端" style="width: 100%;">
+          <option value="mock">演示模式(Mock,无需配置)</option>
+          <option value="cloud">云端生图模型(BYOK,按张计费)</option>
+          <option value="comfyui">本地 ComfyUI</option>
+        </select>
+      </div>
+      <div class="settings-row" id="settings-cloud-row" hidden>
+        <select id="settings-cloud-vendor" data-icon="model" aria-label="云端厂商" style="width: 10rem;">
+          <option value="zhipu">智谱 CogView</option>
+          <option value="siliconflow">硅基流动 FLUX</option>
+          <option value="openai">OpenAI 兼容</option>
+          <option value="aliyun">阿里云百炼</option>
+        </select>
+        <sl-input id="settings-cloud-model" size="small" placeholder="模型名,如 cogview-4-250304"
+          style="width: 12rem;"></sl-input>
+      </div>
+      <div class="settings-row" id="settings-video-model-row" hidden>
+        <sl-input id="settings-video-model" label="视频模型" size="small" placeholder="wanx2.1-t2v-turbo" help-text="文生视频；未单独填写视频 Key 时使用图像 Key。" style="width: 100%;"></sl-input>
+      </div>
+      <div class="settings-row" id="settings-cloud-url-row" hidden>
+        <sl-input id="settings-cloud-base-url" size="small" placeholder="API 地址(留空 = 厂商默认)"
+          style="width: 100%;"></sl-input>
+      </div>
+      <div class="settings-row" id="settings-cloud-text-row" hidden>
+        <sl-input id="settings-cloud-text-model" size="small"
+          placeholder="中译英文本模型,如 Qwen/Qwen2.5-7B-Instruct(留空 = 关闭翻译)"
+          style="width: 100%;"></sl-input>
+      </div>
+      <div class="settings-row" id="settings-comfy-row">
+        <sl-input id="settings-comfy-url" size="small" placeholder="http://127.0.0.1:8188"
+          style="flex: 1;"></sl-input>
+      </div>
+      <div class="settings-row">
+        <sl-button size="small" id="settings-test">检查配置 / 连接</sl-button>
+      </div>
+      <div class="settings-test-result" id="settings-test-result" hidden></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">云端模型 API Key(BYOK)</div>
+      <div class="settings-row">
+        <sl-input id="settings-image-key" size="small" type="password" password-toggle
+          placeholder="图像 API Key…" style="flex: 1;"></sl-input>
+        <sl-icon-button id="settings-image-key-clear" name="x-lg" label="清除图像 Key"
+          title="清除已保存的图像 Key"></sl-icon-button>
+      </div>
+      <div class="settings-row">
+        <sl-input id="settings-video-key" size="small" type="password" password-toggle
+          placeholder="视频 API Key…" style="flex: 1;"></sl-input>
+        <sl-icon-button id="settings-video-key-clear" name="x-lg" label="清除视频 Key"
+          title="清除已保存的视频 Key"></sl-icon-button>
+      </div>
+      <div class="settings-hint">
+        Key 仅保存在本机 config.json,不随文档上传;留空 = 保持已保存值不变。
+      </div>
+    </div>
+
+    <sl-button slot="footer" id="settings-cancel">取消</sl-button>
+    <sl-button slot="footer" variant="primary" id="settings-save">保存</sl-button>
+  </sl-dialog>
+
+  <!-- 首次启动引导(线框 S1) -->
+  <sl-dialog id="onboarding-dialog" no-header style="--width: 26rem;">
+    <div class="identity-brand onb-brand" aria-label="帧屿集 FRAYUNE"><span class="identity-mark" aria-hidden="true"></span><span class="identity-wordmark" aria-hidden="true"><span class="identity-en"></span><span class="identity-cn"></span></span></div>
+    <div class="onb-head">欢迎使用帧屿集 FRAYUNE</div>
+    <div class="onb-sub">选择一个生成后端开始(可随时在顶部设置中更改)</div>
+    <button class="onb-card" id="onb-comfy" type="button">
+      <b>① 连接本地 ComfyUI</b>
+      <span>输入地址,如 http://127.0.0.1:8188</span>
+    </button>
+    <button class="onb-card" id="onb-byok" type="button">
+      <b>② 填写模型 API Key</b>
+      <span>使用云端模型(BYOK)</span>
+    </button>
+    <button class="onb-card" id="onb-demo" type="button">
+      <b>③ 先用演示模式逛逛</b>
+      <span>内置 Mock 后端,不需要任何配置</span>
+    </button>
+  </sl-dialog>
+
+  <!-- SVG 导出调参面板(线框 S12) -->
+  <sl-dialog id="svg-dialog" label="转为矢量图(SVG)" style="--width: 34rem;">
+    <div class="svg-body">
+      <div class="svg-pane">
+        <img id="svg-source" alt="原图" />
+        <div class="svg-pane-caption">原图</div>
+      </div>
+      <div class="svg-arrow">→</div>
+      <div class="svg-pane">
+        <div class="svg-preview" id="svg-preview"></div>
+        <div class="svg-preview-spin" id="svg-preview-spin" hidden>
+          <sl-spinner></sl-spinner>
+          <span>预览生成中…</span>
+        </div>
+        <div class="svg-pane-caption">SVG 实时预览</div>
+      </div>
+    </div>
+
+    <div class="svg-sliders">
+      <div class="svg-slider-row">
+        <span class="svg-slider-label">颜色层数</span>
+        <sl-range id="svg-colors" min="2" max="8" step="1"></sl-range>
+        <span class="svg-slider-hint" id="svg-colors-hint"></span>
+      </div>
+      <div class="svg-slider-row">
+        <span class="svg-slider-label">细节程度</span>
+        <sl-range id="svg-detail" min="0" max="10" step="1"></sl-range>
+        <span class="svg-slider-hint" id="svg-detail-hint"></span>
+      </div>
+      <div class="svg-slider-row">
+        <span class="svg-slider-label">简化程度</span>
+        <sl-range id="svg-simplify" min="0" max="64" step="1"></sl-range>
+        <span class="svg-slider-hint" id="svg-simplify-hint"></span>
+      </div>
+    </div>
+
+    <div class="svg-hint">
+      适用:logo / 图标 / 扁平插画效果最好;照片类图片矢量化后观感差,请预览确认后再导出。
+    </div>
+
+    <sl-button slot="footer" id="svg-cancel">取消</sl-button>
+    <sl-button slot="footer" variant="primary" id="svg-export">导出 SVG</sl-button>
+  </sl-dialog>
+
+  <!-- 图生视频参数(保留已验证入口,PRD §8) -->
+  <sl-dialog id="video-dialog" label="生成视频" style="--width: 22rem;">
+    <div class="video-dialog-row">
+      <span>源图</span>
+      <img class="video-src-thumb" id="video-src-thumb" alt="源图">
+    </div>
+    <div class="video-dialog-row">
+      <span>时长</span>
+      <select id="video-duration" data-icon="time" aria-label="视频时长" style="width: 8rem;">
+        <option value="2">2 秒</option>
+        <option value="4" selected>4 秒</option>
+        <option value="6">6 秒</option>
+        <option value="8">8 秒</option>
+      </select>
+    </div>
+    <sl-button slot="footer" size="small" id="video-cancel">取消</sl-button>
+    <sl-button slot="footer" size="small" variant="primary" id="video-generate">生成视频</sl-button>
+  </sl-dialog>
+
+  <!-- 视频播放(点击视频对象) -->
+  <sl-dialog id="video-player" label="视频播放" style="--width: 48rem;">
+    <div id="video-player-body" class="video-player-body"></div>
+  </sl-dialog>
+
+  <script type="module" src="/shared/init-dropdowns.js"></script>
+  <script type="module" src="/canvas/app.js"></script>
+</body>
+</html>

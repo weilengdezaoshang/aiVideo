@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "noEmitOnError": true,
+    "rootDir": "apps/web",
+    "outDir": ".web-build",
+    "sourceMap": true
+  },
+  "include": ["apps/web/canvas", "apps/web/shared"],
+  "exclude": ["tests", ".web-build", "apps/web/vendor"]
+}

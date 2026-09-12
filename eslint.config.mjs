@@ -6,12 +6,14 @@ import tseslint from 'typescript-eslint'
 // 本仓库风格约定:格式交给 Prettier(.prettierrc),ESLint 负责代码质量并统一大括号风格;
 // eslint-config-prettier 需在 curly 之前声明,否则 curly 会被其静默关闭。
 export default tseslint.config(
-  { ignores: ['node_modules/', '.venv-cutout/', 'data/', 'web/vendor/', 'docs/'] },
+  {
+    ignores: ['node_modules/', '.web-build/', '.venv/', 'data/', 'apps/web/vendor/', 'docs/'],
+  },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,
   {
-    files: ['**/*.{js,mjs,cjs,ts}'],
+    files: ['**/*.{js,mjs,cjs,ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -28,11 +30,11 @@ export default tseslint.config(
     },
   },
   {
-    files: ['web/**/*.js'],
+    files: ['apps/web/**/*.{js,ts,tsx}'],
     languageOptions: {
       globals: {
         ...globals.browser,
-        // Konva 以 UMD 全局引入(web/vendor/konva)
+        // Konva 以 UMD 全局引入(apps/web/vendor/konva)
         Konva: 'readonly',
       },
     },
