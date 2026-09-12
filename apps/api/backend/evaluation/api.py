@@ -319,7 +319,7 @@ def build_eval_router(data_dir: Path) -> APIRouter:
         state = _wait_terminal(data_dir, run_id)
         return {"runId": run_id, "status": state.get("status"), "state": state}
 
-    # ---------- Trial 详情(步骤树) ----------
+    # ---------- Trial 详情(步骤树 + 调用记录) ----------
 
     @router.get("/trials/{trial_id}")
     async def trial_detail(trial_id: str):
@@ -349,6 +349,8 @@ def build_eval_router(data_dir: Path) -> APIRouter:
                     if item.get("trialId") == trial_id:
                         steps.append(item)
         grades = [grade.model_dump() for grade in state.grades if grade.trialId == trial_id]
+        # 调用记录:每次外部请求尝试的调用点/外部任务/用量/费用与错误(§9 问题定位)。
+        attempts = [attempt.model_dump() for attempt in state.attempts if attempt.trialId == trial_id]
         artifacts = []
         for artifact_id in trial.artifactIds:
             try:
@@ -356,7 +358,33 @@ def build_eval_router(data_dir: Path) -> APIRouter:
                 artifacts.append(record.model_dump())
             except (FileNotFoundError, ValueError):
                 artifacts.append({"artifactId": artifact_id, "missing": True})
-        return {"runId": run_id, "trial": trial.model_dump(), "steps": steps, "grades": grades, "artifacts": artifacts}
+        return {
+            "runId": run_id,
+            "trial": trial.model_dump(),
+            "steps": steps,
+            "grades": grades,
+            "attempts": attempts,
+            "artifacts": artifacts,
+        }
+
+    # ---------- 素材内容(内容寻址只读;审核与详情页查看,不提供目录列举) ----------
+
+    @router.get("/artifacts/{artifact_id}/content")
+    async def artifact_content(artifact_id: str):
+        runner = _runner(data_dir)
+        try:
+            record, data = runner.objects.get(artifact_id)
+        except FileNotFoundError as exc:
+            raise HTTPException(404, str(exc)) from None
+        except ValueError as exc:
+            raise HTTPException(410, str(exc)) from None  # 损坏/已撤销:不再提供内容
+        from fastapi.responses import Response
+
+        return Response(
+            content=data,
+            media_type=record.mime,
+            headers={"Cache-Control": "no-store"},
+        )
 
     # ---------- 比较 ----------
 

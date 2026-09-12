@@ -301,3 +301,25 @@ def test_budget_endpoint_reflects_ledger(api_client):
     ledger.settle(reservation.reservationId, 0.5)
     summary = client.get("/api/evals/v1/runs/api-budget/budget").json()
     assert summary["totalCalls"] == 1 and summary["settled"] == 0.5
+
+
+def test_trial_detail_has_attempts_and_artifact_content(api_client):
+    """trial 详情返回调用记录;素材内容端点按内容寻址只读输出。"""
+    client, runner, tmp_path = api_client
+    runner.create_run("api-attempts", "ds-zh")
+    state = runner.execute_run("api-attempts")
+    trial = state.trials[0]
+    detail = client.get(f"/api/evals/v1/trials/{trial.trialId}").json()
+    assert detail["attempts"], "trial 应至少有一条生成调用记录"
+    attempt = detail["attempts"][0]
+    assert attempt["callSite"] == "generation"
+    assert attempt["status"] == "succeeded"
+    # 素材内容端点:哈希一致、MIME 正确
+    artifact_id = trial.artifactIds[0]
+    content = client.get(f"/api/evals/v1/artifacts/{artifact_id}/content")
+    assert content.status_code == 200
+    assert content.headers["content-type"].startswith("image/")
+    record, data = runner.objects.get(artifact_id)
+    assert content.content == data  # 字节级一致
+    # 不存在 → 404;缺失引用不出现在目录列举(端点仅按 ID 直读)
+    assert client.get("/api/evals/v1/artifacts/art-missing/content").status_code == 404
