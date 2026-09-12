@@ -1,0 +1,10 @@
+{
+  "name": "@frayune/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "cd ../.. && python3 scripts/backend.py --reload",
+    "start": "cd ../.. && python3 scripts/backend.py",
+    "verify": "cd ../.. && npm run verify:backend"
+  }
+}
