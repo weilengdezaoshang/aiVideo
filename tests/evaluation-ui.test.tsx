@@ -333,3 +333,166 @@ describe('评测工作台', () => {
     fetcher.restore()
   })
 })
+
+describe('评测工作台·审核闭环与调用记录', () => {
+  test('审核详情:展示素材、自动证据,并可冻结进回归集', async () => {
+    const fetcher = installFetch([
+      {
+        pattern: /review-tasks$/,
+        body: {
+          tasks: [
+            {
+              reviewTaskId: 'review-1',
+              runId: 'run-live-1',
+              trialId: 'trial-1',
+              caseId: 't2i-a',
+              status: 'adjudicated',
+              revision: 3,
+              priority: 'required',
+              claim: { reviewer: 'alice', leaseUntil: '2026-09-12T10:00:00Z' },
+              sampling: { rule: 'required=fail_or_undetermined', policyVersion: 'sampling-v1' },
+              artifactIds: ['art-abc123'],
+            },
+          ],
+        },
+      },
+      {
+        pattern: /review-tasks\/review-1$/,
+        body: {
+          task: {
+            reviewTaskId: 'review-1',
+            runId: 'run-live-1',
+            trialId: 'trial-1',
+            caseId: 't2i-a',
+            status: 'adjudicated',
+            revision: 3,
+            priority: 'required',
+            claim: { reviewer: 'alice', leaseUntil: '2026-09-12T10:00:00Z' },
+            sampling: { rule: 'required=fail_or_undetermined', policyVersion: 'sampling-v1' },
+            artifactIds: ['art-abc123'],
+          },
+          opinions: [
+            {
+              opinionId: 'op-1',
+              reviewer: 'alice',
+              revision: 2,
+              verdicts: [{ checkId: 'has_cat', verdict: 'fail' }],
+              agreeWithAuto: false,
+              category: null,
+              note: '猫眼数量不符',
+              uncertain: false,
+              supersededBy: null,
+              submittedAt: '2026-09-12T01:00:00Z',
+            },
+          ],
+          disputes: [],
+          adjudications: [
+            {
+              adjudicationId: 'adj-1',
+              boundOpinionIds: ['op-1'],
+              finalVerdict: 'fail',
+              reason: '人工确认失败',
+              decidedBy: 'lead',
+              rubricVersion: '1',
+              at: '2026-09-12T01:10:00Z',
+            },
+          ],
+        },
+      },
+      {
+        pattern: /runs\/run-live-1\/trials$/,
+        body: {
+          trials: [
+            {
+              trialId: 'trial-1',
+              caseId: 't2i-a',
+              repetitionIndex: 0,
+              status: 'completed',
+              qualityVerdict: 'pass',
+              weightedScore: 1,
+              requestedSeed: 7,
+              resolvedSeed: 7,
+              error: null,
+              artifactIds: ['art-abc123'],
+              grades: [
+                {
+                  gradeId: 'trial-1:has_cat',
+                  checkId: 'has_cat',
+                  status: 'pass',
+                  observed: true,
+                  expected: true,
+                  score: 1,
+                  source: 'rules',
+                },
+              ],
+            },
+          ],
+        },
+      },
+      { pattern: /case-drafts$/, body: { draftId: 'draft-1' } },
+      {
+        pattern: /publish$/,
+        body: { datasetId: 'regression-zh', version: 3, contentHash: 'fedcba9876543210' },
+      },
+      // 素材内容端点:二进制,img 加载失败不影响断言
+      { pattern: /artifacts\/.+\/content$/, body: {} },
+    ])
+    render(<EvaluationApp />)
+    fireEvent.click(screen.getByRole('button', { name: '人工审核' }))
+    fireEvent.click(await screen.findByRole('button', { name: '详情' }))
+    await waitFor(() => screen.getByText(/自动证据/))
+    assert.ok(screen.getByAltText('素材 art-abc123'))
+    assert.ok(screen.getByText(/人工确认失败/))
+    // 转回归用例:填写表单后提交,走 case-drafts → publish 两步
+    const inputs = screen.getAllByRole('textbox')
+    // 8 个 textbox = 审核表单 4 个 + 草稿表单 4 个(期望是 select 不计入)
+    fireEvent.change(inputs[inputs.length - 4], { target: { value: '复现提示词' } })
+    fireEvent.change(inputs[inputs.length - 3], { target: { value: 'regression-cat' } })
+    fireEvent.change(inputs[inputs.length - 2], { target: { value: '图中是否出现完整猫脸?' } })
+    fireEvent.change(inputs[inputs.length - 1], { target: { value: 'regression-zh' } })
+    fireEvent.click(screen.getByRole('button', { name: '校验并冻结进回归集' }))
+    await waitFor(() => screen.getByText(/regression-zh@v3/))
+    assert.ok(fetcher.calls.some((url) => url.endsWith('/case-drafts')))
+    assert.ok(fetcher.calls.some((url) => url.includes('/dataset-drafts/draft-1/publish')))
+    fetcher.restore()
+  })
+
+  test('trial 详情:展示调用记录(调用点/状态/用量/费用)', async () => {
+    installFetch([
+      { pattern: /runs\/run-live-1$/, body: RUN_DETAIL },
+      { pattern: /runs\/run-live-1\/trials$/, body: TRIALS },
+      { pattern: /runs\/run-live-1\/gates$/, body: { gates: [] } },
+      { pattern: /runs$/, body: RUNS },
+      { pattern: /runs\/run-live-1\/events/, body: { events: [] } },
+      {
+        pattern: /trials\/trial-1$/,
+        body: {
+          runId: 'run-live-1',
+          trial: TRIALS.trials[0],
+          steps: [],
+          grades: [],
+          attempts: [
+            {
+              attemptId: 'trial-1-gen-0',
+              trialId: 'trial-1',
+              callSite: 'generation',
+              attemptIndex: 0,
+              status: 'succeeded',
+              usage: null,
+              cost: null,
+              externalTaskId: 'task-9',
+              error: null,
+            },
+          ],
+          artifacts: [],
+        },
+      },
+    ])
+    render(<EvaluationApp />)
+    fireEvent.click(screen.getByRole('button', { name: '运行详情' }))
+    fireEvent.click(await screen.findByText('t2i-a')) // 选中 trial
+    await waitFor(() => screen.getByText(/调用记录/))
+    assert.ok(screen.getByText('generation'))
+    assert.ok(screen.getByText('task-9'))
+  })
+})

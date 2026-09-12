@@ -113,6 +113,35 @@ export interface TrialView {
   grades: GradeView[]
 }
 
+export interface AttemptView {
+  attemptId: string
+  trialId: string
+  callSite: string
+  attemptIndex: number
+  status: string
+  usage: { source: string; textTokens: number | null; raw?: Record<string, unknown> } | null
+  cost: { currency: string; amount: number | null; basis: string } | null
+  externalTaskId: string | null
+  error: string | null
+}
+
+export interface ArtifactView {
+  artifactId: string
+  mime: string
+  size?: number
+  kind?: string
+  missing?: boolean
+}
+
+export interface TrialDetailView {
+  runId: string
+  trial: TrialView
+  steps: StepEvent[]
+  grades: GradeView[]
+  attempts: AttemptView[]
+  artifacts: ArtifactView[]
+}
+
 export interface StepEvent {
   eventId: string
   sequence: number
@@ -176,6 +205,7 @@ export interface ReviewTaskView {
   priority: string
   claim: { reviewer: string; leaseUntil: string } | null
   sampling: { rule: string; policyVersion: string | null }
+  artifactIds: string[]
 }
 
 export interface ReviewOpinionView {
@@ -448,5 +478,19 @@ export const api = {
     request<{ adjudication: { adjudicationId: string } }>(
       `/api/evals/v1/review-tasks/${taskId}/adjudications`,
       { method: 'POST', body: JSON.stringify(body) },
+    ),
+  trialDetail: (trialId: string) =>
+    request<TrialDetailView>(`/api/evals/v1/trials/${encodeURIComponent(trialId)}`),
+  artifactUrl: (artifactId: string) =>
+    `/api/evals/v1/artifacts/${encodeURIComponent(artifactId)}/content`,
+  createCaseDraft: (taskId: string, caseData: Record<string, unknown>) =>
+    request<{ draftId: string }>(`/api/evals/v1/review-tasks/${taskId}/case-drafts`, {
+      method: 'POST',
+      body: JSON.stringify({ case: caseData }),
+    }),
+  publishCaseDraft: (draftId: string, datasetId: string, split = 'regression') =>
+    request<{ datasetId: string; version: number; contentHash: string }>(
+      `/api/evals/v1/dataset-drafts/${encodeURIComponent(draftId)}/publish`,
+      { method: 'POST', body: JSON.stringify({ datasetId, split }) },
     ),
 }

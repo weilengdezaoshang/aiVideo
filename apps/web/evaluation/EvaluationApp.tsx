@@ -10,10 +10,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   api,
   ApiError,
+  type AttemptView,
   type BudgetSummary,
   type ComparisonView,
   type DatasetInfo,
   type GateView,
+  type GradeView,
   type HealthView,
   type AlertView,
   type OutboxStatus,
@@ -750,6 +752,28 @@ function RunDetailPanel({ runId }: { runId: string }) {
             用例详情 <code>{selected.caseId}</code>
           </h4>
           {selected.error && <div className="eval-error">执行错误:{selected.error}</div>}
+          <h5>产物</h5>
+          {selected.artifactIds.length === 0 ? (
+            <EmptyNote text="无产物(执行失败或未生成)。" />
+          ) : (
+            <div className="eval-thumbs">
+              {selected.artifactIds.map((artifactId) => (
+                <a
+                  key={artifactId}
+                  href={api.artifactUrl(artifactId)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <img
+                    className="eval-thumb"
+                    src={api.artifactUrl(artifactId)}
+                    alt={`产物 ${artifactId}`}
+                    loading="lazy"
+                  />
+                </a>
+              ))}
+            </div>
+          )}
           <h5>逐项评分(自动/类型化规则)</h5>
           {selected.grades.length === 0 ? (
             <EmptyNote text="未评分:执行失败或未评,不显示 0 分(§15.2)。" />
@@ -779,10 +803,77 @@ function RunDetailPanel({ runId }: { runId: string }) {
               </tbody>
             </table>
           )}
+          <AttemptsPanel trialId={selected.trialId} />
           <h5>步骤时间线</h5>
           <StepsPanel runId={runId} trialId={selected.trialId} />
         </div>
       )}
+    </div>
+  )
+}
+
+function AttemptsPanel({ trialId }: { trialId: string }) {
+  const [attempts, setAttempts] = useState<AttemptView[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    let alive = true
+    api
+      .trialDetail(trialId)
+      .then((detail) => alive && setAttempts(detail.attempts))
+      .catch(
+        (exc: unknown) =>
+          alive && setError(exc instanceof Error ? exc.message : '调用记录加载失败'),
+      )
+    return () => {
+      alive = false
+    }
+  }, [trialId])
+  if (error) {
+    return <ErrorNote message={error} />
+  }
+  if (attempts === null) {
+    return <EmptyNote text="加载调用记录…" />
+  }
+  if (attempts.length === 0) {
+    return <EmptyNote text="无外部调用记录(legacy 导入无过程数据)。" />
+  }
+  return (
+    <div>
+      <h5>调用记录(每次外部请求尝试)</h5>
+      <table className="eval-table">
+        <thead>
+          <tr>
+            <th>调用点</th>
+            <th>#</th>
+            <th>状态</th>
+            <th>外部任务</th>
+            <th>用量</th>
+            <th>费用</th>
+            <th>错误</th>
+          </tr>
+        </thead>
+        <tbody>
+          {attempts.map((attempt) => (
+            <tr key={attempt.attemptId}>
+              <td>{attempt.callSite}</td>
+              <td>{attempt.attemptIndex}</td>
+              <td>{attempt.status}</td>
+              <td>{attempt.externalTaskId ?? '—'}</td>
+              <td>
+                {attempt.usage
+                  ? `${attempt.usage.source}${attempt.usage.textTokens !== null ? ` / ${attempt.usage.textTokens} tok` : ''}`
+                  : '—'}
+              </td>
+              <td>
+                {attempt.cost && attempt.cost.amount !== null
+                  ? `${attempt.cost.amount} ${attempt.cost.currency}(${attempt.cost.basis})`
+                  : '—'}
+              </td>
+              <td>{attempt.error ?? '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -823,21 +914,138 @@ function RunsTab({ initialRun }: { initialRun: string }) {
 
 function ReviewDetailPanel({ taskId }: { taskId: string }) {
   const [detail, setDetail] = useState<ReviewTaskDetail | null>(null)
+  const [autoGrades, setAutoGrades] = useState<GradeView[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  // 转回归用例表单(§9.4):审核确认的问题 → 用例草稿 → 校验 → 冻结进回归集。
+  const [draftPrompt, setDraftPrompt] = useState('')
+  const [draftCheckId, setDraftCheckId] = useState('')
+  const [draftQuestion, setDraftQuestion] = useState('')
+  const [draftExpected, setDraftExpected] = useState('false')
+  const [draftDataset, setDraftDataset] = useState('')
+  const [draftBusy, setDraftBusy] = useState(false)
+  const [draftMessage, setDraftMessage] = useState<string | null>(null)
+
   useEffect(() => {
     let alive = true
     api
       .reviewTaskDetail(taskId)
-      .then((data) => alive && setDetail(data))
-      .catch(() => alive && setDetail(null))
+      .then((data) => {
+        if (!alive) {
+          return
+        }
+        setDetail(data)
+        // 自动证据:同 run 的 trial 评分与任务绑定关系一致时展示,供比对人工意见。
+        return api
+          .trials(data.task.runId)
+          .then((trialData) => {
+            if (!alive) {
+              return
+            }
+            const trial = trialData.trials.find((item) => item.trialId === data.task.trialId)
+            setAutoGrades(trial ? trial.grades : [])
+          })
+          .catch(() => alive && setAutoGrades([]))
+      })
+      .catch((exc: unknown) => alive && setError(exc instanceof Error ? exc.message : '加载失败'))
     return () => {
       alive = false
     }
   }, [taskId])
+
+  const submitCaseDraft = useCallback(() => {
+    if (!detail) {
+      return
+    }
+    setDraftBusy(true)
+    setError(null)
+    setDraftMessage(null)
+    const caseData = {
+      schemaVersion: 2,
+      caseId: detail.task.caseId,
+      version: 1,
+      language: 'zh-CN',
+      taskType: 'text_to_image',
+      title: `审核转用例:${detail.task.reviewTaskId}`,
+      input: { prompt: draftPrompt, referenceArtifactIds: [], params: {} },
+      checks: [
+        {
+          id: draftCheckId,
+          kind: 'boolean',
+          question: draftQuestion,
+          expected: draftExpected === 'true',
+        },
+      ],
+      provenance: { source: 'internal', note: `来自审核任务 ${detail.task.reviewTaskId}` },
+    }
+    api
+      .createCaseDraft(taskId, caseData)
+      .then((draft) => api.publishCaseDraft(draft.draftId, draftDataset, 'regression'))
+      .then((manifest) =>
+        setDraftMessage(
+          `已冻结进回归集 ${manifest.datasetId}@v${manifest.version}(快照 ${manifest.contentHash.slice(0, 12)}…)`,
+        ),
+      )
+      .catch((exc: unknown) => setError(exc instanceof Error ? exc.message : '转用例失败'))
+      .finally(() => setDraftBusy(false))
+  }, [detail, draftPrompt, draftCheckId, draftQuestion, draftExpected, draftDataset, taskId])
+
+  if (error && !detail) {
+    return <ErrorNote message={error} />
+  }
   if (!detail) {
     return <EmptyNote text="加载任务详情…" />
   }
+  const draftReady =
+    draftPrompt.trim() !== '' &&
+    draftCheckId.trim() !== '' &&
+    draftQuestion.trim() !== '' &&
+    draftDataset.trim() !== ''
   return (
     <div className="eval-review-detail">
+      <h5>素材(自动评分与人工意见的判定对象)</h5>
+      {detail.task.artifactIds.length === 0 ? (
+        <EmptyNote text="任务未绑定素材。" />
+      ) : (
+        <div className="eval-thumbs">
+          {detail.task.artifactIds.map((artifactId) => (
+            <a key={artifactId} href={api.artifactUrl(artifactId)} target="_blank" rel="noreferrer">
+              <img
+                className="eval-thumb"
+                src={api.artifactUrl(artifactId)}
+                alt={`素材 ${artifactId}`}
+                loading="lazy"
+              />
+            </a>
+          ))}
+        </div>
+      )}
+      <h5>自动证据(独立意见与之比对;不覆盖自动评分)</h5>
+      {autoGrades === null ? (
+        <EmptyNote text="加载自动证据…" />
+      ) : autoGrades.length === 0 ? (
+        <EmptyNote text="无自动评分记录(执行失败或未评)。" />
+      ) : (
+        <table className="eval-table">
+          <thead>
+            <tr>
+              <th>检查项</th>
+              <th>期望</th>
+              <th>实测</th>
+              <th>判定</th>
+            </tr>
+          </thead>
+          <tbody>
+            {autoGrades.map((grade) => (
+              <tr key={grade.gradeId}>
+                <td>{grade.checkId}</td>
+                <td>{String(grade.expected)}</td>
+                <td>{String(grade.observed)}</td>
+                <td>{grade.status}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       <h5>独立意见(追加式,修订保留历史)</h5>
       {detail.opinions.length === 0 ? (
         <EmptyNote text="尚无意见。" />
@@ -881,6 +1089,45 @@ function ReviewDetailPanel({ taskId }: { taskId: string }) {
           </ul>
         </>
       )}
+      <h5>确认问题 → 固化为回归用例(§9.4)</h5>
+      <div className="eval-draft-form">
+        <label>
+          提示词(复现问题的输入)
+          <input value={draftPrompt} onChange={(e) => setDraftPrompt(e.target.value)} />
+        </label>
+        <label>
+          检查项 ID(小写字母/数字/连字符)
+          <input
+            value={draftCheckId}
+            onChange={(e) => setDraftCheckId(e.target.value)}
+            placeholder="regression-check"
+          />
+        </label>
+        <label>
+          检查项问题
+          <input value={draftQuestion} onChange={(e) => setDraftQuestion(e.target.value)} />
+        </label>
+        <label>
+          期望
+          <select value={draftExpected} onChange={(e) => setDraftExpected(e.target.value)}>
+            <option value="false">false(问题复现)</option>
+            <option value="true">true</option>
+          </select>
+        </label>
+        <label>
+          回归数据集 ID(冻结为新版本)
+          <input
+            value={draftDataset}
+            onChange={(e) => setDraftDataset(e.target.value)}
+            placeholder="regression-zh"
+          />
+        </label>
+        <button type="button" disabled={draftBusy || !draftReady} onClick={submitCaseDraft}>
+          校验并冻结进回归集
+        </button>
+        {draftMessage && <p className="eval-ok">{draftMessage}</p>}
+      </div>
+      <ErrorNote message={error} />
     </div>
   )
 }

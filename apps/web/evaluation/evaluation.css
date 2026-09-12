@@ -184,3 +184,26 @@
   font-size: 13px;
   color: #b45309;
 }
+
+/* 素材缩略与转回归用例表单 */
+.eval-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.eval-thumb {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--eval-border, #d0d0d8);
+  background: #f6f6fa;
+}
+.eval-draft-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 520px;
+  margin: 8px 0;
+}
