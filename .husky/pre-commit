@@ -1,2 +1,4 @@
 npx lint-staged
 npm run typecheck
+# 按暂存路径选取快速测试(NUL 分隔清单;测试运行于工作区,干净 checkout 由 CI 把关)
+node scripts/pre-commit-test.mjs

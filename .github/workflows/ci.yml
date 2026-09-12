@@ -6,6 +6,25 @@ on:
   pull_request:
 
 jobs:
+  commit-messages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # 与 .husky/commit-msg 共用同一校验器(scripts/commit-lint.mjs)
+      - name: 校验提交信息
+        run: |
+          BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE" 2>/dev/null; then
+            echo "基准提交不可用(如新分支首次推送),跳过提交信息校验"
+            exit 0
+          fi
+          node scripts/commit-lint.mjs --range "$BASE..HEAD"
+
   verify:
     runs-on: ubuntu-latest
     steps:
@@ -14,5 +33,11 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: python -m venv .venv
+      - run: .venv/bin/python -m pip install -r requirements-dev.txt
       - run: npm ci
       - run: npm run verify
