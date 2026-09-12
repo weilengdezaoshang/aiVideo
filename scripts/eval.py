@@ -488,6 +488,29 @@ def cmd_export(args) -> int:
     return 0
 
 
+def cmd_promptfoo(args) -> int:
+    """Promptfoo 只读适配入口(§3.3):导出证据视图与可直接运行的配置,不重新生成/判分。"""
+    import json as _json
+
+    from backend.evaluation.integrations import build_promptfoo_tests, write_promptfoo_config
+
+    store = Path(args.store) if args.store else ROOT / "data" / "evaluation"
+    try:
+        view = build_promptfoo_tests(store, args.run_id)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"错误:{exc}", file=sys.stderr)
+        return 2
+    out_dir = Path(args.out) if args.out else store / "promptfoo" / args.run_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+    view_file = out_dir / "results.json"
+    view_file.write_text(_json.dumps(view, ensure_ascii=False, indent=2), encoding="utf-8")
+    config_file = write_promptfoo_config(store, args.run_id, out_dir / "promptfooconfig.yaml.json")
+    print(f"已导出 Promptfoo 只读视图:{view_file}")
+    print(f"已写配置:{config_file}")
+    print("使用:promptfoo view / promptfoo assert —— 只展示项目内已有判定;不触发重新生成或付费评分。")
+    return 0
+
+
 def cmd_health(args) -> int:
     import json as _json
 
@@ -575,6 +598,14 @@ def main(argv=None) -> int:
     exporter.add_argument("--out", default=None)
     exporter.add_argument("--store", default=None)
     exporter.set_defaults(func=cmd_export)
+
+    promptfoo = sub.add_parser(
+        "promptfoo", help="Promptfoo 只读适配:导出结果视图与配置(不重复执行/判分)"
+    )
+    promptfoo.add_argument("run_id")
+    promptfoo.add_argument("--store", default=None)
+    promptfoo.add_argument("--out", default=None, help="输出目录(默认 data/evaluation/promptfoo/<runId>)")
+    promptfoo.set_defaults(func=cmd_promptfoo)
 
     health = sub.add_parser("health", help="运维健康指标(§17.4,只读聚合)")
     health.add_argument("--store", default=None)

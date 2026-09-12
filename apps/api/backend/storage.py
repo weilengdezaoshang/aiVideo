@@ -12,6 +12,7 @@ from uuid import uuid4
 from PIL import Image, ImageOps
 
 from .common import now, read_json, valid_id, write_json
+from .errors import DataCorruptedError
 
 # 历史产物文件名 img_{24hex}.{ext};宽松匹配宁可误保留,漏判会让画布产物丢失。
 _HISTORY_FILE_RE = re.compile(r"img_[0-9a-f]{8,}\.[a-z0-9]{2,5}", re.IGNORECASE)
@@ -247,7 +248,19 @@ class History:
     def __init__(self, root: Path):
         self.root = root
         (root / "images").mkdir(parents=True, exist_ok=True)
-        self.records = read_json(root / "history.json", {}).get("records", [])
+        history_path = root / "history.json"
+        if not history_path.exists():
+            self.records = []
+            return
+        # 数据损坏不静默回空:回空后下一次 persist 会覆盖原文件,损失无法恢复。
+        try:
+            payload = json.loads(history_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise DataCorruptedError("历史记录文件损坏,已停止加载,请从备份恢复后重试") from exc
+        records = payload.get("records") if isinstance(payload, dict) else None
+        if not isinstance(records, list):
+            raise DataCorruptedError("历史记录文件结构异常,已停止加载,请从备份恢复后重试")
+        self.records = [r for r in records if isinstance(r, dict)]
 
     def persist(self):
         write_json(self.root / "history.json", {"records": self.records})

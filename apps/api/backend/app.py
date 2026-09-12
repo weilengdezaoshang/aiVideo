@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import re
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from uuid import uuid4
@@ -23,9 +24,17 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from .capabilities import generation_capabilities
 from .common import now, read_json, write_json
 from .cutout import Recognition
+from .errors import (
+    INTERNAL_RESPONSE,
+    AppError,
+    ErrorCode,
+    Recovery,
+    status_contract,
+)
 from .evaluation.api import build_eval_router
 from .evaluation.tracing import TraceRecorder, prompt_fingerprint, start_trace_id
 from .frontend import FrontendFiles
+from .observability import get_request_id, log_access, set_request_id
 from .config import Config, load_config, patch_config, public_config
 from .jobs import Jobs
 from .models import InitImage, parse_image, parse_params, with_reference_weight
@@ -169,22 +178,78 @@ def create_app(
     app = FastAPI(title="FRAYUNE API", version="0.4.0", lifespan=lifespan)
     s = app.state
 
+    @app.middleware("http")
+    async def request_context(request, call_next):
+        # 请求 ID:优先沿用网关/客户端带来的,缺失才生成;与业务幂等 ID 相互独立。
+        request_id = request.headers.get("x-request-id") or str(uuid4())
+        set_request_id(request_id)
+        started = time.monotonic()
+        try:
+            response = await call_next(request)
+        finally:
+            log_access(
+                request.method,
+                request.url.path,
+                getattr(response, "status_code", 500),
+                int((time.monotonic() - started) * 1000),
+                request_id,
+            )
+        response.headers["X-Request-ID"] = request_id
+        return response
+
+    @app.exception_handler(AppError)
+    async def app_error(request, exc):
+        payload = exc.to_payload()
+        payload["traceId"] = get_request_id()
+        return JSONResponse(payload, status_code=exc.http_status)
+
     @app.exception_handler(StarletteHTTPException)
     async def http_error(request, exc):
-        return JSONResponse({"error": str(exc.detail)}, status_code=exc.status_code)
+        code, recovery = status_contract(exc.status_code)
+        return JSONResponse(
+            {
+                "error": str(exc.detail),
+                "code": code.value,
+                "recovery": recovery.value,
+                "details": {},
+                "traceId": get_request_id(),
+            },
+            status_code=exc.status_code,
+        )
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request, exc):
-        return JSONResponse({"error": "请求参数格式不正确"}, status_code=400)
+        return JSONResponse(
+            {
+                "error": "请求参数格式不正确",
+                "code": ErrorCode.INVALID_PARAM.value,
+                "recovery": Recovery.EDIT_INPUT.value,
+                "details": {},
+                "traceId": get_request_id(),
+            },
+            status_code=400,
+        )
 
     @app.exception_handler(ValueError)
     async def value_error(request, exc):
-        return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse(
+            {
+                "error": str(exc),
+                "code": ErrorCode.INVALID_PARAM.value,
+                "recovery": Recovery.EDIT_INPUT.value,
+                "details": {},
+                "traceId": get_request_id(),
+            },
+            status_code=400,
+        )
 
     @app.exception_handler(Exception)
     async def internal_error(request, exc):
-        logging.error("请求失败: %s %s (%s)", request.method, request.url.path, type(exc).__name__)
-        return JSONResponse({"error": "服务器内部错误"}, status_code=500)
+        # 最终负责边界:堆栈在此记录一次(含内部细节),响应保持安全兜底。
+        logging.exception("请求失败: %s %s", request.method, request.url.path)
+        return JSONResponse(
+            {**INTERNAL_RESPONSE, "traceId": get_request_id()}, status_code=500
+        )
 
     def save_sessions():
         entries = sorted(s.sessions.values(), key=lambda x: x["createdAt"], reverse=True)[:300]

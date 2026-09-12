@@ -1,7 +1,6 @@
 """python -m backend [--reload] [--env-file .env.bailian.local]"""
 
 import argparse
-import logging
 import os
 
 import uvicorn
@@ -9,6 +8,7 @@ from dotenv import load_dotenv
 
 from .app import ROOT
 from .config import load_config
+from .observability import setup_logging
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--reload", action="store_true")
@@ -18,7 +18,8 @@ if args.env_file:
     load_dotenv(args.env_file, override=False)
 if args.reload:
     os.environ.setdefault("SWARMUI_ENV", "development")
-logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO").upper())
+# 结构化 stdout(§九.7):SWARMUI_LOG_FORMAT=json 时输出 JSON 行,由部署层收集。
+setup_logging(os.environ.get("LOG_LEVEL", "INFO").upper(), os.environ.get("SWARMUI_LOG_FORMAT", "text"))
 config = load_config(ROOT)
 uvicorn.run(
     "backend.app:create_app",

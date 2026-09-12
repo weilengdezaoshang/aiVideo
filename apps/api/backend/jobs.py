@@ -8,6 +8,7 @@ from collections import deque
 from uuid import uuid4
 
 from .common import now, read_json, write_json
+from .errors import ErrorCode, Recovery, classify_exception
 from .evaluation.tracing import start_trace_id
 from .models import GenParams
 from .traces import timestamp as parse_iso
@@ -275,6 +276,8 @@ class Jobs:
                     status="unknown",
                     message="查询上游超时,上游结果未知,请对账",
                     progress=None,
+                    errorCode=ErrorCode.UPSTREAM_UNKNOWN.value,
+                    recovery=Recovery.RECONCILE.value,
                     finishedAt=now(),
                 )
                 if self.step_tracer is not None and job.get("traceId"):
@@ -282,8 +285,16 @@ class Jobs:
                         job["traceId"], "provider.submit", status="unknown", jobId=ident
                     )
             else:
+                code, recovery = classify_exception(exc)
                 message = "生成超时" if isinstance(exc, TimeoutError) else str(exc) or "生成失败"
-                job.update(status="failed", error=message, message=message, finishedAt=now())
+                job.update(
+                    status="failed",
+                    error=message,
+                    message=message,
+                    errorCode=code.value,
+                    recovery=recovery.value,
+                    finishedAt=now(),
+                )
                 if self.step_tracer is not None and job.get("traceId"):
                     self.step_tracer.step(
                         job["traceId"], "provider.submit", status="failed", jobId=ident,

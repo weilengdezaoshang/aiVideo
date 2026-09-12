@@ -147,12 +147,39 @@
 - **验证**:git-hooks 测试 19/19;CLI 实测(合法 0 / 非法 1 / `--range HEAD~3..HEAD` 3 条合规);
   typecheck 通过;前端全量 156/156。
 
+### 第 6 轮:统一错误契约与请求日志(§八/§九)
+
+- **行为**:响应保留既有 `error` 文案,新增 `code`/`recovery`/`details`/`traceId` 增量字段;
+  Worker 边界把异常分类为稳定 errorCode;500 安全兜底且堆栈只进日志;
+  请求 ID 贯穿响应头/错误 payload/访问日志,ContextVar 隔离并发。
+- **RED**(对既有实现失败):tests/backend/test_errors.py 前 4 项与 test_observability.py
+  前 3 项 —— `KeyError: 'code'`(404 无结构化字段)、500 响应缺 INTERNAL 兜底字段、
+  `KeyError: 'X-Request-ID'`(响应头未回显)、访问日志缺失。
+- **GREEN**:
+  - `backend/errors.py`:ErrorCode/Recovery 枚举、AppError 类型族(参数/不存在/冲突/
+    队列满/额度/上游认证/限流/超时/不可用/未知/存储/损坏)、`status_contract`(迁移期
+    HTTPException 按状态映射)、`classify_exception`(仅依据异常类型与 HTTP 状态码,
+    不解析文案)、INTERNAL_RESPONSE 安全兜底;
+  - app.py:注册 AppError 处理器,四类既有处理器补充结构化字段并注入 traceId;
+    internal 处理器改用 `logging.exception`(堆栈进日志);
+  - jobs.py 失败分支写入 `errorCode`/`recovery`(unknown 分支为 UPSTREAM_UNKNOWN/reconcile);
+  - storage.py:history.json 损坏时抛 DataCorruptedError 快速失败,不再静默回空
+    (避免下一次 persist 覆盖原数据,§八.10);
+  - `backend/observability.py`:ContextVar 请求 ID、JsonFormatter、键名/键值对脱敏、
+    访问日志;app.py 请求中间件回显 X-Request-ID 并记录 method/path/status/durationMs;
+    `__main__` 接入 setup_logging(SWARMUI_LOG_FORMAT=json 开启 JSON 行)。
+- **修正过程**:access log 误用 `response.status`(实际为 `status_code`);JsonFormatter
+  直连 record 时回退读取 ContextVar;`/api/generate` 走显式 ValueError 校验而非
+  RequestValidationError(该处理器当前无公开路由触发,保留为防御性实现)。
+- **验证**:test_errors 8/8、test_observability 6/6;全量 pytest 193/193;ruff 通过。
+- **取舍**:Job 取消路径不加 errorCode(取消非错误);类型化异常逐路由替换属阶段 2
+  边界迁移;traces.classify 文案正则仅服务遥测,不参与恢复动作判断。
+
 ## 阶段 1 尚未完成项(后续继续)
 
-- [ ] 统一后端错误契约(类型化异常 + 稳定错误码 + 全局处理器),当前仍为 HTTPException+中文文案。
-- [ ] 结构化日志/请求上下文/脱敏(§九)。
-- [ ] HTTPX 请求层收敛(超时分类、进程级复用已有,补测试 transport 注入与关闭验证)。
-- [ ] 前端统一 Axios 请求层 + 稳定错误码映射 + Toast 去重(§七)。
+- [ ] 前端统一 Axios 请求层 + 稳定错误码映射 + Toast 去重(§七),消费新增的 code/recovery 字段。
+- [ ] 类型化异常逐路由替换(队列满 → QueueFullError 等),随阶段 2 边界迁移进行。
+- [ ] HTTPX 请求层收敛(超时分类、测试 transport 注入与关闭验证,§十)。
 - [ ] known issue #5(SSE 活跃快照缺席误判丢失)与 #6(评测阻塞,初核已异步执行,需回归固化)。
 - [ ] scripts/e2e-smoke.mjs 预存格式问题(该文件下次被修改时顺手处理)。
 - [ ] ci.yml push 事件 `github.event.before` 在新分支首推时可能为全零,--range 需容错。
