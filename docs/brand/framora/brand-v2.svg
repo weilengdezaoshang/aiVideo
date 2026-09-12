@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900">
+<rect width="1440" height="900" fill="#F5F5F3"/>
+<g font-family="Arial, Helvetica, sans-serif" fill="#171918">
+<text x="76" y="65" font-size="12" letter-spacing="3">FRAMORA / IDENTITY 02</text>
+<text x="1170" y="65" font-size="12" letter-spacing="2">MONOCHROME</text>
+<path transform="translate(165 160) scale(2.15)" d="M30 14H96L78 32H34Q32 32 32 34V78L14 96V30Q14 14 30 14Z M114 32V98Q114 114 98 114H32L50 96H94Q96 96 96 94V50Z"/>
+<text x="520" y="285" font-size="82" font-weight="600" letter-spacing="6">FRAMORA</text>
+<text x="525" y="357" font-family="PingFang SC, sans-serif" font-size="35" letter-spacing="14">帧序</text>
+<text x="525" y="412" font-size="13" letter-spacing="3">A FRAME FOR EVERY IDEA.</text>
+</g>
+<path d="M76 496H1364" stroke="#D4D4D0"/>
+<rect x="76" y="540" width="404" height="266" rx="12" fill="#FFFFFF"/>
+<path transform="translate(214 587)" fill="#171918" d="M30 14H96L78 32H34Q32 32 32 34V78L14 96V30Q14 14 30 14Z M114 32V98Q114 114 98 114H32L50 96H94Q96 96 96 94V50Z"/>
+<rect x="518" y="540" width="404" height="266" rx="12" fill="#171918"/>
+<path transform="translate(656 587)" fill="#FFFFFF" d="M30 14H96L78 32H34Q32 32 32 34V78L14 96V30Q14 14 30 14Z M114 32V98Q114 114 98 114H32L50 96H94Q96 96 96 94V50Z"/>
+<rect x="960" y="540" width="404" height="266" rx="12" fill="#EAEAE7"/>
+<rect x="1104" y="582" width="116" height="116" rx="27" fill="#171918"/>
+<path transform="translate(1116 594) scale(.72)" fill="#FFFFFF" d="M30 14H96L78 32H34Q32 32 32 34V78L14 96V30Q14 14 30 14Z M114 32V98Q114 114 98 114H32L50 96H94Q96 96 96 94V50Z"/>
+<g font-family="Arial, sans-serif" font-size="11" letter-spacing="2">
+<text x="100" y="782" fill="#171918">01 / LIGHT</text><text x="542" y="782" fill="#FFFFFF">02 / DARK</text><text x="984" y="782" fill="#171918">03 / APP ICON</text>
+<text x="76" y="858" fill="#777777">OPEN FRAME / PRECISE CUT / PURE BLACK &amp; WHITE</text>
+</g></svg>
