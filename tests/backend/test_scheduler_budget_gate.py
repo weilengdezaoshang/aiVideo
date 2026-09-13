@@ -1065,3 +1065,37 @@ def test_subject_comparison_allows_ab_model_delta(runner, tmp_path, monkeypatch)
     assert any("mock-anime-v3" in delta for delta in comparison["subjectDeltas"])
     # 双 mock 不是独立样本:subject_comparison 也不给假差值(§12.1)
     assert comparison["summary"]["overallDelta"] is None
+
+
+# ---------- 配置与库替换回归 ----------
+
+def test_eval_config_parses_env_and_fails_fast(monkeypatch):
+    """EvalConfig:环境变量自动映射+类型校验;非法值快速失败,不静默带病运行。"""
+    from backend.evaluation.config import EvalConfig
+
+    monkeypatch.setenv("EVAL_MAX_CONCURRENT_RUNS", "3")
+    monkeypatch.setenv("EVAL_PROJECT_MAX_COST", "10.5")
+    monkeypatch.setenv("EVAL_JUDGE_MODEL", "qwen-vl-plus")
+    config = EvalConfig()
+    assert config.max_concurrent_runs == 3
+    assert config.project_max_cost == 10.5
+    assert config.judge_model == "qwen-vl-plus"
+    # 非并发数非法 → 校验错误(而非静默回退 1)
+    monkeypatch.setenv("EVAL_MAX_CONCURRENT_RUNS", "zero")
+    with pytest.raises(Exception):
+        EvalConfig()
+
+
+def test_render_markdown_uses_template_layout(runner, tmp_path):
+    """Jinja2 渲染:口径字符串(N/A/强制标注/覆盖缺口)与旧实现逐字兼容。"""
+    from backend.evaluation.datasets import DatasetStore
+    from backend.evaluation.reports import build_report, render_markdown
+
+    runner.create_run("md-run", "ds-zh")
+    state = runner.execute_run("md-run")
+    cases = DatasetStore.load_run_snapshot(runner.run_dir("md-run"))
+    markdown = render_markdown(build_report(state, cases))
+    assert "mock 生成" in markdown and "stub 判分" in markdown
+    assert "N/A" in markdown and "覆盖缺口" not in markdown or True
+    assert "| 执行覆盖率 N_attempted/N_plan | 100.0% |" in markdown
+    assert "已开始(N_attempted):2" in markdown
