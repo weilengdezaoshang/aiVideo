@@ -135,6 +135,7 @@ def build_eval_router(data_dir: Path) -> APIRouter:
                     sandbox_config=raw.get("sandboxConfig"),
                     compression=raw.get("compression"),
                     use_grade_cache=bool(raw.get("useGradeCache", True)),
+                    model=raw.get("model"),
                 )
         except FileNotFoundError as exc:
             raise HTTPException(404, str(exc)) from None

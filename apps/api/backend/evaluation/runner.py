@@ -266,7 +266,11 @@ class EvaluationRunner:
         sandbox_config: dict | None = None,
         compression: dict | None = None,
         use_grade_cache: bool = True,
+        model: str | None = None,
     ) -> RunManifest:
+        if model is not None and (not isinstance(model, str) or not model.strip() or len(model) > 128):
+            raise ValueError("model 须为非空字符串(≤128 字符)")
+        model = model.strip() if isinstance(model, str) else None
         if judge not in {"stub", "vlm"}:
             raise ValueError(f"未知判分器:{judge}")
         if judge == "vlm":
@@ -293,7 +297,13 @@ class EvaluationRunner:
                 judge=judge,
                 compression=compression,
                 use_grade_cache=use_grade_cache,
+                model=model,
             )
+        if mode == "live" and model:
+            # 实验变量固定到 run:cloud 平台经沙盒配置下发(Provider 的请求体模型
+            # 取自 config.cloudModel),mock 平台经 manifest.model 选择请求体模型。
+            sandbox_config = dict(sandbox_config or {})
+            sandbox_config["cloudModel"] = model
         if mode == "live":
             if provider == "mock":
                 raise ValueError("live 模式不能使用 mock Provider")
@@ -320,6 +330,7 @@ class EvaluationRunner:
                 sandbox_config=sandbox_config,
                 compression=compression,
                 use_grade_cache=use_grade_cache,
+                model=model,
             )
         if mode == "replay":
             return self._create_replay_run(
@@ -345,6 +356,7 @@ class EvaluationRunner:
         sandbox_config=None,
         compression=None,
         use_grade_cache=True,
+        model: str | None = None,
     ) -> RunManifest:
         if mode != "mock":
             if not 1 <= repetitions <= MAX_REPETITIONS:
@@ -411,6 +423,7 @@ class EvaluationRunner:
             budget=budget
             or {"currency": "CNY", "maxCost": "0.00", "maxExternalCalls": 0},
             code=code_fingerprint(self.root),
+            model=model,
             sandboxConfig=self._sandbox_config_snapshot(provider, sandbox_config),
             recordingId=recording_id,
             compression=self._compression_snapshot(compression),
@@ -667,7 +680,18 @@ class EvaluationRunner:
                 create_sandbox_app(sandbox, config, transport=app_transport)
             ) as client:
                 models = client.get("/api/models").json().get("models", [])
-                default_model = models[0]["id"] if models else manifest.provider
+                model_ids = [item["id"] for item in models]
+                if manifest.model:
+                    if manifest.provider != "mock" and model_ids and manifest.model not in model_ids:
+                        # 云端沙盒未提供该模型:显式失败,不静默回落默认模型(mock 是
+                        # 协议夹具,模型名仅透传,不做白名单限制)
+                        raise ValueError(
+                            f"模型 {manifest.model} 不在沙盒可用列表 {model_ids[:5]} 中,"
+                            "请检查 sandboxConfig.cloudModel 或平台支持"
+                        )
+                    default_model = manifest.model
+                else:
+                    default_model = model_ids[0] if model_ids else manifest.provider
                 for trial in state.trials:
                     if cancel_check is not None and cancel_check():
                         cancelled = True
