@@ -547,3 +547,227 @@ def test_vlm_judge_charged_at_judge_price_not_translate(tmp_path, monkeypatch):
     charges = [r for r in ledger.reservations()]
     assert {r.callSite for r in charges} == {"judge"}
     assert {r.trialId for r in charges} == {"trial-j1"}  # 费用归到正确 trial
+
+
+def test_media_download_is_reserved_at_zero_cost_not_rejected(tmp_path):
+    """结果下载(GET,未登记价格)按零费用预留:审计完整且不被硬预算误拒。"""
+    from backend.evaluation.gateway import BudgetedSyncTransport, CallContext
+
+    ledger = BudgetLedger(
+        tmp_path, "dl-scope", BudgetPolicy(maxCost=1.0, prices={"generation": 0.5})
+    )
+    context = CallContext()
+    context.run_id = "dl-run"
+    context.trial_id = "trial-dl"
+
+    class DownloadUpstream(httpx.BaseTransport):
+        def handle_request(self, request):
+            return httpx.Response(200, content=b"media-bytes")
+
+    transport = BudgetedSyncTransport(
+        inner=DownloadUpstream(), ledger=ledger, context=context, call_site=None
+    )
+    # call_site=None:走路径分类,GET 未命中标记 → download
+    response = transport.handle_request(httpx.Request("GET", "http://cdn.local/media/1.png"))
+    assert response.content == b"media-bytes"
+    summary = ledger.summary()
+    assert summary.totalCalls == 1
+    assert summary.settled == 0.0  # 下载零费用
+    assert summary.outstandingReserved == 0.0
+    sites = {r.callSite for r in ledger.reservations()}
+    assert sites == {"download"}
+    # POST 未登记价格仍然拒绝(硬预算不变)
+    with pytest.raises(PriceUnknown):
+        transport.handle_request(httpx.Request("POST", "http://cdn.local/other"))
+
+
+def test_video_trial_extracts_frames_or_marks_unavailable(runner, tmp_path, monkeypatch):
+    """视频 trial 抽帧入库为证据;无 ffmpeg 时事件如实标记缺失,报告加标注。"""
+    import backend.evaluation.runner as runner_module
+
+    cases = [
+        make_case(
+            "t2v-frames",
+            **{
+                "taskType": "text_to_video",
+                "input": {"prompt": "海浪", "referenceArtifactIds": [], "params": {"kind": "video", "seed": 9, "durationSec": 2}},
+            },
+        )
+    ]
+    source = write_jsonl(tmp_path / "ds-frames.jsonl", cases)
+    runner.freeze_dataset(source, "ds-frames")
+    runner.create_run("run-frames", "ds-frames")
+
+    png_bytes = b"frame-png" * 10
+
+    def fake_extract(video_path, count=3, timeout=30):
+        return {
+            "available": True,
+            "frames": [{"timeSec": 0.5, "png": png_bytes}, {"timeSec": 1.5, "png": png_bytes}],
+            "durationSec": 2.0,
+            "version": "ffmpeg-uniform-v1",
+            "note": None,
+        }
+
+    monkeypatch.setattr(runner_module, "extract_video_frames", fake_extract)
+    state = runner.execute_run("run-frames")
+    trial = state.trials[0]
+    assert len(trial.frameArtifactIds) == 2
+    for frame_id in trial.frameArtifactIds:
+        record, data = runner.objects.get(frame_id)
+        assert data == png_bytes  # 帧证据可校验读取
+    events = [
+        json.loads(line)
+        for line in (runner.run_dir("run-frames") / "events.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert any(event["type"] == "video.frames.extracted" for event in events)
+
+    # 无 ffmpeg 环境:available=False → 未抽帧,事件明确标记缺失,报告标注
+    runner.create_run("run-noframes", "ds-frames")
+
+    def unavailable(video_path, count=3, timeout=30):
+        return {"available": False, "frames": [], "version": "ffmpeg-uniform-v1", "note": "环境无 ffmpeg"}
+
+    monkeypatch.setattr(runner_module, "extract_video_frames", unavailable)
+    state2 = runner.execute_run("run-noframes")
+    assert state2.trials[0].frameArtifactIds == []
+    events2 = [
+        json.loads(line)
+        for line in (runner.run_dir("run-noframes") / "events.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert any(event["type"] == "video.frames.unavailable" for event in events2)
+    from backend.evaluation.reports import build_report
+
+    dataset_cases = DatasetStore.load_run_snapshot(runner.run_dir("run-noframes"))
+    report = build_report(state2, dataset_cases)
+    assert any("帧级证据" in note for note in report["annotations"])
+
+
+def test_drift_report_flags_regression_and_cost_efficiency_na_without_ledger(runner, tmp_path, monkeypatch):
+    """漂移报表:同快照通过率下降超阈值被标记;成本效率无账本显示 N/A 不冒充 0。"""
+    from backend.evaluation.drift import cost_efficiency, create_drift_reviews, drift_report
+
+    store = tmp_path / "store"
+    # 基线:期望 True(stub 全通过)
+    runner.create_run("drift-base", "ds-zh")
+    runner.execute_run("drift-base")
+    # 漂移:注入取反裁判(observed=not expected)→ 必需项失败 → verdict fail 0%
+    import backend.evaluation.runner as runner_module
+    from backend.evaluation.graders.judge import JudgeResult
+    from backend.evaluation.graders.rules import Answer
+
+    class FlippedJudge:
+        source = "stub"
+
+        def grade_artifact(self, data, mime, checks):
+            return JudgeResult(
+                answers={
+                    check.id: Answer(
+                        checkId=check.id,
+                        observed=(not check.expected) if check.kind == "boolean" else check.expected,
+                        evidence="取反裁判:模拟质量退化",
+                        source="stub",
+                    )
+                    for check in checks
+                },
+                usage=None,
+            )
+
+    monkeypatch.setattr(runner_module, "make_judge", lambda *a, **k: FlippedJudge())
+    runner.create_run("drift-low", "ds-zh")
+    # 同素材会命中评分缓存(stub 首算即 pass):绕过缓存让取反裁判真实生效
+    runner.execute_run("drift-low", use_grade_cache=False)
+
+    report = drift_report(store, window=5, threshold=0.05)
+    assert report["drifted"], report
+    assert report["drifted"][0]["runId"] == "drift-low"
+    assert report["drifted"][0]["baselinePassRate"] == 1.0
+
+    # 成本效率:无账本 → settled N/A;有账本 → 按 N_pass 摊
+    cost = cost_efficiency(store, "drift-base")
+    assert cost["settled"] is None and cost["costPerQualifiedArtifact"] is None
+    from backend.evaluation.budgets import BudgetLedger, BudgetPolicy
+
+    ledger = BudgetLedger(store, "drift-low", BudgetPolicy(maxCost=5.0, prices={"generation": 0.5}))
+    reservation = ledger.reserve("drift-low", "generation", 0.5)
+    ledger.settle(reservation.reservationId, 0.5)
+    cost2 = cost_efficiency(store, "drift-low")
+    low_state = runner.load_run("drift-low")
+    passing = sum(1 for t in low_state.trials if t.qualityVerdict == "pass")
+    if passing:
+        assert cost2["costPerQualifiedArtifact"] == pytest.approx(0.5 / passing)
+    else:
+        assert cost2["costPerQualifiedArtifact"] is None
+
+    # 显式创建漂移审核任务:只补抽通过样本(risk/drift),失败样本归必审
+    tasks = create_drift_reviews(store, report)
+    for task in tasks:
+        assert task.sampling["rule"] == "drift"
+
+
+def test_gate_performance_threshold_blocks_on_p95(runner, tmp_path):
+    """门禁性能阈值:完成 trial 的 p95 延迟超过配置即 block。"""
+    store = tmp_path / "store"
+    runner.create_run("perf-run", "ds-zh")
+    runner.execute_run("perf-run")
+    state = runner.load_run("perf-run")
+    for trial in state.trials:
+        trial.latencyMs = 5000
+        runner._write_trial(trial)
+    state = runner.load_run("perf-run")
+    cases = DatasetStore.load_run_snapshot(runner.run_dir("perf-run"))
+    policy = {
+        "policyId": "perf", "version": 1,
+        "integrity": {"requireFrozenDataset": True, "requireCompleteCoreEvidence": False,
+                      "allowMockQualityEvidence": True, "allowStubJudgeEvidence": True},
+        "execution": {}, "human": {}, "cost": {},
+        "performance": {"maxLatencyP95Ms": 1000},
+    }
+    decision = evaluate_gate(state, cases, store=store, policy=policy)
+    assert decision.verdict == "block"
+    assert any("p95" in reason for reason in decision.reasons)
+
+
+def test_comparison_localizes_regression_by_check_and_error_category(runner, tmp_path, monkeypatch):
+    """比较退化定位:检查项级 pass→fail 与错误类别分组,均关联可回查的 gradeId/trialId。"""
+    from backend.evaluation.compare import build_comparison
+    from backend.evaluation.graders.judge import JudgeResult
+    from backend.evaluation.graders.rules import Answer
+
+    class FlippedJudge:
+        source = "stub"
+
+        def grade_artifact(self, data, mime, checks):
+            return JudgeResult(
+                answers={
+                    check.id: Answer(
+                        checkId=check.id,
+                        observed=(not check.expected) if check.kind == "boolean" else check.expected,
+                        evidence="取反裁判",
+                        source="stub",
+                    )
+                    for check in checks
+                },
+                usage=None,
+            )
+
+    runner.create_run("cmp-base", "ds-zh")
+    runner.execute_run("cmp-base", use_grade_cache=False)
+    import backend.evaluation.runner as runner_module
+
+    monkeypatch.setattr(runner_module, "make_judge", lambda *a, **k: FlippedJudge())
+    runner.create_run("cmp-low", "ds-zh")
+    runner.execute_run("cmp-low", use_grade_cache=False)
+    comparison = build_comparison(
+        runner.load_run("cmp-base"),
+        runner.load_run("cmp-low"),
+        baseline_cases=DatasetStore.load_run_snapshot(runner.run_dir("cmp-base")),
+        candidate_cases=DatasetStore.load_run_snapshot(runner.run_dir("cmp-low")),
+    )
+    assert comparison["checkRegressions"], comparison
+    regression = comparison["checkRegressions"][0]
+    assert regression["baselineStatus"] == "pass"
+    assert regression["candidateStatus"] in {"fail", "dependency_failed"}
+    assert regression["candidateGradeId"].startswith("trial-")
