@@ -124,6 +124,17 @@ def build_report(state: RunState, cases: list[CaseVersion]) -> dict:
         annotations.append("legacy 导入:原记录缺失执行与裁判细节,分数不可复现(§19.2)")
     if judge_error_trials:
         annotations.append(f"{judge_error_trials} 条 trial 裁判失败,计入覆盖缺口而非内容零分")
+    video_without_frames = [
+        trial
+        for trial in state.trials
+        if trial.caseId in {case.caseId for case in cases if case.taskType in {"text_to_video", "image_to_video"}}
+        and not trial.frameArtifactIds
+    ]
+    if video_without_frames:
+        annotations.append(
+            f"{len(video_without_frames)} 条视频 trial 无帧级证据(环境无 ffmpeg 或抽帧失败),"
+            "时序质量指标不可得,不冒充可得(§7)"
+        )
     return {
         "schemaVersion": 2,
         "reportVersion": None,  # 落盘时填报告版本号

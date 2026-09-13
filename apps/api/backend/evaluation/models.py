@@ -370,6 +370,8 @@ class Trial(BaseModel):
     jobId: str | None = None
     externalTaskId: str | None = None
     artifactIds: list[str] = Field(default_factory=list)
+    # 视频任务的抽帧证据(可复现,版本化);空列表=未抽帧或环境不可得(事件里说明原因)。
+    frameArtifactIds: list[str] = Field(default_factory=list)
     attemptIds: list[str] = Field(default_factory=list)
     qualityVerdict: TrialQualityVerdict | None = None
     weightedScore: float | None = None

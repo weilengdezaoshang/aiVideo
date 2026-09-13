@@ -58,7 +58,12 @@ from .models import (
 )
 from .outbox import Outbox
 from .recorder import RecordingTransport, RecordingWriter
-from .registry import capabilities_for, check_case_supported, compress_prompt
+from .registry import (
+    capabilities_for,
+    check_case_supported,
+    compress_prompt,
+    extract_video_frames,
+)
 from .replay import ReplayTransport
 
 MAX_REPETITIONS = 10
@@ -998,6 +1003,8 @@ class EvaluationRunner:
                 sha256=artifact.sha256,
                 mime=artifact.mime,
             )
+        if is_video:
+            self._extract_video_evidence(run_id, trial, artifact_ids[0], log)
         attempt.status = "succeeded"
         attempt.cost = None  # mock 生成无外部费用;live 费用由预算账本按调用记账
         self._persist_attempt(trial, attempt)
@@ -1013,6 +1020,61 @@ class EvaluationRunner:
             trialId=trial.trialId,
             status="completed",
             artifactId=artifact_ids[0],
+        )
+
+    def _extract_video_evidence(
+        self, run_id: str, trial: Trial, video_artifact_id: str, log: EventLog
+    ) -> None:
+        """视频任务可复现抽帧(§7):帧图入库为证据;环境不可得时如实标记缺失,不冒充时序指标。"""
+        import tempfile
+
+        try:
+            record, data = self.objects.get(video_artifact_id)
+            suffix = record.mime.rsplit("/", 1)[-1] or "bin"
+            with tempfile.NamedTemporaryFile(prefix="eval-frame-", suffix=f".{suffix}") as temp:
+                temp.write(data)
+                temp.flush()
+                extraction = extract_video_frames(Path(temp.name))
+        except Exception as exc:  # 抽帧失败不拖垮已成功的生成:如实记录缺失原因
+            log.append(
+                "video.frames.unavailable",
+                run_id,
+                trialId=trial.trialId,
+                note=f"抽帧异常:{type(exc).__name__}: {exc}"[:200],
+            )
+            return
+        if not extraction.get("available"):
+            log.append(
+                "video.frames.unavailable",
+                run_id,
+                trialId=trial.trialId,
+                version=extraction.get("version"),
+                note=extraction.get("note") or "抽帧不可得,时序质量指标缺失",
+            )
+            return
+        frame_ids = []
+        for frame in extraction.get("frames", []):
+            frame_artifact = self.objects.put(
+                frame["png"], "png", kind="image", origin_run_id=run_id
+            )
+            frame_ids.append(frame_artifact.artifactId)
+            log.append(
+                "artifact.created",
+                run_id,
+                trialId=trial.trialId,
+                artifactId=frame_artifact.artifactId,
+                sha256=frame_artifact.sha256,
+                mime=frame_artifact.mime,
+                frameTimeMs=int(frame["timeSec"] * 1000),
+            )
+        trial.frameArtifactIds = frame_ids
+        log.append(
+            "video.frames.extracted",
+            run_id,
+            trialId=trial.trialId,
+            version=extraction.get("version"),
+            durationSec=extraction.get("durationSec"),
+            frameArtifactIds=frame_ids,
         )
 
     def _fail_trial(self, trial: Trial, attempt: Attempt, status: TrialStatus, detail: str, log: EventLog, category=None) -> None:
