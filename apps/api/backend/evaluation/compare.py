@@ -12,6 +12,21 @@ from .models import RunState
 from .reports import build_report
 
 
+def _subject_delta(base_manifest, cand_manifest) -> list[str]:
+    """被测对象差异的具体描述:模型与厂商(平台)的变化点,标注 A/B 对比的对象。"""
+    deltas = []
+    for key in ("cloudVendor", "cloudModel", "videoModel"):
+        base_value = (base_manifest.sandboxConfig or {}).get(key)
+        cand_value = (cand_manifest.sandboxConfig or {}).get(key)
+        if base_value != cand_value:
+            deltas.append(f"{key}: {base_value or '默认'} → {cand_value or '默认'}")
+    if base_manifest.model != cand_manifest.model:
+        deltas.append(f"model: {base_manifest.model or '默认'} → {cand_manifest.model or '默认'}")
+    if base_manifest.provider != cand_manifest.provider:
+        deltas.append(f"provider: {base_manifest.provider} → {cand_manifest.provider}")
+    return deltas
+
+
 def build_comparison(baseline: RunState, candidate: RunState, baseline_cases=(), candidate_cases=()) -> dict:
     base_pairs = {(t.caseId, t.caseVersion, t.repetitionIndex): t for t in baseline.trials}
     cand_pairs = {(t.caseId, t.caseVersion, t.repetitionIndex): t for t in candidate.trials}
@@ -21,14 +36,21 @@ def build_comparison(baseline: RunState, candidate: RunState, baseline_cases=(),
     baseline_snapshot = baseline.manifest.dataset.get("contentHash")
     candidate_snapshot = candidate.manifest.dataset.get("contentHash")
     same_snapshot = baseline_snapshot == candidate_snapshot
-    # 可比性还要求:模型配置、评分配置与执行模式一致;不一致时降级为交集呈现。
-    config_factors = {
-        "provider": (baseline.manifest.provider, candidate.manifest.provider),
-        "sandboxConfig": (baseline.manifest.sandboxConfig, candidate.manifest.sandboxConfig),
+    # 因子分组:证据链因子必须一致(同一把尺子);被测对象因子是实验的自变量——
+    # 模型/平台不同正是 A/B 对比的目的,不应拒绝总体结论,只需显式标注(§12.3)。
+    evidence_factors = {
         "grading": (baseline.manifest.grading, candidate.manifest.grading),
         "mode": (baseline.manifest.mode, candidate.manifest.mode),
     }
-    mismatched = [name for name, (b, c) in config_factors.items() if b != c]
+    subject_factors = {
+        "provider": (baseline.manifest.provider, candidate.manifest.provider),
+        "model": (baseline.manifest.model, candidate.manifest.model),
+        "sandboxConfig": (baseline.manifest.sandboxConfig, candidate.manifest.sandboxConfig),
+    }
+    evidence_mismatched = [name for name, (b, c) in evidence_factors.items() if b != c]
+    subject_mismatched = [name for name, (b, c) in subject_factors.items() if b != c]
+    # 被测对象级差异具体到模型/厂商,便于标注"A/B 对比的是什么"
+    subject_delta = _subject_delta(baseline.manifest, candidate.manifest)
 
     paired = []
     regressions, improvements = [], []
@@ -82,14 +104,18 @@ def build_comparison(baseline: RunState, candidate: RunState, baseline_cases=(),
     )
     # Mock、缓存命中与回放不构成独立统计样本(§12.1):非双 live 不给总体差值。
     independent_samples = baseline.manifest.mode == "live" and candidate.manifest.mode == "live"
-    if same_snapshot and not mismatched:
+    if same_snapshot and not evidence_mismatched and not subject_mismatched:
         comparability = "compatible"
         note = "数据集快照与执行/评分配置一致,可进行配对比较"
+    elif subject_mismatched and same_snapshot and not evidence_mismatched:
+        # 被测对象不同但证据链一致:模型/平台 A/B 对比是合法且核心的用例。
+        comparability = "subject_comparison"
+        note = f"被测对象对比({','.join(subject_delta)}):证据链一致,总体差值成立;结论是模型/平台间对比而非同模型回归(§12.3)"
     elif paired_keys:
         comparability = "intersection_only"
-        note = "数据集快照或配置不一致:拒绝总体均值比较,以下仅为公共用例交集(§12.3)"
-        if mismatched:
-            note += f";差异项:{','.join(mismatched)}"
+        note = "数据集快照或评分/执行配置不一致:拒绝总体均值比较,以下仅为公共用例交集(§12.3)"
+        if evidence_mismatched:
+            note += f";差异项:{','.join(evidence_mismatched)}"
     else:
         comparability = "incompatible"
         note = "数据集快照不一致且无公共用例,无法比较"
@@ -111,7 +137,8 @@ def build_comparison(baseline: RunState, candidate: RunState, baseline_cases=(),
         "comparability": comparability,
         "note": note,
         "datasetSnapshots": {"baseline": baseline_snapshot, "candidate": candidate_snapshot},
-        "configDifferences": mismatched,
+        "configDifferences": evidence_mismatched,
+        "subjectDeltas": subject_delta,
         "independentSamples": independent_samples,
         "checkRegressions": check_regressions,
         "candidateErrorCategories": [
