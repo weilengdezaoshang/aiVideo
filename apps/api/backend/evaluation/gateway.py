@@ -20,13 +20,22 @@ PRICEABLE_MARKERS = (
     ("/tasks", "poll"),
 )
 
+# 结果下载:已付费产物的取回(GET),不产生新增计费;仍计入调用次数与预留审计(0 费用预留)。
+DOWNLOAD_CALL_SITE = "download"
+
 
 def classify_call_site(request: httpx.Request) -> str:
-    """预算调用点分类:按上游路径标记;裁判等共用路径形状的调用由调用方显式声明。"""
+    """预算调用点分类:按上游路径标记;裁判等共用路径形状的调用由调用方显式声明。
+
+    未命中标记的 GET(结果媒体/产物下载)归为 download,按零费用预留,
+    避免硬预算模式把"取回已付费产物"误拒为 PRICE_UNKNOWN。
+    """
     path = request.url.path
     for marker, site in PRICEABLE_MARKERS:
         if marker in path:
             return site
+    if request.method == "GET":
+        return DOWNLOAD_CALL_SITE
     return "unknown"
 
 
@@ -61,6 +70,9 @@ class _BudgetedCore:
 
     def _worst_cost(self, call_site: str) -> float | None:
 
+        if call_site == DOWNLOAD_CALL_SITE:
+            # 下载已付费产物不产生新增费用;0 费用预留保证审计完整且不触发 PRICE_UNKNOWN。
+            return 0.0
         prices = self.ledger.policy.prices
         worst = prices.get(call_site)
         if worst is None and not self.ledger.policy.estimated:
@@ -137,15 +149,16 @@ class BudgetedSyncTransport(httpx.BaseTransport):
     路径标记无法区分,必须由调用方声明,否则会错记为 translate 的价格。
     """
 
-    def __init__(self, inner, ledger: BudgetLedger, context: CallContext, call_site: str):
+    def __init__(self, inner, ledger: BudgetLedger, context: CallContext, call_site: str | None = None):
         self.inner = inner
         self.ledger = ledger
         self.context = context
-        self.call_site = call_site
+        self.call_site = call_site  # None:按路径/方法分类;显式传入供裁判等共用路径形状的调用
         self._core = _BudgetedCore(ledger, context)
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
-        reservation = self._core._before_send(request, self.call_site)
+        call_site = self.call_site or classify_call_site(request)
+        reservation = self._core._before_send(request, call_site)
         try:
             response = self.inner.handle_request(request)
         except Exception as exc:
