@@ -27,6 +27,22 @@ _REVIEW_LOCKS: dict[str, threading.RLock] = {}
 _REVIEW_LOCKS_GUARD = threading.Lock()
 
 
+# 任务状态机(§11.2)的唯一事实源:状态 → 允许迁入的状态集合。
+# 已裁决允许再次裁决(追加式,§11.4);提交允许修订(追加新意见)。
+_REVIEW_TRANSITIONS: dict[str, frozenset] = {
+    "pending": frozenset({"claimed"}),
+    "claimed": frozenset({"claimed", "submitted"}),
+    "submitted": frozenset({"submitted", "disputed", "adjudicated"}),
+    "disputed": frozenset({"adjudicated"}),
+    "adjudicated": frozenset({"adjudicated"}),
+}
+
+
+def _require_transition(task_id: str, current: str, target: str) -> None:
+    if target not in _REVIEW_TRANSITIONS.get(current, frozenset()):
+        raise ReviewConflict(f"任务状态为 {current},不能迁移到 {target}")
+
+
 def _task_lock(task_id: str) -> threading.RLock:
     """按任务 ID 共享的进程锁:领取/提交/裁决的状态迁移互斥(并发更新原子化)。"""
     with _REVIEW_LOCKS_GUARD:
@@ -170,8 +186,7 @@ class ReviewStore:
 
         with _task_lock(task_id):
             task = self.get(task_id)
-            if task.status not in {"pending", "claimed"}:
-                raise ReviewConflict(f"任务状态为 {task.status},不能领取")
+            _require_transition(task_id, task.status, "claimed")
             if task.revision != expected_revision:
                 raise ReviewConflict(f"revision 过期:当前 {task.revision},请求基于 {expected_revision}")
             if task.status == "claimed" and task.claim:
@@ -224,8 +239,7 @@ class ReviewStore:
             task = self.get(task_id)
             if task.revision != expected_revision:
                 raise ReviewConflict(f"revision 过期:当前 {task.revision},请求基于 {expected_revision}")
-            if task.status not in {"claimed", "submitted", "disputed"}:
-                raise ReviewConflict(f"任务状态为 {task.status},不能提交意见")
+            _require_transition(task_id, task.status, "submitted")
             # 身份关联:领取人才能提交意见,防止他人借租约提交(REVIEW-01)。
             if task.claim and task.claim.get("reviewer") != reviewer:
                 raise ReviewConflict(
@@ -272,8 +286,7 @@ class ReviewStore:
     def dispute(self, task_id: str, by: str, reason: str) -> ReviewTask:
         with _task_lock(task_id):
             task = self.get(task_id)
-            if task.status != "submitted":
-                raise ReviewConflict(f"任务状态为 {task.status},不能发起争议")
+            _require_transition(task_id, task.status, "disputed")
             task.status = "disputed"
             task.revision += 1
             self._save(task)
@@ -297,8 +310,7 @@ class ReviewStore:
             raise ValueError("裁决必须提供裁决人身份")
         with _task_lock(task_id):
             task = self.get(task_id)
-            if task.status not in {"submitted", "disputed", "adjudicated"}:
-                raise ReviewConflict(f"任务状态为 {task.status},不能裁决")
+            _require_transition(task_id, task.status, "adjudicated")
             # 已裁决任务允许再次裁决:产生新记录(append-only),旧裁决不被改写(§11.4)。
             known = {item.opinionId for item in self._opinions(task_id)}
             unknown = [oid for oid in bound_opinion_ids if oid not in known]
