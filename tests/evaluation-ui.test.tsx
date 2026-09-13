@@ -272,6 +272,7 @@ describe('评测工作台', () => {
           comparability: 'compatible',
           note: '数据集快照与执行/评分配置一致,可进行配对比较',
           configDifferences: [],
+          subjectDeltas: [],
           independentSamples: false,
           checkRegressions: [
             {

@@ -1313,9 +1313,16 @@ function CompareTab() {
       </button>
       {result && (
         <div>
-          <p className={result.comparability === 'compatible' ? 'eval-ok' : 'eval-note'}>
+          <p
+            className={
+              result.comparability === 'compatible' || result.comparability === 'subject_comparison'
+                ? 'eval-ok'
+                : 'eval-note'
+            }
+          >
             {result.note}
           </p>
+          {result.subjectDeltas.length > 0 && <p>被测对象差异:{result.subjectDeltas.join(';')}</p>}
           <p>
             配对 {result.coverage.pairedCount};仅基线 {result.coverage.onlyInBaseline.length};
             仅候选 {result.coverage.onlyInCandidate.length}

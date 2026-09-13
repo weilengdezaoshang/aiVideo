@@ -242,6 +242,7 @@ export interface ComparisonView {
   comparability: string
   note: string
   configDifferences: string[]
+  subjectDeltas: string[]
   independentSamples: boolean
   checkRegressions: {
     caseId: string
@@ -357,6 +358,7 @@ export interface CreateRunBody {
   sandboxConfig?: Record<string, string>
   compression?: { enabled: boolean; compressorVersion?: string }
   useGradeCache?: boolean
+  model?: string
   sourceRunId?: string
   recordingId?: string
 }
