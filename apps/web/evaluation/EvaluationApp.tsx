@@ -6,26 +6,18 @@
 - 未配置的能力(live 密钥、Langfuse)如实显示"未配置",不显示已接通。
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
+import { ACTIVE_POLL_MS, LIST_POLL_MS, OPS_POLL_MS, useEvalQuery } from './queries.js'
 import {
   api,
   ApiError,
-  type AttemptView,
-  type BudgetSummary,
   type ComparisonView,
   type DatasetInfo,
-  type GateView,
   type GradeView,
-  type HealthView,
-  type AlertView,
-  type OutboxStatus,
   type CompressionReport,
-  type CalibrationView,
-  type ReviewTaskDetail,
   type ReviewTaskView,
   type RunDetail,
-  type RunListItem,
-  type StepEvent,
   type TrialView,
 } from './api.js'
 
@@ -82,39 +74,22 @@ function EmptyNote({ text }: { text: string }) {
 }
 
 function OverviewTab({ onOpenRun }: { onOpenRun: (runId: string) => void }) {
-  const [runs, setRuns] = useState<RunListItem[] | null>(null)
-  const [datasets, setDatasets] = useState<DatasetInfo[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const runsQuery = useEvalQuery(['eval-runs'], () => api.runs(), LIST_POLL_MS)
+  const datasetsQuery = useEvalQuery(['eval-datasets'], () => api.datasets())
+  const runs = runsQuery.data?.runs ?? null
+  const datasets = datasetsQuery.data?.datasets ?? null
+  const error = runsQuery.error?.message ?? datasetsQuery.error?.message ?? null
 
-  useEffect(() => {
-    let alive = true
-    const load = () =>
-      Promise.all([api.runs(), api.datasets()])
-        .then(([runData, datasetData]) => {
-          if (alive) {
-            setRuns(runData.runs)
-            setDatasets(datasetData.datasets)
-          }
-        })
-        .catch((exc: unknown) => alive && setError(exc instanceof Error ? exc.message : '加载失败'))
-    load()
-    const timer = setInterval(load, 4000)
-    return () => {
-      alive = false
-      clearInterval(timer)
-    }
-  }, [])
-
-  if (error) {
+  if (error && runs === null && datasets === null) {
     return <ErrorNote message={error} />
   }
   return (
     <section>
       <h2>评测总览</h2>
       <h3>数据集(冻结版本)</h3>
-      {datasets === null ? (
+      {datasetsQuery.isPending ? (
         <EmptyNote text="加载中…" />
-      ) : datasets.length === 0 ? (
+      ) : datasets === null || datasets.length === 0 ? (
         <EmptyNote text="尚无冻结数据集;先用 CLI 冻结:python scripts/eval.py dataset freeze <文件> <数据集ID>。" />
       ) : (
         <table className="eval-table">
@@ -145,9 +120,9 @@ function OverviewTab({ onOpenRun }: { onOpenRun: (runId: string) => void }) {
         </table>
       )}
       <h3>运行记录(每 4 秒刷新)</h3>
-      {runs === null ? (
+      {runsQuery.isPending ? (
         <EmptyNote text="加载中…" />
-      ) : runs.length === 0 ? (
+      ) : runs === null || runs.length === 0 ? (
         <EmptyNote text="尚无评测运行。" />
       ) : (
         <table className="eval-table">
@@ -406,28 +381,15 @@ function NewRunTab({ onCreated }: { onCreated: (runId: string) => void }) {
 }
 
 function StepsPanel({ runId, trialId }: { runId: string; trialId: string }) {
-  const [events, setEvents] = useState<StepEvent[] | null>(null)
-  useEffect(() => {
-    let alive = true
-    void api
-      .events(runId)
-      .then((data) => {
-        if (alive) {
-          setEvents(
-            data.events.filter(
-              (item) => item.trialId === trialId || item.payload?.trialId === trialId,
-            ),
-          )
-        }
-      })
-      .catch(() => setEvents([]))
-    return () => {
-      alive = false
-    }
-  }, [runId, trialId])
-  if (events === null) {
+  const eventsQuery = useEvalQuery(['eval-events', runId], () => api.events(runId))
+  if (eventsQuery.isPending) {
     return <EmptyNote text="加载步骤…" />
   }
+  const events = eventsQuery.isError
+    ? []
+    : eventsQuery.data.events.filter(
+        (item) => item.trialId === trialId || item.payload?.trialId === trialId,
+      )
   if (events.length === 0) {
     return <EmptyNote text="该 trial 没有步骤事件(legacy 导入无过程记录)。" />
   }
@@ -474,21 +436,14 @@ function ReplayEvidencePanel({ detail }: { detail: RunDetail }) {
 }
 
 function BudgetPanel({ runId }: { runId: string }) {
-  const [budget, setBudget] = useState<BudgetSummary | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const load = useCallback(() => {
-    api
-      .budget(runId)
-      .then(setBudget)
-      .catch((exc: unknown) => setError(exc instanceof Error ? exc.message : '账本读取失败'))
-  }, [runId])
-  useEffect(load, [load])
-  if (error) {
-    return <ErrorNote message={error} />
-  }
-  if (!budget) {
+  const budgetQuery = useEvalQuery(['eval-budget', runId], () => api.budget(runId))
+  if (budgetQuery.isPending) {
     return <EmptyNote text="加载预算账本…" />
   }
+  if (budgetQuery.isError) {
+    return <ErrorNote message={budgetQuery.error.message} />
+  }
+  const budget = budgetQuery.data
   return (
     <div className="eval-budget">
       <h4>预算账本(预留 ≠ 实际费用)</h4>
@@ -553,70 +508,59 @@ function BudgetPanel({ runId }: { runId: string }) {
 }
 
 function RunDetailPanel({ runId }: { runId: string }) {
-  const [detail, setDetail] = useState<RunDetail | null>(null)
-  const [trials, setTrials] = useState<TrialView[]>([])
   const [selected, setSelected] = useState<TrialView | null>(null)
-  const [gates, setGates] = useState<GateView[]>([])
-  const [error, setError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [showBudget, setShowBudget] = useState(false)
-  const timerRef = useRef<number | null>(null)
-
-  const reload = useCallback(() => {
-    Promise.all([api.run(runId), api.trials(runId), api.gates(runId)])
-      .then(([detailData, trialData, gateData]) => {
-        setDetail(detailData)
-        setTrials(trialData.trials)
-        setGates(gateData.gates)
-        setError(null)
-      })
-      .catch((exc: unknown) => setError(exc instanceof Error ? exc.message : '加载失败'))
-  }, [runId])
-
-  useEffect(() => {
-    reload()
-  }, [reload])
+  const queryClient = useQueryClient()
 
   // 运行中的 run 每 2 秒轮询;终态停止轮询(长任务不阻塞页面,刷新后可恢复追踪)。
-  useEffect(() => {
-    if (detail && ACTIVE_STATUSES.has(detail.status)) {
-      timerRef.current = window.setInterval(reload, 2000)
-      return () => {
-        if (timerRef.current !== null) {
-          window.clearInterval(timerRef.current)
-        }
-      }
-    }
-    return undefined
-  }, [detail?.status, reload])
+  const detailQuery = useEvalQuery(
+    ['eval-run', runId],
+    () => api.run(runId),
+    (query) => {
+      const current = query.state.data as RunDetail | undefined
+      return current && ACTIVE_STATUSES.has(current.status) ? ACTIVE_POLL_MS : false
+    },
+  )
+  const trialsQuery = useEvalQuery(['eval-trials', runId], () => api.trials(runId))
+  const gatesQuery = useEvalQuery(['eval-gates', runId], () => api.gates(runId))
+
+  const refresh = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['eval-run', runId] })
+    void queryClient.invalidateQueries({ queryKey: ['eval-trials', runId] })
+    void queryClient.invalidateQueries({ queryKey: ['eval-gates', runId] })
+  }, [queryClient, runId])
 
   const computeGate = useCallback(() => {
     api
       .gate(runId)
-      .then((gate) => setGates((previous) => [gate, ...previous]))
+      .then(() => refresh())
       .catch((exc: unknown) => setActionError(exc instanceof Error ? exc.message : '门禁计算失败'))
-  }, [runId])
+  }, [runId, refresh])
 
   const createReport = useCallback(() => {
     api
       .createReport(runId)
-      .then(() => reload())
+      .then(() => refresh())
       .catch((exc: unknown) => setActionError(exc instanceof Error ? exc.message : '报告生成失败'))
-  }, [runId, reload])
+  }, [runId, refresh])
 
   const cancel = useCallback(() => {
     api
       .cancelRun(runId)
-      .then(() => reload())
+      .then(() => refresh())
       .catch((exc: unknown) => setActionError(exc instanceof Error ? exc.message : '取消失败'))
-  }, [runId, reload])
+  }, [runId, refresh])
 
-  if (error && !detail) {
-    return <ErrorNote message={error} />
+  if (detailQuery.error && !detailQuery.data) {
+    return <ErrorNote message={detailQuery.error.message} />
   }
-  if (!detail) {
+  if (detailQuery.isPending || !detailQuery.data) {
     return <EmptyNote text="加载中…" />
   }
+  const detail = detailQuery.data
+  const trials = trialsQuery.data?.trials ?? []
+  const gates = gatesQuery.data?.gates ?? []
   const metrics = detail.metrics
   const cancellable = ACTIVE_STATUSES.has(detail.status)
   return (
@@ -813,27 +757,14 @@ function RunDetailPanel({ runId }: { runId: string }) {
 }
 
 function AttemptsPanel({ trialId }: { trialId: string }) {
-  const [attempts, setAttempts] = useState<AttemptView[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  useEffect(() => {
-    let alive = true
-    api
-      .trialDetail(trialId)
-      .then((detail) => alive && setAttempts(detail.attempts))
-      .catch(
-        (exc: unknown) =>
-          alive && setError(exc instanceof Error ? exc.message : '调用记录加载失败'),
-      )
-    return () => {
-      alive = false
-    }
-  }, [trialId])
-  if (error) {
-    return <ErrorNote message={error} />
-  }
-  if (attempts === null) {
+  const detailQuery = useEvalQuery(['eval-trial', trialId], () => api.trialDetail(trialId))
+  if (detailQuery.isPending) {
     return <EmptyNote text="加载调用记录…" />
   }
+  if (detailQuery.isError) {
+    return <ErrorNote message={detailQuery.error.message} />
+  }
+  const attempts = detailQuery.data.attempts
   if (attempts.length === 0) {
     return <EmptyNote text="无外部调用记录(legacy 导入无过程数据)。" />
   }
@@ -879,18 +810,9 @@ function AttemptsPanel({ trialId }: { trialId: string }) {
 }
 
 function RunsTab({ initialRun }: { initialRun: string }) {
-  const [runs, setRuns] = useState<RunListItem[]>([])
   const [current, setCurrent] = useState<string>(initialRun)
-  useEffect(() => {
-    const load = () =>
-      api
-        .runs()
-        .then((data) => setRuns(data.runs))
-        .catch(() => setRuns([]))
-    load()
-    const timer = setInterval(load, 4000)
-    return () => clearInterval(timer)
-  }, [])
+  const runsQuery = useEvalQuery(['eval-runs'], () => api.runs(), LIST_POLL_MS)
+  const runs = runsQuery.data?.runs ?? []
   useEffect(() => {
     if (!current && runs.length > 0) {
       setCurrent(runs[0].runId)
@@ -913,7 +835,6 @@ function RunsTab({ initialRun }: { initialRun: string }) {
 }
 
 function ReviewDetailPanel({ taskId }: { taskId: string }) {
-  const [detail, setDetail] = useState<ReviewTaskDetail | null>(null)
   const [autoGrades, setAutoGrades] = useState<GradeView[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   // 转回归用例表单(§9.4):审核确认的问题 → 用例草稿 → 校验 → 冻结进回归集。
@@ -925,32 +846,26 @@ function ReviewDetailPanel({ taskId }: { taskId: string }) {
   const [draftBusy, setDraftBusy] = useState(false)
   const [draftMessage, setDraftMessage] = useState<string | null>(null)
 
+  const detailQuery = useEvalQuery(['eval-review', taskId], () => api.reviewTaskDetail(taskId))
+  const runId = detailQuery.data?.task.runId
+  // 自动证据:同 run 的 trial 评分与任务绑定关系一致时展示,供比对人工意见。
+  const autoTrialsQuery = useEvalQuery(
+    ['eval-review-auto', runId ?? ''],
+    () => api.trials(runId ?? ''),
+    false,
+    runId !== undefined,
+  )
   useEffect(() => {
-    let alive = true
-    api
-      .reviewTaskDetail(taskId)
-      .then((data) => {
-        if (!alive) {
-          return
-        }
-        setDetail(data)
-        // 自动证据:同 run 的 trial 评分与任务绑定关系一致时展示,供比对人工意见。
-        return api
-          .trials(data.task.runId)
-          .then((trialData) => {
-            if (!alive) {
-              return
-            }
-            const trial = trialData.trials.find((item) => item.trialId === data.task.trialId)
-            setAutoGrades(trial ? trial.grades : [])
-          })
-          .catch(() => alive && setAutoGrades([]))
-      })
-      .catch((exc: unknown) => alive && setError(exc instanceof Error ? exc.message : '加载失败'))
-    return () => {
-      alive = false
+    if (detailQuery.data && autoTrialsQuery.data) {
+      const trial = autoTrialsQuery.data.trials.find(
+        (item) => item.trialId === detailQuery.data.task.trialId,
+      )
+      setAutoGrades(trial ? trial.grades : [])
+    } else if (detailQuery.data && autoTrialsQuery.isError) {
+      setAutoGrades([])
     }
-  }, [taskId])
+  }, [detailQuery.data, autoTrialsQuery.data, autoTrialsQuery.isError])
+  const detail = detailQuery.data ?? null
 
   const submitCaseDraft = useCallback(() => {
     if (!detail) {
@@ -989,8 +904,9 @@ function ReviewDetailPanel({ taskId }: { taskId: string }) {
       .finally(() => setDraftBusy(false))
   }, [detail, draftPrompt, draftCheckId, draftQuestion, draftExpected, draftDataset, taskId])
 
-  if (error && !detail) {
-    return <ErrorNote message={error} />
+  const loadError = detailQuery.isError ? detailQuery.error.message : null
+  if (loadError && !detail) {
+    return <ErrorNote message={loadError} />
   }
   if (!detail) {
     return <EmptyNote text="加载任务详情…" />
@@ -1127,42 +1043,40 @@ function ReviewDetailPanel({ taskId }: { taskId: string }) {
         </button>
         {draftMessage && <p className="eval-ok">{draftMessage}</p>}
       </div>
-      <ErrorNote message={error} />
+      <ErrorNote message={loadError ?? error} />
     </div>
   )
 }
 
 function ReviewsTab() {
-  const [tasks, setTasks] = useState<ReviewTaskView[]>([])
   const [error, setError] = useState<string | null>(null)
   const [reviewer, setReviewer] = useState('')
   const [runId, setRunId] = useState('')
   const [trialId, setTrialId] = useState('')
   const [caseId, setCaseId] = useState('')
   const [expanded, setExpanded] = useState<string>('')
+  const queryClient = useQueryClient()
 
-  const reload = useCallback(() => {
-    void api
-      .reviewTasks(undefined, undefined)
-      .then((data) => setTasks(data.tasks))
-      .catch((exc: unknown) => setError(exc instanceof Error ? exc.message : '加载失败'))
-  }, [])
-  useEffect(() => {
-    reload()
-  }, [reload])
+  const tasksQuery = useEvalQuery(['eval-review-tasks'], () => api.reviewTasks())
+  const tasks = tasksQuery.data?.tasks ?? []
+
+  const refresh = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['eval-review-tasks'] })
+    void queryClient.invalidateQueries({ queryKey: ['eval-review'] })
+  }, [queryClient])
 
   const createTask = useCallback(() => {
     api
       .createReviewTask({ runId, trialId, caseId, priority: 'required' })
-      .then(() => reload())
+      .then(() => refresh())
       .catch((exc: unknown) => setError(exc instanceof ApiError ? exc.message : String(exc)))
-  }, [runId, trialId, caseId, reload])
+  }, [runId, trialId, caseId, refresh])
 
   const act = useCallback(
     (task: ReviewTaskView, action: 'claim' | 'submit' | 'dispute' | 'adjudicate') => {
       const finish = (promise: Promise<unknown>) =>
         promise
-          .then(() => reload())
+          .then(() => refresh())
           .catch((exc: unknown) => setError(exc instanceof ApiError ? exc.message : String(exc)))
       if (!reviewer) {
         setError('请先填写审核人身份(领取与提交都需要身份关联)')
@@ -1194,7 +1108,7 @@ function ReviewsTab() {
         )
       }
     },
-    [reviewer, reload],
+    [reviewer, refresh],
   )
 
   return (
@@ -1468,50 +1382,50 @@ function CostTab() {
 }
 
 function OpsTab() {
-  const [health, setHealth] = useState<HealthView | null>(null)
-  const [alerts, setAlerts] = useState<AlertView | null>(null)
-  const [outbox, setOutbox] = useState<OutboxStatus | null>(null)
-  const [calibrations, setCalibrations] = useState<CalibrationView[] | null>(null)
   const [flushMessage, setFlushMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+
+  const healthQuery = useEvalQuery(['eval-health'], () => api.health(), OPS_POLL_MS)
+  const alertsQuery = useEvalQuery(['eval-alerts'], () => api.alerts(), OPS_POLL_MS)
+  const outboxQuery = useEvalQuery(['eval-outbox'], () => api.outboxStatus(), OPS_POLL_MS)
+  const calibrationsQuery = useEvalQuery(['eval-calibrations'], () => api.calibrations())
 
   const reload = useCallback(() => {
-    Promise.all([api.health(), api.alerts(), api.outboxStatus(), api.calibrations()])
-      .then(([healthData, alertData, outboxData, calibrationData]) => {
-        setHealth(healthData)
-        setAlerts(alertData)
-        setOutbox(outboxData)
-        setCalibrations(calibrationData.calibrations)
-        setError(null)
-      })
-      .catch((exc: unknown) => setError(exc instanceof Error ? exc.message : '加载失败'))
-  }, [])
-  useEffect(() => {
-    reload()
-    const timer = setInterval(reload, 5000)
-    return () => clearInterval(timer)
-  }, [reload])
+    void queryClient.invalidateQueries({
+      queryKey: ['eval-health'],
+    })
+    void queryClient.invalidateQueries({ queryKey: ['eval-alerts'] })
+    void queryClient.invalidateQueries({ queryKey: ['eval-outbox'] })
+    void queryClient.invalidateQueries({ queryKey: ['eval-calibrations'] })
+  }, [queryClient])
 
   const flush = useCallback(() => {
     api
       .outboxFlush()
-      .then((result) =>
+      .then((result) => {
         setFlushMessage(
           result.configured
             ? `已导出 ${result.flushed} 条,剩余 ${result.remaining}`
             : `未配置 Langfuse,未导出;积压 ${result.remaining} 条。${result.lastError ?? ''}`,
-        ),
-      )
+        )
+        reload()
+      })
       .catch((exc: unknown) => setError(exc instanceof Error ? exc.message : '导出失败'))
-  }, [])
+  }, [reload])
 
-  if (error && !health) {
-    return <ErrorNote message={error} />
+  if (healthQuery.isError && !healthQuery.data) {
+    return <ErrorNote message={healthQuery.error.message} />
   }
+  const health = healthQuery.data ?? null
+  const alerts = alertsQuery.data ?? null
+  const outbox = outboxQuery.data ?? null
+  const calibrations = calibrationsQuery.data?.calibrations ?? null
+  const loadError = error
   return (
     <section>
       <h2>运营状态</h2>
-      <ErrorNote message={error} />
+      <ErrorNote message={loadError} />
       {health === null ? (
         <EmptyNote text="加载健康指标…" />
       ) : (
@@ -1620,6 +1534,13 @@ function OpsTab() {
 }
 
 export function EvaluationApp() {
+  // 查询客户端随应用自持:证据读取失败立刻显式呈现,不自动重试、不随窗口聚焦刷新。
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+      }),
+  )
   const [tab, setTab] = useState<Tab>(() => {
     const requested = new URLSearchParams(location.search).get('tab')
     return TABS.some((item) => item.id === requested) ? (requested as Tab) : 'overview'
@@ -1631,35 +1552,37 @@ export function EvaluationApp() {
   }, [])
   const runsTab = useMemo(() => <RunsTab key={pendingRun} initialRun={pendingRun} />, [pendingRun])
   return (
-    <div className="eval-app">
-      <header>
-        <h1>评测工作台 · 帧屿集 FRAYUNE</h1>
-        <nav>
-          {TABS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={tab === item.id ? 'eval-tab-active' : ''}
-              onClick={() => setTab(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-      </header>
-      <main>
-        {tab === 'overview' && <OverviewTab onOpenRun={openRun} />}
-        {tab === 'new' && <NewRunTab onCreated={openRun} />}
-        {tab === 'runs' && runsTab}
-        {tab === 'reviews' && <ReviewsTab />}
-        {tab === 'compare' && <CompareTab />}
-        {tab === 'cost' && <CostTab />}
-        {tab === 'ops' && <OpsTab />}
-      </main>
-      <footer className="eval-muted">
-        证据库为权威来源;Mock/stub 分数仅验证管线。live 需显式预算与密钥(默认
-        0);未配置的集成如实标注。
-      </footer>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <div className="eval-app">
+        <header>
+          <h1>评测工作台 · 帧屿集 FRAYUNE</h1>
+          <nav>
+            {TABS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={tab === item.id ? 'eval-tab-active' : ''}
+                onClick={() => setTab(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </header>
+        <main>
+          {tab === 'overview' && <OverviewTab onOpenRun={openRun} />}
+          {tab === 'new' && <NewRunTab onCreated={openRun} />}
+          {tab === 'runs' && runsTab}
+          {tab === 'reviews' && <ReviewsTab />}
+          {tab === 'compare' && <CompareTab />}
+          {tab === 'cost' && <CostTab />}
+          {tab === 'ops' && <OpsTab />}
+        </main>
+        <footer className="eval-muted">
+          证据库为权威来源;Mock/stub 分数仅验证管线。live 需显式预算与密钥(默认
+          0);未配置的集成如实标注。
+        </footer>
+      </div>
+    </QueryClientProvider>
   )
 }

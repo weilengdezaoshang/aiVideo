@@ -57,5 +57,8 @@
   },
   "workspaces": [
     "apps/*"
-  ]
+  ],
+  "dependencies": {
+    "@tanstack/react-query": "5.102.8"
+  }
 }
