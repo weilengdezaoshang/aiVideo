@@ -108,46 +108,87 @@ class CapabilityUnsupported(ValueError):
 
 @dataclass
 class ProviderCapabilities:
-    """来自 Provider 能力快照(冻结于 run manifest.sandboxConfig),不是动态猜测。"""
+    """来自 Provider 能力快照(冻结于 run manifest.sandboxConfig),不是动态猜测。
+
+    supported_tasks 是唯一权威;video/image_edit/image_to_image 布尔字段由
+    tasks 派生,仅为兼容既有调用方与 manifest 快照而保留。
+    """
 
     provider: str
     video: bool = False
     image_edit: bool = False
     image_to_image: bool = False
     max_duration_sec: float | None = None
+    supported_tasks: frozenset = field(default_factory=frozenset)
+
+    def supports(self, task_type: str) -> bool:
+        return task_type in self.supported_tasks
+
+
+# 平台×厂商能力矩阵(§10.3):每格与 providers/ 实际实现的协议严格对齐,来源:
+#   t2i   四厂商 images 端点 + mock 合成 + comfyui 工作流(cloud.py request/mock.py/comfyui.py)
+#   i2i   aliyun multimodal-generation 携带 image / siliconflow FLUX.1-Kontext
+#   edit  仅 siliconflow FLUX.1-Fill(蒙版局部重绘)
+#   t2v   aliyun video-synthesis 异步协议(需 videoModel,5s 档) / comfyui wan 工作流 / mock 合成
+#   i2v   各平台均未实现(aliyun 视频请求体只含 prompt,参考图在 generate 分支被显式拒绝)
+# 扩展新平台 = Provider 适配器实现 + 本矩阵登记 + 契约测试,三者缺一不可;
+# 未知组合保守按仅 t2i 处理,其余任务由预检显式拒绝,绝不静默降级。
+_ALL_TASKS = frozenset(
+    {"text_to_image", "image_to_image", "image_edit", "text_to_video", "image_to_video"}
+)
+CAPABILITY_MATRIX: dict[tuple[str, str | None], frozenset] = {
+    ("mock", None): _ALL_TASKS,
+    ("comfyui", None): frozenset({"text_to_image", "text_to_video"}),
+    ("cloud", "aliyun"): frozenset({"text_to_image", "image_to_image", "text_to_video"}),
+    ("cloud", "siliconflow"): frozenset({"text_to_image", "image_to_image", "image_edit"}),
+    ("cloud", "zhipu"): frozenset({"text_to_image"}),
+    ("cloud", "openai"): frozenset({"text_to_image"}),
+}
 
 
 def capabilities_for(config: dict) -> ProviderCapabilities:
     provider = config.get("provider", "mock")
-    if provider == "mock":
-        return ProviderCapabilities(
-            provider=provider, video=True, image_edit=True, image_to_image=True, max_duration_sec=12
-        )
-    if provider == "cloud":
-        vendor = config.get("cloudVendor")
-        video = bool(config.get("videoModel")) and vendor == "aliyun"
-        return ProviderCapabilities(provider=provider, video=video)
-    return ProviderCapabilities(provider=provider)
+    vendor = config.get("cloudVendor") if provider == "cloud" else None
+    tasks = set(CAPABILITY_MATRIX.get((provider, vendor), frozenset({"text_to_image"})))
+    max_duration: float | None = None
+    if provider == "cloud" and vendor == "aliyun":
+        if config.get("videoModel"):
+            max_duration = 5  # VIDEO_DURATIONS 约束(§ 视频协议)
+        else:
+            tasks -= {"text_to_video"}
+    if provider == "comfyui" and config.get("videoBackend") in {None, "", "none"}:
+        tasks -= {"text_to_video"}
+    tasks = frozenset(tasks)
+    return ProviderCapabilities(
+        provider=provider,
+        video="text_to_video" in tasks,
+        image_edit="image_edit" in tasks,
+        image_to_image="image_to_image" in tasks,
+        max_duration_sec=max_duration,
+        supported_tasks=tasks,
+    )
 
 
 def check_case_supported(case: CaseVersion, caps: ProviderCapabilities) -> None:
     """能力不支持的组合必须显式拒绝(§10.3):不让它静默落入另一个任务类型。"""
     if case.taskType == "text_to_image":
         return
-    if case.taskType in {"text_to_video", "image_to_video"} and not caps.video:
+    if not caps.supports(case.taskType):
+        labels = {
+            "text_to_video": "视频生成",
+            "image_to_video": "图生视频(参考图驱动)",
+            "image_to_image": "图像参考生成",
+            "image_edit": "蒙版局部重绘",
+        }
+        reason = labels.get(case.taskType, case.taskType)
         raise CapabilityUnsupported(
-            f"[CAPABILITY_UNSUPPORTED] Provider {caps.provider} 未开通视频生成,"
+            f"[CAPABILITY_UNSUPPORTED] 平台 {caps.provider} 未开通{reason},"
             f"用例 {case.caseId}({case.taskType})被拒绝而非降级执行"
         )
     if case.taskType in {"image_to_image", "image_edit"}:
-        if not case.input.referenceArtifactIds and case.taskType == "image_edit":
+        if not case.input.referenceArtifactIds:
             raise CapabilityUnsupported(
                 f"[CAPABILITY_UNSUPPORTED] {case.taskType} 需要参考素材,用例 {case.caseId} 缺失"
-            )
-        if not caps.image_edit and not caps.image_to_image:
-            raise CapabilityUnsupported(
-                f"[CAPABILITY_UNSUPPORTED] Provider {caps.provider} 未开通图像编辑,"
-                f"用例 {case.caseId} 被拒绝"
             )
 
 
