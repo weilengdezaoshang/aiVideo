@@ -100,8 +100,9 @@ def test_malformed_output_repairs_within_limit_then_errors():
     assert result.error is None
     assert result.attempts == 2
     assert len(calls) == 2
-    # 修复请求必须携带上一次失败原因,而不是静默重问
-    assert "无法接受" in calls[1]["messages"][1]["content"][-1]["text"]
+    # 修复请求必须携带上一次失败原因,而不是静默重问(扫描整条请求,位置不锁定)
+    repair_messages = json.dumps(calls[1]["messages"], ensure_ascii=False)
+    assert "无法接受" in repair_messages
 
     calls2 = []
     result2 = make_judge(calls2, ["仍然不是 JSON"]).grade_artifact(b"png", "image/png", CHECKS)

@@ -14,11 +14,14 @@ from __future__ import annotations
 
 import base64
 import json
-import re
 from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
+import instructor
+from instructor.core import InstructorRetryException
+from openai import OpenAI
+from pydantic import BaseModel, model_validator
 
 from ..models import (
     EVALUATOR_STUB,
@@ -42,9 +45,6 @@ SYSTEM_PROMPT = (
     "\"evidence\":\"<一句话依据>\"}]}。每个检查项恰好一个回答;无法判定时 observed 填 null"
     "并在 evidence 说明原因。"
 )
-
-JSON_OBJECT_PATTERN = re.compile(r"\{.*\}", re.DOTALL)
-
 
 @dataclass
 class JudgeResult:
@@ -126,9 +126,38 @@ def _validate_answers(payload: Any, checks: list[Check]) -> tuple[dict[str, Answ
     return answers, ""
 
 
+def _response_model(checks: list[Check]) -> type[BaseModel]:
+    """按本次检查项动态构造响应模型:结构校验失败直接反馈给裁判重试。"""
+
+    class JudgeAnswer(BaseModel):
+        checkId: str
+        observed: bool | int | float | str | None = None
+        evidence: str | None = None
+
+    class JudgeAnswers(BaseModel):
+        answers: list[JudgeAnswer]
+
+        @model_validator(mode="after")
+        def _enforce_protocol(self) -> "JudgeAnswers":
+            payload = {"answers": [item.model_dump() for item in self.answers]}
+            answers, problem = _validate_answers(payload, checks)
+            if answers is None:
+                raise ValueError(problem)
+            self._validated = answers
+            return self
+
+    return JudgeAnswers
+
+
 class VlmJudge:
-    """OpenAI 兼容视觉裁判。client 允许注入 transport(契约测试用 MockTransport,
-    生产用真实 HTTP);不内置隐式重试之外的重试语义,重试次数显式可配(§6.3)。"""
+    """OpenAI 兼容视觉裁判(community: instructor + openai SDK)。
+
+    - 解析与格式修复反馈交给 instructor(替代手写正则抽取);MD_JSON 模式不依赖
+      response_format 扩展,任何 OpenAI 兼容端点可用(§3.1 多平台)。
+    - 修复循环/次数上限/每次尝试独立记账保留在本类:外部 transport 注入点不变,
+      每次真实 HTTP 都经过预算网关独立预留;usage 来自服务商报告,逐尝试聚合。
+    - client 允许注入 transport(契约测试用 MockTransport,生产用真实 HTTP)。
+    """
 
     source = "vlm"
 
@@ -147,7 +176,7 @@ class VlmJudge:
         if max_attempts < 1:
             raise ValueError("max_attempts 至少为 1")
         self.client = client
-        self.base_url = base_url.rstrip("/")
+        self.base_url = base_url
         self.api_key = api_key
         self.model = model
         self.rubric_version = rubric_version
@@ -155,6 +184,15 @@ class VlmJudge:
         self.max_attempts = max_attempts
         self.timeout = timeout
         self.max_tokens = max_tokens
+        # openai SDK 自身重试必须为 0:重试计数与记账只属于评测的修复循环。
+        self._openai = OpenAI(
+            base_url=self.base_url + "/",
+            api_key=api_key,
+            http_client=client,
+            max_retries=0,
+            timeout=timeout,
+        )
+        self._structured = instructor.from_openai(self._openai, mode=instructor.Mode.MD_JSON)
 
     def _messages(self, data: bytes, mime: str, checks: list[Check], repair: str | None):
         data_url = f"data:{mime};base64,{base64.b64encode(data).decode()}"
@@ -174,46 +212,49 @@ class VlmJudge:
             {"role": "user", "content": user_content},
         ]
 
-    def _call(self, messages) -> tuple[dict | None, UsageRecord | None, str]:
+    def _call(self, messages, checks: list[Check]) -> tuple[dict | None, UsageRecord | None, str]:
+        """单次结构化调用;失败返回 (None, usage|None, 修复原因)。"""
         try:
-            response = self.client.post(
-                self.base_url + "/chat/completions",
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                json={
-                    "model": self.model,
-                    "temperature": self.temperature,
-                    "max_tokens": self.max_tokens,
-                    "messages": messages,
-                },
-                timeout=self.timeout,
+            result, completion = self._structured.chat.completions.create_with_completion(
+                model=self.model,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                messages=messages,
+                response_model=_response_model(checks),
+                # 重试次数 0:修复循环由本类的 max_attempts 驱动(修复文案/次数上限/
+                # 每次 HTTP 独立记账都保持评测语义),instructor 只负责单次解析校验。
+                max_retries=0,
             )
+        except InstructorRetryException as exc:
+            usage = None
+            raw_completion = getattr(exc, "last_completion", None)
+            if raw_completion is not None and getattr(raw_completion, "usage", None):
+                raw = raw_completion.usage
+                usage = UsageRecord(
+                    source="provider_reported",
+                    textTokens=(getattr(raw, "prompt_tokens", 0) or 0)
+                    + (getattr(raw, "completion_tokens", 0) or 0),
+                    raw={"prompt_tokens": getattr(raw, "prompt_tokens", None),
+                         "completion_tokens": getattr(raw, "completion_tokens", None)},
+                )
+            detail = str(exc).replace("\n", " ")[:300]
+            return None, usage, f"裁判输出未通过协议校验:{detail}"
         except httpx.HTTPError as exc:
             return None, None, f"裁判请求失败:{type(exc).__name__}"
-        if response.status_code != 200:
-            return None, None, f"裁判返回 HTTP {response.status_code}"
-        try:
-            payload = response.json()
-        except ValueError:
-            return None, None, "裁判响应不是 JSON"
+        except Exception as exc:  # openai SDK 状态错误(APIStatusError 等)统一映射
+            name = type(exc).__name__
+            status = getattr(exc, "status_code", None)
+            detail = f"裁判返回 HTTP {status}" if status else f"裁判请求失败:{name}"
+            return None, None, detail
         usage = None
-        raw_usage = payload.get("usage")
+        raw_usage = getattr(getattr(completion, "usage", None), "model_dump", lambda: None)()
         if isinstance(raw_usage, dict):
             usage = UsageRecord(
                 source="provider_reported",
                 textTokens=(raw_usage.get("prompt_tokens") or 0) + (raw_usage.get("completion_tokens") or 0),
                 raw=raw_usage,
             )
-        try:
-            content = payload["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError):
-            return None, usage, "裁判响应缺少 choices[0].message.content"
-        match = JSON_OBJECT_PATTERN.search(content)
-        if not match:
-            return None, usage, "裁判输出中没有 JSON 对象"
-        try:
-            return json.loads(match[0]), usage, ""
-        except ValueError:
-            return None, usage, "裁判 JSON 解析失败"
+        return result._validated, usage, ""
 
     def grade_artifact(self, data: bytes, mime: str, checks: list[Check]) -> JudgeResult:
         if not self.api_key:
@@ -223,16 +264,12 @@ class VlmJudge:
         for attempt in range(self.max_attempts):
             result.attempts = attempt + 1
             messages = self._messages(data, mime, checks, repair)
-            payload, usage, error = self._call(messages)
+            payload, usage, error = self._call(messages, checks)
             result.record_usage(usage)
             if payload is None:
                 repair = error
                 continue
-            answers, problem = _validate_answers(payload, checks)
-            if answers is None:
-                repair = problem
-                continue
-            result.answers = answers
+            result.answers = payload
             return result
         result.error = repair or "裁判输出无法解析"
         return result
