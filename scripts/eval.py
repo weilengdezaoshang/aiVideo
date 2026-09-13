@@ -488,6 +488,41 @@ def cmd_export(args) -> int:
     return 0
 
 
+def cmd_cost(args) -> int:
+    """单 run 成本效率报表(§17.4):已结算口径与每份合格素材成本;缺失显示 N/A。"""
+    import json as _json
+
+    from backend.evaluation.drift import cost_efficiency
+
+    store = Path(args.store) if args.store else ROOT / "data" / "evaluation"
+    try:
+        report = cost_efficiency(store, args.run_id)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"错误:{exc}", file=sys.stderr)
+        return 2
+    print(_json.dumps(report, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_drift(args) -> int:
+    """漂移抽样报表(§17.4):近窗口通过率对比;--create-reviews 为漂移 run 建 risk 审核任务。"""
+    import json as _json
+
+    from backend.evaluation.drift import create_drift_reviews, drift_report
+
+    store = Path(args.store) if args.store else ROOT / "data" / "evaluation"
+    try:
+        report = drift_report(store, window=args.window, threshold=args.threshold)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"错误:{exc}", file=sys.stderr)
+        return 2
+    if args.create_reviews and report["drifted"]:
+        tasks = create_drift_reviews(store, report)
+        report["createdReviewTasks"] = [task.reviewTaskId for task in tasks]
+    print(_json.dumps(report, ensure_ascii=False, indent=2))
+    return 0
+
+
 def cmd_promptfoo(args) -> int:
     """Promptfoo 只读适配入口(§3.3):导出证据视图与可直接运行的配置,不重新生成/判分。"""
     import json as _json
@@ -598,6 +633,19 @@ def main(argv=None) -> int:
     exporter.add_argument("--out", default=None)
     exporter.add_argument("--store", default=None)
     exporter.set_defaults(func=cmd_export)
+
+    cost = sub.add_parser("cost", help="单 run 成本效率报表(§17.4,只读)")
+    cost.add_argument("run_id")
+    cost.add_argument("--store", default=None)
+    cost.set_defaults(func=cmd_cost)
+
+    drift = sub.add_parser("drift", help="漂移抽样报表(§17.4,只读;可显式创建审核任务)")
+    drift.add_argument("--window", type=int, default=5)
+    drift.add_argument("--threshold", type=float, default=0.05)
+    drift.add_argument("--create-reviews", action="store_true",
+                       help="为漂移 run 的通过 trial 创建 risk 审核任务(默认只报告)")
+    drift.add_argument("--store", default=None)
+    drift.set_defaults(func=cmd_drift)
 
     promptfoo = sub.add_parser(
         "promptfoo", help="Promptfoo 只读适配:导出结果视图与配置(不重复执行/判分)"
