@@ -37,21 +37,30 @@ class Outbox:
     def flush(
         self, exporter: Callable[[list[dict]], None], max_attempts: int = 3
     ) -> dict:
-        """有界重试导出;永不抛出——观测故障不允许阻塞业务(§9.3)。"""
+        """有界重试导出(tenacity);永不抛出——观测故障不允许阻塞业务(§9.3)。"""
+        from tenacity import Retrying, stop_after_attempt
+
         events = self.pending()
         if not events:
             return {"flushed": 0, "remaining": 0, "attempts": 0, "lastError": None}
-        last_error = None
-        attempts = 0
-        for attempt in range(1, max_attempts + 1):
-            attempts = attempt
-            try:
-                exporter(events)
-                last_error = None
-                break
-            except Exception as exc:  # 导出失败:保留缓冲,下一窗口重试
-                last_error = f"{type(exc).__name__}: {exc}"[:200]
-        if last_error is not None:
-            return {"flushed": 0, "remaining": len(events), "attempts": attempts, "lastError": last_error}
+        retrying = Retrying(stop=stop_after_attempt(max_attempts), reraise=True)
+        try:
+            retrying(self._export_all, exporter, events)
+        except Exception as exc:  # 导出失败:保留缓冲,下一窗口重试
+            return {
+                "flushed": 0,
+                "remaining": len(events),
+                "attempts": retrying.statistics["attempt_number"],
+                "lastError": f"{type(exc).__name__}: {exc}"[:200],
+            }
         self.file.write_text("", encoding="utf-8")  # 成功后清空缓冲
-        return {"flushed": len(events), "remaining": 0, "attempts": attempts, "lastError": None}
+        return {
+            "flushed": len(events),
+            "remaining": 0,
+            "attempts": retrying.statistics["attempt_number"],
+            "lastError": None,
+        }
+
+    @staticmethod
+    def _export_all(exporter: Callable[[list[dict]], None], events: list[dict]) -> None:
+        exporter(events)

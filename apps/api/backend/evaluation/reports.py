@@ -11,6 +11,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from jinja2 import Template
+
 from ..common import now
 from .models import CaseVersion, RunState, Trial, canonical_hash
 
@@ -224,64 +226,84 @@ def _percentile(values: list[int], q: float) -> int | None:
     return ordered[index]
 
 
-def render_markdown(report: dict) -> str:
-    lines = ["# 评测报告(完整状态口径)", ""]
-    dataset = report["dataset"]
-    lines.append(f"- run:`{report['runId']}`(mode={report['mode']},provider={report['provider']})")
-    lines.append(
-        f"- 数据集:`{dataset['datasetId']}@{dataset['version']}`,快照哈希 `{dataset['contentHash'][:12]}…`"
-    )
-    lines.append(f"- 生成时间:{report['generatedAt']}")
-    for note in report["annotations"]:
-        lines.append(f"- ⚠ {note}")
-    lines.append("")
-    d = report["denominators"]
-    m = report["metrics"]
+_MARKDOWN_TEMPLATE = Template(
+    """\
+# 评测报告(完整状态口径)
 
-    def fmt(value):
+- run:`{{ report.runId }}`(mode={{ report.mode }},provider={{ report.provider }})
+- 数据集:`{{ report.dataset.datasetId }}@{{ report.dataset.version }}`,快照哈希 `{{ report.dataset.contentHash[:12] }}…`
+- 生成时间:{{ report.generatedAt }}
+{% for note in report.annotations %}- ⚠ {{ note }}
+{% endfor %}
+## 分母与覆盖率
+
+- 计划 trial(N_plan):{{ report.denominators.plan }}
+- 已开始(N_attempted):{{ report.denominators.attempted }};有素材(N_generated):{{ report.denominators.generated }};已判定(N_determined):{{ report.denominators.determined }};质量通过(N_pass):{{ report.denominators.pass }}
+
+| 指标 | 数值 |
+| --- | --- |
+{% for name, value in metric_rows %}| {{ name }} | {{ value }} |
+{% endfor %}
+## 执行与质量状态
+
+- 执行:{{ execution_summary }}
+- 质量:{{ verdict_summary }}
+{% if report.coverageGaps %}
+## 覆盖缺口(不计入质量分母,但阻断隐含的通过率)
+{% for gap in report.coverageGaps %}- {{ gap }}
+{% endfor %}{% endif %}
+## 逐 trial 明细
+
+| 用例 | 重复 | 执行 | 质量 | 加权分 | seed(请求/实际) |
+| --- | --- | --- | --- | --- | --- |
+{% for entry in report.entries %}| {{ entry.caseId }} | {{ entry.repetitionIndex }} | {{ entry.statusLabel }} | {{ entry.verdictLabel }} | {{ entry.scoreText }} | {{ entry.seedText }} |
+{% endfor %}"""
+)
+
+
+def render_markdown(report: dict) -> str:
+    """Markdown 渲染:数值整形在 Python 完成保持口径单一,排版交给 Jinja2 模板。"""
+
+    def fmt(value) -> str:
         return "N/A" if value is None else f"{value * 100:.1f}%"
 
-    lines.append("## 分母与覆盖率")
-    lines.append("")
-    lines.append(f"- 计划 trial(N_plan):{d['plan']}")
-    lines.append(f"- 已开始(N_attempted):{d['attempted']};有素材(N_generated):{d['generated']};"
-                 f"已判定(N_determined):{d['determined']};质量通过(N_pass):{d['pass']}")
-    lines.append("")
-    lines.append("| 指标 | 数值 |")
-    lines.append("| --- | --- |")
-    rows = [
+    m = report["metrics"]
+    metric_rows = [
         ("执行覆盖率 N_attempted/N_plan", fmt(m["executionCoverage"])),
         ("生成成功率 N_generated/N_attempted", fmt(m["generationSuccessRate"])),
         ("判定覆盖率 N_determined/N_generated", fmt(m["determinationCoverage"])),
         ("条件质量通过率 N_pass/N_determined", fmt(m["conditionalQualityPassRate"])),
         ("计划合格完成率 N_pass/N_plan", fmt(m["planCompletionRate"])),
         ("首次生成合格率", fmt(m["firstAttemptSuccessRate"])),
-        ("每份合格素材成本", "N/A(mock 无外部费用)" if m["costPerQualifiedArtifact"] is None else "-"),
+        (
+            "每份合格素材成本",
+            "N/A(mock 无外部费用)" if m["costPerQualifiedArtifact"] is None else "-",
+        ),
     ]
-    lines.extend(f"| {name} | {value} |" for name, value in rows)
-    lines.append("")
-    lines.append("## 执行与质量状态")
-    lines.append("")
-    lines.append("- 执行:" + "、".join(f"{STATUS_LABEL.get(k, k)} {v}" for k, v in sorted(report["executionCounts"].items())))
-    lines.append("- 质量:" + "、".join(f"{VERDICT_LABEL[k] if k in VERDICT_LABEL else k} {v}" for k, v in report["verdictCounts"].items()))
-    if report["coverageGaps"]:
-        lines.append("")
-        lines.append("## 覆盖缺口(不计入质量分母,但阻断隐含的通过率)")
-        lines.extend(f"- {gap}" for gap in report["coverageGaps"])
-    lines.append("")
-    lines.append("## 逐 trial 明细")
-    lines.append("")
-    lines.append("| 用例 | 重复 | 执行 | 质量 | 加权分 | seed(请求/实际) |")
-    lines.append("| --- | --- | --- | --- | --- | --- |")
+    execution_summary = "、".join(
+        f"{STATUS_LABEL.get(k, k)} {v}" for k, v in sorted(report["executionCounts"].items())
+    )
+    verdict_summary = "、".join(
+        f"{VERDICT_LABEL.get(k, k)} {v}" for k, v in report["verdictCounts"].items()
+    )
+    entries = []
     for entry in report["entries"]:
-        seed = f"{entry['requestedSeed']}/{entry['resolvedSeed'] if entry['resolvedSeed'] is not None else '?'}"
-        score = "N/A(未评)" if entry["weightedScore"] is None else f"{entry['weightedScore']:.2f}"
-        lines.append(
-            f"| {entry['caseId']} | {entry['repetitionIndex']} | {entry['statusLabel']} "
-            f"| {entry['verdictLabel']} | {score} | {seed} |"
+        row = dict(entry)
+        row["scoreText"] = (
+            "N/A(未评)" if entry["weightedScore"] is None else f"{entry['weightedScore']:.2f}"
         )
-    lines.append("")
-    return "\n".join(lines)
+        row["seedText"] = (
+            f"{entry['requestedSeed']}/"
+            f"{entry['resolvedSeed'] if entry['resolvedSeed'] is not None else '?'}"
+        )
+        entries.append(row)
+    return _MARKDOWN_TEMPLATE.render(
+        report=report,
+        metric_rows=metric_rows,
+        execution_summary=execution_summary,
+        verdict_summary=verdict_summary,
+        entries=entries,
+    )
 
 
 @dataclass
