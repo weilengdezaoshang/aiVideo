@@ -32,6 +32,7 @@ from backend.evaluation.budgets import (
 )
 from backend.evaluation.datasets import validate_source_params
 from backend.evaluation.gates import evaluate_gate
+from backend.evaluation.registry import capabilities_for
 from backend.evaluation.reviews import (
     ReviewSamplingPolicy,
     ReviewStore,
@@ -932,3 +933,135 @@ def test_vlm_judge_on_video_requires_frames_or_uses_first_frame(runner, tmp_path
     payload = json.loads(grades2.read_text(encoding="utf-8"))
     assert payload["grades"][0]["evidence"][0]["artifactId"] == frame_art.artifactId
     assert "首帧" in (payload["grades"][0]["evidence"][0]["note"] or "")
+
+
+# ---------- 多平台 × 多模型支持 ----------
+
+def test_capability_matrix_matches_provider_reality():
+    """能力矩阵与 Provider 协议实现严格对齐:siliconflow 支持编辑,zhipu 仅文生图。"""
+    sf = capabilities_for({"provider": "cloud", "cloudVendor": "siliconflow"})
+    assert sf.supports("image_edit") and sf.supports("image_to_image")
+    assert not sf.supports("text_to_video")
+    zhipu = capabilities_for({"provider": "cloud", "cloudVendor": "zhipu"})
+    assert zhipu.supports("text_to_image")
+    assert not zhipu.supports("image_to_image") and not zhipu.supports("image_edit")
+    aliyun_no_video = capabilities_for({"provider": "cloud", "cloudVendor": "aliyun"})
+    assert not aliyun_no_video.supports("text_to_video")  # 未配 videoModel
+    aliyun_video = capabilities_for(
+        {"provider": "cloud", "cloudVendor": "aliyun", "videoModel": "wanx2.1-t2v-turbo"}
+    )
+    assert aliyun_video.supports("text_to_video")
+    assert not aliyun_video.supports("image_to_video")  # i2v 各平台均未实现
+    unknown = capabilities_for({"provider": "cloud", "cloudVendor": "new-vendor"})
+    assert unknown.supported_tasks == frozenset({"text_to_image"})  # 未知组合保守默认
+
+
+def test_siliconflow_edit_case_passes_precheck(runner, tmp_path, png):
+    """siliconflow 的蒙版编辑用例此前被过期能力快照误拒,现在按矩阵放行。"""
+    art = runner.objects.put(png, "png", kind="reference")
+    mask = runner.objects.put(png, "png", kind="mask")
+    cases = [
+        make_case(
+            "sf-edit-01",
+            **{
+                "taskType": "image_edit",
+                "input": {
+                    "prompt": "删除路人",
+                    "referenceArtifactIds": [art.artifactId, mask.artifactId],
+                    "params": {"seed": 3},
+                },
+            },
+        )
+    ]
+    from backend.evaluation.datasets import load_cases
+
+    source = write_jsonl(tmp_path / "ds-sf.jsonl", cases)
+    problems = validate_source_params(load_cases(source))
+    assert problems == []
+    runner.freeze_dataset(source, "ds-sf")
+    manifest = runner.create_run(
+        "run-sf-edit", "ds-sf", mode="live", provider="cloud",
+        budget={"maxCost": 5.0, "prices": {"generation": 0.1}},
+        sandbox_config={"cloudVendor": "siliconflow", "cloudBaseUrl": "http://stub.local/v1"},
+    )
+    assert manifest.sandboxConfig["cloudVendor"] == "siliconflow"
+
+
+def test_run_pins_model_to_manifest_and_sandbox(runner, tmp_path, monkeypatch):
+    """run 级模型固定:manifest.model 冻结,cloud 平台经沙盒配置下发,请求体使用该模型。"""
+    from backend.providers.mock import MockProvider
+
+    captured_models = []
+    original_generate = MockProvider.generate
+
+    async def capturing(self, params, seed, progress, image=None, mask=None, external=None, external_task_id=None):
+        captured_models.append(params.model)
+        return await original_generate(self, params, seed, progress, image, mask, external, external_task_id)
+
+    monkeypatch.setattr(MockProvider, "generate", capturing)
+    monkeypatch.setenv("SWARMUI_IMAGE_API_KEY", "test-key")
+    runner.create_run("model-run", "ds-zh", model="mock-anime-v3")
+    manifest = runner.load_run("model-run").manifest
+    assert manifest.model == "mock-anime-v3"
+    runner.execute_run("model-run")
+    assert captured_models and set(captured_models) == {"mock-anime-v3"}
+
+    # cloud 平台:model 下发到沙盒配置
+    manifest2 = runner.create_run(
+        "model-cloud", "ds-zh", mode="live", provider="cloud",
+        budget={"maxCost": 5.0, "prices": {"generation": 0.5}},
+        sandbox_config={"cloudVendor": "zhipu", "cloudBaseUrl": "http://stub.local/v1"},
+        model="cogview-4-plus",
+    )
+    assert manifest2.model == "cogview-4-plus"
+    assert manifest2.sandboxConfig["cloudModel"] == "cogview-4-plus"
+    # 非法模型名拒绝
+    with pytest.raises(ValueError, match="model"):
+        runner.create_run("model-bad", "ds-zh", model="   ")
+
+
+def test_subject_comparison_allows_ab_model_delta(runner, tmp_path, monkeypatch):
+    """A/B 模型对比:证据链一致 + 被测对象不同 → subject_comparison,总体差值成立并标注对象。"""
+    from backend.evaluation.compare import build_comparison
+
+    # 基线:mock 默认模型全过(两边都关缓存,保持 grading 配置一致)
+    runner.create_run("ab-base", "ds-zh", use_grade_cache=False)
+    runner.execute_run("ab-base", use_grade_cache=False)
+    # 候选:换模型 + 取反裁判 → 质量退化,验证差值真实反映被测对象差异
+    import backend.evaluation.runner as runner_module
+    from backend.evaluation.graders.judge import JudgeResult
+    from backend.evaluation.graders.rules import Answer
+
+    class FlippedJudge:
+        source = "stub"
+
+        def grade_artifact(self, data, mime, checks):
+            return JudgeResult(
+                answers={
+                    c.id: Answer(
+                        checkId=c.id,
+                        observed=(not c.expected) if c.kind == "boolean" else c.expected,
+                        evidence="取反裁判",
+                        source="stub",
+                    )
+                    for c in checks
+                },
+                usage=None,
+            )
+
+    monkeypatch.setattr(runner_module, "make_judge", lambda *a, **k: FlippedJudge())
+    runner.create_run(
+        "ab-cand", "ds-zh", model="mock-anime-v3", use_grade_cache=False
+    )
+    runner.execute_run("ab-cand", use_grade_cache=False)
+    comparison = build_comparison(
+        runner.load_run("ab-base"),
+        runner.load_run("ab-cand"),
+        baseline_cases=DatasetStore.load_run_snapshot(runner.run_dir("ab-base")),
+        candidate_cases=DatasetStore.load_run_snapshot(runner.run_dir("ab-cand")),
+    )
+    assert comparison["comparability"] == "subject_comparison"
+    assert comparison["subjectDeltas"], comparison
+    assert any("mock-anime-v3" in delta for delta in comparison["subjectDeltas"])
+    # 双 mock 不是独立样本:subject_comparison 也不给假差值(§12.1)
+    assert comparison["summary"]["overallDelta"] is None
