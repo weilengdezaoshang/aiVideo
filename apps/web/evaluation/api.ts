@@ -243,6 +243,16 @@ export interface ComparisonView {
   note: string
   configDifferences: string[]
   independentSamples: boolean
+  checkRegressions: {
+    caseId: string
+    checkId: string
+    baselineStatus: string
+    candidateStatus: string
+    baselineGradeId: string
+    candidateGradeId: string
+    candidateTrialId: string
+  }[]
+  candidateErrorCategories: { category: string; trialIds: string[] }[]
   coverage: { pairedCount: number; onlyInBaseline: string[]; onlyInCandidate: string[] }
   summary: {
     baselinePassRate: number | null

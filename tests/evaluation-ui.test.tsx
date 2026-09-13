@@ -273,6 +273,18 @@ describe('评测工作台', () => {
           note: '数据集快照与执行/评分配置一致,可进行配对比较',
           configDifferences: [],
           independentSamples: false,
+          checkRegressions: [
+            {
+              caseId: 't2i-a',
+              checkId: 'has_cat',
+              baselineStatus: 'pass',
+              candidateStatus: 'fail',
+              baselineGradeId: 'trial-a:has_cat',
+              candidateGradeId: 'trial-b:has_cat',
+              candidateTrialId: 'trial-b',
+            },
+          ],
+          candidateErrorCategories: [{ category: 'timeout', trialIds: ['trial-c'] }],
           coverage: { pairedCount: 2, onlyInBaseline: [], onlyInCandidate: [] },
           summary: {
             baselinePassRate: 1.0,
@@ -295,6 +307,12 @@ describe('评测工作台', () => {
     await waitFor(() => screen.getByText(/独立统计样本/))
     assert.ok(screen.getByText(/否\(Mock\/缓存\/回放不计入样本量\)/))
     assert.ok(screen.getByText(/N\/A/))
+    // 退化定位:检查项级退化与错误类别分组可见,gradeId 可回查
+    assert.ok(screen.getByText(/检查项级退化/))
+    assert.ok(screen.getByText('has_cat'))
+    assert.ok(screen.getByText('trial-b:has_cat'))
+    assert.ok(screen.getByText(/按错误类别分组/))
+    assert.ok(screen.getByText('timeout'))
     fetcher.restore()
   })
 

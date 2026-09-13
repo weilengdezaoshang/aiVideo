@@ -1326,6 +1326,50 @@ function CompareTab() {
             ;总体差值 {result.summary.overallDelta === null ? 'N/A' : result.summary.overallDelta}
           </p>
           <p className="eval-muted">{result.summary.uncertainty}</p>
+          {result.checkRegressions.length > 0 && (
+            <div className="eval-gaps">
+              <h4>检查项级退化(通过 → 失败/依赖失败;gradeId 可回查证据)</h4>
+              <table className="eval-table">
+                <thead>
+                  <tr>
+                    <th>用例</th>
+                    <th>检查项</th>
+                    <th>基线</th>
+                    <th>候选</th>
+                    <th>候选 gradeId</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.checkRegressions.map((regression) => (
+                    <tr key={`${regression.caseId}:${regression.checkId}`}>
+                      <td>{regression.caseId}</td>
+                      <td>{regression.checkId}</td>
+                      <td>{regression.baselineStatus}</td>
+                      <td>{regression.candidateStatus}</td>
+                      <td>
+                        <code>{regression.candidateGradeId}</code>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {result.candidateErrorCategories.length > 0 && (
+            <div className="eval-gaps">
+              <h4>候选 run 执行失败按错误类别分组(关联 trial 可查调用记录)</h4>
+              <ul>
+                {result.candidateErrorCategories.map((item) => (
+                  <li key={item.category}>
+                    <strong>{item.category}</strong>: {item.trialIds.length} 个 trial
+                    {item.trialIds.slice(0, 5).map((trialId) => (
+                      <code key={trialId}> {trialId.slice(0, 14)}…</code>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <table className="eval-table">
             <thead>
               <tr>
