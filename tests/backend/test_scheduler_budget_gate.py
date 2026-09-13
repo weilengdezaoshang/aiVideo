@@ -771,3 +771,164 @@ def test_comparison_localizes_regression_by_check_and_error_category(runner, tmp
     assert regression["baselineStatus"] == "pass"
     assert regression["candidateStatus"] in {"fail", "dependency_failed"}
     assert regression["candidateGradeId"].startswith("trial-")
+
+
+def test_image_edit_and_image_to_video_pass_references_end_to_end(runner, tmp_path, monkeypatch, png):
+    """验收场景 9:image_edit(原图+PNG 蒙版)与 image_to_video(参考图)素材正确传入被测 API,
+    不被静默转换成文生图;mock 产物按任务类型落库。"""
+    from backend.providers.mock import MockProvider
+
+    captured = []
+
+    original_generate = MockProvider.generate
+
+    async def capturing_generate(self, params, seed, progress, image=None, mask=None, external=None, external_task_id=None):
+        captured.append({"kind": params.kind, "has_image": image is not None, "has_mask": mask is not None})
+        return await original_generate(self, params, seed, progress, image, mask, external, external_task_id)
+
+    monkeypatch.setattr(MockProvider, "generate", capturing_generate)
+
+    original_art = runner.objects.put(png, "png", kind="reference")
+    mask = runner.objects.put(png, "png", kind="mask")  # PNG 蒙版
+    # image_edit:原图 + 蒙版两项素材
+    edit_cases = [
+        make_case(
+            "edit-e2e-01",
+            **{
+                "taskType": "image_edit",
+                "input": {
+                    "prompt": "删除画面中的路人",
+                    "referenceArtifactIds": [original_art.artifactId, mask.artifactId],
+                    "params": {"seed": 11},
+                },
+            },
+        )
+    ]
+    runner.freeze_dataset(write_jsonl(tmp_path / "ds-edit.jsonl", edit_cases), "ds-edit")
+    runner.create_run("run-edit-e2e", "ds-edit")
+    state = runner.execute_run("run-edit-e2e")
+    assert state.trials[0].status == "completed", state.trials[0].error
+    assert captured[-1] == {"kind": "image", "has_image": True, "has_mask": True}
+
+    # image_to_video:参考图 + kind=video
+    i2v_cases = [
+        make_case(
+            "i2v-e2e-01",
+            **{
+                "taskType": "image_to_video",
+                "input": {
+                    "prompt": "让照片中的猫动起来",
+                    "referenceArtifactIds": [original_art.artifactId],
+                    "params": {"kind": "video", "seed": 12, "durationSec": 2},
+                },
+            },
+        )
+    ]
+    runner.freeze_dataset(write_jsonl(tmp_path / "ds-i2v.jsonl", i2v_cases), "ds-i2v")
+    runner.create_run("run-i2v-e2e", "ds-i2v")
+    state2 = runner.execute_run("run-i2v-e2e")
+    assert state2.trials[0].status == "completed", state2.trials[0].error
+    assert captured[-1]["kind"] == "video" and captured[-1]["has_image"] is True
+    assert runner.objects.record(state2.trials[0].artifactIds[0]).kind == "video"
+
+
+def test_vlm_judge_on_video_requires_frames_or_uses_first_frame(runner, tmp_path, monkeypatch):
+    """评估器按任务分派(§10.6):vlm+视频无帧证据 → 能力不支持明确失败;有帧 → 用首帧并留痕。"""
+    import io
+
+    from PIL import Image
+
+    import backend.evaluation.runner as runner_module
+    from backend.evaluation.graders.judge import JudgeResult
+    from backend.evaluation.graders.rules import Answer
+
+    class RecordingJudge:
+        source = "stub"
+
+        def __init__(self):
+            self.seen_mimes = []
+
+        def grade_artifact(self, data, mime, checks):
+            self.seen_mimes.append(mime)
+            return JudgeResult(
+                answers={
+                    check.id: Answer(
+                        checkId=check.id, observed=check.expected, evidence="帧级判定", source="stub"
+                    )
+                    for check in checks
+                },
+                usage=None,
+            )
+
+    recording = RecordingJudge()
+    monkeypatch.setattr(runner_module, "make_judge", lambda *a, **k: recording)
+    from backend.evaluation.budgets import BudgetLedger, BudgetPolicy
+
+    judge_ledger = BudgetLedger(
+        tmp_path, "vlm-test-scope",
+        BudgetPolicy(maxCost=5.0, prices={"judge": 0.1, "generation": 0.5}),
+    )
+
+    cases = [
+        make_case(
+            "t2v-vlm",
+            **{
+                "taskType": "text_to_video",
+                "input": {"prompt": "海浪", "referenceArtifactIds": [], "params": {"kind": "video", "seed": 21, "durationSec": 2}},
+            },
+        )
+    ]
+    source = write_jsonl(tmp_path / "ds-vlm.jsonl", cases)
+    runner.freeze_dataset(source, "ds-vlm")
+
+    # 场景 A:无帧证据 → CAPABILITY_UNSUPPORTED,verdict undetermined(不是通过)
+    runner.create_run("run-vlm-noframe", "ds-vlm", use_grade_cache=False)
+    runner.execute_run("run-vlm-noframe")  # 先以 stub 完成生成与判分
+    reset_trial = runner.load_run("run-vlm-noframe").trials[0]
+    reset_trial.qualityVerdict = None
+    reset_trial.weightedScore = None
+    runner._write_trial(reset_trial)
+    manifest = runner.load_run("run-vlm-noframe").manifest
+    manifest.grading["judge"] = "vlm"  # 模拟已配置 vlm(帧分派在判分层,不依赖真实密钥)
+    from backend.evaluation.runner import EventLog
+
+    log = EventLog(runner.run_dir("run-vlm-noframe"))
+    runner._grade_pending(
+        "run-vlm-noframe", manifest,
+        {c.caseId: c for c in __import__(
+            "backend.evaluation.datasets", fromlist=["DatasetStore"]
+        ).DatasetStore.load_run_snapshot(runner.run_dir("run-vlm-noframe"))},
+        log, ledger=judge_ledger,
+    )
+    state = runner.load_run("run-vlm-noframe")
+    assert state.trials[0].qualityVerdict == "undetermined"
+    grades_file = runner._trial_dir("run-vlm-noframe", state.trials[0].trialId) / "grades.json"
+    assert "CAPABILITY_UNSUPPORTED" in grades_file.read_text(encoding="utf-8")
+
+    # 场景 B:有帧证据 → 判定使用首帧(证据指向帧 artifact)
+    runner.create_run("run-vlm-frame", "ds-vlm", use_grade_cache=False)
+    runner.execute_run("run-vlm-frame")  # stub 先完成生成(抽帧被 stub 判分用不到,这里手动补帧)
+    trial = runner.load_run("run-vlm-frame").trials[0]
+    output = io.BytesIO()
+    Image.new("RGB", (8, 8), "blue").save(output, "PNG")
+    frame_art = runner.objects.put(output.getvalue(), "png", kind="image", origin_run_id="run-vlm-frame")
+    trial.frameArtifactIds = [frame_art.artifactId]
+    trial.qualityVerdict = None
+    trial.weightedScore = None
+    runner._write_trial(trial)
+    manifest2 = runner.load_run("run-vlm-frame").manifest
+    manifest2.grading["judge"] = "vlm"
+    log2 = EventLog(runner.run_dir("run-vlm-frame"))
+    runner._grade_pending(
+        "run-vlm-frame", manifest2,
+        {c.caseId: c for c in __import__(
+            "backend.evaluation.datasets", fromlist=["DatasetStore"]
+        ).DatasetStore.load_run_snapshot(runner.run_dir("run-vlm-frame"))},
+        log2, ledger=judge_ledger,
+    )
+    assert recording.seen_mimes[-1] == "image/png"  # vlm 分派读到的是帧图,不是视频(webp 来自此前 stub 判分)
+    state2 = runner.load_run("run-vlm-frame")
+    grades2 = runner._trial_dir("run-vlm-frame", state2.trials[0].trialId) / "grades.json"
+    payload = json.loads(grades2.read_text(encoding="utf-8"))
+    assert payload["grades"][0]["evidence"][0]["artifactId"] == frame_art.artifactId
+    assert "首帧" in (payload["grades"][0]["evidence"][0]["note"] or "")
