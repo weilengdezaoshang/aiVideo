@@ -190,9 +190,10 @@ def make_judge(
     if name == "stub":
         return StubJudge()
     if name == "vlm":
-        import os
+        from .config import load_eval_config
 
-        api_key = os.environ.get("EVAL_JUDGE_API_KEY", "")
+        eval_config = load_eval_config()
+        api_key = eval_config.judge_api_key
         if not api_key:
             raise ValueError("缺少裁判 API Key:请设置 EVAL_JUDGE_API_KEY")
         inner = httpx.HTTPTransport() if client is None else None
@@ -210,10 +211,9 @@ def make_judge(
             judge_client = client
         return VlmJudge(
             judge_client,
-            grading.get("baseUrl")
-            or os.environ.get("EVAL_JUDGE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+            grading.get("baseUrl") or eval_config.judge_base_url,
             api_key,
-            grading.get("model") or os.environ.get("EVAL_JUDGE_MODEL", "qwen-vl-max-latest"),
+            grading.get("model") or eval_config.judge_model,
             rubric_version=str(grading.get("rubricVersion", "1")),
             temperature=float(grading.get("temperature", 0)),
             max_attempts=int(grading.get("maxAttempts", 2)),

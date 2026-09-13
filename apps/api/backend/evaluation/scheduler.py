@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import threading
 from collections import deque
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -58,21 +57,26 @@ class EvaluationScheduler:
         key = str(Path(store).resolve())
         with cls._instances_guard:
             if key not in cls._instances:
-                max_concurrent = max(1, int(os.environ.get("EVAL_MAX_CONCURRENT_RUNS", "1")))
+                from .config import load_eval_config
+
+                config = load_eval_config()
                 project_budget = None
-                raw = os.environ.get("EVAL_PROJECT_MAX_COST", "")
-                if raw:
-                    try:
-                        project_budget = BudgetPolicy(
-                            maxCost=float(raw),
-                            prices={"generation": float(os.environ.get("EVAL_PROJECT_PRICE_GENERATION", raw)),
-                                    "translate": float(os.environ.get("EVAL_PROJECT_PRICE_TRANSLATE", "0")),
-                                    "poll": "0",
-                                    "judge": float(os.environ.get("EVAL_PROJECT_PRICE_JUDGE", "0"))},
-                        )
-                    except ValueError:
-                        logger.warning("EVAL_PROJECT_MAX_COST 非法,项目总预算未启用")
-                cls._instances[key] = cls(Path(store), max_concurrent, project_budget)
+                if config.project_max_cost is not None:
+                    generation = (
+                        config.project_price_generation
+                        if config.project_price_generation is not None
+                        else config.project_max_cost
+                    )
+                    project_budget = BudgetPolicy(
+                        maxCost=config.project_max_cost,
+                        prices={
+                            "generation": generation,
+                            "translate": config.project_price_translate,
+                            "poll": config.project_price_poll,
+                            "judge": config.project_price_judge,
+                        },
+                    )
+                cls._instances[key] = cls(Path(store), config.max_concurrent_runs, project_budget)
             return cls._instances[key]
 
     def start(self) -> None:
@@ -191,7 +195,14 @@ class EvaluationScheduler:
     def _create_reviews(self, run_id: str) -> None:
         """按抽样策略创建审核任务(环境变量 EVAL_REVIEW_SAMPLING 可覆盖)。"""
         try:
-            policy = ReviewSamplingPolicy.from_env()
+            from .config import load_eval_config
+
+            config = load_eval_config()
+            policy = (
+                ReviewSamplingPolicy.model_validate_json(config.review_sampling)
+                if config.review_sampling
+                else ReviewSamplingPolicy()
+            )
             state = self.runner.load_run(run_id)
             create_scheduled_reviews(ReviewStore(self.store), state, policy)
         except Exception:
