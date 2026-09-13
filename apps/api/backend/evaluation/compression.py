@@ -10,6 +10,13 @@
 from __future__ import annotations
 
 from .models import RunState
+from .reports import build_report
+
+
+def _plan_completion(state: RunState):
+    """计划完成率(N_pass/N_plan);复用 reports 分母口径,分母 0 → N/A。"""
+    report = build_report(state, [])
+    return report["metrics"]["planCompletionRate"]
 
 
 def compression_summary(baseline: RunState, compressed: RunState) -> dict:
@@ -54,6 +61,15 @@ def compression_summary(baseline: RunState, compressed: RunState) -> dict:
     base_tokens = token_usage(baseline)
     comp_tokens = token_usage(compressed)
 
+    def call_stats(state: RunState) -> dict:
+        from collections import Counter
+
+        sites = Counter(attempt.callSite for attempt in state.attempts)
+        cache_hits = sum(
+            1 for grade in state.grades if grade.cacheHit
+        )
+        return {"attempts": sum(sites.values()), "byCallSite": dict(sites), "cacheHits": cache_hits}
+
     quality_delta = (
         round(comp_rate - base_rate, 4) if base_rate is not None and comp_rate is not None else None
     )
@@ -82,6 +98,12 @@ def compression_summary(baseline: RunState, compressed: RunState) -> dict:
                 else None
             ),
             "note": "token 仅统计服务商 reported usage;未知保持未知,不用字符数折算(§13.1)",
+        },
+        "calls": {"baseline": call_stats(baseline), "compressed": call_stats(compressed)},
+        "coverage": {
+            "baselinePlanCompletion": _plan_completion(baseline),
+            "compressedPlanCompletion": _plan_completion(compressed),
+            "note": "计划完成率(N_pass/N_plan);未执行/未评保留在覆盖缺口(§12.1)",
         },
         "cost": {
             "baselineSettled": None,

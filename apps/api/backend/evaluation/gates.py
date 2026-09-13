@@ -46,6 +46,7 @@ DEFAULT_POLICY: dict[str, Any] = {
         "minDefectRecall": 0.8,
     },
     "replay": {"blockOnIntegrityFailure": True},
+    "performance": {"maxLatencyP95Ms": None},  # 完成 trial 的 p95 延迟上限;None 表示不设阈值
     "cost": {"requireKnownOrBoundedCost": True},
 }
 
@@ -194,6 +195,12 @@ def evaluate_gate(
         reasons_inconclusive.extend(inconclusive)
 
     reasons_inconclusive.extend(_calibration_findings(store, state, policy.get("quality", {})) if store else [])
+
+    performance = policy.get("performance", {}) or {}
+    max_latency = performance.get("maxLatencyP95Ms")
+    p95 = report["latencyMs"].get("p95")
+    if max_latency is not None and p95 is not None and p95 > max_latency:
+        reasons_block.append(f"p95 延迟 {p95}ms 超过阈值 {max_latency}ms")
 
     if policy.get("cost", {}).get("requireKnownOrBoundedCost"):
         usage = report["usage"]
