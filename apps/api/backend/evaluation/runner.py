@@ -1143,6 +1143,23 @@ class EvaluationRunner:
             answers_raw = None
             cache_hit = False
             cache_entry = None
+            # 评估器按任务类型分派(§10.6):vlm 只能读取图片;视频任务改用帧级证据,
+            # 无帧证据时按"能力不支持"明确失败,绝不把视频产物伪装成图片送裁判(§7)。
+            grading_artifact_id = artifact_id
+            grading_note = None
+            if judge_name != "stub" and case.taskType in VIDEO_KINDS:
+                if not trial.frameArtifactIds:
+                    self._persist_grading(
+                        trial, case, {},
+                        "[CAPABILITY_UNSUPPORTED] vlm 裁判无法读取视频产物;需要帧级证据(§7),"
+                        "本次未抽帧,视频检查项记为裁判失败而非通过",
+                        None, judge_name, artifact_id, False, log,
+                    )
+                    continue
+                frame_record, frame_data = self.objects.get(trial.frameArtifactIds[0])
+                data, record = frame_data, frame_record
+                grading_artifact_id = frame_record.artifactId
+                grading_note = "视频帧级评估:使用首帧证据;时序质量指标未实现(§7)"
             key = grade_cache_key(
                 record.sha256,
                 [check.model_dump() for check in case.checks],
@@ -1186,8 +1203,8 @@ class EvaluationRunner:
                 for cid, item in answers_raw.items()
             }
             self._persist_grading(
-                trial, case, answers, judge_error, usage, judge_name, artifact_id,
-                cache_hit, log, cache_entry=cache_entry,
+                trial, case, answers, judge_error, usage, judge_name, grading_artifact_id,
+                cache_hit, log, cache_entry=cache_entry, grading_note=grading_note,
             )
 
     @staticmethod
@@ -1248,11 +1265,14 @@ class EvaluationRunner:
         cache_hit: bool,
         log: EventLog,
         cache_entry: dict | None = None,
+        grading_note: str | None = None,
     ) -> None:
         grading = grade_case(trial.trialId, case.checks, answers)
         for grade in grading.grades:
             for evidence in grade.evidence:
                 evidence.artifactId = evidence.artifactId or artifact_id
+                if grading_note:
+                    evidence.note = grading_note if not evidence.note else f"{grading_note};{evidence.note}"
                 grade.cacheHit = cache_hit
             if judge_error:
                 evidence = grade.evidence[0]
