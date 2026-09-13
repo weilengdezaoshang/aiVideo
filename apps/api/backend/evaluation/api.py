@@ -515,12 +515,30 @@ def build_eval_router(data_dir: Path) -> APIRouter:
     @router.post("/review-tasks", status_code=201)
     async def create_review_task(request: Request):
         raw = await request.json()
+        artifact_ids = raw.get("artifactIds") or []
+        grade_refs = raw.get("gradeRefs") or []
+        # 未显式提供时自动补全绑定:从 run 的 trial 取素材与评分引用,
+        # 保证审核页"查看素材/自动证据"闭环对手动创建的任务同样成立(§11)。
+        if not artifact_ids or not grade_refs:
+            try:
+                state = _state_or_404(data_dir, str(raw.get("runId", "")))
+                trial = next((t for t in state.trials if t.trialId == str(raw.get("trialId", ""))), None)
+                if trial is not None:
+                    artifact_ids = artifact_ids or list(trial.artifactIds)
+                    if not grade_refs:
+                        grade_refs = [
+                            {"gradeId": grade.gradeId, "evaluator": grade.evaluator}
+                            for grade in state.grades
+                            if grade.trialId == trial.trialId
+                        ]
+            except (FileNotFoundError, ValueError):
+                pass  # run 缺失/损坏由 create 内部校验报错
         task = ReviewStore(store).create(
             str(raw.get("runId", "")),
             str(raw.get("trialId", "")),
             str(raw.get("caseId", "")),
-            artifact_ids=raw.get("artifactIds") or [],
-            grade_refs=raw.get("gradeRefs") or [],
+            artifact_ids=artifact_ids,
+            grade_refs=grade_refs,
             priority=str(raw.get("priority", "normal")),
         )
         return {"task": task.model_dump()}

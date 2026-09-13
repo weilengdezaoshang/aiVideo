@@ -323,3 +323,20 @@ def test_trial_detail_has_attempts_and_artifact_content(api_client):
     assert content.content == data  # 字节级一致
     # 不存在 → 404;缺失引用不出现在目录列举(端点仅按 ID 直读)
     assert client.get("/api/evals/v1/artifacts/art-missing/content").status_code == 404
+
+
+def test_review_task_autobinds_artifacts_and_grades(api_client):
+    """手动创建审核任务自动补全素材与评分引用(审核页素材查看闭环,§11)。"""
+    client, runner, tmp_path = api_client
+    runner.create_run("api-autobind", "ds-zh")
+    state = runner.execute_run("api-autobind")
+    trial = state.trials[0]
+    created = client.post(
+        "/api/evals/v1/review-tasks",
+        json={"runId": "api-autobind", "trialId": trial.trialId, "caseId": trial.caseId},
+    )
+    assert created.status_code == 201
+    task = created.json()["task"]
+    assert task["artifactIds"] == trial.artifactIds  # 自动绑定产物
+    assert task["gradeRefs"], "评分引用自动补全"
+    assert task["gradeRefs"][0]["gradeId"].startswith("trial-")
