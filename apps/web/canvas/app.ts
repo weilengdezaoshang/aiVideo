@@ -1,3 +1,6 @@
+import { createStoryboardPanel } from './flows/storyboard-panel.js'
+import { createTimelinePanel } from './flows/timeline-panel.js'
+import { createConnectionLayer } from './engine/connection-layer.js'
 import { createNodePanel } from './flows/node-panel.js'
 import { createNode, migrateNodes } from './state/node-model.js'
 import { initCreateMenu } from './flows/create-menu.js'
@@ -88,6 +91,9 @@ let objectLayer: ObjectLayer | null = null
 let selection: string[] = []
 let objectActions: ObjectActions | null = null
 let nodePanel: ReturnType<typeof createNodePanel> | null = null
+let timelinePanel: ReturnType<typeof createTimelinePanel> | null = null
+let storyboardPanel: ReturnType<typeof createStoryboardPanel> | null = null
+let connectionLayer: ReturnType<typeof createConnectionLayer> | null = null
 let cutoutSession: ReturnType<typeof createCutoutSession> | null = null
 let inpaint: InpaintSession | null = null
 let chat: Chat | null = null
@@ -107,6 +113,7 @@ const engine = createCanvasEngine(rootEl, surfaceEl, {
     }
     queueFrame(() => objectActions?.refresh())
     nodePanel?.refresh()
+    timelinePanel?.refresh()
   },
 })
 // 初始视野:世界原点居中;文档加载后若已有对象会重定位
@@ -380,6 +387,12 @@ async function bootDocument() {
 
 /** 编辑器启动主体:文档来源(服务端/本机草稿/压测)确定后走到这里。 */
 async function startEditor(doc: CanvasDocData) {
+  timelinePanel?.dispose()
+  timelinePanel = null
+  storyboardPanel?.dispose()
+  storyboardPanel = null
+  connectionLayer?.dispose()
+  connectionLayer = null
   docNameInput.value = doc.name || '未命名画布'
   migrateNodes(doc.objects)
   const store = createDocStore(doc)
@@ -471,6 +484,7 @@ async function startEditor(doc: CanvasDocData) {
     },
   })
   objectLayer = objects
+  connectionLayer = createConnectionLayer(engine, store, toast)
   objects.sync() // 首次渲染:订阅只在变更时触发,纯加载(无变更)也需要建组
   store.subscribe(({ doc: current }) => {
     const activeTarget = engine.interaction.getState().targetId
@@ -490,6 +504,36 @@ async function startEditor(doc: CanvasDocData) {
   // 先挂 docStore 再取初始视野:fitInitialView 需要读到当前文档;
   // 舞台尺寸未就绪时会在此失败,由 onSizeChanged 重放
   docStore = store
+  timelinePanel = createTimelinePanel(store, () => selection, engine)
+  storyboardPanel = createStoryboardPanel(
+    store,
+    () => selection,
+    (id) => {
+      const obj = store.doc.objects[id]
+      if (obj) {
+        objects.setSelected([id])
+        engine.centerOn({ x: obj.x + obj.width / 2, y: obj.y + obj.height / 2 })
+      }
+    },
+    {
+      submit: async (id, onSubmitted, signal) => {
+        if (!nodePanel) {
+          throw new Error('生成服务尚未就绪')
+        }
+        await nodePanel.submitNode(id, onSubmitted, signal)
+      },
+      cancel: (id) => nodePanel?.cancelNode(id),
+    },
+    {
+      ensureSaved: () => (saver ? saver.ensureSaved() : Promise.resolve()),
+      prepareNode: (id, signal) => {
+        if (!nodePanel) {
+          return Promise.reject(new Error('生成服务尚未就绪'))
+        }
+        return nodePanel.prepareNode(id, signal)
+      },
+    },
+  )
   fitInitialView()
   if (saver) {
     window.addEventListener('beforeunload', () => saver.flushOnUnload())
@@ -598,7 +642,7 @@ async function startEditor(doc: CanvasDocData) {
       nodePanel?.refresh()
     },
   })
-  // 双击分发:视频 → 播放;图像 → 局部重绘;文字 → 编辑;画板 → 重命名
+  // 双击分发:图像 → 局部重绘;文字 → 编辑;画板 → 重命名(视频改为悬停内联播放,双击无操作)
   engine.stage.container().addEventListener('dblclick', (e: MouseEvent) => {
     if (!docStore) {
       return
@@ -617,10 +661,6 @@ async function startEditor(doc: CanvasDocData) {
     }
     const obj = node ? docStore.doc.objects[node.id()] : null
     if (!obj) {
-      return
-    }
-    if (obj.kind === 'video' && (obj.src || obj.assetId)) {
-      playVideo(obj)
       return
     }
     if (obj.kind === 'text') {
@@ -887,8 +927,11 @@ initChatResize()
 /* ---------- 视野框住全部对象(首次加载) ---------- */
 
 /** 视野框住全部内容;舞台尚未拿到布局尺寸(0×0)时返回 false,由 onSizeChanged 重放 */
-function fitToContent(doc: Pick<CanvasDocData, 'objects'>): boolean {
-  const list = Object.values(doc.objects)
+function fitToContent(doc: Pick<CanvasDocData, 'objects' | 'timeline'>): boolean {
+  const list: { x: number; y: number; width: number; height: number }[] = Object.values(doc.objects)
+  if (doc.timeline?.canvas) {
+    list.push({ ...doc.timeline.canvas, width: 720, height: 172 })
+  }
   if (list.length === 0 || engine.stage.width() <= 0 || engine.stage.height() <= 0) {
     return false
   }
@@ -1652,9 +1695,6 @@ let videoSrcId: string | null = null
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Shoelace 自定义元素,无类型来源
 const videoDialog = $('#video-dialog') as any // Shoelace 自定义元素
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Shoelace 自定义元素,无类型来源
-const playerDialog = $('#video-player') as any
-const playerBody = $('#video-player-body')
 
 function openVideoDialog(objId: string) {
   const obj = docStore?.doc.objects[objId]
@@ -1705,34 +1745,6 @@ $('#video-generate').addEventListener('click', async () => {
     initImage,
     lineage: { fromId: src.id, params: { ...genParams } },
   })
-})
-
-/** 视频对象播放(带来源辨认,PRD §8:无源图即为文字描述,不伪造图生视频) */
-function playVideo(obj: import('./state/commands.js').CanvasObj) {
-  if (!obj) {
-    return
-  }
-  const fromImage = Boolean(obj.lineage?.fromId)
-  playerDialog.label = `视频预览 · 来源:${fromImage ? '画布图片(图生视频)' : '文字描述'}`
-  const url = obj.assetId ? `/assets/${obj.assetId}/original.${obj.ext || 'mp4'}` : obj.src
-  if (!url) {
-    return
-  }
-  const isVideoFile = /\.(mp4|webm)$/i.test(url) || obj.ext === 'mp4' || obj.ext === 'webm'
-  const media = document.createElement(isVideoFile ? 'video' : 'img')
-  if (isVideoFile) {
-    media.setAttribute('controls', '')
-    media.setAttribute('autoplay', '')
-    media.setAttribute('loop', '')
-  }
-  media.setAttribute('src', url)
-  media.style.width = '100%'
-  playerBody.replaceChildren(media)
-  void playerDialog.show()
-}
-
-playerDialog.addEventListener('sl-after-hide', () => {
-  playerBody.innerHTML = ''
 })
 
 /* ---------- 生成变体 ×4(独立 i2i 任务,保留已验证能力) ---------- */
