@@ -9,5 +9,7 @@
   "wanClip": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
   "wanVae": "wan_2.1_vae.safetensors",
   "wanHighNoiseUnet": "",
-  "wanLowNoiseUnet": ""
+  "wanLowNoiseUnet": "",
+  "imageApiKey": "",
+  "videoApiKey": ""
 }
