@@ -1,0 +1,93 @@
+# 开发编排(补充要求 §十三):API/Worker/Beat 与基础设施分离;
+# 版本固定不使用 latest(§二.6);健康检查显式(§十三.8)。
+# 本地单机不宣称主机级高可用(§十三.6);生产 HA 方案待部署设计(§十三.7)。
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: aivideo
+      POSTGRES_PASSWORD: aivideo-dev
+      POSTGRES_DB: aivideo
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U aivideo']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3.13-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: aivideo
+      RABBITMQ_DEFAULT_PASS: aivideo-dev
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    # 缓存与限流协调数据隔离(§十.14):缓存前缀淘汰策略 only;
+    # 协调类键如需免淘汰,部署时以独立实例/DB 隔离并调整策略。
+    command: ['redis-server', '--maxmemory', '256mb', '--maxmemory-policy', 'allkeys-lru']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    environment:
+      AIVERO_DB_URL: postgresql+psycopg://aivideo:aivideo-dev@postgres:5432/aivideo
+      AIVERO_BROKER_URL: amqp://aivideo:aivideo-dev@rabbitmq:5672//
+      AIVERO_REDIS_URL: redis://redis:6379/0
+      SWARMUI_PROVIDER: mock
+      SWARMUI_HOST: 0.0.0.0
+    ports:
+      - '7801:7801'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build: .
+    command:
+      [
+        'celery',
+        '-A',
+        'backend.workers.celery_app:celery_app',
+        'worker',
+        '-Q',
+        'celery',
+        '--loglevel=info',
+      ]
+    environment:
+      AIVERO_DB_URL: postgresql+psycopg://aivideo:aivideo-dev@postgres:5432/aivideo
+      AIVERO_BROKER_URL: amqp://aivideo:aivideo-dev@rabbitmq:5672//
+      AIVERO_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  beat:
+    build: .
+    # 周期调度单一入口(§七.6):到期查询扫描、Outbox 补投递、滞留回收。
+    command: ['celery', '-A', 'backend.workers.celery_app:celery_app', 'beat', '--loglevel=info']
+    environment:
+      AIVERO_DB_URL: postgresql+psycopg://aivideo:aivideo-dev@postgres:5432/aivideo
+      AIVERO_BROKER_URL: amqp://aivideo:aivideo-dev@rabbitmq:5672//
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  pg_data:
