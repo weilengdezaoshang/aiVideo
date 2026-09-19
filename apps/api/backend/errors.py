@@ -65,6 +65,12 @@ class InvalidParamError(AppError):
     recovery = Recovery.EDIT_INPUT
 
 
+class ForbiddenError(AppError):
+    code = ErrorCode.FORBIDDEN
+    http_status = 403
+    recovery = Recovery.SIGN_IN
+
+
 class NotFoundError(AppError):
     code = ErrorCode.NOT_FOUND
     http_status = 404

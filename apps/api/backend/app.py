@@ -32,13 +32,18 @@ from .errors import (
     status_contract,
 )
 from .evaluation.api import build_eval_router
+from .metrics_api import router as metrics_runtime_router
 from .evaluation.tracing import TraceRecorder, prompt_fingerprint, start_trace_id
 from .frontend import FrontendFiles
 from .observability import get_request_id, log_access, set_request_id
 from .config import Config, load_config, patch_config, public_config
 from .jobs import Jobs
+from .exports import Exports, export_router
 from .models import InitImage, parse_image, parse_params, with_reference_weight
 from .planning import directions, plan_agent
+from .storyboard import plan_storyboard
+from .storyboard_jobs import StoryboardJobs
+from .storyboard_runs import StoryboardRuns
 from .providers.cloud import CloudProvider, chat, resolve_model
 from .providers.comfyui import ComfyProvider
 from .providers.mock import MockProvider
@@ -133,10 +138,14 @@ def create_app(
             Documents(data / "documents"),
             History(data),
         )
+        s.exports = Exports(data)
+        s.storyboard_jobs = StoryboardJobs(data)
         s.traces = Traces(data / "traces.jsonl")
         # §9 步骤追踪:API 入口建 trace,覆盖建任务前的校验与翻译路径。
         s.step_tracer = step_tracer or TraceRecorder(data / "trace-steps.jsonl")
-        s.jobs = Jobs(s.provider, s.history, data / "jobs.json", s.traces, step_tracer=s.step_tracer)
+        s.jobs = Jobs(
+            s.provider, s.history, data / "jobs.json", s.traces, step_tracer=s.step_tracer
+        )
         s.sessions = {
             x["id"]: x
             for x in read_json(data / "agent-sessions.json", {}).get("sessions", [])
@@ -152,6 +161,7 @@ def create_app(
         s.recognition = Recognition(
             os.environ.get("CUTOUT_MODEL", "birefnet-portrait"), cutout_infer
         )
+        s.storyboard_runs = StoryboardRuns(data, s.documents, s.jobs, submit_node_generation)
         s.backend = await s.provider.status()
         s.jobs.flush()
 
@@ -170,6 +180,9 @@ def create_app(
             health_task.cancel()
             await asyncio.gather(health_task, return_exceptions=True)
             s.recognition.close()
+            await s.storyboard_runs.close()
+            await s.storyboard_jobs.close()
+            await s.exports.close()
             await s.jobs.close()
             save_sessions()
             await client.aclose()
@@ -177,6 +190,7 @@ def create_app(
 
     app = FastAPI(title="FRAYUNE API", version="0.4.0", lifespan=lifespan)
     s = app.state
+    app.include_router(export_router())
 
     @app.middleware("http")
     async def request_context(request, call_next):
@@ -247,9 +261,7 @@ def create_app(
     async def internal_error(request, exc):
         # 最终负责边界:堆栈在此记录一次(含内部细节),响应保持安全兜底。
         logging.exception("请求失败: %s %s", request.method, request.url.path)
-        return JSONResponse(
-            {**INTERNAL_RESPONSE, "traceId": get_request_id()}, status_code=500
-        )
+        return JSONResponse({**INTERNAL_RESPONSE, "traceId": get_request_id()}, status_code=500)
 
     def save_sessions():
         entries = sorted(s.sessions.values(), key=lambda x: x["createdAt"], reverse=True)[:300]
@@ -299,6 +311,48 @@ def create_app(
     @app.get("/api/health")
     async def health():
         return dict(ok=True, provider=s.provider.name, backend=s.backend)
+
+    @app.get("/api/health/ready")
+    async def health_ready():
+        """readiness:数据库不可用 → 503(拒绝新的可靠受理,§十三.3);
+        broker 不可用 → 200 + degraded(broker 不可用仍可落库受理,§十三.2)。"""
+        from backend.infrastructure.database import DatabaseSettings, create_async_database_engine
+        from sqlalchemy import text as sql_text
+
+        components: dict[str, str] = {}
+        try:
+            engine = create_async_database_engine(DatabaseSettings())
+            try:
+                async with engine.connect() as conn:
+                    await conn.execute(sql_text("SELECT 1"))
+                components["database"] = "up"
+            finally:
+                await engine.dispose()
+        except Exception:
+            components["database"] = "down"
+
+        broker_url = os.environ.get("AIVERO_BROKER_URL", "memory://")
+        try:
+            from kombu import Connection
+
+            with Connection(broker_url, transport_options={"connect_timeout": 2}) as conn:
+                conn.ensure_connection(max_retries=1, timeout=2)
+            components["broker"] = "up"
+        except Exception:
+            components["broker"] = "degraded"
+
+        if components["database"] != "up":
+            return JSONResponse(
+                {
+                    "error": "依赖数据库不可用,暂不接受新的可靠受理",
+                    "code": ErrorCode.UPSTREAM_UNAVAILABLE.value,
+                    "recovery": Recovery.RETRY.value,
+                    "components": components,
+                    "traceId": get_request_id(),
+                },
+                status_code=503,
+            )
+        return {"status": "ready", "components": components}
 
     @app.get("/api/models")
     async def models():
@@ -400,7 +454,9 @@ def create_app(
 
     @app.post("/api/generate", status_code=202)
     async def generate(request: Request):
-        raw = await body(request)
+        return await submit_node_generation(await body(request))
+
+    async def submit_node_generation(raw):
         if "requestId" not in raw:
             return await submit_generation(raw)
         rid, did = raw.get("requestId"), raw.get("documentId")
@@ -483,7 +539,10 @@ def create_app(
                 and re.search("[\u4e00-\u9fff]", params.prompt)
             ):
                 tracer.step(
-                    trace_id, "prompt.translate", status="started", **prompt_fingerprint(params.prompt)
+                    trace_id,
+                    "prompt.translate",
+                    status="started",
+                    **prompt_fingerprint(params.prompt),
                 )
                 try:
                     translated = await chat(
@@ -536,8 +595,10 @@ def create_app(
         ref_assets = raw.get("referenceAssetIds", [])
         ref_image = None
         if ref_assets:
-            if not isinstance(ref_assets, list) or len(ref_assets) != 1 or not isinstance(
-                ref_assets[0], str
+            if (
+                not isinstance(ref_assets, list)
+                or len(ref_assets) != 1
+                or not isinstance(ref_assets[0], str)
             ):
                 raise ValueError("组图生图当前仅支持一张参考图")
             record, content = require(s.assets.read(ref_assets[0]), "参考图资产不存在")
@@ -644,7 +705,9 @@ def create_app(
         content = await raw_body(request, 40 * 1024**2)
         if not content:
             raise ValueError("请求体必须是非空二进制内容")
-        kind = "video" if request.query_params.get("kind") == "video" else "image"
+        kind = request.query_params.get("kind", "image")
+        if kind not in {"image", "video", "audio"}:
+            raise ValueError("不支持的素材类型")
         ext = (
             request.query_params.get("ext")
             or request.headers.get("content-type", "").split(";")[0].split("/")[-1]
@@ -746,6 +809,67 @@ def create_app(
                     session, status="completed", resultAssetId=asset["id"], resultExt=asset["ext"]
                 )
             return dict(asset=asset, mask=saved_mask, urls=s.assets.urls(asset["id"]))
+
+    @app.post("/api/storyboards/runs", status_code=202)
+    async def storyboard_run_create(request: Request):
+        raw = await body(request)
+        return dict(
+            run=s.storyboard_runs.start(raw.get("id"), raw.get("documentId"), raw.get("steps"))
+        )
+
+    @app.get("/api/storyboards/runs")
+    async def storyboard_run_list(documentId: str):
+        require(s.documents.get(documentId), "项目不存在")
+        return dict(runs=s.storyboard_runs.list_for_document(documentId))
+
+    @app.get("/api/storyboards/runs/{ident}")
+    async def storyboard_run_get(ident: str):
+        return dict(run=s.storyboard_runs.get(ident))
+
+    @app.post("/api/storyboards/runs/{ident}/{action}")
+    async def storyboard_run_control(ident: str, action: str):
+        return dict(run=await s.storyboard_runs.control(ident, action))
+
+    @app.post("/api/storyboards/jobs", status_code=202)
+    async def storyboard_job_create(request: Request):
+        raw = await body(request)
+        require(s.documents.get(raw.get("documentId", "")), "项目不存在")
+        job = s.storyboard_jobs.submit(
+            raw.get("id"),
+            raw["documentId"],
+            raw.get("prompt"),
+            raw.get("workflow", "general"),
+            s.config,
+            s.client,
+        )
+        return dict(job=job)
+
+    @app.get("/api/storyboards/jobs")
+    async def storyboard_job_list(documentId: str):
+        require(s.documents.get(documentId), "项目不存在")
+        return dict(jobs=s.storyboard_jobs.list_for_document(documentId))
+
+    @app.get("/api/storyboards/jobs/{ident}")
+    async def storyboard_job_get(ident: str):
+        return dict(job=s.storyboard_jobs.get(ident))
+
+    @app.delete("/api/storyboards/jobs/{ident}")
+    async def storyboard_job_cancel(ident: str):
+        return dict(job=s.storyboard_jobs.cancel(ident))
+
+    @app.post("/api/storyboards/plan")
+    async def storyboard_plan(request: Request):
+        raw = await body(request)
+        require(s.documents.get(raw.get("documentId", "")), "项目不存在")
+        try:
+            result = await plan_storyboard(
+                raw.get("prompt"), s.config, s.client, raw.get("workflow", "general")
+            )
+        except ValueError:
+            raise
+        except Exception:
+            raise HTTPException(502, "分镜规划请求失败；未自动重试，请检查模型服务") from None
+        return dict(storyboard=result, plannedBy="model")
 
     @app.post("/api/agent/sessions", status_code=201)
     async def agent_create(request: Request):
@@ -936,7 +1060,9 @@ def create_app(
     # Preserve directory-style URLs used by launch scripts.
     @app.get("/canvas/", include_in_schema=False)
     async def canvas_slash():
-        return FileResponse(root / "apps/web/canvas/index.html", headers={"Cache-Control": "no-cache"})
+        return FileResponse(
+            root / "apps/web/canvas/index.html", headers={"Cache-Control": "no-cache"}
+        )
 
     @app.get("/workspace/", include_in_schema=False)
     async def workspace_slash():
@@ -948,5 +1074,6 @@ def create_app(
     app.mount("/assets", StaticFiles(directory=data / "assets", check_dir=False), name="assets")
     # §14 评测 API:独立命名空间,不影响既有端点与 data 格式。
     app.include_router(build_eval_router(data))
+    app.include_router(metrics_runtime_router)
     app.mount("/", FrontendFiles(root), name="web")
     return app

@@ -6,6 +6,7 @@ import io
 import json
 import re
 import secrets
+import wave
 from pathlib import Path
 from uuid import uuid4
 
@@ -13,6 +14,8 @@ from PIL import Image, ImageOps
 
 from .common import now, read_json, valid_id, write_json
 from .errors import DataCorruptedError
+from .timeline import validate_timeline
+from .storyboard import validate_storyboard
 
 # 历史产物文件名 img_{24hex}.{ext};宽松匹配宁可误保留,漏判会让画布产物丢失。
 _HISTORY_FILE_RE = re.compile(r"img_[0-9a-f]{8,}\.[a-z0-9]{2,5}", re.IGNORECASE)
@@ -103,6 +106,16 @@ class Documents:
                 if not isinstance(raw[key], kind) or len(raw[key]) > maximum:
                     raise ValueError(f"文档 {key} 格式错误或超出限制")
                 doc[key] = raw[key]
+        if "storyboard" in raw:
+            if raw["storyboard"] is not None:
+                doc["storyboard"] = validate_storyboard(raw["storyboard"])
+        elif "storyboard" in current:
+            doc["storyboard"] = current["storyboard"]
+        if "timeline" in raw:
+            if raw["timeline"] is not None:
+                doc["timeline"] = validate_timeline(raw["timeline"])
+        elif "timeline" in current:
+            doc["timeline"] = current["timeline"]
         if "schemaVersion" in raw:
             doc["schemaVersion"] = raw["schemaVersion"]
         if len(json.dumps(doc).encode()) > 5 * 1024**2:
@@ -173,7 +186,7 @@ class Assets:
         if (
             not record
             or not valid_id(ident)
-            or record["ext"] not in {"jpg", "jpeg", "png", "webp", "mp4", "webm"}
+            or record["ext"] not in {"jpg", "jpeg", "png", "webp", "mp4", "webm", "wav"}
         ):
             return None
         file = self.root / ident / f"original.{record['ext']}"
@@ -181,12 +194,34 @@ class Assets:
 
     def save(self, data, ext, kind="image", name=None):
         ext = ext.lower().lstrip(".")
-        allowed = {"mp4", "webm"} if kind == "video" else {"jpg", "jpeg", "png", "webp"}
+        allowed = {
+            "video": {"mp4", "webm"},
+            "image": {"jpg", "jpeg", "png", "webp"},
+            "audio": {"wav"},
+        }.get(kind, set())
         if ext not in allowed:
             raise ValueError("不支持的素材格式")
         ext = "jpg" if ext == "jpeg" else ext
         width = height = 0
         image = None
+        audio_meta = {}
+        if kind == "audio":
+            try:
+                with wave.open(io.BytesIO(data), "rb") as audio:
+                    frames, rate = audio.getnframes(), audio.getframerate()
+                    channels, width_bytes = audio.getnchannels(), audio.getsampwidth()
+                    if (
+                        not 1 <= channels <= 2
+                        or width_bytes not in (1, 2, 3, 4)
+                        or not 8000 <= rate <= 192000
+                        or not 0 < frames / rate <= 3600
+                    ):
+                        raise ValueError("音频参数不受支持")
+                    if len(audio.readframes(frames)) != frames * channels * width_bytes:
+                        raise ValueError("音频数据不完整")
+                    audio_meta = dict(durationSec=frames / rate, sampleRate=rate, channels=channels)
+            except (wave.Error, EOFError, ValueError) as exc:
+                raise ValueError("请上传有效的单声道或双声道 PCM WAV 音频，最长一小时") from exc
         if kind == "image":
             try:
                 image = ImageOps.exif_transpose(Image.open(io.BytesIO(data)))
@@ -212,6 +247,7 @@ class Assets:
             hasThumbs=image is not None,
             createdAt=now(),
         )
+        record.update(audio_meta)
         if name:
             record["name"] = str(name).replace("\\", "/").rsplit("/", 1)[-1][:200]
         write_json(directory / "meta.json", record)
