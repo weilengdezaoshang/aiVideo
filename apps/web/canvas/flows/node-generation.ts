@@ -1,7 +1,8 @@
+import { nodeRequest } from './node-request.js'
 import type { createDocStore } from '../state/doc-store.js'
 import type { CanvasObj } from '../state/commands.js'
 import { cmdUpdateObject } from '../state/commands.js'
-import { applyNodeJob, isBusy, isMediaNode, outputSize } from '../state/node-model.js'
+import { applyNodeJob, isBusy, isMediaNode } from '../state/node-model.js'
 import type { NodeJob, NodeDraft } from '../state/node-model.js'
 
 type Store = ReturnType<typeof createDocStore>
@@ -58,17 +59,26 @@ export function createNodeGeneration(store: Store, notify: (message: string) => 
     if (!obj) {
       return
     }
+    // 分镜服务端执行的结果由执行控制器按镜头归属统一回填，这里只同步进度。
+    if (job.status === 'completed' && obj.nodeRun?.runId) {
+      return
+    }
     store.mutateTransient(() => applyNodeJob(obj, job, store.doc.id))
   }
+  // 分镜服务端执行曾归属的请求集合：节点删除/撤销后也不得在此自动取消。
+  const runOwnedRequests = new Set<string>()
   const unsubscribe = store.subscribe(() => {
     const current = new Map<string, string>()
     for (const obj of Object.values(store.doc.objects)) {
       if (obj.nodeRun) {
         current.set(obj.id, obj.nodeRun.requestId)
+        if (obj.nodeRun.runId) {
+          runOwnedRequests.add(obj.nodeRun.requestId)
+        }
       }
     }
     for (const [id, requestId] of previous) {
-      if (current.get(id) !== requestId) {
+      if (current.get(id) !== requestId && !runOwnedRequests.has(requestId)) {
         const obj = store.doc.objects[id]
         // Successful result publication clears the run and sets an output in the same mutation.
         if (!obj || (!obj.src && !obj.assetId)) {
@@ -91,29 +101,10 @@ export function createNodeGeneration(store: Store, notify: (message: string) => 
     }
     inflight.add(requestId)
     try {
-      const size = outputSize(draft)
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          documentId: store.doc.id,
-          clientRef: obj.id,
-          requestId,
-          kind: obj.kind,
-          prompt: draft.prompt,
-          model: draft.model,
-          ...size,
-          durationSec: draft.durationSec,
-          fps: 16,
-          denoise: draft.denoise,
-          batchCount: 1,
-          steps: 20,
-          cfgScale: 7,
-          seed: -1,
-          sampler: 'euler',
-          scheduler: 'normal',
-          referenceAssetIds: draft.references.map((ref) => ref.assetId),
-        }),
+        body: JSON.stringify(nodeRequest(store.doc.id, obj, requestId, draft)),
       })
       const result = (await response.json()) as { job?: NodeJob; error?: string }
       const current = store.doc.objects[obj.id]
@@ -150,7 +141,7 @@ export function createNodeGeneration(store: Store, notify: (message: string) => 
       inflight.delete(requestId)
     }
   }
-  async function submit(obj: CanvasObj) {
+  async function submit(obj: CanvasObj, onSubmitted?: (requestId: string) => void) {
     if (!isMediaNode(obj) || !obj.nodeDraft.prompt.trim()) {
       return
     }
@@ -170,6 +161,7 @@ export function createNodeGeneration(store: Store, notify: (message: string) => 
         { nodeRun: obj.nodeRun },
       ),
     )
+    onSubmitted?.(requestId)
     await send(obj, requestId, snapshot)
   }
   async function reconcile() {
@@ -195,6 +187,10 @@ export function createNodeGeneration(store: Store, notify: (message: string) => 
                 delete obj.nodeRun
               })
             } else if (response.status === 404) {
+              if (run.runId) {
+                // 分镜执行尚未提交该请求：真伪由执行控制器判断，不标记不确定
+                return
+              }
               store.mutateTransient(() => {
                 obj.nodeRun = { ...run, status: 'uncertain', message: '尚未确认提交，点击确认结果' }
               })
@@ -215,7 +211,8 @@ export function createNodeGeneration(store: Store, notify: (message: string) => 
   })
   events.addEventListener('error', () => {
     const pending = Object.values(store.doc.objects).filter(
-      (obj) => obj.nodeRun && ['queued', 'running'].includes(obj.nodeRun.status),
+      (obj) =>
+        obj.nodeRun && !obj.nodeRun.runId && ['queued', 'running'].includes(obj.nodeRun.status),
     )
     if (pending.length) {
       store.mutateTransient(() => {

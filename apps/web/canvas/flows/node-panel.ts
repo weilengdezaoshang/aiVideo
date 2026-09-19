@@ -1,3 +1,4 @@
+import { prepareNodeDraft } from './node-request.js'
 import { pickReferenceAsset } from './reference-picker.js'
 import { createActionMenu } from '../../shared/action-menu.js'
 import { createDropdown } from '../../shared/dropdown.js'
@@ -249,8 +250,11 @@ export function createNodePanel(options: Options) {
     for (const button of Array.from(items.querySelectorAll<HTMLButtonElement>('button'))) {
       button.disabled = busy
     }
+    const invalidDuration =
+      obj.kind === 'video' && !!cap?.durations?.length && !cap.durations.includes(draft.durationSec)
     const referenceOverflow = !!cap && draft.references.length > cap.referenceLimit
     submit.disabled =
+      invalidDuration ||
       referenceOverflow ||
       !cap?.supported ||
       !draft.model ||
@@ -280,6 +284,9 @@ export function createNodePanel(options: Options) {
             ? '以当前图片为参考 · 1 张'
             : '文字生图 · 1 张'
     status.textContent =
+      (invalidDuration
+        ? `当前模型不支持 ${draft.durationSec} 秒，请选择可用视频时长；分镜计划时长保持不变`
+        : '') ||
       (referenceOverflow
         ? `已选 ${draft.references.length} 张；当前模型最多支持 ${cap?.referenceLimit} 张参考图，请减少后生成`
         : '') ||
@@ -851,8 +858,64 @@ export function createNodePanel(options: Options) {
   const settings = document.getElementById('settings-dialog')
   settings?.addEventListener('sl-after-hide', loadCapabilities)
   void loadCapabilities()
+  async function prepareNode(id: string, signal?: AbortSignal) {
+    const obj = store.doc.objects[id]
+    if (!obj || !isMediaNode(obj) || hasOutput(obj)) {
+      throw new Error('请先为镜头创建新的生成节点')
+    }
+    const original = obj.nodeDraft
+    if (!caps) {
+      await loadCapabilities()
+    }
+    if (signal?.aborted || store.doc.objects[id] !== obj || obj.nodeDraft !== original) {
+      throw new Error('节点已修改或准备已取消，请重新操作')
+    }
+    if (isBusy(obj) || obj.nodeRun?.status === 'uncertain') {
+      throw new Error('节点已有任务，请先处理当前任务')
+    }
+    const draft = prepareNodeDraft(obj, caps?.[obj.kind])
+    if (JSON.stringify(draft) !== JSON.stringify(obj.nodeDraft)) {
+      update(obj, { nodeDraft: draft })
+    }
+    return structuredClone(draft)
+  }
   return {
+    prepareNode,
     refresh: schedule,
+    async submitNode(id: string, onSubmitted?: (requestId: string) => void, signal?: AbortSignal) {
+      const obj = store.doc.objects[id]
+      if (!obj || !isMediaNode(obj) || hasOutput(obj)) {
+        throw new Error('请先为镜头创建新的生成节点')
+      }
+      if (signal?.aborted) {
+        throw new Error('已取消提交')
+      }
+      if (obj.nodeRun?.status === 'uncertain') {
+        await generation.submit(obj, onSubmitted)
+        return
+      }
+      if (isBusy(obj)) {
+        return
+      }
+      const prepared = await prepareNode(id, signal)
+      if (
+        signal?.aborted ||
+        store.doc.objects[id] !== obj ||
+        JSON.stringify(obj.nodeDraft) !== JSON.stringify(prepared)
+      ) {
+        throw new Error('节点已修改或准备已取消，请重新操作')
+      }
+      if (isBusy(obj)) {
+        return
+      }
+      await generation.submit(obj, onSubmitted)
+    },
+    cancelNode(id: string) {
+      const obj = store.doc.objects[id]
+      if (obj) {
+        generation.cancel(obj)
+      }
+    },
     handleReferenceKey(event: KeyboardEvent) {
       if (!panel.classList.contains('is-picking-reference')) {
         return false
