@@ -22,20 +22,20 @@ VIDEO_DURATIONS = (5,)
 VIDEO_POLL_SEC = 3
 
 
-async def chat(client, config, prompt, system, temperature=0):
+async def chat(client, config, prompt, system, temperature=0, max_tokens=600, timeout=15):
     response = await client.post(
         config.cloudBaseUrl.rstrip("/") + "/chat/completions",
         headers={"Authorization": f"Bearer {config.imageApiKey}"},
         json={
             "model": config.cloudTextModel,
             "temperature": temperature,
-            "max_tokens": 600,
+            "max_tokens": max_tokens,
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": prompt},
             ],
         },
-        timeout=15,
+        timeout=timeout,
     )
     response.raise_for_status()
     text = response.json()["choices"][0]["message"]["content"].strip()
