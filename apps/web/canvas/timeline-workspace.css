@@ -1,0 +1,321 @@
+/* The embedded editor and full-screen workspace share the same track primitives. */
+.tl-canvas-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 8;
+}
+.tl-canvas-node {
+  pointer-events: auto;
+}
+.timeline-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  width: 100%;
+  height: 100dvh;
+  background: #0d0d0d;
+  color: #eee;
+  --studio-panel: #232323;
+  --studio-ink: #eee;
+  --studio-ink-muted: #aaa;
+  --studio-hairline: #393939;
+  --studio-surface-hover: #333;
+}
+.timeline-panel > header {
+  min-height: 58px;
+  flex-wrap: wrap;
+  overflow: visible;
+}
+.timeline-panel .timeline-body {
+  display: grid;
+  grid-template-columns: minmax(240px, 27%) 1fr;
+  grid-template-rows: minmax(240px, 1fr) minmax(210px, 35%);
+  gap: 12px;
+  padding: 12px;
+  overflow: auto;
+}
+.timeline-panel .timeline-preview {
+  width: 100%;
+  max-width: none;
+  aspect-ratio: auto !important;
+  background: #191919;
+  border-radius: 14px;
+}
+.timeline-panel .timeline-preview img,
+.timeline-panel .timeline-preview video {
+  position: absolute;
+  inset: 0;
+  padding: 12px 12px 58px;
+  box-sizing: border-box;
+}
+.tl-preview-controls {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.tl-properties-disclosure {
+  flex: none;
+  border-top: 1px solid #333;
+  padding-top: 6px;
+}
+.tl-properties-disclosure summary {
+  cursor: pointer;
+  color: #bbb;
+  padding: 4px;
+}
+.timeline-panel .timeline-transport {
+  flex-wrap: wrap;
+}
+.timeline-panel .timeline-preview [hidden] {
+  display: none;
+}
+.timeline-panel .timeline-editor {
+  grid-column: 1 / -1;
+  background: #191919;
+  border-radius: 12px;
+  padding: 12px;
+  overflow: auto;
+}
+.timeline-panel .timeline-properties {
+  min-height: 42px;
+}
+.tl-assets {
+  background: #191919;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.tl-asset-tabs,
+.tl-asset-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.tl-asset-tabs button[aria-pressed='true'],
+.tl-asset-filters button[aria-pressed='true'] {
+  background: #3a3a3a;
+}
+.tl-asset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  overflow: auto;
+  align-content: start;
+}
+.timeline-panel .tl-asset-card {
+  position: relative;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+}
+.tl-asset-card img,
+.tl-asset-card video {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  display: block;
+}
+.tl-asset-card > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 4px 8px;
+}
+.tl-asset-card small {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  background: #000a;
+  border-radius: 4px;
+  padding: 3px 5px;
+}
+.tl-track-scroll {
+  overflow: auto;
+  flex: 1 0 125px;
+  min-height: 125px;
+  padding: 0 12px 8px;
+}
+.tl-track-content {
+  position: relative;
+  min-height: 115px;
+}
+.tl-ruler {
+  height: 32px;
+  position: relative;
+  cursor: crosshair;
+  touch-action: none;
+  background: repeating-linear-gradient(90deg, #555 0 1px, transparent 1px 20px) bottom / 100% 5px
+    no-repeat;
+}
+.tl-ruler span {
+  position: absolute;
+  font-size: 11px;
+  color: #aaa;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.timeline-clips {
+  min-height: 78px;
+  gap: 0;
+}
+.timeline-panel .timeline-clip,
+.tl-canvas-node .timeline-clip {
+  position: relative;
+  padding: 0;
+  flex: none;
+  min-width: 1px;
+  height: 78px;
+  border: 1px solid #393939;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #222;
+}
+.timeline-clip > img,
+.timeline-clip > video {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.timeline-clip > span {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  color: white;
+  background: #0009;
+  font-size: 11px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  pointer-events: none;
+}
+.timeline-clip[aria-pressed='true'] {
+  outline: 2px solid #78a2ff;
+  outline-offset: -2px;
+}
+.tl-add-clip {
+  width: 60px;
+  flex: none;
+  font-size: 24px !important;
+}
+.tl-playhead {
+  position: absolute;
+  top: 18px;
+  bottom: 0;
+  width: 2px;
+  background: white;
+  pointer-events: none;
+}
+.tl-playhead::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -3px;
+  height: 14px;
+  width: 8px;
+  background: white;
+  border-radius: 4px;
+}
+.tl-canvas-node {
+  position: fixed;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  width: 720px;
+  height: 172px;
+  background: #202020;
+  border: 1px solid #888;
+  border-radius: 9px;
+  color: #eee;
+  z-index: 8;
+  font:
+    13px/1.5 system-ui,
+    sans-serif;
+  box-shadow: 0 0 0 3px #0005;
+}
+.tl-canvas-node[hidden] {
+  display: none;
+}
+.tl-canvas-node header {
+  display: flex;
+  gap: 16px;
+  padding: 7px 12px;
+  align-items: center;
+}
+.tl-canvas-node header output {
+  flex: 1;
+  text-align: center;
+}
+.tl-canvas-node button {
+  font: inherit;
+  background: #292929;
+  color: #eee;
+  border: 1px solid #444;
+  border-radius: 5px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.tl-canvas-node button:disabled {
+  opacity: 0.4;
+}
+.tl-canvas-node :focus-visible {
+  outline: 2px solid #78a2ff;
+}
+.tl-node-title {
+  position: absolute;
+  top: -30px;
+  left: 0;
+  min-width: 220px;
+  height: 28px;
+  cursor: grab;
+  touch-action: none;
+  color: #bbb;
+}
+.tl-canvas-node .tl-input-port {
+  position: absolute;
+  left: -15px;
+  top: 60px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  background: #274254;
+}
+.tl-canvas-connections {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 7;
+  pointer-events: none;
+}
+.tl-canvas-connections path {
+  stroke: #579cce;
+  stroke-width: 1.2;
+  fill: none;
+}
+.timeline-open .tl-canvas-node,
+.timeline-open .tl-canvas-connections {
+  visibility: hidden;
+}
+@media (max-width: 800px) {
+  .timeline-panel .timeline-body {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+  .tl-asset-grid {
+    grid-template-columns: 1fr;
+  }
+  .timeline-panel > header {
+    max-height: 120px;
+    overflow: auto;
+  }
+}
