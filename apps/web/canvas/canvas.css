@@ -1268,7 +1268,7 @@ html.sl-theme-dark {
   }
 }
 
-/* ---------- 图生视频对话框与播放器 ---------- */
+/* ---------- 图生视频对话框 ---------- */
 
 .video-dialog-row {
   display: flex;
@@ -1285,14 +1285,6 @@ html.sl-theme-dark {
   object-fit: cover;
   border-radius: var(--gc-radius-sm);
   border: 1px solid var(--studio-hairline);
-}
-
-.video-player-body img,
-.video-player-body video {
-  display: block;
-  width: 100%;
-  border-radius: var(--gc-radius-md);
-  background: #000;
 }
 
 /* ---------- 断线横幅 ---------- */

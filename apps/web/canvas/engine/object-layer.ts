@@ -1,10 +1,16 @@
-import { openVideoPreview } from '../ui/video-preview.js'
 import {
   isEmptyMedia,
   nodeAppearanceKey,
   nodeProgressLabel,
   placeholderSurface,
 } from './node-appearance.js'
+import {
+  createVideoHoverPreview,
+  hoverFinePointer,
+  schedulePosterRecache,
+  shouldStartVideoHover,
+  shouldStopHoverForSourceChange,
+} from './video-hover.js'
 // 对象层:把 DocStore 的对象渲染为 Konva 节点,承载选择/框选/拖动/删除交互。
 // 选择集合是 TransientStore 语义(不进 undo、不入文档)。
 // 性能(F1:500 对象 + 50 张 2048px 图 ≥55fps):
@@ -157,12 +163,205 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
       }
     }
   }, layer)
+  const hoverAnimation = new Konva.Animation(() => {
+    /* 逐帧重绘,让 Konva.Image 显示当前视频帧;顺带同步悬停播放的进度条. */
+    updateHoverSeekBar()
+  }, layer)
+  const posterSeekCancels = new Map<string, () => void>()
+  let activeHoverUrl: string | null = null
+  const cancelPosterSeek = (id: string) => {
+    posterSeekCancels.get(id)?.()
+    posterSeekCancels.delete(id)
+  }
+  const videoHover = createVideoHoverPreview({
+    onPlaying(id) {
+      cancelPosterSeek(id)
+      const group = groups.get(id)
+      if (group) {
+        group.clearCache()
+        cachedAtScale.delete(id)
+        group.getAttr('playIcon')?.visible(false)
+        group.getAttr('pauseIcon')?.visible(false)
+        group.getAttr('seekBar')?.visible(true)
+        // 进度条可见前先按当前缩放排定尺寸,不依赖动画帧
+        layoutSeekBar(group)
+      }
+      hoverAnimation.start()
+      layer.batchDraw()
+    },
+    onPaused(id) {
+      const group = groups.get(id)
+      group?.getAttr('pauseIcon')?.visible(true)
+      layer.batchDraw()
+    },
+    onStopped(id, media, meta) {
+      hoverAnimation.stop()
+      const playedUrl = activeHoverUrl
+      activeHoverUrl = null
+      const group = groups.get(id)
+      const obj = nodeById(id)
+      group?.getAttr('playIcon')?.visible(true)
+      group?.getAttr('pauseIcon')?.visible(false)
+      // 进度条必须在重烘焙位图前隐藏,否则会被烘进封面
+      group?.getAttr('seekBar')?.visible(false)
+      cancelPosterSeek(id)
+      if (!group || !obj || !isCacheable(obj) || isEmptyMedia(obj)) {
+        layer.batchDraw()
+        return
+      }
+      group.clearCache()
+      cachedAtScale.delete(id)
+      const captured = group
+      posterSeekCancels.set(
+        id,
+        schedulePosterRecache(
+          media,
+          () => {
+            const current = nodeById(id)
+            if (!current || groups.get(id) !== captured) {
+              return
+            }
+            cacheGroup(current, captured)
+            layer.batchDraw()
+          },
+          () =>
+            videoHover.activeId() === id ||
+            groups.get(id) !== captured ||
+            pickUrl(nodeById(id)) !== playedUrl,
+          meta.seekRequested,
+        ),
+      )
+      layer.batchDraw()
+    },
+  })
+  const startHoverPreview = (id: string, url: string, video: HTMLVideoElement) => {
+    videoHover.start(id, video)
+    if (videoHover.activeId() === id) {
+      activeHoverUrl = url
+    }
+  }
+
+  /** 悬停播放时同步底部进度条的填充宽度与滑块位置. */
+  function updateHoverSeekBar() {
+    const id = videoHover.activeId()
+    if (!id) {
+      return
+    }
+    const group = groups.get(id)
+    const fill = group?.getAttr('seekFill')
+    const thumb = group?.getAttr('seekThumb')
+    const left = group?.getAttr('seekLeft') as number | undefined
+    const width = group?.getAttr('seekWidth') as number | undefined
+    if (!group || !fill || !thumb || !left || !width) {
+      return
+    }
+    // 相机缩放漂移后进度条需按屏幕像素重排(卡可停在任意缩放档位)
+    const scale = group.getAbsoluteScale().x || 1
+    if (Math.abs(scale - (group.getAttr('seekScale') as number)) > scale * 0.05) {
+      layoutSeekBar(group)
+    }
+    const ratio = videoHover.progress()?.ratio ?? 0
+    fill.width(ratio * width)
+    thumb.x(left + ratio * width)
+  }
+
+  /** 进度条按屏幕像素恒定布局:轨道/滑块/命中区厚度不随相机缩放变化. */
+  function layoutSeekBar(group: any) {
+    const objW = group.getAttr('seekObjW') as number | undefined
+    const objH = group.getAttr('seekObjH') as number | undefined
+    const bar = group.getAttr('seekBar')
+    const track = group.getAttr('seekTrack')
+    const fill = group.getAttr('seekFill')
+    const thumb = group.getAttr('seekThumb')
+    const hit = group.getAttr('seekHit')
+    if (!objW || !objH || !bar || !track || !fill || !thumb || !hit) {
+      return
+    }
+    const scale = group.getAbsoluteScale().x || 1
+    const trackH = 4 / scale
+    const thumbR = 5 / scale
+    const left = 8 / scale
+    const width = Math.max(0, objW - left * 2)
+    const y = objH - 5 / scale - trackH
+    track.setAttrs({ x: left, y, width, height: trackH, cornerRadius: trackH / 2 })
+    fill.setAttrs({ x: left, y, height: trackH, cornerRadius: trackH / 2 })
+    thumb.setAttrs({ y: y + trackH / 2, radius: thumbR, shadowBlur: 4 / scale })
+    hit.setAttrs({ x: 0, y: y - 11 / scale, width: objW, height: 22 / scale })
+    group.setAttrs({ seekLeft: left, seekWidth: width, seekScale: scale })
+  }
+
+  /** 进度条命中区:按下暂停逐帧预览,按住拖动 seek,松手恢复播放;指针已离卡则按离开停止. */
+  function wireSeekEvents(group: any, seekHit: any) {
+    seekHit.on('mouseenter', () => {
+      engine.stage.container().style.cursor = 'ew-resize'
+    })
+    seekHit.on('mouseleave', () => {
+      if (!videoHover.isScrubbing()) {
+        engine.stage.container().style.cursor = ''
+      }
+    })
+    seekHit.on('click tap', (e: any) => {
+      // 单击进度条只做 seek,不触发卡片选中
+      e.cancelBubble = true
+    })
+    seekHit.on('mousedown touchstart', (e: any) => {
+      e.cancelBubble = true
+      if (videoHover.activeId() !== group.id()) {
+        return
+      }
+      const stage = group.getStage()
+      const scrubFromPointer = () => {
+        const pointer = stage.getPointerPosition()
+        if (!pointer) {
+          return
+        }
+        const local = group.getAbsoluteTransform().copy().invert().point(pointer)
+        const left = group.getAttr('seekLeft') as number
+        const width = group.getAttr('seekWidth') as number
+        if (!(width > 0)) {
+          return
+        }
+        const ratio = Math.min(1, Math.max(0, (local.x - left) / width))
+        videoHover.scrubTo(ratio * (videoHover.progress()?.duration ?? 0))
+      }
+      videoHover.beginScrub()
+      scrubFromPointer()
+      const onMove = () => scrubFromPointer()
+      const onUp = () => {
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', onUp)
+        window.removeEventListener('pointercancel', onUp)
+        engine.stage.container().style.cursor = ''
+        if (videoHover.activeId() !== group.id()) {
+          return
+        }
+        videoHover.endScrub()
+        // 拖动期间短暂滑出卡片时 mouseleave 被抑制;松手时指针不在卡上则按离开处理
+        const pointer = stage.getPointerPosition()
+        const hit = pointer ? layer.getIntersection(pointer) : null
+        const over = Boolean(hit && (hit === group || hit.isDescendantOf(group)))
+        if (!over) {
+          videoHover.stop(group.id())
+        }
+      }
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', onUp)
+      window.addEventListener('pointercancel', onUp)
+    })
+  }
+
+  /** 主题强调色:生成进度边框与悬停播放进度条共用. */
+  function selectionAccent(): string {
+    const dark = document.documentElement.dataset.theme === 'dark'
+    const style = getComputedStyle(document.documentElement)
+    return (
+      style.getPropertyValue(dark ? '--studio-selection' : '--studio-accent').trim() || '#4778e6'
+    )
+  }
 
   function addProgressBorder(obj: CanvasObj, group: any) {
     const dark = document.documentElement.dataset.theme === 'dark'
-    const style = getComputedStyle(document.documentElement)
-    const accent =
-      style.getPropertyValue(dark ? '--studio-selection' : '--studio-accent').trim() || '#4778e6'
+    const accent = selectionAccent()
     const radius = Math.min(14, obj.width / 2, obj.height / 2)
     const perimeter = 2 * (obj.width + obj.height) - 8 * radius + 2 * Math.PI * radius
     const effect = new Konva.Group({ listening: false, visible: false })
@@ -346,12 +545,6 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
         group.add(directionChip(obj.directionTitle, obj.width))
       }
       if (obj.kind === 'video') {
-        group.on('dblclick dbltap', () => {
-          const url = pickUrl(obj)
-          if (url) {
-            openVideoPreview(url, obj.name || '视频预览')
-          }
-        })
         // 视频辨认(PRD §8/A15):▶ + 时长与文件格式角标
         const duration = Number(obj.durationSec ?? (obj.lineage?.params as any)?.durationSec ?? 0)
         const badge = new Konva.Label({
@@ -381,6 +574,82 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
         playIcon.offsetY(playIcon.height() / 2)
         playIcon.position({ x: obj.width / 2, y: obj.height / 2 })
         group.add(playIcon)
+        group.setAttr('playIcon', playIcon)
+        // 悬停播放的底部进度条:轨道+填充+滑块;透明命中区上下溢出卡片,便于按住拖动逐帧预览
+        // 具体尺寸由 layoutSeekBar 按屏幕像素恒定布局(不随相机缩放变细/变大)
+        const seekLeft = 8
+        const seekWidth = Math.max(0, obj.width - seekLeft * 2)
+        const seekY = obj.height - 9
+        const seekBar = new Konva.Group({ listening: true, visible: false })
+        const seekTrack = new Konva.Rect({
+          x: seekLeft,
+          y: seekY,
+          width: seekWidth,
+          height: 4,
+          cornerRadius: 2,
+          fill: 'rgba(255,255,255,0.32)',
+          listening: false,
+          perfectDrawEnabled: false,
+        })
+        const seekFill = new Konva.Rect({
+          x: seekLeft,
+          y: seekY,
+          width: 0,
+          height: 4,
+          cornerRadius: 2,
+          fill: selectionAccent(),
+          listening: false,
+          perfectDrawEnabled: false,
+        })
+        const seekThumb = new Konva.Circle({
+          x: seekLeft,
+          y: seekY + 2,
+          radius: 5,
+          fill: '#fff',
+          shadowColor: 'rgba(0,0,0,0.35)',
+          shadowBlur: 4,
+          listening: false,
+          perfectDrawEnabled: false,
+        })
+        const seekHit = new Konva.Rect({
+          x: 0,
+          y: seekY - 9,
+          width: obj.width,
+          height: 22,
+          fill: 'rgba(0,0,0,0)',
+          perfectDrawEnabled: false,
+        })
+        seekBar.add(seekTrack, seekFill, seekThumb, seekHit)
+        group.add(seekBar)
+        group.setAttr('seekBar', seekBar)
+        group.setAttr('seekTrack', seekTrack)
+        group.setAttr('seekFill', seekFill)
+        group.setAttr('seekThumb', seekThumb)
+        group.setAttr('seekHit', seekHit)
+        group.setAttr('seekObjW', obj.width)
+        group.setAttr('seekObjH', obj.height)
+        layoutSeekBar(group)
+        wireSeekEvents(group, seekHit)
+        // 拖动逐帧预览(暂停)时中央显示 ⏸,样式与封面态 ▶ 同基调
+        const pauseIcon = new Konva.Group({ listening: false, visible: false })
+        const pauseSize = Math.min(28, obj.height / 4)
+        const pauseBarW = Math.max(3, pauseSize / 4)
+        const pauseGap = Math.max(2, pauseSize / 5)
+        for (const center of [-(pauseBarW + pauseGap) / 2, (pauseBarW + pauseGap) / 2]) {
+          pauseIcon.add(
+            new Konva.Rect({
+              x: center - pauseBarW / 2,
+              y: -pauseSize / 2,
+              width: pauseBarW,
+              height: pauseSize,
+              cornerRadius: pauseBarW / 2,
+              fill: '#fff',
+            }),
+          )
+        }
+        pauseIcon.position({ x: obj.width / 2, y: obj.height / 2 })
+        group.add(pauseIcon)
+        group.setAttr('pauseIcon', pauseIcon)
       }
     } else if (obj.kind === 'board') {
       // 画板 = 背景容器:不裁剪、不自动收养重叠对象(PRD §4.2)
@@ -516,7 +785,7 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
   }
 
   function cacheGroup(obj: CanvasObj, group: any) {
-    if (!isCacheable(obj) || group.getAttr('caching')) {
+    if (!isCacheable(obj) || group.getAttr('caching') || videoHover.activeId() === obj.id) {
       return
     }
     group.setAttr('caching', true)
@@ -546,6 +815,9 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
         continue
       }
       const ratio = cam.scale / atScale
+      if (videoHover.activeId() === id) {
+        continue
+      }
       if (ratio > 2 || ratio < 0.5) {
         group.clearCache()
         cachedAtScale.delete(id)
@@ -576,6 +848,7 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
     })
 
     group.on('dragstart', () => {
+      videoHover.stop()
       draggingId = group.id()
       dragStarts = [...selected]
         .filter((id) => getDoc().objects[id])
@@ -605,8 +878,30 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
     })
 
     // 占位悬浮「取消」/ 错误卡悬浮「重试·删除」(PRD §5.4 / 线框 S7)
-    group.on('mouseenter', () => {
+    group.on('mouseenter', (e: { evt?: { pointerType?: string } }) => {
       const o = nodeById(group.id())
+      if (
+        o?.kind === 'video' &&
+        !isEmptyMedia(o) &&
+        shouldStartVideoHover({
+          pointerType: e.evt?.pointerType,
+          hoverFine: hoverFinePointer(),
+        })
+      ) {
+        const url = pickUrl(o)
+        if (url) {
+          let video = videoCache.get(url)
+          if (!video) {
+            video = document.createElement('video')
+            video.preload = 'auto'
+            video.muted = true
+            video.playsInline = true
+            video.src = url
+            videoCache.set(url, video)
+          }
+          startHoverPreview(o.id, url, video)
+        }
+      }
       if (group.getAttr('cancelBtn') || (o?.kind !== 'placeholder' && o?.kind !== 'error')) {
         return
       }
@@ -648,6 +943,10 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
       layer.batchDraw()
     })
     group.on('mouseleave', () => {
+      // 拖动进度条可能短暂滑出卡片,预览去留推迟到松手时判定
+      if (!videoHover.isScrubbing()) {
+        videoHover.stop(group.id())
+      }
       const btn = group.getAttr('cancelBtn')
       if (btn) {
         btn.destroy()
@@ -944,6 +1243,7 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
       event.cancelBubble = true
     })
     handle.on('dragstart', () => {
+      videoHover.stop()
       const obj = nodeById(id)
       if (!obj) {
         return
@@ -1054,6 +1354,9 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
         bounds.y + bounds.height > minY &&
         bounds.y < maxY
       group.visible(visible)
+      if (!visible && videoHover.activeId() === id) {
+        videoHover.stop(id)
+      }
       if (visible && group.getAttr('loadingEffect')?.visible()) {
         loadingVisible = true
       }
@@ -1162,6 +1465,7 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
       origin: { x: number; y: number }
     } | null = null
     node.on('dragstart', () => {
+      videoHover.stop()
       const from = new Map<string, { x: number; y: number }>()
       for (const id of memberIds()) {
         const o = getDoc().objects[id]
@@ -1228,6 +1532,8 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
           group.getAttr('builtW') !== obj.width ||
           group.getAttr('builtH') !== obj.height)
       ) {
+        videoHover.stop(id)
+        cancelPosterSeek(id)
         group.destroy()
         groups.delete(id)
         cachedAtScale.delete(id)
@@ -1257,6 +1563,8 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
     }
     for (const [id, group] of groups) {
       if (!seen.has(id)) {
+        videoHover.stop(id)
+        cancelPosterSeek(id)
         group.destroy()
         groups.delete(id)
         cachedAtScale.delete(id)
@@ -1280,6 +1588,11 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
   document.addEventListener('gencanvas:themechange', () => {
     selectionColors = selectionPalette()
     marquee.setAttrs({ stroke: selectionColors.stroke, fill: selectionColors.stroke })
+    videoHover.stop()
+    hoverAnimation.stop()
+    for (const id of posterSeekCancels.keys()) {
+      cancelPosterSeek(id)
+    }
     for (const [id, group] of groups) {
       group.destroy()
       groups.delete(id)
@@ -1300,6 +1613,7 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
       title.fill(textInk())
     }
     if (isEmptyMedia(obj)) {
+      videoHover.stop(obj.id)
       title?.setAttrs({ fontSize: 12, y: -24 })
       const run = obj.nodeRun
       const loading = !!run && ['submitting', 'queued', 'running'].includes(run.status)
@@ -1328,6 +1642,16 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
       }
       const url = pickUrl(obj)
       const current = imageNode.image()
+      if (
+        obj.kind === 'video' &&
+        shouldStopHoverForSourceChange({
+          hovering: videoHover.activeId() === obj.id,
+          activeHoverUrl,
+          requestedUrl: url,
+        })
+      ) {
+        videoHover.stop(obj.id)
+      }
       if (url && (!current || current.src !== url)) {
         let img: HTMLImageElement | HTMLVideoElement
         if (obj.kind === 'video') {
@@ -1351,6 +1675,13 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
           imageNode.image(img)
           cacheGroup(obj, group)
           layer.draw()
+          if (
+            obj.kind === 'video' &&
+            img instanceof HTMLVideoElement &&
+            videoHover.activeId() === obj.id
+          ) {
+            startHoverPreview(obj.id, url, img)
+          }
         }
         if (
           img instanceof HTMLVideoElement
@@ -1363,7 +1694,7 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
             once: true,
           })
         }
-      } else if (current && !group.isCached()) {
+      } else if (current && !group.isCached() && videoHover.activeId() !== obj.id) {
         cacheGroup(obj, group)
       }
     } else if (obj.kind === 'error') {
@@ -1405,11 +1736,24 @@ export function createObjectLayer(options: ObjectLayerOptions): ObjectLayer {
   }
 
   engine.interaction.subscribe((state) => {
+    if (state.effective === 'pan' || state.gesture === 'pan') {
+      videoHover.stop()
+    }
     overlayLayer.listening(state.effective === 'select')
     overlayLayer.visible(state.effective === 'select')
     overlayLayer.draw()
   })
+  const stopHoverIfHidden = () => {
+    if (typeof document !== 'undefined' && document.hidden) {
+      videoHover.stop()
+    }
+  }
+  document.addEventListener('visibilitychange', stopHoverIfHidden)
+  window.addEventListener('blur', () => {
+    videoHover.stop()
+  })
   engine.interaction.onCancel(() => {
+    videoHover.stop()
     cancelling = true
     cancelMarquee()
     dragStarts = null
