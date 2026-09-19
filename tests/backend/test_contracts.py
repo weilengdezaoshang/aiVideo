@@ -82,6 +82,20 @@ def test_environment_and_masked_config(root, monkeypatch):
         patch_config(c, {"cloudBaseUrl": "file:///secret"})
 
 
+def test_isolated_config_override(root, monkeypatch):
+    """隔离实例用 SWARMUI_CONFIG 指向独立配置，不读取仓库根的 config.json。"""
+    write_json(root / "config.json", {"provider": "mock", "imageApiKey": "repo-secret"})
+    isolated = root / "isolated"
+    isolated.mkdir()
+    write_json(isolated / "instance.json", {"provider": "mock"})
+    monkeypatch.setenv("SWARMUI_CONFIG", str(isolated / "instance.json"))
+    c = load_config(root)
+    assert c.provider == "mock"
+    assert c.imageApiKey == "", "隔离实例不得继承仓库配置中的密钥"
+    monkeypatch.delenv("SWARMUI_CONFIG")
+    assert load_config(root).imageApiKey == "repo-secret"
+
+
 def test_document_rejects_bad_shapes(root):
     docs = Documents(root / "documents")
     doc = docs.create()

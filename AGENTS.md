@@ -41,6 +41,8 @@ apps/web/                             # 前端(HTML/CSS + TypeScript;工作台/�
 新增生成后端:实现 `apps/api/backend/providers/base.py` 的 `Provider` 接口,在 `apps/api/backend/app.py` 的 `build_provider` 注册,
 队列 / API / 前端无需改动。切换后端改 `config.json` 或环境变量
 (`SWARMUI_PROVIDER` / `SWARMUI_COMFY_URL` / `SWARMUI_PORT`)。
+隔离测试实例必须用 `SWARMUI_CONFIG` 指向独立配置文件(配合 `SWARMUI_DATA_DIR`),
+否则会读取仓库根 `config.json` 并可能使用其中真实密钥产生计划外调用。
 
 Python 后端使用 `.venv`，依赖见 `requirements-dev.txt`；`npm run verify` 同时运行前后端检查。单进程 JSON 存储，不开启多 worker。现有 API/SSE 和 data 格式变更必须有兼容测试。
 

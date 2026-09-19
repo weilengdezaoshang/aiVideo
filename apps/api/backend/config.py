@@ -83,7 +83,11 @@ def normalize(data: dict) -> Config:
 
 
 def load_config(root: Path) -> Config:
-    data = read_json(root / "config.json", {})
+    # SWARMUI_CONFIG 允许隔离实例（如 SWARMUI_DATA_DIR 指向测试目录）使用独立配置，
+    # 避免测试实例误读仓库 config.json 中的真实密钥。
+    override = os.environ.get("SWARMUI_CONFIG", "").strip()
+    path = Path(override) if override else root / "config.json"
+    data = read_json(path, {})
     for field, env in ENV.items():
         if os.environ.get(env, "").strip():
             data[field] = os.environ[env].strip()
