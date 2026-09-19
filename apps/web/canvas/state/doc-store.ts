@@ -1,3 +1,5 @@
+import type { Storyboard } from './storyboard.js'
+import type { Timeline } from './timeline.js'
 // DocStore:画布文档的可撤销状态(PRD §7.2)。
 // - 用户命令 → apply() 进 undo 栈;
 // - SSE/生成事件 → mutateTransient() 直接变更,绝不进栈;
@@ -69,6 +71,8 @@ export type CanvasDocData = {
   name: string
   objects: Record<string, CanvasObj>
   order: string[]
+  storyboard?: Storyboard
+  timeline?: Timeline
   revision?: number
   groups?: Record<string, GroupMeta>
   chat?: ChatMessage[]

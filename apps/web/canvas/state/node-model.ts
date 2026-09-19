@@ -16,6 +16,8 @@ export type NodeDraft = {
 export type NodeRun = {
   requestId: string
   jobId?: string
+  /** 分镜服务端执行归属：由执行控制器统一调度与回填 */
+  runId?: string
   status: 'submitting' | 'queued' | 'running' | 'failed' | 'uncertain'
   progress?: number
   message?: string

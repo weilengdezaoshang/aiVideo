@@ -57,6 +57,8 @@ export function draftMatchesDocument(draft: CanvasDocData, doc: CanvasDocData): 
       order: d.order,
       groups: d.groups,
       chat: d.chat,
+      storyboard: d.storyboard ?? null,
+      timeline: d.timeline ?? null,
     })
   return content(draft) === content(doc)
 }

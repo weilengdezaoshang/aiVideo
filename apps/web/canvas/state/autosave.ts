@@ -27,6 +27,7 @@ export type AutoSaver = {
   markDirty(): void
   flush(options?: { force?: boolean }): Promise<void>
   forceSave(): Promise<void>
+  ensureSaved(): Promise<void>
   readonly inConflict: boolean
   clearConflict(): void
   flushOnUnload(): void
@@ -47,6 +48,8 @@ export function createAutoSaver(options: AutoSaverOptions): AutoSaver {
   let saving = false
   let pendingAgain = false
   let inConflict = false
+  let lastSaveError: Error | null = null
+  const idleWaiters: (() => void)[] = []
 
   /** 保存成功后静默同步服务端 revision(不触发订阅者,避免保存风暴) */
   function syncRevision(document: { revision?: number } | undefined) {
@@ -61,7 +64,13 @@ export function createAutoSaver(options: AutoSaverOptions): AutoSaver {
       return
     }
     saving = true
-    const snapshot = JSON.parse(JSON.stringify(getDoc())) as CanvasDocData & {
+    const snapshot = JSON.parse(
+      JSON.stringify({
+        ...getDoc(),
+        storyboard: getDoc().storyboard ?? null,
+        timeline: getDoc().timeline ?? null,
+      }),
+    ) as CanvasDocData & {
       baseRevision?: number
     }
     if (!force) {
@@ -79,7 +88,8 @@ export function createAutoSaver(options: AutoSaverOptions): AutoSaver {
         // 冲突:保留本机草稿,通知 UI;不再自动重试(等用户决定)
         inConflict = true
         const body = (await res.json().catch(() => ({}))) as { error?: string }
-        onStatus('conflict', body.error || '文档已被其他会话修改')
+        lastSaveError = new Error(body.error || '文档已被其他会话修改')
+        onStatus('conflict', lastSaveError.message)
         return
       }
       if (!res.ok) {
@@ -90,11 +100,16 @@ export function createAutoSaver(options: AutoSaverOptions): AutoSaver {
       syncRevision(((await res.json()) as { document?: { revision?: number } }).document)
       // 保存确认:服务端已持久化本次快照,本机草稿不再是唯一副本
       clearLocalDraft(docId)
+      lastSaveError = null
       onStatus('saved')
     } catch (err) {
-      onStatus('error', (err instanceof Error ? err.message : String(err)) || '保存失败')
+      lastSaveError = err instanceof Error ? err : new Error(String(err) || '保存失败')
+      onStatus('error', lastSaveError.message)
     } finally {
       saving = false
+      for (const resolve of idleWaiters.splice(0)) {
+        resolve()
+      }
       if (pendingAgain) {
         pendingAgain = false
         void flush()
@@ -115,6 +130,26 @@ export function createAutoSaver(options: AutoSaverOptions): AutoSaver {
       }, debounceMs)
     },
     flush,
+    /** 服务端操作前等待已排队保存，再确认最新文档保存成功；不强制覆盖冲突。 */
+    async ensureSaved() {
+      if (timer) {
+        clearTimeout(timer)
+        timer = null
+      }
+      while (saving) {
+        await new Promise<void>((resolve) => idleWaiters.push(resolve))
+      }
+      if (inConflict) {
+        throw lastSaveError || new Error('请先解决文档保存冲突')
+      }
+      await flush()
+      while (saving) {
+        await new Promise<void>((resolve) => idleWaiters.push(resolve))
+      }
+      if (lastSaveError) {
+        throw lastSaveError
+      }
+    },
     /** 用户确认后可强制覆盖一次(不带 baseRevision);常规 UI 不暴露此入口 */
     forceSave() {
       inConflict = false
@@ -133,7 +168,13 @@ export function createAutoSaver(options: AutoSaverOptions): AutoSaver {
         timer = null
       }
       try {
-        const snapshot = JSON.parse(JSON.stringify(getDoc())) as CanvasDocData & {
+        const snapshot = JSON.parse(
+          JSON.stringify({
+            ...getDoc(),
+            storyboard: getDoc().storyboard ?? null,
+            timeline: getDoc().timeline ?? null,
+          }),
+        ) as CanvasDocData & {
           baseRevision?: number
         }
         snapshot.baseRevision = snapshot.revision

@@ -1,3 +1,5 @@
+import type { Storyboard } from './storyboard.js'
+import type { Timeline } from './timeline.js'
 // 文档命令(纯函数,可 node:test):DocStore 的全部变更都经由命令,
 // 撤销 = 应用逆命令。SSE 驱动的变更(生成落位/进度)不走命令、不进 undo 栈(PRD §8.3)。
 //
@@ -112,15 +114,46 @@ export type UpdateObjectCommand = {
   prevPatch: Record<string, unknown>
 }
 export type BatchCommand = { type: 'batch'; commands: CanvasCommand[] }
+export type SetTimelineCommand = { type: 'setTimeline'; before?: Timeline; after?: Timeline }
+export type SetStoryboardCommand = {
+  type: 'setStoryboard'
+  before?: Storyboard
+  after?: Storyboard
+}
 export type CanvasCommand =
-  AddObjectsCommand | RemoveObjectsCommand | MoveObjectsCommand | UpdateObjectCommand | BatchCommand
+  | SetStoryboardCommand
+  | SetTimelineCommand
+  | AddObjectsCommand
+  | RemoveObjectsCommand
+  | MoveObjectsCommand
+  | UpdateObjectCommand
+  | BatchCommand
 
 /** 可就地应用命令的最小文档形状 */
-export type CommandDoc = { objects: Record<string, CanvasObj>; order: string[] }
+export type CommandDoc = {
+  objects: Record<string, CanvasObj>
+  order: string[]
+  storyboard?: Storyboard
+  timeline?: Timeline
+}
 
 /** 就地应用命令到 doc(直接变更,DocStore 负责通知);未知命令抛错防御。 */
 export function applyCommand(doc: CommandDoc, cmd: CanvasCommand): void {
   switch (cmd.type) {
+    case 'setStoryboard':
+      if (cmd.after) {
+        doc.storyboard = structuredClone(cmd.after)
+      } else {
+        delete doc.storyboard
+      }
+      break
+    case 'setTimeline':
+      if (cmd.after) {
+        doc.timeline = structuredClone(cmd.after)
+      } else {
+        delete doc.timeline
+      }
+      break
     case 'batch':
       for (const child of cmd.commands) {
         applyCommand(doc, child)
@@ -168,6 +201,10 @@ export function applyCommand(doc: CommandDoc, cmd: CanvasCommand): void {
 /** 逆命令(用于撤销);幂等要求命令生成时带上完整前后值。 */
 export function invertCommand(cmd: CanvasCommand): CanvasCommand {
   switch (cmd.type) {
+    case 'setStoryboard':
+      return { type: 'setStoryboard', before: cmd.after, after: cmd.before }
+    case 'setTimeline':
+      return { type: 'setTimeline', before: cmd.after, after: cmd.before }
     case 'addObjects':
       return cmdRemoveObjects(cmd.objects.map((obj) => ({ object: obj, orderIndex: -1 })))
     case 'removeObjects':
