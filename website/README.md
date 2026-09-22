@@ -1,5 +1,7 @@
 # GitHub Pages 展示页
 
+源码同步基线：`212eee4`。新版 FastAPI 后端、React/TypeScript 工作台与画布、云模型接入代码已发布到 `main`。官网安装区与仓库 README 现按该版本提供运行说明，不再使用“源码尚未同步”的旧提示。GitHub Pages 仅托管静态官网，后端服务仍需另外部署。
+
 `index.html` 与 `cinematic.css` 是独立静态站点，不依赖生成 API，也不加载应用设置。素材全部使用相对路径，适配 `/aiVideo/` 项目路径。现有应用内 `/landing` 不受影响。
 
 本地预览（仓库根目录）：
