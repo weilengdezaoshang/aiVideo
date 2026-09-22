@@ -3,13 +3,25 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
     "types": ["node"],
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "allowJs": true,
+    "checkJs": true,
+    "jsx": "react-jsx"
   },
-  "include": ["src", "tests"]
+  "include": [
+    "tests",
+    "apps/web/canvas",
+    "apps/web/shared",
+    "apps/web/ui",
+    "apps/web/workspace",
+    "apps/web/evaluation",
+    "scripts/build-react.ts",
+    "apps/web/landing"
+  ]
 }

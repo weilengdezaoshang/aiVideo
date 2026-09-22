@@ -221,31 +221,35 @@
             ><span>开源可扩展</span>
           </div>
           <p class="requirements">
-            新版云模型创作平台正在开发，当前官网为产品预览。GitHub 主分支暂为早期实现，新版代码尚未同步。
+            自行部署平台：准备 Node.js 20+ 与 Python 3.11+。<br />以下为 macOS / Linux
+            启动命令；生成模型通过云端 API 接入。
           </p>
           <a class="text-link" href="https://github.com/weilengdezaoshang/aiVideo#快速开始"
-            >查看代码版本说明 <span aria-hidden="true">↗</span></a
+            >完整安装说明 <span aria-hidden="true">↗</span></a
           >
         </div>
         <div class="terminal">
-          <div class="terminal-title"><span>CLOUD MODEL / WORKFLOW</span><span>API</span></div>
-          <pre><code><span class="comment">01 / 连接云模型</span>
-配置服务地址、模型与 API Key
+          <div class="terminal-title"><span>PLATFORM / SELF HOSTING</span><span>bash</span></div>
+          <pre><code><span class="comment"># 01 获取项目</span>
+git clone https://github.com/weilengdezaoshang/aiVideo.git
+cd aiVideo
 
-<span class="comment">02 / 开始创作</span>
-在统一工作台中提交图像或视频任务
+<span class="comment"># 02 安装依赖</span>
+npm install
+python3.11 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
 
-<span class="comment">03 / 完成作品</span>
-在画布中整理素材，编辑并导出</code></pre>
-          <p class="terminal-foot">当前为产品流程预览；新版代码发布后提供接入指南。</p>
+<span class="comment"># 03 启动创作空间</span>
+npm run dev</code></pre>
+          <p class="terminal-foot">打开 <code>http://127.0.0.1:7801/workspace</code></p>
         </div>
         <div class="provider-note">
           <p>
             <strong>部署平台后，接入云模型。</strong> 按接入文档配置服务地址、模型与 API
             Key。生成能力及可用参数以所选云模型为准；未配置模型时，Mock 仅用于开发演示。
           </p>
-          <a href="https://github.com/weilengdezaoshang/aiVideo#快速开始"
-            >查看发布状态 <span aria-hidden="true">↗</span></a
+          <a href="https://github.com/weilengdezaoshang/aiVideo/blob/main/docs/百炼生图接入.md"
+            >配置百炼生图 <span aria-hidden="true">↗</span></a
           >
         </div>
       </section>
@@ -257,12 +261,12 @@
         <div class="resource-grid">
           <a href="https://github.com/weilengdezaoshang/aiVideo#快速开始"
             ><span>01 / GET STARTED</span>
-            <h3>版本与代码 <b aria-hidden="true">↗</b></h3>
-            <p>查看当前公开版本</p></a
-          ><a href="#workflow"
+            <h3>开始使用 <b aria-hidden="true">↗</b></h3>
+            <p>部署平台与接入云模型</p></a
+          ><a href="https://github.com/weilengdezaoshang/aiVideo/blob/main/docs/cutout-flow.md"
             ><span>02 / UNDER THE HOOD</span>
             <h3>理解工作流 <b aria-hidden="true">↗</b></h3>
-            <p>从提示词到作品的创作路径</p></a
+            <p>抠图流程与模块边界</p></a
           ><a href="https://github.com/weilengdezaoshang/aiVideo/blob/main/AGENTS.md"
             ><span>03 / CONTRIBUTE</span>
             <h3>一起构建 <b aria-hidden="true">↗</b></h3>

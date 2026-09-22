@@ -1,0 +1,167 @@
+# Execution-stack validation only. The legacy API is deliberately not started here:
+# production HTTP/storage/auth cutover must pass its own compatibility gate first.
+x-runtime: &runtime
+  build: .
+  image: ${AIVERO_IMAGE:-aivideo:local}
+  environment: &environment
+    AIVERO_DB_URL: postgresql+psycopg://aivideo:${AIVERO_DB_PASSWORD:?set AIVERO_DB_PASSWORD}@postgres:5432/aivideo
+    AIVERO_BROKER_URL: amqp://aivideo:${AIVERO_MQ_PASSWORD:?set AIVERO_MQ_PASSWORD}@rabbitmq:5672//
+    AIVERO_REDIS_URL: redis://redis:6379/0
+    AIVERO_DB_POOL_SIZE: '2'
+    AIVERO_DB_MAX_OVERFLOW: '1'
+    AIVERO_DB_POOL_TIMEOUT_S: '2'
+    SWARMUI_DATA_DIR: /app/data
+    SWARMUI_PROVIDER: mock
+    SWARMUI_LOG_FORMAT: json
+  volumes:
+    - media:/app/data
+  restart: unless-stopped
+  stop_grace_period: 60s
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: aivideo
+      POSTGRES_PASSWORD: ${AIVERO_DB_PASSWORD:?set AIVERO_DB_PASSWORD}
+      POSTGRES_DB: aivideo
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U aivideo']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  rabbitmq:
+    image: rabbitmq:3.13-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: aivideo
+      RABBITMQ_DEFAULT_PASS: ${AIVERO_MQ_PASSWORD:?set AIVERO_MQ_PASSWORD}
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    command:
+      [
+        'redis-server',
+        '--appendonly',
+        'yes',
+        '--maxmemory',
+        '256mb',
+        '--maxmemory-policy',
+        'noeviction',
+      ]
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  migrate:
+    <<: *runtime
+    restart: 'no'
+    command: ['alembic', 'upgrade', 'head']
+    depends_on:
+      postgres:
+        condition: service_healthy
+  dispatcher:
+    <<: *runtime
+    command: ['python', '-m', 'backend.workers.daemon', 'dispatcher']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  scheduler:
+    <<: *runtime
+    command: ['python', '-m', 'backend.workers.daemon', 'scheduler']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  bridge:
+    <<: *runtime
+    command: ['python', '-m', 'backend.workers.daemon', 'bridge']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+  notify:
+    <<: *runtime
+    command: ['python', '-m', 'backend.workers.daemon', 'notify']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+  image-worker:
+    <<: *runtime
+    command:
+      [
+        'celery',
+        '-A',
+        'backend.workers.celery_app:celery_app',
+        'worker',
+        '-Q',
+        'generation.image',
+        '--concurrency=2',
+        '--loglevel=info',
+        '--hostname=image@%h',
+      ]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  video-worker:
+    <<: *runtime
+    command:
+      [
+        'celery',
+        '-A',
+        'backend.workers.celery_app:celery_app',
+        'worker',
+        '-Q',
+        'generation.video',
+        '--concurrency=1',
+        '--loglevel=info',
+        '--hostname=video@%h',
+      ]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  export-worker:
+    <<: *runtime
+    command:
+      [
+        'celery',
+        '-A',
+        'backend.workers.celery_app:celery_app',
+        'worker',
+        '-Q',
+        'exports',
+        '--concurrency=1',
+        '--loglevel=info',
+        '--hostname=export@%h',
+      ]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  postgres:
+  rabbitmq:
+  redis:
+  media:

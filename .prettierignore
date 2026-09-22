@@ -1,5 +1,14 @@
 node_modules
 data
+output
 package-lock.json
 *.md
 *.html
+apps/web/vendor
+apps/web/shared/production-contracts.ts
+
+.venv
+.pytest_cache
+.ruff_cache
+
+.web-build/

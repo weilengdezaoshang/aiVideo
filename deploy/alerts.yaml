@@ -1,0 +1,31 @@
+groups:
+  - name: aivideo-durable-execution
+    rules:
+      - alert: AiVideoUnknownTasks
+        expr: aivideo_jobs{status="unknown"} > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: '存在结果待确认任务；禁止将 unknown 重置为 queued'
+      - alert: AiVideoOutboxBacklog
+        expr: aivideo_outbox_oldest_seconds > 120
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: '可靠投递积压，检查 Dispatcher、RabbitMQ 和发布确认'
+      - alert: AiVideoExpiredLeases
+        expr: aivideo_expired_leases > 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: '过期执行租约未被 Scheduler 回收'
+      - alert: AiVideoDeadEvents
+        expr: aivideo_outbox{status="failed"} > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Outbox 有死信；必须核对任务阶段后审计恢复'

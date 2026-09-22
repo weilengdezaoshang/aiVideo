@@ -1,0 +1,13 @@
+# Image generation prompts
+
+## Initial generation — built-in image_gen
+
+Use case: logo-brand
+Asset type: polished brand identity presentation board for an AI visual creation software product.
+Create a beautiful professionally art-directed identity for the name "FRAMORA", Chinese name "帧序". The product is a commercial AI image and video creation platform with an infinite canvas, editing and generative workflows.
+Design a truly distinctive minimal geometric flat vector-like symbol: a bold abstract letter F constructed from two offset framing/cropping shapes with a deliberate rectangular negative space, suggesting a viewfinder and sequential image frames. Strong balanced silhouette, only a few bold shapes, precise optical geometry, instantly legible at app-icon scale. No generic sparkles, no camera illustration, no play triangle.
+Create ONE premium landscape brand board, 1536x1024 or similar. Warm ivory background, rigorous Swiss editorial grid and abundant whitespace. Upper two-thirds: a large refined icon in vermilion orange beside a sophisticated custom uppercase black sans-serif wordmark FRAMORA, with smaller beautifully rendered Chinese name 帧序 beneath the wordmark. Tiny top-left text "FRAMORA / BRAND IDENTITY". Small tagline "让灵感，成为作品。" beneath primary lockup. Lower third: three aligned presentation tiles showing exact same symbol consistently: black symbol on ivory; ivory symbol and white wordmark on ink-black; ivory symbol centered in a vermilion rounded-square application icon. Small tasteful labels "PRIMARY", "REVERSE", "APP ICON". Add tiny palette swatches with hex labels #EF512D, #171918, #F5F2EB. Commercial, distinctive, restrained, visually elegant. Flat colors and clean edges, no gradients, no 3D, no stock mockup objects, no watermarks. Exact spelling FRAMORA and 帧序. This is a logo identity design presentation, not a website screenshot.
+
+## Final edit — built-in image_gen
+
+Edit this brand identity board. Preserve the exact FRAMORA / 帧序 name, symbol geometry and layout. CRITICAL FIX: Remove ALL black haze, glow, shadows, lighting effects, blur and gradients from the entire image. The entire main background MUST be a perfectly uniform solid warm ivory #F5F2EB, especially the top two thirds. Main FRAMORA and 帧序 wordmark and tagline MUST be solid ink black #171918 with crisp high contrast. Main symbol flat vermilion #EF512D. Lower left tile solid ivory, flat black mark; middle tile solid ink-black with flat ivory mark and wordmark; right tile solid ivory with flat orange rounded-square and white mark. No shadows anywhere. Make a precise clean 2D vector-style graphic design presentation. Correct lower left label to PRIMARY. Keep tagline exactly 让灵感，成为作品。 All typography sharply legible. No atmospheric effects.

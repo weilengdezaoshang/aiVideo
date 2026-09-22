@@ -1,0 +1,240 @@
+{
+  "$defs": {
+    "CaseInput": {
+      "properties": {
+        "prompt": {
+          "title": "Prompt",
+          "type": "string"
+        },
+        "referenceArtifactIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Referenceartifactids",
+          "type": "array"
+        },
+        "params": {
+          "additionalProperties": true,
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": ["prompt"],
+      "title": "CaseInput",
+      "type": "object"
+    },
+    "Check": {
+      "description": "类型化检查项(§5.2):判定由结构化 observed 与 expected 的类型化比较完成,\n禁止子串包含判分(§10.4)。",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": ["boolean", "integer", "number", "text"],
+          "title": "Kind",
+          "type": "string"
+        },
+        "question": {
+          "title": "Question",
+          "type": "string"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Expected"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "weight": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "title": "Weight",
+          "type": "number"
+        },
+        "dependsOn": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Dependson",
+          "type": "array"
+        },
+        "tolerance": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tolerance"
+        }
+      },
+      "required": ["id", "kind", "question", "expected"],
+      "title": "Check",
+      "type": "object"
+    },
+    "ExpectedOutcome": {
+      "properties": {
+        "execution": {
+          "const": "completed",
+          "default": "completed",
+          "title": "Execution",
+          "type": "string"
+        },
+        "quality": {
+          "const": "all_required_pass",
+          "default": "all_required_pass",
+          "title": "Quality",
+          "type": "string"
+        }
+      },
+      "title": "ExpectedOutcome",
+      "type": "object"
+    },
+    "Provenance": {
+      "description": "夹具与用例来源必须标明 synthetic/recorded/real(P4 前提,§1.3)。",
+      "properties": {
+        "source": {
+          "default": "internal",
+          "enum": ["internal", "synthetic", "recorded", "real", "imported"],
+          "title": "Source",
+          "type": "string"
+        },
+        "sourceTraceId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sourcetraceid"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "title": "Provenance",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "schemaVersion": {
+      "const": 2,
+      "default": 2,
+      "title": "Schemaversion",
+      "type": "integer"
+    },
+    "caseId": {
+      "title": "Caseid",
+      "type": "string"
+    },
+    "version": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "language": {
+      "default": "zh-CN",
+      "title": "Language",
+      "type": "string"
+    },
+    "taskType": {
+      "default": "text_to_image",
+      "enum": ["text_to_image", "image_to_image", "image_edit", "text_to_video", "image_to_video"],
+      "title": "Tasktype",
+      "type": "string"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    },
+    "suites": {
+      "items": {
+        "enum": [
+          "smoke",
+          "regression",
+          "capability",
+          "judge_calibration",
+          "reliability",
+          "acceptance"
+        ],
+        "type": "string"
+      },
+      "title": "Suites",
+      "type": "array"
+    },
+    "title": {
+      "default": "",
+      "title": "Title",
+      "type": "string"
+    },
+    "input": {
+      "$ref": "#/$defs/CaseInput"
+    },
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/Check"
+      },
+      "minItems": 1,
+      "title": "Checks",
+      "type": "array"
+    },
+    "expectedOutcome": {
+      "$ref": "#/$defs/ExpectedOutcome",
+      "default": {
+        "execution": "completed",
+        "quality": "all_required_pass"
+      }
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance",
+      "default": {
+        "source": "internal",
+        "sourceTraceId": null,
+        "note": null
+      }
+    },
+    "contentHash": {
+      "default": "",
+      "title": "Contenthash",
+      "type": "string"
+    }
+  },
+  "required": ["caseId", "input", "checks"],
+  "title": "CaseVersion",
+  "type": "object"
+}

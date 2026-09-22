@@ -1,0 +1,209 @@
+/* 评测工作台样式:复用品牌与 primitives,不干扰既有页面。 */
+
+.eval-app {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 16px 20px 48px;
+  font-family: inherit;
+  color: inherit;
+}
+
+.eval-app header h1 {
+  font-size: 20px;
+  margin: 8px 0 12px;
+}
+
+.eval-app nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.eval-app nav button {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid currentColor;
+  background: transparent;
+  cursor: pointer;
+}
+
+.eval-app nav button.eval-tab-active {
+  background: currentColor;
+}
+
+.eval-app nav button.eval-tab-active {
+  color: #fff;
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.eval-app section h2 {
+  font-size: 17px;
+  margin: 12px 0;
+}
+
+.eval-app h3 {
+  font-size: 15px;
+  margin: 16px 0 8px;
+}
+
+.eval-app label {
+  display: block;
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+.eval-app input,
+.eval-app select {
+  display: block;
+  margin-top: 4px;
+  padding: 6px 8px;
+  min-width: 280px;
+  border-radius: 6px;
+  border: 1px solid #8886;
+  background: transparent;
+  color: inherit;
+}
+
+.eval-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+.eval-table th,
+.eval-table td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid #8884;
+}
+
+.eval-table tbody tr {
+  cursor: default;
+}
+
+.eval-table tbody tr.eval-selected {
+  background: #2563eb22;
+}
+
+.eval-empty {
+  padding: 12px;
+  border: 1px dashed #8886;
+  border-radius: 8px;
+  color: #888;
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+.eval-error {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #dc262622;
+  color: #dc2626;
+  font-size: 13px;
+  margin: 8px 0;
+  white-space: pre-wrap;
+}
+
+.eval-ok {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #16a34a22;
+  color: #16a34a;
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+.eval-note {
+  font-size: 13px;
+  color: #b45309;
+  background: #f59e0b18;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.eval-muted {
+  color: #888;
+  font-size: 12px;
+}
+
+.eval-actions {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+
+.eval-gaps {
+  border-left: 3px solid #f59e0b;
+  padding-left: 12px;
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+.eval-gate-pass {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.eval-gate-block {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.eval-gate-inconclusive {
+  color: #d97706;
+  font-weight: 600;
+}
+
+.eval-steps {
+  font-size: 13px;
+  padding-left: 20px;
+}
+
+.eval-payload {
+  font-size: 11px;
+  background: #8881;
+  padding: 6px;
+  border-radius: 6px;
+  overflow: auto;
+  max-width: 720px;
+}
+
+.eval-trial-detail {
+  border-top: 1px solid #8884;
+  margin-top: 12px;
+  padding-top: 8px;
+}
+
+.eval-annotations {
+  list-style: none;
+  padding: 0;
+  font-size: 13px;
+  color: #b45309;
+}
+
+/* 素材缩略与转回归用例表单 */
+.eval-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.eval-thumb {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--eval-border, #d0d0d8);
+  background: #f6f6fa;
+}
+.eval-draft-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 520px;
+  margin: 8px 0;
+}

@@ -1,0 +1,64 @@
+# Overlay: docker compose -f compose.execution.yaml -f compose.production.yaml up --build -d
+services:
+  api:
+    build: .
+    image: ${AIVERO_IMAGE:-aivideo:local}
+    command: ['python', '-m', 'backend']
+    environment:
+      AIVERO_API_MODE: production
+      SWARMUI_LOG_FORMAT: json
+      SWARMUI_HOST: 0.0.0.0
+      SWARMUI_PORT: '7801'
+      AIVERO_DB_URL: postgresql+psycopg://aivideo:${AIVERO_DB_PASSWORD:?required}@postgres:5432/aivideo
+      AIVERO_REDIS_URL: redis://redis:6379/0
+      AIVERO_DB_POOL_SIZE: '2'
+      AIVERO_DB_MAX_OVERFLOW: '1'
+      AIVERO_DB_POOL_TIMEOUT_S: '2'
+      AIVERO_PRODUCTION_PUBLIC_ORIGIN: ${AIVERO_PUBLIC_ORIGIN:?required HTTPS origin}
+      AIVERO_PRODUCTION_OIDC_ISSUER: ${AIVERO_OIDC_ISSUER:?required HTTPS issuer}
+      AIVERO_PRODUCTION_OIDC_CLIENT_ID: ${AIVERO_OIDC_CLIENT_ID:?required}
+      AIVERO_PRODUCTION_OIDC_CLIENT_SECRET: ${AIVERO_OIDC_CLIENT_SECRET:?required}
+      AIVERO_PRODUCTION_SESSION_SECRET: ${AIVERO_SESSION_SECRET:?required at least 32 characters}
+      AIVERO_PRODUCTION_PROVIDER_ROUTES_FILE: /run/config/provider-routes.json
+      AIVERO_PRODUCTION_MEDIA_ROOT: /app/data
+      AIVERO_PRODUCTION_METRICS_TOKEN: ${AIVERO_METRICS_TOKEN:-}
+    volumes:
+      - media:/app/data
+      - ${AIVERO_ROUTES_FILE:?required absolute provider routes path}:/run/config/provider-routes.json:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    stop_grace_period: 30s
+  image-worker:
+    environment:
+      AIVERO_CREDENTIALS_FILE: /run/secrets/provider_credentials
+      AIVERO_ARTIFACT_ORIGINS: ${AIVERO_ARTIFACT_ORIGINS:-}
+    secrets:
+      - provider_credentials
+  video-worker:
+    environment:
+      AIVERO_CREDENTIALS_FILE: /run/secrets/provider_credentials
+      AIVERO_ARTIFACT_ORIGINS: ${AIVERO_ARTIFACT_ORIGINS:-}
+    secrets:
+      - provider_credentials
+  gateway:
+    image: caddy:2-alpine
+    environment:
+      AIVERO_PUBLIC_ORIGIN: ${AIVERO_PUBLIC_ORIGIN:?required}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+    restart: unless-stopped
+secrets:
+  provider_credentials:
+    file: ${AIVERO_CREDENTIALS_FILE:?required explicit credentials file, use an empty JSON object for Mock}
+volumes:
+  caddy-data:
+  caddy-config:

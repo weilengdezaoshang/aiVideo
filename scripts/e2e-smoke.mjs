@@ -110,6 +110,14 @@ async function main() {
     assert(status === 400, `期望 400,实际 ${status}`)
   })
 
+  await check('POST /api/generate 蒙版缺参考图:400', async () => {
+    const { status, data } = await req('POST', '/api/generate', {
+      body: { prompt: 'inpaint', model: MODEL, maskImage: 'data:image/png;base64,ZmFrZQ==' },
+    })
+    assert(status === 400, `期望 400,实际 ${status}`)
+    assert(String(data?.error ?? '').includes('initImage'), '错误应提示需要参考图')
+  })
+
   await check('GET /api/nonexistent:404 JSON 含 error', async () => {
     const { status, data } = await req('GET', '/api/nonexistent')
     assert(status === 404, `期望 404,实际 ${status}`)
@@ -192,7 +200,8 @@ async function main() {
         steps: 4,
         batchCount: 1,
         denoise: 0.5,
-        initImage: 'data:image/png;base64,iVBORw0KGgo=',
+        initImage:
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',
       },
     })
     assert(status === 202, `期望 202,实际 ${status}:${data?.error ?? ''}`)
@@ -203,8 +212,8 @@ async function main() {
     const image = job.images?.[0]
     assert(image, '任务没有产出图片')
     assert(
-      /^\/images\/.+\.svg$/.test(image.url),
-      `图片 url 应形如 /images/xxx.svg,实际 ${image.url}`,
+      /^\/images\/.+\.png$/.test(image.url),
+      `图片 url 应形如 /images/xxx.png,实际 ${image.url}`,
     )
     const file = await fetch(BASE + image.url)
     assert(file.status === 200, `图片 GET 期望 200,实际 ${file.status}`)
