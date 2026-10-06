@@ -1,0 +1,1015 @@
+{
+  "timer": "thread CPU",
+  "wall_ms": 3208.3977080183104,
+  "thread_cpu_ms": 3205.147541,
+  "functions": [
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'findall' of 're.Pattern' objects>",
+      "primitive_calls": 3000,
+      "calls": 3000,
+      "self_cpu_ms": 2569.152,
+      "inclusive_cpu_ms": 2569.152
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/decoder.py",
+      "line": 343,
+      "function": "raw_decode",
+      "primitive_calls": 3000,
+      "calls": 3000,
+      "self_cpu_ms": 271.993,
+      "inclusive_cpu_ms": 271.993
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method io.open>",
+      "primitive_calls": 6006,
+      "calls": 6006,
+      "self_cpu_ms": 105.94,
+      "inclusive_cpu_ms": 123.755
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'read' of '_io.TextIOWrapper' objects>",
+      "primitive_calls": 6000,
+      "calls": 6000,
+      "self_cpu_ms": 82.31,
+      "inclusive_cpu_ms": 114.757
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method _codecs.utf_8_decode>",
+      "primitive_calls": 6000,
+      "calls": 6000,
+      "self_cpu_ms": 28.619,
+      "inclusive_cpu_ms": 28.619
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 353,
+      "function": "_select_from",
+      "primitive_calls": 6006,
+      "calls": 6006,
+      "self_cpu_ms": 11.285,
+      "inclusive_cpu_ms": 22.894
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 1053,
+      "function": "read_text",
+      "primitive_calls": 6000,
+      "calls": 6000,
+      "self_cpu_ms": 8.121,
+      "inclusive_cpu_ms": 258.847
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method '__exit__' of '_io._IOBase' objects>",
+      "primitive_calls": 6006,
+      "calls": 6006,
+      "self_cpu_ms": 7.297,
+      "inclusive_cpu_ms": 7.297
+    },
+    {
+      "file": "/Users/weilengdezaoshang/Documents/\u9879\u76ee/aiVideo/apps/api/backend/storage.py",
+      "line": 24,
+      "function": "referenced_history_files",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 6.127,
+      "inclusive_cpu_ms": 2723.79
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 536,
+      "function": "__str__",
+      "primitive_calls": 6036,
+      "calls": 6036,
+      "self_cpu_ms": 5.761,
+      "inclusive_cpu_ms": 10.495
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/decoder.py",
+      "line": 332,
+      "function": "decode",
+      "primitive_calls": 3000,
+      "calls": 3000,
+      "self_cpu_ms": 5.057,
+      "inclusive_cpu_ms": 280.51
+    },
+    {
+      "file": "/Users/weilengdezaoshang/Documents/\u9879\u76ee/aiVideo/apps/api/backend/storage.py",
+      "line": 57,
+      "function": "get",
+      "primitive_calls": 3000,
+      "calls": 3000,
+      "self_cpu_ms": 4.935,
+      "inclusive_cpu_ms": 448.902
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 484,
+      "function": "_parse_args",
+      "primitive_calls": 3012,
+      "calls": 3012,
+      "self_cpu_ms": 4.516,
+      "inclusive_cpu_ms": 14.041
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 56,
+      "function": "parse_parts",
+      "primitive_calls": 3021,
+      "calls": 3021,
+      "self_cpu_ms": 4.44,
+      "inclusive_cpu_ms": 7.52
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 515,
+      "function": "_from_parsed_parts",
+      "primitive_calls": 9018,
+      "calls": 9018,
+      "self_cpu_ms": 4.284,
+      "inclusive_cpu_ms": 6.129
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 622,
+      "function": "name",
+      "primitive_calls": 9006,
+      "calls": 9006,
+      "self_cpu_ms": 4.099,
+      "inclusive_cpu_ms": 5.606
+    },
+    {
+      "file": "/Users/weilengdezaoshang/Documents/\u9879\u76ee/aiVideo/apps/api/backend/storage.py",
+      "line": 146,
+      "function": "<listcomp>",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 4.03,
+      "inclusive_cpu_ms": 473.532
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 1036,
+      "function": "open",
+      "primitive_calls": 6006,
+      "calls": 6006,
+      "self_cpu_ms": 3.904,
+      "inclusive_cpu_ms": 128.566
+    },
+    {
+      "file": "<frozen codecs>",
+      "line": 319,
+      "function": "decode",
+      "primitive_calls": 6000,
+      "calls": 6000,
+      "self_cpu_ms": 3.828,
+      "inclusive_cpu_ms": 32.447
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 530,
+      "function": "_make_child",
+      "primitive_calls": 3012,
+      "calls": 3012,
+      "self_cpu_ms": 3.458,
+      "inclusive_cpu_ms": 20.125
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 877,
+      "function": "_make_child_relpath",
+      "primitive_calls": 6000,
+      "calls": 6000,
+      "self_cpu_ms": 3.404,
+      "inclusive_cpu_ms": 7.567
+    },
+    {
+      "file": "/Users/weilengdezaoshang/Documents/\u9879\u76ee/aiVideo/apps/api/backend/common.py",
+      "line": 30,
+      "function": "read_json",
+      "primitive_calls": 3000,
+      "calls": 3000,
+      "self_cpu_ms": 3.383,
+      "inclusive_cpu_ms": 415.065
+    },
+    {
+      "file": "<frozen codecs>",
+      "line": 309,
+      "function": "__init__",
+      "primitive_calls": 6000,
+      "calls": 6000,
+      "self_cpu_ms": 3.314,
+      "inclusive_cpu_ms": 4.55
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py",
+      "line": 299,
+      "function": "loads",
+      "primitive_calls": 3000,
+      "calls": 3000,
+      "self_cpu_ms": 3.152,
+      "inclusive_cpu_ms": 284.854
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 523,
+      "function": "_format_parsed_parts",
+      "primitive_calls": 6015,
+      "calls": 6015,
+      "self_cpu_ms": 3.142,
+      "inclusive_cpu_ms": 4.734
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method builtins.len>",
+      "primitive_calls": 18018,
+      "calls": 18018,
+      "self_cpu_ms": 2.975,
+      "inclusive_cpu_ms": 2.975
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 657,
+      "function": "stem",
+      "primitive_calls": 3000,
+      "calls": 3000,
+      "self_cpu_ms": 2.861,
+      "inclusive_cpu_ms": 5.669
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'fullmatch' of 're.Pattern' objects>",
+      "primitive_calls": 9000,
+      "calls": 9000,
+      "self_cpu_ms": 2.833,
+      "inclusive_cpu_ms": 2.833
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 546,
+      "function": "__fspath__",
+      "primitive_calls": 6036,
+      "calls": 6036,
+      "self_cpu_ms": 2.814,
+      "inclusive_cpu_ms": 13.309
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method builtins.isinstance>",
+      "primitive_calls": 15435,
+      "calls": 15435,
+      "self_cpu_ms": 2.739,
+      "inclusive_cpu_ms": 2.739
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 940,
+      "function": "glob",
+      "primitive_calls": 6006,
+      "calls": 6006,
+      "self_cpu_ms": 2.48,
+      "inclusive_cpu_ms": 25.471
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 327,
+      "function": "_select_from",
+      "primitive_calls": 12000,
+      "calls": 12000,
+      "self_cpu_ms": 2.041,
+      "inclusive_cpu_ms": 2.041
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'startswith' of 'str' objects>",
+      "primitive_calls": 9000,
+      "calls": 9000,
+      "self_cpu_ms": 1.99,
+      "inclusive_cpu_ms": 1.99
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method io.text_encoding>",
+      "primitive_calls": 12003,
+      "calls": 12003,
+      "self_cpu_ms": 1.953,
+      "inclusive_cpu_ms": 1.953
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/re/__init__.py",
+      "line": 168,
+      "function": "fullmatch",
+      "primitive_calls": 3000,
+      "calls": 3000,
+      "self_cpu_ms": 1.906,
+      "inclusive_cpu_ms": 4.987
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'match' of 're.Pattern' objects>",
+      "primitive_calls": 6000,
+      "calls": 6000,
+      "self_cpu_ms": 1.857,
+      "inclusive_cpu_ms": 1.857
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method __new__ of type object at 0x10597ee68>",
+      "primitive_calls": 9018,
+      "calls": 9018,
+      "self_cpu_ms": 1.845,
+      "inclusive_cpu_ms": 1.845
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'join' of 'str' objects>",
+      "primitive_calls": 6015,
+      "calls": 6015,
+      "self_cpu_ms": 1.591,
+      "inclusive_cpu_ms": 1.591
+    },
+    {
+      "file": "/Users/weilengdezaoshang/Documents/\u9879\u76ee/aiVideo/apps/api/backend/common.py",
+      "line": 50,
+      "function": "valid_id",
+      "primitive_calls": 3000,
+      "calls": 3000,
+      "self_cpu_ms": 1.576,
+      "inclusive_cpu_ms": 6.563
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/re/__init__.py",
+      "line": 272,
+      "function": "_compile",
+      "primitive_calls": 3000,
+      "calls": 3000,
+      "self_cpu_ms": 1.44,
+      "inclusive_cpu_ms": 2.121
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method sys.intern>",
+      "primitive_calls": 3021,
+      "calls": 3021,
+      "self_cpu_ms": 1.385,
+      "inclusive_cpu_ms": 1.385
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 765,
+      "function": "__truediv__",
+      "primitive_calls": 3012,
+      "calls": 3012,
+      "self_cpu_ms": 1.297,
+      "inclusive_cpu_ms": 21.422
+    },
+    {
+      "file": "/Users/weilengdezaoshang/Documents/\u9879\u76ee/aiVideo/apps/api/backend/storage.py",
+      "line": 148,
+      "function": "<listcomp>",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 1.248,
+      "inclusive_cpu_ms": 1.673
+    },
+    {
+      "file": "<frozen codecs>",
+      "line": 260,
+      "function": "__init__",
+      "primitive_calls": 6000,
+      "calls": 6000,
+      "self_cpu_ms": 1.237,
+      "inclusive_cpu_ms": 1.237
+    },
+    {
+      "file": "/Users/weilengdezaoshang/Documents/\u9879\u76ee/aiVideo/scripts/perf/backend_diagnostics.py",
+      "line": 127,
+      "function": "work",
+      "primitive_calls": 1,
+      "calls": 1,
+      "self_cpu_ms": 1.1,
+      "inclusive_cpu_ms": 3204.655
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'end' of 're.Match' objects>",
+      "primitive_calls": 6000,
+      "calls": 6000,
+      "self_cpu_ms": 1.035,
+      "inclusive_cpu_ms": 1.035
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'append' of 'list' objects>",
+      "primitive_calls": 6033,
+      "calls": 6033,
+      "self_cpu_ms": 0.942,
+      "inclusive_cpu_ms": 0.942
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 239,
+      "function": "splitroot",
+      "primitive_calls": 3021,
+      "calls": 3021,
+      "self_cpu_ms": 0.753,
+      "inclusive_cpu_ms": 0.753
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'update' of 'set' objects>",
+      "primitive_calls": 3000,
+      "calls": 3000,
+      "self_cpu_ms": 0.69,
+      "inclusive_cpu_ms": 0.69
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 94,
+      "function": "join_parsed_parts",
+      "primitive_calls": 3012,
+      "calls": 3012,
+      "self_cpu_ms": 0.664,
+      "inclusive_cpu_ms": 0.664
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'rfind' of 'str' objects>",
+      "primitive_calls": 3000,
+      "calls": 3000,
+      "self_cpu_ms": 0.628,
+      "inclusive_cpu_ms": 0.628
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method builtins.sorted>",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.56,
+      "inclusive_cpu_ms": 1.025
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method posix.fspath>",
+      "primitive_calls": 3012,
+      "calls": 3012,
+      "self_cpu_ms": 0.56,
+      "inclusive_cpu_ms": 0.56
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'get' of 'dict' objects>",
+      "primitive_calls": 3015,
+      "calls": 3015,
+      "self_cpu_ms": 0.536,
+      "inclusive_cpu_ms": 0.536
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method posix.replace>",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.5,
+      "inclusive_cpu_ms": 0.516
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'reverse' of 'list' objects>",
+      "primitive_calls": 3021,
+      "calls": 3021,
+      "self_cpu_ms": 0.485,
+      "inclusive_cpu_ms": 0.485
+    },
+    {
+      "file": "/Users/weilengdezaoshang/Documents/\u9879\u76ee/aiVideo/apps/api/backend/storage.py",
+      "line": 158,
+      "function": "<lambda>",
+      "primitive_calls": 3000,
+      "calls": 3000,
+      "self_cpu_ms": 0.465,
+      "inclusive_cpu_ms": 0.465
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py",
+      "line": 334,
+      "function": "_iterencode_dict",
+      "primitive_calls": 528,
+      "calls": 1128,
+      "self_cpu_ms": 0.433,
+      "inclusive_cpu_ms": 0.74
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py",
+      "line": 120,
+      "function": "dump",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.217,
+      "inclusive_cpu_ms": 1.254
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py",
+      "line": 278,
+      "function": "_iterencode_list",
+      "primitive_calls": 516,
+      "calls": 516,
+      "self_cpu_ms": 0.185,
+      "inclusive_cpu_ms": 0.55
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py",
+      "line": 414,
+      "function": "_iterencode",
+      "primitive_calls": 528,
+      "calls": 528,
+      "self_cpu_ms": 0.175,
+      "inclusive_cpu_ms": 0.919
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method posix.fsync>",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.154,
+      "inclusive_cpu_ms": 0.154
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method posix.scandir>",
+      "primitive_calls": 6,
+      "calls": 6,
+      "self_cpu_ms": 0.117,
+      "inclusive_cpu_ms": 0.122
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'flush' of '_io.TextIOWrapper' objects>",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.115,
+      "inclusive_cpu_ms": 0.115
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method posix.stat>",
+      "primitive_calls": 12,
+      "calls": 12,
+      "self_cpu_ms": 0.103,
+      "inclusive_cpu_ms": 0.118
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'write' of '_io.TextIOWrapper' objects>",
+      "primitive_calls": 525,
+      "calls": 525,
+      "self_cpu_ms": 0.097,
+      "inclusive_cpu_ms": 0.097
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method posix.urandom>",
+      "primitive_calls": 9,
+      "calls": 9,
+      "self_cpu_ms": 0.052,
+      "inclusive_cpu_ms": 0.052
+    },
+    {
+      "file": "/Users/weilengdezaoshang/Documents/\u9879\u76ee/aiVideo/apps/api/backend/storage.py",
+      "line": 323,
+      "function": "save",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.05,
+      "inclusive_cpu_ms": 2727.306
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method _json.encode_basestring>",
+      "primitive_calls": 228,
+      "calls": 228,
+      "self_cpu_ms": 0.049,
+      "inclusive_cpu_ms": 0.049
+    },
+    {
+      "file": "/Users/weilengdezaoshang/Documents/\u9879\u76ee/aiVideo/apps/api/backend/common.py",
+      "line": 37,
+      "function": "write_json",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.039,
+      "inclusive_cpu_ms": 2.634
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/uuid.py",
+      "line": 139,
+      "function": "__init__",
+      "primitive_calls": 6,
+      "calls": 6,
+      "self_cpu_ms": 0.035,
+      "inclusive_cpu_ms": 0.044
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method posix.mkdir>",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.031,
+      "inclusive_cpu_ms": 0.038
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method posix.unlink>",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.027,
+      "inclusive_cpu_ms": 0.029
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 1245,
+      "function": "is_dir",
+      "primitive_calls": 12,
+      "calls": 12,
+      "self_cpu_ms": 0.018,
+      "inclusive_cpu_ms": 0.148
+    },
+    {
+      "file": "/Users/weilengdezaoshang/Documents/\u9879\u76ee/aiVideo/apps/api/backend/storage.py",
+      "line": 145,
+      "function": "list",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.018,
+      "inclusive_cpu_ms": 476.248
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/uuid.py",
+      "line": 721,
+      "function": "uuid4",
+      "primitive_calls": 6,
+      "calls": 6,
+      "self_cpu_ms": 0.015,
+      "inclusive_cpu_ms": 0.087
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method now>",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.014,
+      "inclusive_cpu_ms": 0.014
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'isoformat' of 'datetime.datetime' objects>",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.014,
+      "inclusive_cpu_ms": 0.014
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py",
+      "line": 205,
+      "function": "iterencode",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.014,
+      "inclusive_cpu_ms": 0.018
+    },
+    {
+      "file": "/Users/weilengdezaoshang/Documents/\u9879\u76ee/aiVideo/apps/api/backend/storage.py",
+      "line": 307,
+      "function": "persist",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.011,
+      "inclusive_cpu_ms": 2.69
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 1061,
+      "function": "write_bytes",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.01,
+      "inclusive_cpu_ms": 0.599
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method builtins.id>",
+      "primitive_calls": 36,
+      "calls": 36,
+      "self_cpu_ms": 0.007,
+      "inclusive_cpu_ms": 0.007
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/uuid.py",
+      "line": 280,
+      "function": "__str__",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.007,
+      "inclusive_cpu_ms": 0.007
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 1008,
+      "function": "stat",
+      "primitive_calls": 12,
+      "calls": 12,
+      "self_cpu_ms": 0.007,
+      "inclusive_cpu_ms": 0.126
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 313,
+      "function": "select_from",
+      "primitive_calls": 6,
+      "calls": 6,
+      "self_cpu_ms": 0.007,
+      "inclusive_cpu_ms": 0.067
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/secrets.py",
+      "line": 48,
+      "function": "token_hex",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.007,
+      "inclusive_cpu_ms": 0.043
+    },
+    {
+      "file": "/Users/weilengdezaoshang/Documents/\u9879\u76ee/aiVideo/apps/api/backend/common.py",
+      "line": 14,
+      "function": "now",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.007,
+      "inclusive_cpu_ms": 0.038
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 667,
+      "function": "with_name",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.007,
+      "inclusive_cpu_ms": 0.022
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'items' of 'dict' objects>",
+      "primitive_calls": 33,
+      "calls": 33,
+      "self_cpu_ms": 0.006,
+      "inclusive_cpu_ms": 0.006
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 1111,
+      "function": "mkdir",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.006,
+      "inclusive_cpu_ms": 0.085
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/uuid.py",
+      "line": 334,
+      "function": "hex",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.005,
+      "inclusive_cpu_ms": 0.005
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method binascii.hexlify>",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.004,
+      "inclusive_cpu_ms": 0.004
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method _stat.S_ISDIR>",
+      "primitive_calls": 12,
+      "calls": 12,
+      "self_cpu_ms": 0.004,
+      "inclusive_cpu_ms": 0.004
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py",
+      "line": 260,
+      "function": "_make_iterencode",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.004,
+      "inclusive_cpu_ms": 0.004
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 1141,
+      "function": "unlink",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.004,
+      "inclusive_cpu_ms": 0.033
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 934,
+      "function": "_scandir",
+      "primitive_calls": 6,
+      "calls": 6,
+      "self_cpu_ms": 0.004,
+      "inclusive_cpu_ms": 0.126
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'count' of 'list' objects>",
+      "primitive_calls": 6,
+      "calls": 6,
+      "self_cpu_ms": 0.003,
+      "inclusive_cpu_ms": 0.003
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method from_bytes>",
+      "primitive_calls": 6,
+      "calls": 6,
+      "self_cpu_ms": 0.003,
+      "inclusive_cpu_ms": 0.003
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'replace' of 'str' objects>",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.003,
+      "inclusive_cpu_ms": 0.003
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/encoder.py",
+      "line": 105,
+      "function": "__init__",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.003,
+      "inclusive_cpu_ms": 0.003
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+      "line": 777,
+      "function": "parent",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.003,
+      "inclusive_cpu_ms": 0.005
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/random.py",
+      "line": 808,
+      "function": "randbytes",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.003,
+      "inclusive_cpu_ms": 0.027
+    },
+    {
+      "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/secrets.py",
+      "line": 34,
+      "function": "token_bytes",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.003,
+      "inclusive_cpu_ms": 0.031
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'decode' of 'bytes' objects>",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.002,
+      "inclusive_cpu_ms": 0.002
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'isalnum' of 'str' objects>",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.002,
+      "inclusive_cpu_ms": 0.002
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<built-in method sys.audit>",
+      "primitive_calls": 6,
+      "calls": 6,
+      "self_cpu_ms": 0.002,
+      "inclusive_cpu_ms": 0.002
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method '__exit__' of 'posix.ScandirIterator' objects>",
+      "primitive_calls": 6,
+      "calls": 6,
+      "self_cpu_ms": 0.002,
+      "inclusive_cpu_ms": 0.002
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'write' of '_io.BufferedWriter' objects>",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.002,
+      "inclusive_cpu_ms": 0.002
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'fileno' of '_io.TextIOWrapper' objects>",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.002,
+      "inclusive_cpu_ms": 0.002
+    },
+    {
+      "file": "<frozen codecs>",
+      "line": 186,
+      "function": "__init__",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.002,
+      "inclusive_cpu_ms": 0.002
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'disable' of '_lsprof.Profiler' objects>",
+      "primitive_calls": 1,
+      "calls": 1,
+      "self_cpu_ms": 0.001,
+      "inclusive_cpu_ms": 0.001
+    },
+    {
+      "file": "~",
+      "line": 0,
+      "function": "<method 'insert' of 'list' objects>",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_cpu_ms": 0.001,
+      "inclusive_cpu_ms": 0.001
+    }
+  ]
+}

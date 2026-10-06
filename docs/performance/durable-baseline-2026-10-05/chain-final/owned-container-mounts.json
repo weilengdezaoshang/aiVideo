@@ -1,0 +1,55 @@
+[
+  {
+    "name": "/aivideo-durable-baseline-postgres-9b4bb9fe84",
+    "mounts": [
+      {
+        "Type": "volume",
+        "Name": "15160ba27e0deb545c0a28126e273228718bb6293f54f94921c4b629170a1845",
+        "Source": "/var/lib/docker/volumes/15160ba27e0deb545c0a28126e273228718bb6293f54f94921c4b629170a1845/_data",
+        "Destination": "/var/lib/postgresql/data",
+        "Driver": "local",
+        "Mode": "",
+        "RW": true,
+        "Propagation": ""
+      }
+    ]
+  },
+  {
+    "name": "/aivideo-durable-baseline-redis-9b4bb9fe84",
+    "mounts": [
+      {
+        "Type": "volume",
+        "Name": "278e41ac01243daee2f6c63872bb164bbad23f86b7dfe306842544740dd0fb2d",
+        "Source": "/var/lib/docker/volumes/278e41ac01243daee2f6c63872bb164bbad23f86b7dfe306842544740dd0fb2d/_data",
+        "Destination": "/data",
+        "Driver": "local",
+        "Mode": "",
+        "RW": true,
+        "Propagation": ""
+      }
+    ]
+  },
+  {
+    "name": "/aivideo-durable-baseline-rabbitmq-9b4bb9fe84",
+    "mounts": [
+      {
+        "Type": "bind",
+        "Source": "/Users/weilengdezaoshang/Documents/\u9879\u76ee/aiVideo/docs/performance/durable-baseline-2026-10-05/chain-final/rabbitmq-enabled-plugins",
+        "Destination": "/etc/rabbitmq/enabled_plugins",
+        "Mode": "ro",
+        "RW": false,
+        "Propagation": "rprivate"
+      },
+      {
+        "Type": "volume",
+        "Name": "e04ced7ae43c39edfd601a44301c987bcff83b8b8f236785926cfb35645519a9",
+        "Source": "/var/lib/docker/volumes/e04ced7ae43c39edfd601a44301c987bcff83b8b8f236785926cfb35645519a9/_data",
+        "Destination": "/var/lib/rabbitmq",
+        "Driver": "local",
+        "Mode": "",
+        "RW": true,
+        "Propagation": ""
+      }
+    ]
+  }
+]

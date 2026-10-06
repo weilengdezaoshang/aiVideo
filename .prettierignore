@@ -7,6 +7,9 @@ package-lock.json
 apps/web/vendor
 apps/web/shared/production-contracts.ts
 
+# Archived performance evidence is verified by byte-level SHA256 manifests.
+docs/performance/
+
 .venv
 .pytest_cache
 .ruff_cache

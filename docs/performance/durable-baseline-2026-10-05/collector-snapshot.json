@@ -1,0 +1,11 @@
+{
+  "frozen_at_utc": "2026-10-05T15:38:47.990789+00:00",
+  "phase": "reads in progress; SSE and chain not started",
+  "sha256": {
+    "collect_durable_baseline.py": "c7d133a61b4f7f41cc216979651bbe9c9e649887e7f5b643f422cf5f9e2d16ac",
+    "durable_chain_baseline.py": "f55902e866cd670ec9e6c1226bf0f8bdf8fc6c05e78cbcea0847b3e2af277ab7",
+    "durable_read_baseline.py": "735e74d9e49630e1b1d9d868fe6e663a135633a43c01515e2d374036fe0d9fe4",
+    "durable_sse_baseline.py": "4a266153d44c7eb51a4ede6b7ed12b19279dd33b7e0b6999de9482cac7905c8e"
+  },
+  "note": "SSE fixture cleanup was finalized before SSE execution. Read, chain and orchestrator hashes are unchanged from startup."
+}

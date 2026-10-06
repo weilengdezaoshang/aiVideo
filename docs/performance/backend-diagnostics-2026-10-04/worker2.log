@@ -1,0 +1,32 @@
+ 
+ -------------- worker2@weilengdezaoshangdeMacBook-Pro.local v5.6.3 (recovery)
+--- ***** ----- 
+-- ******* ---- macOS-26.4.1-arm64-arm-64bit 2026-10-04 00:21:13
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         aivideo:0x108c43150
+- ** ---------- .> transport:   amqp://baseline:**@127.0.0.1:32770//
+- ** ---------- .> results:     disabled://
+- *** --- * --- .> concurrency: 1 (solo)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> generation.image exchange=generation.image(direct) key=generation.image
+                
+
+{"ts": "2026-10-04T00:21:13+0800", "level": "INFO", "logger": "celery.worker.consumer.connection", "message": "Connected to amqp://[REDACTED]", "requestId": ""}
+{"ts": "2026-10-04T00:21:13+0800", "level": "INFO", "logger": "celery.apps.worker", "message": "worker2@weilengdezaoshangdeMacBook-Pro.local ready.", "requestId": ""}
+{"ts": "2026-10-04T00:21:19+0800", "level": "INFO", "logger": "celery.worker.strategy", "message": "Task aivideo.execute_phase[2cea7afa-48b0-4eab-8540-e003f14717c1] received", "requestId": ""}
+{"ts": "2026-10-04T00:21:19+0800", "level": "INFO", "logger": "backend.services.generation_runner", "message": "provider_phase_finished", "requestId": "202bbfdd18184c7b9c463d3bc0ecf1dd", "jobId": "5f0cb5c5-80dc-4a84-94bc-37f7ef2e03be", "executionEpoch": 1, "phase": "prepare", "elapsedMs": 7}
+{"ts": "2026-10-04T00:21:19+0800", "level": "INFO", "logger": "celery.app.trace", "message": "Task aivideo.execute_phase[2cea7afa-48b0-4eab-8540-e003f14717c1] succeeded in 0.11599379195831716s: {'advanced': True, 'phase': 'submit'}", "requestId": ""}
+{"ts": "2026-10-04T00:21:19+0800", "level": "INFO", "logger": "celery.worker.strategy", "message": "Task aivideo.execute_phase[febd89e6-bdba-43d3-9d86-8bdb26de0138] received", "requestId": ""}
+{"ts": "2026-10-04T00:21:19+0800", "level": "INFO", "logger": "backend.services.generation_runner", "message": "provider_phase_finished", "requestId": "7a04a7d30ab445bebab30bb2ffb81345", "jobId": "e318c78b-a144-46c7-9162-6a513f5f6e2d", "executionEpoch": 1, "phase": "prepare", "elapsedMs": 5}
+{"ts": "2026-10-04T00:21:19+0800", "level": "INFO", "logger": "celery.app.trace", "message": "Task aivideo.execute_phase[febd89e6-bdba-43d3-9d86-8bdb26de0138] succeeded in 0.013833167031407356s: {'advanced': True, 'phase': 'submit'}", "requestId": ""}
+{"ts": "2026-10-04T00:21:19+0800", "level": "INFO", "logger": "celery.worker.strategy", "message": "Task aivideo.execute_phase[fae122d9-03a3-4a51-8ddd-84a718a44a3a] received", "requestId": ""}
+{"ts": "2026-10-04T00:21:19+0800", "level": "INFO", "logger": "backend.services.generation_runner", "message": "provider_phase_finished", "requestId": "fba14d79736540049fe926977cb553b9", "jobId": "32b675e6-8ed5-4361-bdcd-4c4473bd4112", "executionEpoch": 2, "phase": "submit", "elapsedMs": 444}
+{"ts": "2026-10-04T00:21:19+0800", "level": "INFO", "logger": "celery.app.trace", "message": "Task aivideo.execute_phase[fae122d9-03a3-4a51-8ddd-84a718a44a3a] succeeded in 0.4528347500017844s: {'completed': True}", "requestId": ""}
+{"ts": "2026-10-04T00:21:19+0800", "level": "INFO", "logger": "celery.worker.strategy", "message": "Task aivideo.execute_phase[f353968d-2cad-4182-8a43-19356dc24b64] received", "requestId": ""}
+{"ts": "2026-10-04T00:21:20+0800", "level": "INFO", "logger": "backend.services.generation_runner", "message": "provider_phase_finished", "requestId": "5686a609ce42418790583496ec4bfb35", "jobId": "ccf4adbf-8c90-43fe-b7f8-6e2967b05b08", "executionEpoch": 2, "phase": "submit", "elapsedMs": 328}
+{"ts": "2026-10-04T00:21:20+0800", "level": "INFO", "logger": "celery.app.trace", "message": "Task aivideo.execute_phase[f353968d-2cad-4182-8a43-19356dc24b64] succeeded in 0.34749558294424787s: {'completed': True}", "requestId": ""}
+
+worker: Warm shutdown (MainProcess)

@@ -1,0 +1,264 @@
+{
+  "page": "landing",
+  "cache": "cold",
+  "trial": 2,
+  "sample": {
+    "fcpMs": 536,
+    "lcpObservedMs": 536,
+    "lcpElement": "h1#hero-title.",
+    "clsObserved": 0,
+    "domReadyProxyMs": 531,
+    "fontReadyMs": 50.09999996423721,
+    "observedUntilMs": 5607,
+    "longTaskCount": 0,
+    "longTaskTotalMs": 0,
+    "longTaskBlockingMs": 0,
+    "navigation": {
+      "ttfbMs": 3.299999952316284,
+      "domContentLoadedMs": 501.7999999523163,
+      "loadMs": 501.89999997615814,
+      "transfer": 1085,
+      "encoded": 785,
+      "decoded": 785
+    },
+    "resources": [
+      {
+        "url": "http://127.0.0.1:7815/landing/assets/ocean.jpg",
+        "type": "link",
+        "transfer": 360233,
+        "encoded": 359933,
+        "decoded": 359933,
+        "duration": 565.8000000119209
+      },
+      {
+        "url": "http://127.0.0.1:7815/brand/brand.css",
+        "type": "link",
+        "transfer": 1987,
+        "encoded": 1687,
+        "decoded": 1687,
+        "duration": 52.59999996423721
+      },
+      {
+        "url": "http://127.0.0.1:7815/landing/landing.css",
+        "type": "link",
+        "transfer": 14471,
+        "encoded": 14171,
+        "decoded": 14171,
+        "duration": 83.69999998807907
+      },
+      {
+        "url": "http://127.0.0.1:7815/landing/app.js",
+        "type": "script",
+        "transfer": 235101,
+        "encoded": 234801,
+        "decoded": 234801,
+        "duration": 436.4000000357628
+      },
+      {
+        "url": "http://127.0.0.1:7815/brand/favicon.svg",
+        "type": "other",
+        "transfer": 792,
+        "encoded": 492,
+        "decoded": 492,
+        "duration": 42.799999952316284
+      },
+      {
+        "url": "http://127.0.0.1:7815/brand/wordmark.svg",
+        "type": "css",
+        "transfer": 1265,
+        "encoded": 965,
+        "decoded": 965,
+        "duration": 41.69999998807907
+      },
+      {
+        "url": "http://127.0.0.1:7815/brand/logo.svg",
+        "type": "css",
+        "transfer": 631,
+        "encoded": 331,
+        "decoded": 331,
+        "duration": 42.90000003576279
+      },
+      {
+        "url": "http://127.0.0.1:7815/brand/name-zh.svg",
+        "type": "css",
+        "transfer": 3260,
+        "encoded": 2960,
+        "decoded": 2960,
+        "duration": 58.30000001192093
+      },
+      {
+        "url": "http://127.0.0.1:7815/landing/assets/frayune-sans.woff2",
+        "type": "css",
+        "transfer": 67616,
+        "encoded": 67316,
+        "decoded": 67316,
+        "duration": 164.19999998807907
+      },
+      {
+        "url": "http://127.0.0.1:7815/landing/assets/architecture.jpg",
+        "type": "img",
+        "transfer": 543741,
+        "encoded": 543441,
+        "decoded": 543441,
+        "duration": 556.1000000238419
+      }
+    ],
+    "canvas": null,
+    "supportedEntries": [
+      "element",
+      "event",
+      "first-input",
+      "interaction-contentful-paint",
+      "largest-contentful-paint",
+      "layout-shift",
+      "long-animation-frame",
+      "longtask",
+      "mark",
+      "measure",
+      "navigation",
+      "paint",
+      "resource",
+      "soft-navigation",
+      "visibility-state"
+    ],
+    "hidden": false
+  },
+  "requests": [
+    {
+      "id": "14B2AC1A4B5ADA892314F48C32AAF097",
+      "url": "http://127.0.0.1:7815/",
+      "type": "Document",
+      "receivedBytes": 1106,
+      "status": 200,
+      "mime": "text/html",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "no-cache",
+      "finished": true
+    },
+    {
+      "id": "45857.2",
+      "url": "http://127.0.0.1:7815/landing/assets/ocean.jpg",
+      "type": "Image",
+      "receivedBytes": 360218,
+      "status": 200,
+      "mime": "image/jpeg",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "45857.3",
+      "url": "http://127.0.0.1:7815/brand/brand.css",
+      "type": "Stylesheet",
+      "receivedBytes": 2008,
+      "status": 200,
+      "mime": "text/css",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "no-cache",
+      "finished": true
+    },
+    {
+      "id": "45857.4",
+      "url": "http://127.0.0.1:7815/landing/landing.css",
+      "type": "Stylesheet",
+      "receivedBytes": 14493,
+      "status": 200,
+      "mime": "text/css",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "no-cache",
+      "finished": true
+    },
+    {
+      "id": "45857.5",
+      "url": "http://127.0.0.1:7815/landing/app.js",
+      "type": "Script",
+      "receivedBytes": 235131,
+      "status": 200,
+      "mime": "text/javascript",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "no-cache",
+      "finished": true
+    },
+    {
+      "id": "45857.14",
+      "url": "http://127.0.0.1:7815/brand/favicon.svg",
+      "type": "Other",
+      "receivedBytes": 777,
+      "status": 200,
+      "mime": "image/svg+xml",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "45857.15",
+      "url": "http://127.0.0.1:7815/brand/logo.svg",
+      "type": "Image",
+      "receivedBytes": 616,
+      "status": 200,
+      "mime": "image/svg+xml",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "45857.16",
+      "url": "http://127.0.0.1:7815/brand/wordmark.svg",
+      "type": "Image",
+      "receivedBytes": 1250,
+      "status": 200,
+      "mime": "image/svg+xml",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "45857.17",
+      "url": "http://127.0.0.1:7815/brand/name-zh.svg",
+      "type": "Image",
+      "receivedBytes": 3246,
+      "status": 200,
+      "mime": "image/svg+xml",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "45857.10",
+      "url": "http://127.0.0.1:7815/landing/assets/frayune-sans.woff2",
+      "type": "Font",
+      "receivedBytes": 67600,
+      "status": 200,
+      "mime": "font/woff2",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "45857.13",
+      "url": "http://127.0.0.1:7815/landing/assets/architecture.jpg",
+      "type": "Image",
+      "receivedBytes": 543726,
+      "status": 200,
+      "mime": "image/jpeg",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    }
+  ],
+  "issues": [],
+  "networkBytes": 1230171,
+  "jsNetworkBytes": 235131,
+  "jsDecodedBytes": 234801
+}

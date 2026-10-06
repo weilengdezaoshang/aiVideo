@@ -1,0 +1,208 @@
+{
+  "page": "canvas-text-500",
+  "cache": "warm",
+  "trial": 2,
+  "sample": {
+    "fcpMs": 684,
+    "lcpObservedMs": 844,
+    "lcpElement": null,
+    "clsObserved": 0.0016610493056895147,
+    "domReadyProxyMs": 861.9000000357628,
+    "fontReadyMs": 48.80000001192093,
+    "observedUntilMs": 5904.699999988079,
+    "longTaskCount": 1,
+    "longTaskTotalMs": 51,
+    "longTaskBlockingMs": 1,
+    "navigation": {
+      "ttfbMs": 2.900000035762787,
+      "domContentLoadedMs": 662.3000000119209,
+      "loadMs": 662.4000000357628,
+      "transfer": 925,
+      "encoded": 625,
+      "decoded": 625
+    },
+    "resources": [
+      {
+        "url": "http://127.0.0.1:7815/brand/brand.css",
+        "type": "link",
+        "transfer": 300,
+        "encoded": 1687,
+        "decoded": 1687,
+        "duration": 47.80000001192093
+      },
+      {
+        "url": "http://127.0.0.1:7815/canvas-next/canvas-next.css",
+        "type": "link",
+        "transfer": 300,
+        "encoded": 7996,
+        "decoded": 7996,
+        "duration": 50
+      },
+      {
+        "url": "http://127.0.0.1:7815/canvas-next/app.js",
+        "type": "script",
+        "transfer": 641305,
+        "encoded": 641005,
+        "decoded": 641005,
+        "duration": 562.3999999761581
+      },
+      {
+        "url": "http://127.0.0.1:7815/api/documents/b748f281-7700-55b9-839f-37e783a5b26f",
+        "type": "fetch",
+        "transfer": 65092,
+        "encoded": 64792,
+        "decoded": 64792,
+        "duration": 94.80000001192093
+      },
+      {
+        "url": "http://127.0.0.1:7815/api/generation-capabilities",
+        "type": "fetch",
+        "transfer": 952,
+        "encoded": 652,
+        "decoded": 652,
+        "duration": 46
+      },
+      {
+        "url": "http://127.0.0.1:7815/api/jobs?all=1&limit=100",
+        "type": "fetch",
+        "transfer": 311,
+        "encoded": 11,
+        "decoded": 11,
+        "duration": 42.89999997615814
+      }
+    ],
+    "canvas": {
+      "documentId": "b748f281-7700-55b9-839f-37e783a5b26f",
+      "objectCount": 500,
+      "selectionCount": 0,
+      "camera": {
+        "x": -392.9824561403507,
+        "y": -828.9473684210527,
+        "scale": 0.20357142857142857
+      },
+      "viewport": {
+        "width": 1072,
+        "height": 822
+      }
+    },
+    "supportedEntries": [
+      "element",
+      "event",
+      "first-input",
+      "interaction-contentful-paint",
+      "largest-contentful-paint",
+      "layout-shift",
+      "long-animation-frame",
+      "longtask",
+      "mark",
+      "measure",
+      "navigation",
+      "paint",
+      "resource",
+      "soft-navigation",
+      "visibility-state"
+    ],
+    "hidden": false
+  },
+  "requests": [
+    {
+      "id": "6B499A334434B1507762FC597F28F3F2",
+      "url": "http://127.0.0.1:7815/canvas?doc=b748f281-7700-55b9-839f-37e783a5b26f&benchmark=1&mode=clean",
+      "type": "Document",
+      "receivedBytes": 946,
+      "status": 200,
+      "mime": "text/html",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "no-cache",
+      "finished": true
+    },
+    {
+      "id": "46237.2",
+      "url": "http://127.0.0.1:7815/brand/brand.css",
+      "type": "Stylesheet",
+      "receivedBytes": 202,
+      "status": 200,
+      "mime": "text/css",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "no-cache",
+      "finished": true
+    },
+    {
+      "id": "46237.3",
+      "url": "http://127.0.0.1:7815/canvas-next/canvas-next.css",
+      "type": "Stylesheet",
+      "receivedBytes": 202,
+      "status": 200,
+      "mime": "text/css",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "no-cache",
+      "finished": true
+    },
+    {
+      "id": "46237.4",
+      "url": "http://127.0.0.1:7815/canvas-next/app.js",
+      "type": "Script",
+      "receivedBytes": 641335,
+      "status": 200,
+      "mime": "text/javascript",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "no-cache",
+      "finished": true
+    },
+    {
+      "id": "46237.8",
+      "url": "http://127.0.0.1:7815/api/documents/b748f281-7700-55b9-839f-37e783a5b26f",
+      "type": "Fetch",
+      "receivedBytes": 64972,
+      "status": 200,
+      "mime": "application/json",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46237.9",
+      "url": "http://127.0.0.1:7815/api/generation-capabilities",
+      "type": "Fetch",
+      "receivedBytes": 830,
+      "status": 200,
+      "mime": "application/json",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46237.10",
+      "url": "http://127.0.0.1:7815/api/events",
+      "type": "EventSource",
+      "receivedBytes": 0,
+      "status": 200,
+      "mime": "text/event-stream",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "no-cache"
+    },
+    {
+      "id": "46237.11",
+      "url": "http://127.0.0.1:7815/api/jobs?all=1&limit=100",
+      "type": "Fetch",
+      "receivedBytes": 188,
+      "status": 200,
+      "mime": "application/json",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    }
+  ],
+  "issues": [],
+  "networkBytes": 708675,
+  "jsNetworkBytes": 641335,
+  "jsDecodedBytes": 641005
+}

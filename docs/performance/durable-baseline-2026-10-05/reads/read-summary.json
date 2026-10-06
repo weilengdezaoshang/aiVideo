@@ -1,0 +1,3540 @@
+{
+  "errors": 7,
+  "scenarios": [
+    {
+      "background_jobs": 10000,
+      "groups": [
+        {
+          "endpoint": "session",
+          "path": "/api/session",
+          "concurrency": 1,
+          "measured_requests": 50,
+          "warmup_requests": 1,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 2.597,
+            "p95": 3.1351,
+            "max": 3.7176
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 2.597,
+            "p95": 3.1351,
+            "max": 3.7176
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 2.0,
+            "p95": 2,
+            "max": 2
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 1.0233,
+            "p95": 1.3344,
+            "max": 1.5519
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 2.0,
+            "p95": 2,
+            "max": 2
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 69.0,
+            "p95": 69,
+            "max": 69
+          },
+          "measurement_wall_s": 0.1363577499287203,
+          "completed_requests_per_s": 366.6824953193861,
+          "valid_requests_per_s": 366.6824953193861,
+          "raw_file": "10000-session-c1.json"
+        },
+        {
+          "endpoint": "session",
+          "path": "/api/session",
+          "concurrency": 10,
+          "measured_requests": 50,
+          "warmup_requests": 10,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 12.6013,
+            "p95": 16.0949,
+            "max": 17.0405
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 12.6013,
+            "p95": 16.0949,
+            "max": 17.0405
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 2.0,
+            "p95": 2,
+            "max": 2
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 1.5403,
+            "p95": 3.832,
+            "max": 3.9212
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 2.0,
+            "p95": 2,
+            "max": 2
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 69.0,
+            "p95": 69,
+            "max": 69
+          },
+          "measurement_wall_s": 0.08481837494764477,
+          "completed_requests_per_s": 589.4949063910166,
+          "valid_requests_per_s": 589.4949063910166,
+          "raw_file": "10000-session-c10.json"
+        },
+        {
+          "endpoint": "jobs",
+          "path": "/api/jobs",
+          "concurrency": 1,
+          "measured_requests": 50,
+          "warmup_requests": 1,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 94.644,
+            "p95": 205.4307,
+            "max": 219.0531
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 94.644,
+            "p95": 205.4307,
+            "max": 219.0531
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 104.0,
+            "p95": 104,
+            "max": 104
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 56.7123,
+            "p95": 156.795,
+            "max": 165.1855
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 502.0,
+            "p95": 502,
+            "max": 502
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 245590.0,
+            "p95": 245590,
+            "max": 245590
+          },
+          "measurement_wall_s": 5.673167459084652,
+          "completed_requests_per_s": 8.81341866965925,
+          "valid_requests_per_s": 8.81341866965925,
+          "raw_file": "10000-jobs-c1.json"
+        },
+        {
+          "endpoint": "jobs",
+          "path": "/api/jobs",
+          "concurrency": 10,
+          "measured_requests": 50,
+          "warmup_requests": 10,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 331.6449,
+            "p95": 555.5324,
+            "max": 589.3874
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 331.6449,
+            "p95": 555.5324,
+            "max": 589.3874
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 104.0,
+            "p95": 104,
+            "max": 104
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 105.8481,
+            "p95": 133.3023,
+            "max": 135.8063
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 502.0,
+            "p95": 502,
+            "max": 502
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 245590.0,
+            "p95": 245590,
+            "max": 245590
+          },
+          "measurement_wall_s": 2.8287142909830436,
+          "completed_requests_per_s": 17.67587492288726,
+          "valid_requests_per_s": 17.67587492288726,
+          "raw_file": "10000-jobs-c10.json"
+        },
+        {
+          "endpoint": "job",
+          "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+          "concurrency": 1,
+          "measured_requests": 50,
+          "warmup_requests": 1,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 5.5711,
+            "p95": 6.1653,
+            "max": 6.4677
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 5.5711,
+            "p95": 6.1653,
+            "max": 6.4677
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 4.0,
+            "p95": 4,
+            "max": 4
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 2.5711,
+            "p95": 2.8922,
+            "max": 3.0151
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 7.0,
+            "p95": 7,
+            "max": 7
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 2461.0,
+            "p95": 2461,
+            "max": 2461
+          },
+          "measurement_wall_s": 0.28413245803676546,
+          "completed_requests_per_s": 175.97426336110541,
+          "valid_requests_per_s": 175.97426336110541,
+          "raw_file": "10000-job-c1.json"
+        },
+        {
+          "endpoint": "job",
+          "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+          "concurrency": 10,
+          "measured_requests": 50,
+          "warmup_requests": 10,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 36.2098,
+            "p95": 84.879,
+            "max": 89.5883
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 36.2098,
+            "p95": 84.879,
+            "max": 89.5883
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 4.0,
+            "p95": 4,
+            "max": 4
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 6.0196,
+            "p95": 12.6903,
+            "max": 18.6002
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 7.0,
+            "p95": 7,
+            "max": 7
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 2461.0,
+            "p95": 2461,
+            "max": 2461
+          },
+          "measurement_wall_s": 0.2730513330316171,
+          "completed_requests_per_s": 183.11575133094263,
+          "valid_requests_per_s": 183.11575133094263,
+          "raw_file": "10000-job-c10.json"
+        },
+        {
+          "endpoint": "request",
+          "path": "/api/generation-requests/baseline-request-0",
+          "concurrency": 1,
+          "measured_requests": 50,
+          "warmup_requests": 1,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 7.3271,
+            "p95": 8.8622,
+            "max": 10.479
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 7.3271,
+            "p95": 8.8622,
+            "max": 10.479
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 5.0,
+            "p95": 5,
+            "max": 5
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 3.1454,
+            "p95": 3.8254,
+            "max": 4.3554
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 8.0,
+            "p95": 8,
+            "max": 8
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 2461.0,
+            "p95": 2461,
+            "max": 2461
+          },
+          "measurement_wall_s": 0.3816764170769602,
+          "completed_requests_per_s": 131.0010201387898,
+          "valid_requests_per_s": 131.0010201387898,
+          "raw_file": "10000-request-c1.json"
+        },
+        {
+          "endpoint": "request",
+          "path": "/api/generation-requests/baseline-request-0",
+          "concurrency": 10,
+          "measured_requests": 50,
+          "warmup_requests": 10,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 40.9801,
+            "p95": 55.9869,
+            "max": 61.1629
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 40.9801,
+            "p95": 55.9869,
+            "max": 61.1629
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 5.0,
+            "p95": 5,
+            "max": 5
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 6.5393,
+            "p95": 10.616,
+            "max": 12.9985
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 8.0,
+            "p95": 8,
+            "max": 8
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 2461.0,
+            "p95": 2461,
+            "max": 2461
+          },
+          "measurement_wall_s": 0.2537097499007359,
+          "completed_requests_per_s": 197.07559531930693,
+          "valid_requests_per_s": 197.07559531930693,
+          "raw_file": "10000-request-c10.json"
+        },
+        {
+          "endpoint": "documents",
+          "path": "/api/documents",
+          "concurrency": 1,
+          "measured_requests": 50,
+          "warmup_requests": 1,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 275.5344,
+            "p95": 530.1011,
+            "max": 1295.6427
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 275.5344,
+            "p95": 530.1011,
+            "max": 1295.6427
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 3.0,
+            "p95": 3,
+            "max": 3
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 264.8816,
+            "p95": 516.0246,
+            "max": 1277.3493
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 502.0,
+            "p95": 502,
+            "max": 502
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 62015.0,
+            "p95": 62015,
+            "max": 62015
+          },
+          "measurement_wall_s": 15.992623583995737,
+          "completed_requests_per_s": 3.126441370760229,
+          "valid_requests_per_s": 3.126441370760229,
+          "raw_file": "10000-documents-c1.json"
+        },
+        {
+          "endpoint": "documents",
+          "path": "/api/documents",
+          "concurrency": 10,
+          "measured_requests": 50,
+          "warmup_requests": 10,
+          "warmup_errors": 1,
+          "errors": 2,
+          "error_types": [
+            "ValueError"
+          ],
+          "http_status_counts": {
+            "200": 48,
+            "503": 2
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 1595.9765,
+            "p95": 2559.6455,
+            "max": 2660.9342
+          },
+          "successful_latency_ms": {
+            "samples": 48,
+            "p50": 1554.7222,
+            "p95": 2559.6455,
+            "max": 2660.9342
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 3.0,
+            "p95": 3,
+            "max": 3
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 689.3358,
+            "p95": 1008.862,
+            "max": 1156.7143
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 502.0,
+            "p95": 502,
+            "max": 502
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 62015.0,
+            "p95": 62015,
+            "max": 62015
+          },
+          "measurement_wall_s": 12.336573582957499,
+          "completed_requests_per_s": 4.052989240794792,
+          "valid_requests_per_s": 3.890869671163,
+          "raw_file": "10000-documents-c10.json"
+        },
+        {
+          "endpoint": "document",
+          "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+          "concurrency": 1,
+          "measured_requests": 50,
+          "warmup_requests": 1,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 7.3285,
+            "p95": 11.6785,
+            "max": 17.8193
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 7.3285,
+            "p95": 11.6785,
+            "max": 17.8193
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 3.0,
+            "p95": 3,
+            "max": 3
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 3.4525,
+            "p95": 5.402,
+            "max": 6.6695
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 3.0,
+            "p95": 3,
+            "max": 3
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 100205.0,
+            "p95": 100205,
+            "max": 100205
+          },
+          "measurement_wall_s": 0.40813162503764033,
+          "completed_requests_per_s": 122.5094967717552,
+          "valid_requests_per_s": 122.5094967717552,
+          "raw_file": "10000-document-c1.json"
+        },
+        {
+          "endpoint": "document",
+          "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+          "concurrency": 10,
+          "measured_requests": 50,
+          "warmup_requests": 10,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 39.3777,
+            "p95": 69.5537,
+            "max": 74.6737
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 39.3777,
+            "p95": 69.5537,
+            "max": 74.6737
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 3.0,
+            "p95": 3,
+            "max": 3
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 7.0308,
+            "p95": 14.336,
+            "max": 16.0619
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 3.0,
+            "p95": 3,
+            "max": 3
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 100205.0,
+            "p95": 100205,
+            "max": 100205
+          },
+          "measurement_wall_s": 0.2636809169780463,
+          "completed_requests_per_s": 189.6231269711601,
+          "valid_requests_per_s": 189.6231269711601,
+          "raw_file": "10000-document-c10.json"
+        },
+        {
+          "endpoint": "metrics",
+          "path": "/internal/metrics",
+          "concurrency": 1,
+          "measured_requests": 50,
+          "warmup_requests": 1,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 11.437,
+            "p95": 31.5624,
+            "max": 59.7712
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 11.437,
+            "p95": 31.5624,
+            "max": 59.7712
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 7.0,
+            "p95": 7,
+            "max": 7
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 8.3951,
+            "p95": 25.409,
+            "max": 46.3254
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 7.0,
+            "p95": 7,
+            "max": 7
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 502.0,
+            "p95": 502,
+            "max": 502
+          },
+          "measurement_wall_s": 0.7617890420369804,
+          "completed_requests_per_s": 65.63496879175743,
+          "valid_requests_per_s": 65.63496879175743,
+          "raw_file": "10000-metrics-c1.json"
+        },
+        {
+          "endpoint": "metrics",
+          "path": "/internal/metrics",
+          "concurrency": 10,
+          "measured_requests": 50,
+          "warmup_requests": 10,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 44.3496,
+            "p95": 67.1727,
+            "max": 72.2359
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 44.3496,
+            "p95": 67.1727,
+            "max": 72.2359
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 7.0,
+            "p95": 7,
+            "max": 7
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 12.9696,
+            "p95": 20.5232,
+            "max": 20.7483
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 7.0,
+            "p95": 7,
+            "max": 7
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 502.0,
+            "p95": 502,
+            "max": 502
+          },
+          "measurement_wall_s": 0.3333202920621261,
+          "completed_requests_per_s": 150.00586880165315,
+          "valid_requests_per_s": 150.00586880165315,
+          "raw_file": "10000-metrics-c10.json"
+        }
+      ],
+      "database_state": {
+        "table_rows": {
+          "jobs": 10500,
+          "documents": 1000,
+          "generation_requests": 100,
+          "outbox": 10000
+        },
+        "relation_sizes": [
+          {
+            "relname": "documents",
+            "bytes": 105283584
+          },
+          {
+            "relname": "jobs",
+            "bytes": 2940928
+          },
+          {
+            "relname": "outbox",
+            "bytes": 2105344
+          },
+          {
+            "relname": "generation_requests",
+            "bytes": 98304
+          },
+          {
+            "relname": "browser_sessions",
+            "bytes": 57344
+          },
+          {
+            "relname": "assets",
+            "bytes": 24576
+          },
+          {
+            "relname": "alembic_version",
+            "bytes": 24576
+          },
+          {
+            "relname": "workspaces",
+            "bytes": 24576
+          },
+          {
+            "relname": "attempts",
+            "bytes": 24576
+          },
+          {
+            "relname": "asset_references",
+            "bytes": 24576
+          },
+          {
+            "relname": "workspace_members",
+            "bytes": 24576
+          },
+          {
+            "relname": "audit_events",
+            "bytes": 16384
+          },
+          {
+            "relname": "document_requests",
+            "bytes": 8192
+          },
+          {
+            "relname": "media_aliases",
+            "bytes": 8192
+          },
+          {
+            "relname": "request_tombstones",
+            "bytes": 8192
+          }
+        ],
+        "pg_stat_statements": [
+          {
+            "queryid": -7344175742948782300,
+            "query": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at \nFROM documents \nWHERE documents.workspace_id = $1::UUID ORDER BY documents.updated_at DESC \n LIMIT $2::INTEGER",
+            "calls": 108,
+            "rows": 54000,
+            "total_exec_time": 46554.62560099999,
+            "mean_exec_time": 431.06134815740756,
+            "min_exec_time": 161.675334,
+            "max_exec_time": 1192.410875,
+            "shared_blks_hit": 847693,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": -5000442225707724374,
+            "query": "SELECT jobs.id, jobs.workspace_id, jobs.document_id, jobs.parent_id, jobs.generation_request_id, jobs.kind, jobs.status, jobs.params, jobs.progress, jobs.message, jobs.error, jobs.error_code, jobs.recovery, jobs.external_task_id, jobs.attempt_count, jobs.state_version, jobs.execution_epoch, jobs.phase, jobs.lease_owner, jobs.lease_until, jobs.dispatched_until, jobs.reconcile_deadline, jobs.queue_deadline, jobs.execution_deadline, jobs.download_deadline, jobs.cancel_requested_at, jobs.phase_failures, jobs.provider_snapshot, jobs.phase_payload, jobs.next_poll_at, jobs.slot_scope, jobs.slot_acquired_at, jobs.created_at, jobs.updated_at, jobs.finished_at \nFROM jobs \nWHERE jobs.parent_id = $1::UUID ORDER BY jobs.created_at, jobs.id",
+            "calls": 11322,
+            "rows": 45288,
+            "total_exec_time": 276.9919899999992,
+            "mean_exec_time": 0.02446493464052286,
+            "min_exec_time": 0.010750000000000001,
+            "max_exec_time": 2.5848329999999997,
+            "shared_blks_hit": 35445,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": 7050746237024551408,
+            "query": "SELECT jobs.status, count(*) AS count_1 \nFROM jobs \nWHERE jobs.kind != $1::VARCHAR GROUP BY jobs.status",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 218.40663300000003,
+            "mean_exec_time": 1.9676273243243243,
+            "min_exec_time": 1.270041,
+            "max_exec_time": 12.078042,
+            "shared_blks_hit": 27750,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": -8094847423042614216,
+            "query": "SELECT coalesce(sum(jobs.phase_failures), $1::INTEGER) AS coalesce_1 \nFROM jobs",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 147.87525399999998,
+            "mean_exec_time": 1.3322094954954955,
+            "min_exec_time": 0.953917,
+            "max_exec_time": 3.436,
+            "shared_blks_hit": 27750,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": 2498659381216366100,
+            "query": "SELECT count(*) AS count_1 \nFROM jobs \nWHERE jobs.slot_scope IS NOT NULL",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 101.42087399999996,
+            "mean_exec_time": 0.9137015675675676,
+            "min_exec_time": 0.595458,
+            "max_exec_time": 8.438709000000001,
+            "shared_blks_hit": 27750,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": -1310906414218932841,
+            "query": "SELECT documents.id AS documents_id, documents.workspace_id AS documents_workspace_id, documents.name AS documents_name, documents.revision AS documents_revision, documents.data AS documents_data, documents.updated_at AS documents_updated_at \nFROM documents \nWHERE documents.id = $1::UUID",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 94.20278400000001,
+            "mean_exec_time": 0.84867372972973,
+            "min_exec_time": 0.309416,
+            "max_exec_time": 5.749959,
+            "shared_blks_hit": 2166,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": -1961461699329619997,
+            "query": "SELECT outbox.status, count(*) AS count_1 \nFROM outbox GROUP BY outbox.status",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 86.422456,
+            "mean_exec_time": 0.7785806846846848,
+            "min_exec_time": 0.5590839999999999,
+            "max_exec_time": 5.509917,
+            "shared_blks_hit": 1110,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": 4665907899633584439,
+            "query": "SELECT count(*) AS count_1 \nFROM jobs \nWHERE jobs.error_code LIKE $1::VARCHAR",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 82.80895400000001,
+            "mean_exec_time": 0.7460266126126128,
+            "min_exec_time": 0.46975100000000003,
+            "max_exec_time": 2.8599580000000002,
+            "shared_blks_hit": 27750,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": -4026819960082455947,
+            "query": "SELECT jobs.id, jobs.workspace_id, jobs.document_id, jobs.parent_id, jobs.generation_request_id, jobs.kind, jobs.status, jobs.params, jobs.progress, jobs.message, jobs.error, jobs.error_code, jobs.recovery, jobs.external_task_id, jobs.attempt_count, jobs.state_version, jobs.execution_epoch, jobs.phase, jobs.lease_owner, jobs.lease_until, jobs.dispatched_until, jobs.reconcile_deadline, jobs.queue_deadline, jobs.execution_deadline, jobs.download_deadline, jobs.cancel_requested_at, jobs.phase_failures, jobs.provider_snapshot, jobs.phase_payload, jobs.next_poll_at, jobs.slot_scope, jobs.slot_acquired_at, jobs.created_at, jobs.updated_at, jobs.finished_at \nFROM jobs \nWHERE jobs.workspace_id = $1::UUID AND jobs.parent_id IS NULL AND jobs.status IN ($2::VARCHAR, $3::VARCHAR) ORDER BY jobs.created_at DESC \n LIMIT $4::INTEGER",
+            "calls": 111,
+            "rows": 11100,
+            "total_exec_time": 49.01079000000001,
+            "mean_exec_time": 0.44153864864864856,
+            "min_exec_time": 0.263957,
+            "max_exec_time": 2.909917,
+            "shared_blks_hit": 2553,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": -407681173764644060,
+            "query": "SELECT workspace_members.workspace_id, workspace_members.principal_id, workspace_members.role \nFROM workspace_members \nWHERE workspace_members.principal_id = $1::VARCHAR ORDER BY workspace_members.workspace_id \n LIMIT $2::INTEGER",
+            "calls": 666,
+            "rows": 666,
+            "total_exec_time": 10.658839999999996,
+            "mean_exec_time": 0.016004264264264257,
+            "min_exec_time": 0.0030410000000000003,
+            "max_exec_time": 0.981958,
+            "shared_blks_hit": 780,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": -4360048781346401164,
+            "query": "SELECT browser_sessions.token_hash AS browser_sessions_token_hash, browser_sessions.principal_id AS browser_sessions_principal_id, browser_sessions.csrf_hash AS browser_sessions_csrf_hash, browser_sessions.expires_at AS browser_sessions_expires_at \nFROM browser_sessions \nWHERE browser_sessions.token_hash = $1::VARCHAR",
+            "calls": 666,
+            "rows": 666,
+            "total_exec_time": 5.7024620000000015,
+            "mean_exec_time": 0.008562255255255268,
+            "min_exec_time": 0.002376,
+            "max_exec_time": 0.149375,
+            "shared_blks_hit": 666,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": 1921581224075616755,
+            "query": "SELECT jobs.id AS jobs_id, jobs.workspace_id AS jobs_workspace_id, jobs.document_id AS jobs_document_id, jobs.parent_id AS jobs_parent_id, jobs.generation_request_id AS jobs_generation_request_id, jobs.kind AS jobs_kind, jobs.status AS jobs_status, jobs.params AS jobs_params, jobs.progress AS jobs_progress, jobs.message AS jobs_message, jobs.error AS jobs_error, jobs.error_code AS jobs_error_code, jobs.recovery AS jobs_recovery, jobs.external_task_id AS jobs_external_task_id, jobs.attempt_count AS jobs_attempt_count, jobs.state_version AS jobs_state_version, jobs.execution_epoch AS jobs_execution_epoch, jobs.phase AS jobs_phase, jobs.lease_owner AS jobs_lease_owner, jobs.lease_until AS jobs_lease_until, jobs.dispatched_until AS jobs_dispatched_until, jobs.reconcile_deadline AS jobs_reconcile_deadline, jobs.queue_deadline AS jobs_queue_deadline, jobs.execution_deadline AS jobs_execution_deadline, jobs.download_deadline AS jobs_download_deadline, jobs.cancel_requested_at AS jobs_cancel_requested_at, jobs.phase_failures AS jobs_phase_failures, jobs.provider_snapshot AS jobs_provider_snapshot, jobs.phase_payload AS jobs_phase_payload, jobs.next_poll_at AS jobs_next_poll_at, jobs.slot_scope AS jobs_slot_scope, jobs.slot_acquired_at AS jobs_slot_acquired_at, jobs.created_at AS jobs_created_at, jobs.updated_at AS jobs_updated_at, jobs.finished_at AS jobs_finished_at \nFROM jobs \nWHERE jobs.id = $1::UUID",
+            "calls": 222,
+            "rows": 222,
+            "total_exec_time": 4.696133000000003,
+            "mean_exec_time": 0.02115375225225225,
+            "min_exec_time": 0.008375,
+            "max_exec_time": 0.515208,
+            "shared_blks_hit": 666,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": -2209213150986519896,
+            "query": "SELECT count(*) AS count_1 \nFROM jobs \nWHERE jobs.lease_until < now()",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 2.851926,
+            "mean_exec_time": 0.025693027027027023,
+            "min_exec_time": 0.009167,
+            "max_exec_time": 0.121709,
+            "shared_blks_hit": 1110,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": 8317014324475254098,
+            "query": "SELECT generation_requests.id, generation_requests.workspace_id, generation_requests.request_id, generation_requests.request_hash, generation_requests.params, generation_requests.job_id, generation_requests.created_at \nFROM generation_requests \nWHERE generation_requests.workspace_id = $1::UUID AND generation_requests.request_id = $2::VARCHAR",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 2.336651000000001,
+            "mean_exec_time": 0.021050909909909918,
+            "min_exec_time": 0.008833,
+            "max_exec_time": 0.548167,
+            "shared_blks_hit": 444,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": 6995349837817861827,
+            "query": "SELECT jobs.id, jobs.workspace_id, jobs.document_id, jobs.parent_id, jobs.generation_request_id, jobs.kind, jobs.status, jobs.params, jobs.progress, jobs.message, jobs.error, jobs.error_code, jobs.recovery, jobs.external_task_id, jobs.attempt_count, jobs.state_version, jobs.execution_epoch, jobs.phase, jobs.lease_owner, jobs.lease_until, jobs.dispatched_until, jobs.reconcile_deadline, jobs.queue_deadline, jobs.execution_deadline, jobs.download_deadline, jobs.cancel_requested_at, jobs.phase_failures, jobs.provider_snapshot, jobs.phase_payload, jobs.next_poll_at, jobs.slot_scope, jobs.slot_acquired_at, jobs.created_at, jobs.updated_at, jobs.finished_at \nFROM jobs \nWHERE jobs.workspace_id = $1::UUID AND jobs.parent_id IS NULL AND jobs.status IN ($2::VARCHAR, $3::VARCHAR, $4::VARCHAR) ORDER BY jobs.created_at DESC",
+            "calls": 111,
+            "rows": 0,
+            "total_exec_time": 2.0635030000000003,
+            "mean_exec_time": 0.018590117117117114,
+            "min_exec_time": 0.007001,
+            "max_exec_time": 0.194292,
+            "shared_blks_hit": 714,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": 5645014375175864979,
+            "query": "SELECT min(outbox.created_at) AS min_1 \nFROM outbox \nWHERE outbox.status IN ($1::VARCHAR, $2::VARCHAR)",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 1.7054130000000003,
+            "mean_exec_time": 0.015364081081081081,
+            "min_exec_time": 0.006167000000000001,
+            "max_exec_time": 0.09608299999999999,
+            "shared_blks_hit": 468,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          }
+        ],
+        "explain_analyze_buffers": {
+          "jobs_active": [
+            {
+              "Plan": {
+                "Node Type": "Sort",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 14.65,
+                "Total Cost": 14.66,
+                "Plan Rows": 1,
+                "Plan Width": 870,
+                "Actual Startup Time": 0.057,
+                "Actual Total Time": 0.057,
+                "Actual Rows": 0,
+                "Actual Loops": 1,
+                "Sort Key": [
+                  "created_at DESC"
+                ],
+                "Sort Method": "quicksort",
+                "Sort Space Used": 25,
+                "Sort Space Type": "Memory",
+                "Shared Hit Blocks": 12,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0,
+                "Plans": [
+                  {
+                    "Node Type": "Index Scan",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Scan Direction": "Forward",
+                    "Index Name": "ix_jobs_recovery_lease",
+                    "Relation Name": "jobs",
+                    "Alias": "jobs",
+                    "Startup Cost": 0.29,
+                    "Total Cost": 14.64,
+                    "Plan Rows": 1,
+                    "Plan Width": 870,
+                    "Actual Startup Time": 0.028,
+                    "Actual Total Time": 0.028,
+                    "Actual Rows": 0,
+                    "Actual Loops": 1,
+                    "Index Cond": "((status)::text = ANY ('{queued,running,unknown}'::text[]))",
+                    "Rows Removed by Index Recheck": 0,
+                    "Filter": "((parent_id IS NULL) AND (workspace_id = '05d15850-4b0d-5944-a030-4d4b41f281b0'::uuid))",
+                    "Rows Removed by Filter": 0,
+                    "Shared Hit Blocks": 9,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "I/O Read Time": 0.0,
+                    "I/O Write Time": 0.0,
+                    "Temp I/O Read Time": 0.0,
+                    "Temp I/O Write Time": 0.0
+                  }
+                ]
+              },
+              "Planning": {
+                "Shared Hit Blocks": 296,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0
+              },
+              "Planning Time": 0.768,
+              "Triggers": [],
+              "Execution Time": 0.082
+            }
+          ],
+          "jobs_finished": [
+            {
+              "Plan": {
+                "Node Type": "Limit",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 284.04,
+                "Total Cost": 284.29,
+                "Plan Rows": 100,
+                "Plan Width": 870,
+                "Actual Startup Time": 0.268,
+                "Actual Total Time": 0.277,
+                "Actual Rows": 100,
+                "Actual Loops": 1,
+                "Shared Hit Blocks": 23,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0,
+                "Plans": [
+                  {
+                    "Node Type": "Sort",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Startup Cost": 284.04,
+                    "Total Cost": 285.24,
+                    "Plan Rows": 481,
+                    "Plan Width": 870,
+                    "Actual Startup Time": 0.267,
+                    "Actual Total Time": 0.271,
+                    "Actual Rows": 100,
+                    "Actual Loops": 1,
+                    "Sort Key": [
+                      "created_at DESC"
+                    ],
+                    "Sort Method": "quicksort",
+                    "Sort Space Used": 50,
+                    "Sort Space Type": "Memory",
+                    "Shared Hit Blocks": 23,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "I/O Read Time": 0.0,
+                    "I/O Write Time": 0.0,
+                    "Temp I/O Read Time": 0.0,
+                    "Temp I/O Write Time": 0.0,
+                    "Plans": [
+                      {
+                        "Node Type": "Bitmap Heap Scan",
+                        "Parent Relationship": "Outer",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Relation Name": "jobs",
+                        "Alias": "jobs",
+                        "Startup Cost": 8.16,
+                        "Total Cost": 265.66,
+                        "Plan Rows": 481,
+                        "Plan Width": 870,
+                        "Actual Startup Time": 0.134,
+                        "Actual Total Time": 0.22,
+                        "Actual Rows": 100,
+                        "Actual Loops": 1,
+                        "Recheck Cond": "(workspace_id = '05d15850-4b0d-5944-a030-4d4b41f281b0'::uuid)",
+                        "Rows Removed by Index Recheck": 0,
+                        "Filter": "((parent_id IS NULL) AND ((status)::text = ANY ('{completed,failed}'::text[])))",
+                        "Rows Removed by Filter": 400,
+                        "Exact Heap Blocks": 17,
+                        "Lossy Heap Blocks": 0,
+                        "Shared Hit Blocks": 23,
+                        "Shared Read Blocks": 0,
+                        "Shared Dirtied Blocks": 0,
+                        "Shared Written Blocks": 0,
+                        "Local Hit Blocks": 0,
+                        "Local Read Blocks": 0,
+                        "Local Dirtied Blocks": 0,
+                        "Local Written Blocks": 0,
+                        "Temp Read Blocks": 0,
+                        "Temp Written Blocks": 0,
+                        "I/O Read Time": 0.0,
+                        "I/O Write Time": 0.0,
+                        "Temp I/O Read Time": 0.0,
+                        "Temp I/O Write Time": 0.0,
+                        "Plans": [
+                          {
+                            "Node Type": "Bitmap Index Scan",
+                            "Parent Relationship": "Outer",
+                            "Parallel Aware": false,
+                            "Async Capable": false,
+                            "Index Name": "ix_jobs_workspace_status_created",
+                            "Startup Cost": 0.0,
+                            "Total Cost": 8.04,
+                            "Plan Rows": 500,
+                            "Plan Width": 0,
+                            "Actual Startup Time": 0.105,
+                            "Actual Total Time": 0.105,
+                            "Actual Rows": 500,
+                            "Actual Loops": 1,
+                            "Index Cond": "(workspace_id = '05d15850-4b0d-5944-a030-4d4b41f281b0'::uuid)",
+                            "Shared Hit Blocks": 6,
+                            "Shared Read Blocks": 0,
+                            "Shared Dirtied Blocks": 0,
+                            "Shared Written Blocks": 0,
+                            "Local Hit Blocks": 0,
+                            "Local Read Blocks": 0,
+                            "Local Dirtied Blocks": 0,
+                            "Local Written Blocks": 0,
+                            "Temp Read Blocks": 0,
+                            "Temp Written Blocks": 0,
+                            "I/O Read Time": 0.0,
+                            "I/O Write Time": 0.0,
+                            "Temp I/O Read Time": 0.0,
+                            "Temp I/O Write Time": 0.0
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "Planning": {
+                "Shared Hit Blocks": 0,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0
+              },
+              "Planning Time": 0.053,
+              "Triggers": [],
+              "Execution Time": 0.317
+            }
+          ],
+          "batch_children": [
+            {
+              "Plan": {
+                "Node Type": "Sort",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 18.89,
+                "Total Cost": 18.9,
+                "Plan Rows": 4,
+                "Plan Width": 870,
+                "Actual Startup Time": 0.032,
+                "Actual Total Time": 0.032,
+                "Actual Rows": 4,
+                "Actual Loops": 1,
+                "Sort Key": [
+                  "created_at",
+                  "id"
+                ],
+                "Sort Method": "quicksort",
+                "Sort Space Used": 26,
+                "Sort Space Type": "Memory",
+                "Shared Hit Blocks": 6,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0,
+                "Plans": [
+                  {
+                    "Node Type": "Bitmap Heap Scan",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Relation Name": "jobs",
+                    "Alias": "jobs",
+                    "Startup Cost": 4.32,
+                    "Total Cost": 18.85,
+                    "Plan Rows": 4,
+                    "Plan Width": 870,
+                    "Actual Startup Time": 0.019,
+                    "Actual Total Time": 0.02,
+                    "Actual Rows": 4,
+                    "Actual Loops": 1,
+                    "Recheck Cond": "(parent_id = '0103e903-6773-5789-b1cf-d7bc8c8ab89d'::uuid)",
+                    "Rows Removed by Index Recheck": 0,
+                    "Exact Heap Blocks": 1,
+                    "Lossy Heap Blocks": 0,
+                    "Shared Hit Blocks": 3,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "I/O Read Time": 0.0,
+                    "I/O Write Time": 0.0,
+                    "Temp I/O Read Time": 0.0,
+                    "Temp I/O Write Time": 0.0,
+                    "Plans": [
+                      {
+                        "Node Type": "Bitmap Index Scan",
+                        "Parent Relationship": "Outer",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Index Name": "ix_jobs_parent_id",
+                        "Startup Cost": 0.0,
+                        "Total Cost": 4.32,
+                        "Plan Rows": 4,
+                        "Plan Width": 0,
+                        "Actual Startup Time": 0.017,
+                        "Actual Total Time": 0.017,
+                        "Actual Rows": 4,
+                        "Actual Loops": 1,
+                        "Index Cond": "(parent_id = '0103e903-6773-5789-b1cf-d7bc8c8ab89d'::uuid)",
+                        "Shared Hit Blocks": 2,
+                        "Shared Read Blocks": 0,
+                        "Shared Dirtied Blocks": 0,
+                        "Shared Written Blocks": 0,
+                        "Local Hit Blocks": 0,
+                        "Local Read Blocks": 0,
+                        "Local Dirtied Blocks": 0,
+                        "Local Written Blocks": 0,
+                        "Temp Read Blocks": 0,
+                        "Temp Written Blocks": 0,
+                        "I/O Read Time": 0.0,
+                        "I/O Write Time": 0.0,
+                        "Temp I/O Read Time": 0.0,
+                        "Temp I/O Write Time": 0.0
+                      }
+                    ]
+                  }
+                ]
+              },
+              "Planning": {
+                "Shared Hit Blocks": 9,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0
+              },
+              "Planning Time": 0.051,
+              "Triggers": [],
+              "Execution Time": 0.049
+            }
+          ],
+          "documents_list": [
+            {
+              "Plan": {
+                "Node Type": "Limit",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 0.28,
+                "Total Cost": 40.06,
+                "Plan Rows": 500,
+                "Plan Width": 74,
+                "Actual Startup Time": 0.058,
+                "Actual Total Time": 0.337,
+                "Actual Rows": 500,
+                "Actual Loops": 1,
+                "Shared Hit Blocks": 14,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0,
+                "Plans": [
+                  {
+                    "Node Type": "Index Scan",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Scan Direction": "Backward",
+                    "Index Name": "ix_documents_workspace_updated",
+                    "Relation Name": "documents",
+                    "Alias": "documents",
+                    "Startup Cost": 0.28,
+                    "Total Cost": 79.84,
+                    "Plan Rows": 1000,
+                    "Plan Width": 74,
+                    "Actual Startup Time": 0.057,
+                    "Actual Total Time": 0.307,
+                    "Actual Rows": 500,
+                    "Actual Loops": 1,
+                    "Index Cond": "(workspace_id = '05d15850-4b0d-5944-a030-4d4b41f281b0'::uuid)",
+                    "Rows Removed by Index Recheck": 0,
+                    "Shared Hit Blocks": 14,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "I/O Read Time": 0.0,
+                    "I/O Write Time": 0.0,
+                    "Temp I/O Read Time": 0.0,
+                    "Temp I/O Write Time": 0.0
+                  }
+                ]
+              },
+              "Planning": {
+                "Shared Hit Blocks": 62,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0
+              },
+              "Planning Time": 0.214,
+              "Triggers": [],
+              "Execution Time": 0.361
+            }
+          ],
+          "slot_scope_count": [
+            {
+              "Plan": {
+                "Node Type": "Aggregate",
+                "Strategy": "Plain",
+                "Partial Mode": "Simple",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 381.27,
+                "Total Cost": 381.28,
+                "Plan Rows": 1,
+                "Plan Width": 8,
+                "Actual Startup Time": 1.127,
+                "Actual Total Time": 1.127,
+                "Actual Rows": 1,
+                "Actual Loops": 1,
+                "Shared Hit Blocks": 250,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0,
+                "Plans": [
+                  {
+                    "Node Type": "Seq Scan",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Relation Name": "jobs",
+                    "Alias": "jobs",
+                    "Startup Cost": 0.0,
+                    "Total Cost": 381.25,
+                    "Plan Rows": 10,
+                    "Plan Width": 0,
+                    "Actual Startup Time": 0.041,
+                    "Actual Total Time": 1.122,
+                    "Actual Rows": 10,
+                    "Actual Loops": 1,
+                    "Filter": "((slot_scope)::text = 'baseline-model'::text)",
+                    "Rows Removed by Filter": 10490,
+                    "Shared Hit Blocks": 250,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "I/O Read Time": 0.0,
+                    "I/O Write Time": 0.0,
+                    "Temp I/O Read Time": 0.0,
+                    "Temp I/O Write Time": 0.0
+                  }
+                ]
+              },
+              "Planning": {
+                "Shared Hit Blocks": 3,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0
+              },
+              "Planning Time": 0.029,
+              "Triggers": [],
+              "Execution Time": 1.135
+            }
+          ],
+          "metrics_status_counts": [
+            {
+              "Plan": {
+                "Node Type": "Aggregate",
+                "Strategy": "Hashed",
+                "Partial Mode": "Simple",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 433.25,
+                "Total Cost": 433.26,
+                "Plan Rows": 1,
+                "Plan Width": 18,
+                "Actual Startup Time": 1.826,
+                "Actual Total Time": 1.827,
+                "Actual Rows": 1,
+                "Actual Loops": 1,
+                "Group Key": [
+                  "status"
+                ],
+                "Planned Partitions": 0,
+                "HashAgg Batches": 1,
+                "Peak Memory Usage": 24,
+                "Disk Usage": 0,
+                "Shared Hit Blocks": 250,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0,
+                "Plans": [
+                  {
+                    "Node Type": "Seq Scan",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Relation Name": "jobs",
+                    "Alias": "jobs",
+                    "Startup Cost": 0.0,
+                    "Total Cost": 381.25,
+                    "Plan Rows": 10400,
+                    "Plan Width": 10,
+                    "Actual Startup Time": 0.009,
+                    "Actual Total Time": 0.91,
+                    "Actual Rows": 10400,
+                    "Actual Loops": 1,
+                    "Filter": "((kind)::text <> 'batch'::text)",
+                    "Rows Removed by Filter": 100,
+                    "Shared Hit Blocks": 250,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "I/O Read Time": 0.0,
+                    "I/O Write Time": 0.0,
+                    "Temp I/O Read Time": 0.0,
+                    "Temp I/O Write Time": 0.0
+                  }
+                ]
+              },
+              "Planning": {
+                "Shared Hit Blocks": 5,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0
+              },
+              "Planning Time": 0.033,
+              "Triggers": [],
+              "Execution Time": 1.835
+            }
+          ]
+        },
+        "explain_limitation": "EXPLAIN ANALYZE does not send full result rows to the client; JSON/TOAST output, network transfer, ORM hydration, and HTTP serialization costs differ from endpoint timing."
+      }
+    },
+    {
+      "background_jobs": 100000,
+      "groups": [
+        {
+          "endpoint": "session",
+          "path": "/api/session",
+          "concurrency": 1,
+          "measured_requests": 50,
+          "warmup_requests": 1,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 2.469,
+            "p95": 3.3001,
+            "max": 4.0529
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 2.469,
+            "p95": 3.3001,
+            "max": 4.0529
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 2.0,
+            "p95": 2,
+            "max": 2
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 0.9599,
+            "p95": 1.2858,
+            "max": 1.5573
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 2.0,
+            "p95": 2,
+            "max": 2
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 69.0,
+            "p95": 69,
+            "max": 69
+          },
+          "measurement_wall_s": 0.13010904204566032,
+          "completed_requests_per_s": 384.29304538613894,
+          "valid_requests_per_s": 384.29304538613894,
+          "raw_file": "100000-session-c1.json"
+        },
+        {
+          "endpoint": "session",
+          "path": "/api/session",
+          "concurrency": 10,
+          "measured_requests": 50,
+          "warmup_requests": 10,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 13.3616,
+            "p95": 17.0058,
+            "max": 17.8093
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 13.3616,
+            "p95": 17.0058,
+            "max": 17.8093
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 2.0,
+            "p95": 2,
+            "max": 2
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 1.5728,
+            "p95": 3.6973,
+            "max": 4.9435
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 2.0,
+            "p95": 2,
+            "max": 2
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 69.0,
+            "p95": 69,
+            "max": 69
+          },
+          "measurement_wall_s": 0.08940395794343203,
+          "completed_requests_per_s": 559.2593566342573,
+          "valid_requests_per_s": 559.2593566342573,
+          "raw_file": "100000-session-c10.json"
+        },
+        {
+          "endpoint": "jobs",
+          "path": "/api/jobs",
+          "concurrency": 1,
+          "measured_requests": 50,
+          "warmup_requests": 1,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 92.9537,
+            "p95": 186.0906,
+            "max": 219.8551
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 92.9537,
+            "p95": 186.0906,
+            "max": 219.8551
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 104.0,
+            "p95": 104,
+            "max": 104
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 56.9124,
+            "p95": 146.8942,
+            "max": 170.8398
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 502.0,
+            "p95": 502,
+            "max": 502
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 245590.0,
+            "p95": 245590,
+            "max": 245590
+          },
+          "measurement_wall_s": 5.6747912500286475,
+          "completed_requests_per_s": 8.810896788449723,
+          "valid_requests_per_s": 8.810896788449723,
+          "raw_file": "100000-jobs-c1.json"
+        },
+        {
+          "endpoint": "jobs",
+          "path": "/api/jobs",
+          "concurrency": 10,
+          "measured_requests": 50,
+          "warmup_requests": 10,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 357.9233,
+            "p95": 594.8835,
+            "max": 626.2904
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 357.9233,
+            "p95": 594.8835,
+            "max": 626.2904
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 104.0,
+            "p95": 104,
+            "max": 104
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 110.8185,
+            "p95": 166.5777,
+            "max": 168.8254
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 502.0,
+            "p95": 502,
+            "max": 502
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 245590.0,
+            "p95": 245590,
+            "max": 245590
+          },
+          "measurement_wall_s": 2.986814958974719,
+          "completed_requests_per_s": 16.740240251496346,
+          "valid_requests_per_s": 16.740240251496346,
+          "raw_file": "100000-jobs-c10.json"
+        },
+        {
+          "endpoint": "job",
+          "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+          "concurrency": 1,
+          "measured_requests": 50,
+          "warmup_requests": 1,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 5.9294,
+            "p95": 6.9482,
+            "max": 8.0432
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 5.9294,
+            "p95": 6.9482,
+            "max": 8.0432
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 4.0,
+            "p95": 4,
+            "max": 4
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 2.7106,
+            "p95": 3.2033,
+            "max": 4.7095
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 7.0,
+            "p95": 7,
+            "max": 7
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 2461.0,
+            "p95": 2461,
+            "max": 2461
+          },
+          "measurement_wall_s": 0.30407308298163116,
+          "completed_requests_per_s": 164.43415349269986,
+          "valid_requests_per_s": 164.43415349269986,
+          "raw_file": "100000-job-c1.json"
+        },
+        {
+          "endpoint": "job",
+          "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+          "concurrency": 10,
+          "measured_requests": 50,
+          "warmup_requests": 10,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 25.965,
+            "p95": 30.9897,
+            "max": 31.9624
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 25.965,
+            "p95": 30.9897,
+            "max": 31.9624
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 4.0,
+            "p95": 4,
+            "max": 4
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 3.8254,
+            "p95": 7.0862,
+            "max": 7.7219
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 7.0,
+            "p95": 7,
+            "max": 7
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 2461.0,
+            "p95": 2461,
+            "max": 2461
+          },
+          "measurement_wall_s": 0.15866220800671726,
+          "completed_requests_per_s": 315.1349059625034,
+          "valid_requests_per_s": 315.1349059625034,
+          "raw_file": "100000-job-c10.json"
+        },
+        {
+          "endpoint": "request",
+          "path": "/api/generation-requests/baseline-request-0",
+          "concurrency": 1,
+          "measured_requests": 50,
+          "warmup_requests": 1,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 8.1184,
+            "p95": 11.1095,
+            "max": 12.224
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 8.1184,
+            "p95": 11.1095,
+            "max": 12.224
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 5.0,
+            "p95": 5,
+            "max": 5
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 3.5834,
+            "p95": 5.4157,
+            "max": 6.2648
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 8.0,
+            "p95": 8,
+            "max": 8
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 2461.0,
+            "p95": 2461,
+            "max": 2461
+          },
+          "measurement_wall_s": 0.4282718750182539,
+          "completed_requests_per_s": 116.7482688371,
+          "valid_requests_per_s": 116.7482688371,
+          "raw_file": "100000-request-c1.json"
+        },
+        {
+          "endpoint": "request",
+          "path": "/api/generation-requests/baseline-request-0",
+          "concurrency": 10,
+          "measured_requests": 50,
+          "warmup_requests": 10,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 36.33,
+            "p95": 44.0661,
+            "max": 45.5925
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 36.33,
+            "p95": 44.0661,
+            "max": 45.5925
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 5.0,
+            "p95": 5,
+            "max": 5
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 5.2124,
+            "p95": 8.5362,
+            "max": 8.6523
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 8.0,
+            "p95": 8,
+            "max": 8
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 2461.0,
+            "p95": 2461,
+            "max": 2461
+          },
+          "measurement_wall_s": 0.21422654204070568,
+          "completed_requests_per_s": 233.39778313043666,
+          "valid_requests_per_s": 233.39778313043666,
+          "raw_file": "100000-request-c10.json"
+        },
+        {
+          "endpoint": "documents",
+          "path": "/api/documents",
+          "concurrency": 1,
+          "measured_requests": 50,
+          "warmup_requests": 1,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 257.4997,
+            "p95": 383.1826,
+            "max": 501.725
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 257.4997,
+            "p95": 383.1826,
+            "max": 501.725
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 3.0,
+            "p95": 3,
+            "max": 3
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 247.1814,
+            "p95": 372.9083,
+            "max": 490.2606
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 502.0,
+            "p95": 502,
+            "max": 502
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 62015.0,
+            "p95": 62015,
+            "max": 62015
+          },
+          "measurement_wall_s": 13.71518462500535,
+          "completed_requests_per_s": 3.6455943807596025,
+          "valid_requests_per_s": 3.6455943807596025,
+          "raw_file": "100000-documents-c1.json"
+        },
+        {
+          "endpoint": "documents",
+          "path": "/api/documents",
+          "concurrency": 10,
+          "measured_requests": 50,
+          "warmup_requests": 10,
+          "warmup_errors": 4,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 1464.4332,
+            "p95": 2332.5066,
+            "max": 2397.9335
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 1464.4332,
+            "p95": 2332.5066,
+            "max": 2397.9335
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 3.0,
+            "p95": 3,
+            "max": 3
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 633.6984,
+            "p95": 883.7594,
+            "max": 944.5685
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 502.0,
+            "p95": 502,
+            "max": 502
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 62015.0,
+            "p95": 62015,
+            "max": 62015
+          },
+          "measurement_wall_s": 11.46874429192394,
+          "completed_requests_per_s": 4.359675194363606,
+          "valid_requests_per_s": 4.359675194363606,
+          "raw_file": "100000-documents-c10.json"
+        },
+        {
+          "endpoint": "document",
+          "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+          "concurrency": 1,
+          "measured_requests": 50,
+          "warmup_requests": 1,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 5.8563,
+            "p95": 7.4413,
+            "max": 8.2415
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 5.8563,
+            "p95": 7.4413,
+            "max": 8.2415
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 3.0,
+            "p95": 3,
+            "max": 3
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 2.7289,
+            "p95": 3.5672,
+            "max": 4.7122
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 3.0,
+            "p95": 3,
+            "max": 3
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 100205.0,
+            "p95": 100205,
+            "max": 100205
+          },
+          "measurement_wall_s": 0.3187847499502823,
+          "completed_requests_per_s": 156.8456458716987,
+          "valid_requests_per_s": 156.8456458716987,
+          "raw_file": "100000-document-c1.json"
+        },
+        {
+          "endpoint": "document",
+          "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+          "concurrency": 10,
+          "measured_requests": 50,
+          "warmup_requests": 10,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 27.6871,
+            "p95": 33.7757,
+            "max": 33.9858
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 27.6871,
+            "p95": 33.7757,
+            "max": 33.9858
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 3.0,
+            "p95": 3,
+            "max": 3
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 4.304,
+            "p95": 5.8813,
+            "max": 6.4249
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 3.0,
+            "p95": 3,
+            "max": 3
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 100205.0,
+            "p95": 100205,
+            "max": 100205
+          },
+          "measurement_wall_s": 0.1725499170133844,
+          "completed_requests_per_s": 289.77122020940516,
+          "valid_requests_per_s": 289.77122020940516,
+          "raw_file": "100000-document-c10.json"
+        },
+        {
+          "endpoint": "metrics",
+          "path": "/internal/metrics",
+          "concurrency": 1,
+          "measured_requests": 50,
+          "warmup_requests": 1,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 47.1802,
+            "p95": 55.6517,
+            "max": 70.4517
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 47.1802,
+            "p95": 55.6517,
+            "max": 70.4517
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 7.0,
+            "p95": 7,
+            "max": 7
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 40.1358,
+            "p95": 48.5866,
+            "max": 60.7233
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 7.0,
+            "p95": 7,
+            "max": 7
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 504.0,
+            "p95": 504,
+            "max": 504
+          },
+          "measurement_wall_s": 2.3803867920069024,
+          "completed_requests_per_s": 21.004989679784366,
+          "valid_requests_per_s": 21.004989679784366,
+          "raw_file": "100000-metrics-c1.json"
+        },
+        {
+          "endpoint": "metrics",
+          "path": "/internal/metrics",
+          "concurrency": 10,
+          "measured_requests": 50,
+          "warmup_requests": 10,
+          "warmup_errors": 0,
+          "errors": 0,
+          "error_types": [],
+          "http_status_counts": {
+            "200": 50
+          },
+          "all_response_latency_ms": {
+            "samples": 50,
+            "p50": 164.7474,
+            "p95": 335.9728,
+            "max": 381.4222
+          },
+          "successful_latency_ms": {
+            "samples": 50,
+            "p50": 164.7474,
+            "p95": 335.9728,
+            "max": 381.4222
+          },
+          "sql_count": {
+            "samples": 50,
+            "p50": 7.0,
+            "p95": 7,
+            "max": 7
+          },
+          "sql_elapsed_ms": {
+            "samples": 50,
+            "p50": 61.0185,
+            "p95": 157.187,
+            "max": 182.8583
+          },
+          "sql_rows": {
+            "samples": 50,
+            "p50": 7.0,
+            "p95": 7,
+            "max": 7
+          },
+          "response_bytes": {
+            "samples": 50,
+            "p50": 504.0,
+            "p95": 504,
+            "max": 504
+          },
+          "measurement_wall_s": 1.3722910840297118,
+          "completed_requests_per_s": 36.4354185361139,
+          "valid_requests_per_s": 36.4354185361139,
+          "raw_file": "100000-metrics-c10.json"
+        }
+      ],
+      "database_state": {
+        "table_rows": {
+          "jobs": 100500,
+          "documents": 1000,
+          "generation_requests": 100,
+          "outbox": 10000
+        },
+        "relation_sizes": [
+          {
+            "relname": "documents",
+            "bytes": 105283584
+          },
+          {
+            "relname": "jobs",
+            "bytes": 26320896
+          },
+          {
+            "relname": "outbox",
+            "bytes": 2105344
+          },
+          {
+            "relname": "generation_requests",
+            "bytes": 98304
+          },
+          {
+            "relname": "browser_sessions",
+            "bytes": 57344
+          },
+          {
+            "relname": "assets",
+            "bytes": 24576
+          },
+          {
+            "relname": "alembic_version",
+            "bytes": 24576
+          },
+          {
+            "relname": "workspaces",
+            "bytes": 24576
+          },
+          {
+            "relname": "attempts",
+            "bytes": 24576
+          },
+          {
+            "relname": "asset_references",
+            "bytes": 24576
+          },
+          {
+            "relname": "workspace_members",
+            "bytes": 24576
+          },
+          {
+            "relname": "audit_events",
+            "bytes": 16384
+          },
+          {
+            "relname": "document_requests",
+            "bytes": 8192
+          },
+          {
+            "relname": "media_aliases",
+            "bytes": 8192
+          },
+          {
+            "relname": "request_tombstones",
+            "bytes": 8192
+          }
+        ],
+        "pg_stat_statements": [
+          {
+            "queryid": -7344175742948782300,
+            "query": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at \nFROM documents \nWHERE documents.workspace_id = $1::UUID ORDER BY documents.updated_at DESC \n LIMIT $2::INTEGER",
+            "calls": 107,
+            "rows": 53500,
+            "total_exec_time": 42122.65644,
+            "mean_exec_time": 393.66968635514013,
+            "min_exec_time": 158.550333,
+            "max_exec_time": 1286.773001,
+            "shared_blks_hit": 839836,
+            "shared_blks_read": 2,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.042667,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": 7050746237024551408,
+            "query": "SELECT jobs.status, count(*) AS count_1 \nFROM jobs \nWHERE jobs.kind != $1::VARCHAR GROUP BY jobs.status",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 1913.5519150000002,
+            "mean_exec_time": 17.23920644144145,
+            "min_exec_time": 11.90075,
+            "max_exec_time": 65.139499,
+            "shared_blks_hit": 260073,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": -8094847423042614216,
+            "query": "SELECT coalesce(sum(jobs.phase_failures), $1::INTEGER) AS coalesce_1 \nFROM jobs",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 1367.020092,
+            "mean_exec_time": 12.315496324324322,
+            "min_exec_time": 8.790291,
+            "max_exec_time": 26.531041000000002,
+            "shared_blks_hit": 260073,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": 2498659381216366100,
+            "query": "SELECT count(*) AS count_1 \nFROM jobs \nWHERE jobs.slot_scope IS NOT NULL",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 1057.494338,
+            "mean_exec_time": 9.52697601801802,
+            "min_exec_time": 5.7004589999999995,
+            "max_exec_time": 86.27770899999999,
+            "shared_blks_hit": 260073,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": 4665907899633584439,
+            "query": "SELECT count(*) AS count_1 \nFROM jobs \nWHERE jobs.error_code LIKE $1::VARCHAR",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 838.0272129999997,
+            "mean_exec_time": 7.54979471171171,
+            "min_exec_time": 4.491374,
+            "max_exec_time": 52.47620800000001,
+            "shared_blks_hit": 260073,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": -5000442225707724374,
+            "query": "SELECT jobs.id, jobs.workspace_id, jobs.document_id, jobs.parent_id, jobs.generation_request_id, jobs.kind, jobs.status, jobs.params, jobs.progress, jobs.message, jobs.error, jobs.error_code, jobs.recovery, jobs.external_task_id, jobs.attempt_count, jobs.state_version, jobs.execution_epoch, jobs.phase, jobs.lease_owner, jobs.lease_until, jobs.dispatched_until, jobs.reconcile_deadline, jobs.queue_deadline, jobs.execution_deadline, jobs.download_deadline, jobs.cancel_requested_at, jobs.phase_failures, jobs.provider_snapshot, jobs.phase_payload, jobs.next_poll_at, jobs.slot_scope, jobs.slot_acquired_at, jobs.created_at, jobs.updated_at, jobs.finished_at \nFROM jobs \nWHERE jobs.parent_id = $1::UUID ORDER BY jobs.created_at, jobs.id",
+            "calls": 11322,
+            "rows": 45288,
+            "total_exec_time": 294.35902799999997,
+            "mean_exec_time": 0.025998854266030793,
+            "min_exec_time": 0.012084,
+            "max_exec_time": 4.532208000000001,
+            "shared_blks_hit": 35445,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": -1961461699329619997,
+            "query": "SELECT outbox.status, count(*) AS count_1 \nFROM outbox GROUP BY outbox.status",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 67.23012900000003,
+            "mean_exec_time": 0.6056768378378377,
+            "min_exec_time": 0.5165000000000001,
+            "max_exec_time": 2.782167,
+            "shared_blks_hit": 1110,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": -4026819960082455947,
+            "query": "SELECT jobs.id, jobs.workspace_id, jobs.document_id, jobs.parent_id, jobs.generation_request_id, jobs.kind, jobs.status, jobs.params, jobs.progress, jobs.message, jobs.error, jobs.error_code, jobs.recovery, jobs.external_task_id, jobs.attempt_count, jobs.state_version, jobs.execution_epoch, jobs.phase, jobs.lease_owner, jobs.lease_until, jobs.dispatched_until, jobs.reconcile_deadline, jobs.queue_deadline, jobs.execution_deadline, jobs.download_deadline, jobs.cancel_requested_at, jobs.phase_failures, jobs.provider_snapshot, jobs.phase_payload, jobs.next_poll_at, jobs.slot_scope, jobs.slot_acquired_at, jobs.created_at, jobs.updated_at, jobs.finished_at \nFROM jobs \nWHERE jobs.workspace_id = $1::UUID AND jobs.parent_id IS NULL AND jobs.status IN ($2::VARCHAR, $3::VARCHAR) ORDER BY jobs.created_at DESC \n LIMIT $4::INTEGER",
+            "calls": 111,
+            "rows": 11100,
+            "total_exec_time": 55.40109400000001,
+            "mean_exec_time": 0.4991089549549551,
+            "min_exec_time": 0.282667,
+            "max_exec_time": 7.041542,
+            "shared_blks_hit": 24309,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": -1310906414218932841,
+            "query": "SELECT documents.id AS documents_id, documents.workspace_id AS documents_workspace_id, documents.name AS documents_name, documents.revision AS documents_revision, documents.data AS documents_data, documents.updated_at AS documents_updated_at \nFROM documents \nWHERE documents.id = $1::UUID",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 42.803290000000004,
+            "mean_exec_time": 0.38561522522522523,
+            "min_exec_time": 0.26825,
+            "max_exec_time": 0.953666,
+            "shared_blks_hit": 2151,
+            "shared_blks_read": 15,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.276331,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": -2209213150986519896,
+            "query": "SELECT count(*) AS count_1 \nFROM jobs \nWHERE jobs.lease_until < now()",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 23.023444,
+            "mean_exec_time": 0.20741841441441444,
+            "min_exec_time": 0.041208,
+            "max_exec_time": 7.0104169999999995,
+            "shared_blks_hit": 8991,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": -407681173764644060,
+            "query": "SELECT workspace_members.workspace_id, workspace_members.principal_id, workspace_members.role \nFROM workspace_members \nWHERE workspace_members.principal_id = $1::VARCHAR ORDER BY workspace_members.workspace_id \n LIMIT $2::INTEGER",
+            "calls": 666,
+            "rows": 666,
+            "total_exec_time": 7.8524879999999975,
+            "mean_exec_time": 0.011790522522522528,
+            "min_exec_time": 0.003042,
+            "max_exec_time": 0.559416,
+            "shared_blks_hit": 780,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": -4360048781346401164,
+            "query": "SELECT browser_sessions.token_hash AS browser_sessions_token_hash, browser_sessions.principal_id AS browser_sessions_principal_id, browser_sessions.csrf_hash AS browser_sessions_csrf_hash, browser_sessions.expires_at AS browser_sessions_expires_at \nFROM browser_sessions \nWHERE browser_sessions.token_hash = $1::VARCHAR",
+            "calls": 666,
+            "rows": 666,
+            "total_exec_time": 4.879816999999995,
+            "mean_exec_time": 0.007327052552552554,
+            "min_exec_time": 0.002249,
+            "max_exec_time": 0.08762500000000001,
+            "shared_blks_hit": 666,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": 1921581224075616755,
+            "query": "SELECT jobs.id AS jobs_id, jobs.workspace_id AS jobs_workspace_id, jobs.document_id AS jobs_document_id, jobs.parent_id AS jobs_parent_id, jobs.generation_request_id AS jobs_generation_request_id, jobs.kind AS jobs_kind, jobs.status AS jobs_status, jobs.params AS jobs_params, jobs.progress AS jobs_progress, jobs.message AS jobs_message, jobs.error AS jobs_error, jobs.error_code AS jobs_error_code, jobs.recovery AS jobs_recovery, jobs.external_task_id AS jobs_external_task_id, jobs.attempt_count AS jobs_attempt_count, jobs.state_version AS jobs_state_version, jobs.execution_epoch AS jobs_execution_epoch, jobs.phase AS jobs_phase, jobs.lease_owner AS jobs_lease_owner, jobs.lease_until AS jobs_lease_until, jobs.dispatched_until AS jobs_dispatched_until, jobs.reconcile_deadline AS jobs_reconcile_deadline, jobs.queue_deadline AS jobs_queue_deadline, jobs.execution_deadline AS jobs_execution_deadline, jobs.download_deadline AS jobs_download_deadline, jobs.cancel_requested_at AS jobs_cancel_requested_at, jobs.phase_failures AS jobs_phase_failures, jobs.provider_snapshot AS jobs_provider_snapshot, jobs.phase_payload AS jobs_phase_payload, jobs.next_poll_at AS jobs_next_poll_at, jobs.slot_scope AS jobs_slot_scope, jobs.slot_acquired_at AS jobs_slot_acquired_at, jobs.created_at AS jobs_created_at, jobs.updated_at AS jobs_updated_at, jobs.finished_at AS jobs_finished_at \nFROM jobs \nWHERE jobs.id = $1::UUID",
+            "calls": 222,
+            "rows": 222,
+            "total_exec_time": 3.4989239999999993,
+            "mean_exec_time": 0.015760918918918922,
+            "min_exec_time": 0.008584,
+            "max_exec_time": 0.08224999999999999,
+            "shared_blks_hit": 888,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": 6995349837817861827,
+            "query": "SELECT jobs.id, jobs.workspace_id, jobs.document_id, jobs.parent_id, jobs.generation_request_id, jobs.kind, jobs.status, jobs.params, jobs.progress, jobs.message, jobs.error, jobs.error_code, jobs.recovery, jobs.external_task_id, jobs.attempt_count, jobs.state_version, jobs.execution_epoch, jobs.phase, jobs.lease_owner, jobs.lease_until, jobs.dispatched_until, jobs.reconcile_deadline, jobs.queue_deadline, jobs.execution_deadline, jobs.download_deadline, jobs.cancel_requested_at, jobs.phase_failures, jobs.provider_snapshot, jobs.phase_payload, jobs.next_poll_at, jobs.slot_scope, jobs.slot_acquired_at, jobs.created_at, jobs.updated_at, jobs.finished_at \nFROM jobs \nWHERE jobs.workspace_id = $1::UUID AND jobs.parent_id IS NULL AND jobs.status IN ($2::VARCHAR, $3::VARCHAR, $4::VARCHAR) ORDER BY jobs.created_at DESC",
+            "calls": 111,
+            "rows": 0,
+            "total_exec_time": 3.2729530000000002,
+            "mean_exec_time": 0.029486063063063058,
+            "min_exec_time": 0.008959,
+            "max_exec_time": 0.9696670000000001,
+            "shared_blks_hit": 714,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": 8317014324475254098,
+            "query": "SELECT generation_requests.id, generation_requests.workspace_id, generation_requests.request_id, generation_requests.request_hash, generation_requests.params, generation_requests.job_id, generation_requests.created_at \nFROM generation_requests \nWHERE generation_requests.workspace_id = $1::UUID AND generation_requests.request_id = $2::VARCHAR",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 1.7234230000000008,
+            "mean_exec_time": 0.015526333333333331,
+            "min_exec_time": 0.008459,
+            "max_exec_time": 0.05175,
+            "shared_blks_hit": 444,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          },
+          {
+            "queryid": 5645014375175864979,
+            "query": "SELECT min(outbox.created_at) AS min_1 \nFROM outbox \nWHERE outbox.status IN ($1::VARCHAR, $2::VARCHAR)",
+            "calls": 111,
+            "rows": 111,
+            "total_exec_time": 1.4255030000000004,
+            "mean_exec_time": 0.012842369369369373,
+            "min_exec_time": 0.006291000000000001,
+            "max_exec_time": 0.071001,
+            "shared_blks_hit": 468,
+            "shared_blks_read": 0,
+            "shared_blks_dirtied": 0,
+            "shared_blks_written": 0,
+            "local_blks_hit": 0,
+            "local_blks_read": 0,
+            "temp_blks_read": 0,
+            "temp_blks_written": 0,
+            "blk_read_time": 0.0,
+            "blk_write_time": 0.0
+          }
+        ],
+        "explain_analyze_buffers": {
+          "jobs_active": [
+            {
+              "Plan": {
+                "Node Type": "Sort",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 14.67,
+                "Total Cost": 14.68,
+                "Plan Rows": 1,
+                "Plan Width": 868,
+                "Actual Startup Time": 0.045,
+                "Actual Total Time": 0.045,
+                "Actual Rows": 0,
+                "Actual Loops": 1,
+                "Sort Key": [
+                  "created_at DESC"
+                ],
+                "Sort Method": "quicksort",
+                "Sort Space Used": 25,
+                "Sort Space Type": "Memory",
+                "Shared Hit Blocks": 12,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0,
+                "Plans": [
+                  {
+                    "Node Type": "Index Scan",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Scan Direction": "Forward",
+                    "Index Name": "ix_jobs_recovery_lease",
+                    "Relation Name": "jobs",
+                    "Alias": "jobs",
+                    "Startup Cost": 0.29,
+                    "Total Cost": 14.66,
+                    "Plan Rows": 1,
+                    "Plan Width": 868,
+                    "Actual Startup Time": 0.024,
+                    "Actual Total Time": 0.024,
+                    "Actual Rows": 0,
+                    "Actual Loops": 1,
+                    "Index Cond": "((status)::text = ANY ('{queued,running,unknown}'::text[]))",
+                    "Rows Removed by Index Recheck": 0,
+                    "Filter": "((parent_id IS NULL) AND (workspace_id = '05d15850-4b0d-5944-a030-4d4b41f281b0'::uuid))",
+                    "Rows Removed by Filter": 0,
+                    "Shared Hit Blocks": 9,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "I/O Read Time": 0.0,
+                    "I/O Write Time": 0.0,
+                    "Temp I/O Read Time": 0.0,
+                    "Temp I/O Write Time": 0.0
+                  }
+                ]
+              },
+              "Planning": {
+                "Shared Hit Blocks": 296,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0
+              },
+              "Planning Time": 0.766,
+              "Triggers": [],
+              "Execution Time": 0.076
+            }
+          ],
+          "jobs_finished": [
+            {
+              "Plan": {
+                "Node Type": "Limit",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 991.18,
+                "Total Cost": 991.43,
+                "Plan Rows": 100,
+                "Plan Width": 868,
+                "Actual Startup Time": 0.214,
+                "Actual Total Time": 0.224,
+                "Actual Rows": 100,
+                "Actual Loops": 1,
+                "Shared Hit Blocks": 219,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0,
+                "Plans": [
+                  {
+                    "Node Type": "Sort",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Startup Cost": 991.18,
+                    "Total Cost": 992.69,
+                    "Plan Rows": 605,
+                    "Plan Width": 868,
+                    "Actual Startup Time": 0.213,
+                    "Actual Total Time": 0.217,
+                    "Actual Rows": 100,
+                    "Actual Loops": 1,
+                    "Sort Key": [
+                      "created_at DESC"
+                    ],
+                    "Sort Method": "quicksort",
+                    "Sort Space Used": 50,
+                    "Sort Space Type": "Memory",
+                    "Shared Hit Blocks": 219,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "I/O Read Time": 0.0,
+                    "I/O Write Time": 0.0,
+                    "Temp I/O Read Time": 0.0,
+                    "Temp I/O Write Time": 0.0,
+                    "Plans": [
+                      {
+                        "Node Type": "Index Scan",
+                        "Parent Relationship": "Outer",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Scan Direction": "Forward",
+                        "Index Name": "ix_jobs_workspace_status_created",
+                        "Relation Name": "jobs",
+                        "Alias": "jobs",
+                        "Startup Cost": 0.29,
+                        "Total Cost": 968.06,
+                        "Plan Rows": 605,
+                        "Plan Width": 868,
+                        "Actual Startup Time": 0.03,
+                        "Actual Total Time": 0.167,
+                        "Actual Rows": 100,
+                        "Actual Loops": 1,
+                        "Index Cond": "(workspace_id = '05d15850-4b0d-5944-a030-4d4b41f281b0'::uuid)",
+                        "Rows Removed by Index Recheck": 0,
+                        "Filter": "((parent_id IS NULL) AND ((status)::text = ANY ('{completed,failed}'::text[])))",
+                        "Rows Removed by Filter": 400,
+                        "Shared Hit Blocks": 219,
+                        "Shared Read Blocks": 0,
+                        "Shared Dirtied Blocks": 0,
+                        "Shared Written Blocks": 0,
+                        "Local Hit Blocks": 0,
+                        "Local Read Blocks": 0,
+                        "Local Dirtied Blocks": 0,
+                        "Local Written Blocks": 0,
+                        "Temp Read Blocks": 0,
+                        "Temp Written Blocks": 0,
+                        "I/O Read Time": 0.0,
+                        "I/O Write Time": 0.0,
+                        "Temp I/O Read Time": 0.0,
+                        "Temp I/O Write Time": 0.0
+                      }
+                    ]
+                  }
+                ]
+              },
+              "Planning": {
+                "Shared Hit Blocks": 0,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0
+              },
+              "Planning Time": 0.057,
+              "Triggers": [],
+              "Execution Time": 0.246
+            }
+          ],
+          "batch_children": [
+            {
+              "Plan": {
+                "Node Type": "Sort",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 23.76,
+                "Total Cost": 23.77,
+                "Plan Rows": 5,
+                "Plan Width": 868,
+                "Actual Startup Time": 0.04,
+                "Actual Total Time": 0.04,
+                "Actual Rows": 4,
+                "Actual Loops": 1,
+                "Sort Key": [
+                  "created_at",
+                  "id"
+                ],
+                "Sort Method": "quicksort",
+                "Sort Space Used": 26,
+                "Sort Space Type": "Memory",
+                "Shared Hit Blocks": 6,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0,
+                "Plans": [
+                  {
+                    "Node Type": "Bitmap Heap Scan",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Relation Name": "jobs",
+                    "Alias": "jobs",
+                    "Startup Cost": 4.33,
+                    "Total Cost": 23.7,
+                    "Plan Rows": 5,
+                    "Plan Width": 868,
+                    "Actual Startup Time": 0.027,
+                    "Actual Total Time": 0.028,
+                    "Actual Rows": 4,
+                    "Actual Loops": 1,
+                    "Recheck Cond": "(parent_id = '0103e903-6773-5789-b1cf-d7bc8c8ab89d'::uuid)",
+                    "Rows Removed by Index Recheck": 0,
+                    "Exact Heap Blocks": 1,
+                    "Lossy Heap Blocks": 0,
+                    "Shared Hit Blocks": 3,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "I/O Read Time": 0.0,
+                    "I/O Write Time": 0.0,
+                    "Temp I/O Read Time": 0.0,
+                    "Temp I/O Write Time": 0.0,
+                    "Plans": [
+                      {
+                        "Node Type": "Bitmap Index Scan",
+                        "Parent Relationship": "Outer",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Index Name": "ix_jobs_parent_id",
+                        "Startup Cost": 0.0,
+                        "Total Cost": 4.33,
+                        "Plan Rows": 5,
+                        "Plan Width": 0,
+                        "Actual Startup Time": 0.015,
+                        "Actual Total Time": 0.015,
+                        "Actual Rows": 4,
+                        "Actual Loops": 1,
+                        "Index Cond": "(parent_id = '0103e903-6773-5789-b1cf-d7bc8c8ab89d'::uuid)",
+                        "Shared Hit Blocks": 2,
+                        "Shared Read Blocks": 0,
+                        "Shared Dirtied Blocks": 0,
+                        "Shared Written Blocks": 0,
+                        "Local Hit Blocks": 0,
+                        "Local Read Blocks": 0,
+                        "Local Dirtied Blocks": 0,
+                        "Local Written Blocks": 0,
+                        "Temp Read Blocks": 0,
+                        "Temp Written Blocks": 0,
+                        "I/O Read Time": 0.0,
+                        "I/O Write Time": 0.0,
+                        "Temp I/O Read Time": 0.0,
+                        "Temp I/O Write Time": 0.0
+                      }
+                    ]
+                  }
+                ]
+              },
+              "Planning": {
+                "Shared Hit Blocks": 9,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0
+              },
+              "Planning Time": 0.048,
+              "Triggers": [],
+              "Execution Time": 0.064
+            }
+          ],
+          "documents_list": [
+            {
+              "Plan": {
+                "Node Type": "Limit",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 0.28,
+                "Total Cost": 40.06,
+                "Plan Rows": 500,
+                "Plan Width": 74,
+                "Actual Startup Time": 0.147,
+                "Actual Total Time": 0.65,
+                "Actual Rows": 500,
+                "Actual Loops": 1,
+                "Shared Hit Blocks": 14,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0,
+                "Plans": [
+                  {
+                    "Node Type": "Index Scan",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Scan Direction": "Backward",
+                    "Index Name": "ix_documents_workspace_updated",
+                    "Relation Name": "documents",
+                    "Alias": "documents",
+                    "Startup Cost": 0.28,
+                    "Total Cost": 79.84,
+                    "Plan Rows": 1000,
+                    "Plan Width": 74,
+                    "Actual Startup Time": 0.146,
+                    "Actual Total Time": 0.604,
+                    "Actual Rows": 500,
+                    "Actual Loops": 1,
+                    "Index Cond": "(workspace_id = '05d15850-4b0d-5944-a030-4d4b41f281b0'::uuid)",
+                    "Rows Removed by Index Recheck": 0,
+                    "Shared Hit Blocks": 14,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "I/O Read Time": 0.0,
+                    "I/O Write Time": 0.0,
+                    "Temp I/O Read Time": 0.0,
+                    "Temp I/O Write Time": 0.0
+                  }
+                ]
+              },
+              "Planning": {
+                "Shared Hit Blocks": 62,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0
+              },
+              "Planning Time": 0.628,
+              "Triggers": [],
+              "Execution Time": 0.695
+            }
+          ],
+          "slot_scope_count": [
+            {
+              "Plan": {
+                "Node Type": "Aggregate",
+                "Strategy": "Plain",
+                "Partial Mode": "Simple",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 3601.84,
+                "Total Cost": 3601.85,
+                "Plan Rows": 1,
+                "Plan Width": 8,
+                "Actual Startup Time": 9.171,
+                "Actual Total Time": 9.172,
+                "Actual Rows": 1,
+                "Actual Loops": 1,
+                "Shared Hit Blocks": 2343,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0,
+                "Plans": [
+                  {
+                    "Node Type": "Seq Scan",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Relation Name": "jobs",
+                    "Alias": "jobs",
+                    "Startup Cost": 0.0,
+                    "Total Cost": 3601.57,
+                    "Plan Rows": 107,
+                    "Plan Width": 0,
+                    "Actual Startup Time": 0.056,
+                    "Actual Total Time": 9.157,
+                    "Actual Rows": 100,
+                    "Actual Loops": 1,
+                    "Filter": "((slot_scope)::text = 'baseline-model'::text)",
+                    "Rows Removed by Filter": 100400,
+                    "Shared Hit Blocks": 2343,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "I/O Read Time": 0.0,
+                    "I/O Write Time": 0.0,
+                    "Temp I/O Read Time": 0.0,
+                    "Temp I/O Write Time": 0.0
+                  }
+                ]
+              },
+              "Planning": {
+                "Shared Hit Blocks": 6,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0
+              },
+              "Planning Time": 0.063,
+              "Triggers": [],
+              "Execution Time": 9.186
+            }
+          ],
+          "metrics_status_counts": [
+            {
+              "Plan": {
+                "Node Type": "Aggregate",
+                "Strategy": "Hashed",
+                "Partial Mode": "Simple",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 4104.3,
+                "Total Cost": 4104.31,
+                "Plan Rows": 1,
+                "Plan Width": 18,
+                "Actual Startup Time": 20.919,
+                "Actual Total Time": 20.92,
+                "Actual Rows": 1,
+                "Actual Loops": 1,
+                "Group Key": [
+                  "status"
+                ],
+                "Planned Partitions": 0,
+                "HashAgg Batches": 1,
+                "Peak Memory Usage": 24,
+                "Disk Usage": 0,
+                "Shared Hit Blocks": 2343,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0,
+                "Plans": [
+                  {
+                    "Node Type": "Seq Scan",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Relation Name": "jobs",
+                    "Alias": "jobs",
+                    "Startup Cost": 0.0,
+                    "Total Cost": 3601.57,
+                    "Plan Rows": 100545,
+                    "Plan Width": 10,
+                    "Actual Startup Time": 0.013,
+                    "Actual Total Time": 10.985,
+                    "Actual Rows": 100400,
+                    "Actual Loops": 1,
+                    "Filter": "((kind)::text <> 'batch'::text)",
+                    "Rows Removed by Filter": 100,
+                    "Shared Hit Blocks": 2343,
+                    "Shared Read Blocks": 0,
+                    "Shared Dirtied Blocks": 0,
+                    "Shared Written Blocks": 0,
+                    "Local Hit Blocks": 0,
+                    "Local Read Blocks": 0,
+                    "Local Dirtied Blocks": 0,
+                    "Local Written Blocks": 0,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "I/O Read Time": 0.0,
+                    "I/O Write Time": 0.0,
+                    "Temp I/O Read Time": 0.0,
+                    "Temp I/O Write Time": 0.0
+                  }
+                ]
+              },
+              "Planning": {
+                "Shared Hit Blocks": 5,
+                "Shared Read Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Local Hit Blocks": 0,
+                "Local Read Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "I/O Read Time": 0.0,
+                "I/O Write Time": 0.0,
+                "Temp I/O Read Time": 0.0,
+                "Temp I/O Write Time": 0.0
+              },
+              "Planning Time": 0.056,
+              "Triggers": [],
+              "Execution Time": 20.936
+            }
+          ]
+        },
+        "explain_limitation": "EXPLAIN ANALYZE does not send full result rows to the client; JSON/TOAST output, network transfer, ORM hydration, and HTTP serialization costs differ from endpoint timing."
+      }
+    }
+  ]
+}

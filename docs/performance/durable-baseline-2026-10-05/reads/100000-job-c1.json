@@ -1,0 +1,2402 @@
+{
+  "summary": {
+    "endpoint": "job",
+    "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+    "concurrency": 1,
+    "measured_requests": 50,
+    "warmup_requests": 1,
+    "warmup_errors": 0,
+    "errors": 0,
+    "error_types": [],
+    "http_status_counts": {
+      "200": 50
+    },
+    "all_response_latency_ms": {
+      "samples": 50,
+      "p50": 5.9294,
+      "p95": 6.9482,
+      "max": 8.0432
+    },
+    "successful_latency_ms": {
+      "samples": 50,
+      "p50": 5.9294,
+      "p95": 6.9482,
+      "max": 8.0432
+    },
+    "sql_count": {
+      "samples": 50,
+      "p50": 4.0,
+      "p95": 4,
+      "max": 4
+    },
+    "sql_elapsed_ms": {
+      "samples": 50,
+      "p50": 2.7106,
+      "p95": 3.2033,
+      "max": 4.7095
+    },
+    "sql_rows": {
+      "samples": 50,
+      "p50": 7.0,
+      "p95": 7,
+      "max": 7
+    },
+    "response_bytes": {
+      "samples": 50,
+      "p50": 2461.0,
+      "p95": 2461,
+      "max": 2461
+    },
+    "measurement_wall_s": 0.30407308298163116,
+    "completed_requests_per_s": 164.43415349269986,
+    "valid_requests_per_s": 164.43415349269986
+  },
+  "requests": [
+    {
+      "request_id": "100000-job-c1-warmup-0",
+      "warmup": true,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.744125,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.882916,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.784333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.451042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.889208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.758333,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-0",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.024542,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.8719989999999997,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.775291,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.445625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 1.045375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.605708,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-1",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.615375,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.66821,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.88725,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.383834,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.871042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.526084,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-2",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.086,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.9449560000000004,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.818958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.468291,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 1.098916,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.558791,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-3",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.879875,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.764042,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.771542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.459042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.939708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.59375,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-4",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.499833,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.5530410000000003,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.74775,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.418458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.841208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.545625,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-5",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.859209,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.765459,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.817,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.482709,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.852125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.613625,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-6",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.132875,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.9200429999999997,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.781209,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.550708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 1.007709,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.580417,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-7",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.196208,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.399917,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.656584,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.379041,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.829125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.535167,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-8",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.964125,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.649001,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.807834,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.450958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.844625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.545584,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-9",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.448291,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.4874590000000003,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.72775,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.405959,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.850083,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.503667,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-10",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.754833,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.506708,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.689917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.408958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.872583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.53525,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-11",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.641167,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.515958,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.662292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.411833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.887583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.55425,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-12",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.637708,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.584168,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.775584,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.41375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.863209,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.531625,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-13",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.682792,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.568625,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.660291,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.456334,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.88625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.56575,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-14",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.531375,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.4798340000000003,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.707708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.41125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.839042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.521834,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-15",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.003625,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.331918,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.783542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.36825,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.721042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.459084,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-16",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.315833,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.4445829999999997,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.628666,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.365,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.906959,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.543958,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-17",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 8.043166,
+      "sql_count": 4,
+      "sql_elapsed_ms": 4.709541,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.707416,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.392042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 2.124583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 1.4855,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-18",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.037542,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.822082,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.962208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.453125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.859958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.546791,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-19",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.917375,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.730334,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.769791,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.455959,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.887917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.616667,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-20",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.773458,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.6909159999999996,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.761958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.446875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.880125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.601958,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-21",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.2615,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.4195830000000003,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.68575,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.402667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.771041,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.560125,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-22",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.948,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.6547520000000002,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.766834,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.447667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.833334,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.606917,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-23",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.781708,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.680166,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.806958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.464834,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.895333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.513041,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-24",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.355083,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.466916,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.64725,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.380583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.846458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.592625,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-25",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.194,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.914667,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.770292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.430917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 1.132708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.58075,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-26",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.22275,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.8129589999999993,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.849084,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.45375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.90675,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.603375,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-27",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.032708,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.792166,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.793375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.44325,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.931625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.623916,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-28",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.89925,
+      "sql_count": 4,
+      "sql_elapsed_ms": 3.133374,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.879875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.550541,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 1.06175,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.641208,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-29",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.716583,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.5235,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.739625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.412542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.808958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.562375,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-30",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.396875,
+      "sql_count": 4,
+      "sql_elapsed_ms": 3.048208,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.818208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.45975,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.926834,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.843416,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-31",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.367291,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.950832,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.87,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.499291,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.962416,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.619125,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-32",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.542291,
+      "sql_count": 4,
+      "sql_elapsed_ms": 3.0474580000000002,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.81225,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.629917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.960541,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.64475,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-33",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.987125,
+      "sql_count": 4,
+      "sql_elapsed_ms": 3.3625410000000002,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.780708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.705333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 1.167375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.709125,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-34",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.948209,
+      "sql_count": 4,
+      "sql_elapsed_ms": 3.188999,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.969208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.576667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 1.014583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.628541,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-35",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.750458,
+      "sql_count": 4,
+      "sql_elapsed_ms": 3.2032510000000003,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.801,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.490292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 1.011792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.900167,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-36",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.954667,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.642167,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.707958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.410459,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.940958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.582792,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-37",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.719833,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.609876,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.731625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.434667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.864792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.578792,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-38",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.368416,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.838125,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.803667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.41725,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.950875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.666333,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-39",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.64875,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.554166,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.708792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.448375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.825833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.571166,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-40",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.058583,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.7371250000000003,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.759084,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.433417,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.946416,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.598208,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-41",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.531625,
+      "sql_count": 4,
+      "sql_elapsed_ms": 3.086666,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.916208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.530125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 1.05275,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.587583,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-42",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.54975,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.505166,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.713416,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.415458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.838542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.53775,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-43",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.961958,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.733624,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.72425,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.450291,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.985083,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.574,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-44",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.941375,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.7337499999999997,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.799458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.449042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.893375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.591875,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-45",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.605208,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.602792,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.678875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.410792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.961958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.551167,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-46",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.386875,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.869707,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.795666,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.433958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.94275,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.697333,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-47",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.659125,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.57675,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.737958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.407917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.872625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.55825,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-48",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 5.830709,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.635417,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.739875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.431459,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.884417,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.579666,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-job-c1-sample-49",
+      "warmup": false,
+      "endpoint": "job",
+      "path": "/api/jobs/0103e903-6773-5789-b1cf-d7bc8c8ab89d",
+      "concurrency": 1,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 2461,
+      "response_items": 5,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 6.136916,
+      "sql_count": 4,
+      "sql_elapsed_ms": 2.764208,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.756,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.454833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "63c69c856f1ddb49",
+          "elapsed_ms": 0.93725,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "b92705bfc5d79113",
+          "elapsed_ms": 0.616125,
+          "cursor_rowcount": 4,
+          "error_type": null
+        }
+      ]
+    }
+  ]
+}

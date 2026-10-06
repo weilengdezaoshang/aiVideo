@@ -1,0 +1,159 @@
+{
+  "mode": "real PostgreSQL 16; production ASGI read endpoints",
+  "threshold_ms": 20,
+  "scenarios": [
+    {
+      "background_jobs": 10000,
+      "requests": [
+        {
+          "path": "/api/documents",
+          "wall": {
+            "samples": 10,
+            "p50_ms": 261.22,
+            "p95_ms": 494.94,
+            "max_ms": 494.94,
+            "samples_ms": [
+              494.938,
+              261.812,
+              274.178,
+              260.636,
+              295.924,
+              271.253,
+              215.285,
+              217.309,
+              202.902,
+              257.873
+            ]
+          },
+          "sql_count_samples": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3
+          ]
+        },
+        {
+          "path": "/api/jobs",
+          "wall": {
+            "samples": 10,
+            "p50_ms": 121.1,
+            "p95_ms": 241.7,
+            "max_ms": 241.7,
+            "samples_ms": [
+              84.714,
+              84.9,
+              80.58,
+              129.616,
+              180.047,
+              205.874,
+              235.244,
+              241.699,
+              112.584,
+              86.902
+            ]
+          },
+          "sql_count_samples": [
+            104,
+            104,
+            104,
+            104,
+            104,
+            104,
+            104,
+            104,
+            104,
+            104
+          ]
+        }
+      ],
+      "slot_plan_execution_ms": 1.326,
+      "metrics_plan_execution_ms": 2.304,
+      "documents_plan_execution_ms": 0.171
+    },
+    {
+      "background_jobs": 100000,
+      "requests": [
+        {
+          "path": "/api/documents",
+          "wall": {
+            "samples": 10,
+            "p50_ms": 270.66,
+            "p95_ms": 466.47,
+            "max_ms": 466.47,
+            "samples_ms": [
+              268.338,
+              466.473,
+              195.172,
+              359.351,
+              333.989,
+              272.983,
+              293.853,
+              185.239,
+              236.56,
+              225.394
+            ]
+          },
+          "sql_count_samples": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3
+          ]
+        },
+        {
+          "path": "/api/jobs",
+          "wall": {
+            "samples": 10,
+            "p50_ms": 95.93,
+            "p95_ms": 173.69,
+            "max_ms": 173.69,
+            "samples_ms": [
+              99.855,
+              92.983,
+              85.222,
+              98.886,
+              173.688,
+              87.353,
+              91.529,
+              86.218,
+              101.896,
+              103.711
+            ]
+          },
+          "sql_count_samples": [
+            104,
+            104,
+            104,
+            104,
+            104,
+            104,
+            104,
+            104,
+            104,
+            104
+          ]
+        }
+      ],
+      "slot_plan_execution_ms": 10.892,
+      "metrics_plan_execution_ms": 26.683,
+      "documents_plan_execution_ms": 0.127
+    }
+  ],
+  "limitations": [
+    "localhost isolated fixtures, warm cache, 10 measured requests per endpoint",
+    "cursor duration excludes ORM hydration/response serialization; endpoint wall includes them",
+    "no concurrent writes/replication/real network latency"
+  ]
+}

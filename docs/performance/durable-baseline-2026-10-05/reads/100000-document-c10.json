@@ -1,0 +1,2456 @@
+{
+  "summary": {
+    "endpoint": "document",
+    "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+    "concurrency": 10,
+    "measured_requests": 50,
+    "warmup_requests": 10,
+    "warmup_errors": 0,
+    "errors": 0,
+    "error_types": [],
+    "http_status_counts": {
+      "200": 50
+    },
+    "all_response_latency_ms": {
+      "samples": 50,
+      "p50": 27.6871,
+      "p95": 33.7757,
+      "max": 33.9858
+    },
+    "successful_latency_ms": {
+      "samples": 50,
+      "p50": 27.6871,
+      "p95": 33.7757,
+      "max": 33.9858
+    },
+    "sql_count": {
+      "samples": 50,
+      "p50": 3.0,
+      "p95": 3,
+      "max": 3
+    },
+    "sql_elapsed_ms": {
+      "samples": 50,
+      "p50": 4.304,
+      "p95": 5.8813,
+      "max": 6.4249
+    },
+    "sql_rows": {
+      "samples": 50,
+      "p50": 3.0,
+      "p95": 3,
+      "max": 3
+    },
+    "response_bytes": {
+      "samples": 50,
+      "p50": 100205.0,
+      "p95": 100205,
+      "max": 100205
+    },
+    "measurement_wall_s": 0.1725499170133844,
+    "completed_requests_per_s": 289.77122020940516,
+    "valid_requests_per_s": 289.77122020940516
+  },
+  "requests": [
+    {
+      "request_id": "100000-document-c10-warmup-0",
+      "warmup": true,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 50.410541,
+      "sql_count": 3,
+      "sql_elapsed_ms": 6.749542,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.659333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.499792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.590417,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-warmup-1",
+      "warmup": true,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 54.244375,
+      "sql_count": 3,
+      "sql_elapsed_ms": 8.100083999999999,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 4.09325,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 1.734709,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.272125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-warmup-3",
+      "warmup": true,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 54.81975,
+      "sql_count": 3,
+      "sql_elapsed_ms": 5.747624999999999,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 2.542417,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.941458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.26375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-warmup-4",
+      "warmup": true,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 55.03125,
+      "sql_count": 3,
+      "sql_elapsed_ms": 4.481833,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.615708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.4295,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.436625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-warmup-2",
+      "warmup": true,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 58.528417,
+      "sql_count": 3,
+      "sql_elapsed_ms": 7.149584,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 4.531417,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.908625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 1.709542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-warmup-5",
+      "warmup": true,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 59.13025,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.520709,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.837167,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.360667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.322875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-warmup-6",
+      "warmup": true,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 59.182875,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.519584,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.744042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.534542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.241,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-warmup-7",
+      "warmup": true,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 62.6105,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.4075420000000003,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.875334,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.46125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.070958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-warmup-8",
+      "warmup": true,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 62.861459,
+      "sql_count": 3,
+      "sql_elapsed_ms": 4.443583,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.706167,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 1.853083,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 1.884333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-warmup-9",
+      "warmup": true,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 63.477167,
+      "sql_count": 3,
+      "sql_elapsed_ms": 4.720292,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.959875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 1.515583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.244834,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-0",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 18.875125,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.505709,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.5255,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.022209,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-1",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 21.180667,
+      "sql_count": 3,
+      "sql_elapsed_ms": 5.819625,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.269625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.503458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.046542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-3",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 22.548583,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.369543,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.773959,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.49775,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.097834,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-2",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 23.856458,
+      "sql_count": 3,
+      "sql_elapsed_ms": 5.079292000000001,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.990625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.981042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.107625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-4",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 24.539083,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.7660419999999997,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.264375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.9015,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 1.600167,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-6",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 27.915042,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.3471659999999996,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.933083,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.562541,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 1.851542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-5",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 28.824042,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.956791,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.956333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.462833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.537625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-7",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 28.92375,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.400957,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.809708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.427083,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.164166,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-9",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 32.475417,
+      "sql_count": 3,
+      "sql_elapsed_ms": 4.175333999999999,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.970417,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.848042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.356875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-8",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 33.249708,
+      "sql_count": 3,
+      "sql_elapsed_ms": 4.3504570000000005,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.885458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.477666,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.987333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-10",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 18.663833,
+      "sql_count": 3,
+      "sql_elapsed_ms": 5.441501000000001,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.106875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.383084,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 1.951542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-11",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 22.564417,
+      "sql_count": 3,
+      "sql_elapsed_ms": 5.72675,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.359042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.188875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.178833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-13",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 23.7155,
+      "sql_count": 3,
+      "sql_elapsed_ms": 5.46775,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.885917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.905416,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.676417,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-12",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 24.190125,
+      "sql_count": 3,
+      "sql_elapsed_ms": 6.424875,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.868584,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 1.004416,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 3.551875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-14",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 26.496333,
+      "sql_count": 3,
+      "sql_elapsed_ms": 4.8875,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.875375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.739833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.272292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-15",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 27.559459,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.116625,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.817167,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.558958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 1.7405,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-16",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 28.424583,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.955626,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.929667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.449542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.576417,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-17",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 30.607041,
+      "sql_count": 3,
+      "sql_elapsed_ms": 2.995959,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.974542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.420792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 1.600625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-18",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 31.613208,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.740958,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.012416,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.54625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.182292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-19",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 32.388209,
+      "sql_count": 3,
+      "sql_elapsed_ms": 4.1438749999999995,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.389791,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.720667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.033417,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-21",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 19.244542,
+      "sql_count": 3,
+      "sql_elapsed_ms": 5.881291,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.382916,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.219208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.279167,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-20",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 22.450959,
+      "sql_count": 3,
+      "sql_elapsed_ms": 5.657584,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.12975,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.393417,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.134417,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-23",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 23.331083,
+      "sql_count": 3,
+      "sql_elapsed_ms": 4.302626,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 2.097417,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.413292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 1.791917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-24",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 23.824542,
+      "sql_count": 3,
+      "sql_elapsed_ms": 5.0875,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 2.125125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.459666,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.502709,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-25",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 27.506916,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.285375,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.764458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.408542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.112375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-22",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 28.576041,
+      "sql_count": 3,
+      "sql_elapsed_ms": 6.420583000000001,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.965333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 1.08425,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 3.371,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-26",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 28.3845,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.737959,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.910334,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.562583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.265042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-29",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 32.838417,
+      "sql_count": 3,
+      "sql_elapsed_ms": 4.305333,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.19975,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.627958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.477625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-27",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 33.204084,
+      "sql_count": 3,
+      "sql_elapsed_ms": 5.048583000000001,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.158625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.469667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 3.420291,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-28",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 33.775667,
+      "sql_count": 3,
+      "sql_elapsed_ms": 4.803625,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.948167,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.419708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 3.43575,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-30",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 19.652708,
+      "sql_count": 3,
+      "sql_elapsed_ms": 5.576583,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.167833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.341375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.067375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-31",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 23.35475,
+      "sql_count": 3,
+      "sql_elapsed_ms": 5.694416,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.3585,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.174541,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.161375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-32",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 23.94925,
+      "sql_count": 3,
+      "sql_elapsed_ms": 5.785292,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 2.034167,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 1.500375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.25075,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-33",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 24.243292,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.748501,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.799709,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.509625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.439167,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-35",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 27.814666,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.0421259999999997,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.940375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.592917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 1.508834,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-36",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 28.49,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.634333,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.106541,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.580542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 1.94725,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-34",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 29.063458,
+      "sql_count": 3,
+      "sql_elapsed_ms": 4.4037500000000005,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.96975,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.421333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 3.012667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-37",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 32.737125,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.826957,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.141666,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.494916,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.190375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-38",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 33.273708,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.6692910000000003,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.6135,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.606083,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.449708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-39",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 33.459083,
+      "sql_count": 3,
+      "sql_elapsed_ms": 4.244376,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.7815,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.959417,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.503459,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-40",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 18.965791,
+      "sql_count": 3,
+      "sql_elapsed_ms": 2.8435430000000004,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.786209,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.371875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 1.685459,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-45",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 19.450042,
+      "sql_count": 3,
+      "sql_elapsed_ms": 4.2431659999999995,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.947541,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.657292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.638333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-41",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 23.638333,
+      "sql_count": 3,
+      "sql_elapsed_ms": 4.965916,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.022125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.238375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 1.705416,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-43",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 24.281542,
+      "sql_count": 3,
+      "sql_elapsed_ms": 4.696293,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.831709,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.041875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 1.822709,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-42",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 24.7175,
+      "sql_count": 3,
+      "sql_elapsed_ms": 5.277957000000001,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 2.160416,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.853875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.263666,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-44",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 27.878417,
+      "sql_count": 3,
+      "sql_elapsed_ms": 5.015834,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 2.39875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.706459,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 1.910625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-46",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 28.548209,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.7427080000000004,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.167542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.444583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.130583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-47",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 33.21275,
+      "sql_count": 3,
+      "sql_elapsed_ms": 3.608291,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.216958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.421,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 1.970333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-48",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 33.837167,
+      "sql_count": 3,
+      "sql_elapsed_ms": 5.464875,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.054083,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 1.677708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.733084,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "100000-document-c10-sample-49",
+      "warmup": false,
+      "endpoint": "document",
+      "path": "/api/documents/5e018e8d-818c-5a71-97d6-0eef9c0c582f",
+      "concurrency": 10,
+      "background_jobs": 100000,
+      "http_status": 200,
+      "response_bytes": 100205,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 33.98575,
+      "sql_count": 3,
+      "sql_elapsed_ms": 5.56025,
+      "sql_rows": 3,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 2,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.710041,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 1.252917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d8e513570ab16b7f",
+          "elapsed_ms": 2.597292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,2096 @@
+{
+  "summary": {
+    "endpoint": "session",
+    "path": "/api/session",
+    "concurrency": 10,
+    "measured_requests": 50,
+    "warmup_requests": 10,
+    "warmup_errors": 0,
+    "errors": 0,
+    "error_types": [],
+    "http_status_counts": {
+      "200": 50
+    },
+    "all_response_latency_ms": {
+      "samples": 50,
+      "p50": 12.6013,
+      "p95": 16.0949,
+      "max": 17.0405
+    },
+    "successful_latency_ms": {
+      "samples": 50,
+      "p50": 12.6013,
+      "p95": 16.0949,
+      "max": 17.0405
+    },
+    "sql_count": {
+      "samples": 50,
+      "p50": 2.0,
+      "p95": 2,
+      "max": 2
+    },
+    "sql_elapsed_ms": {
+      "samples": 50,
+      "p50": 1.5403,
+      "p95": 3.832,
+      "max": 3.9212
+    },
+    "sql_rows": {
+      "samples": 50,
+      "p50": 2.0,
+      "p95": 2,
+      "max": 2
+    },
+    "response_bytes": {
+      "samples": 50,
+      "p50": 69.0,
+      "p95": 69,
+      "max": 69
+    },
+    "measurement_wall_s": 0.08481837494764477,
+    "completed_requests_per_s": 589.4949063910166,
+    "valid_requests_per_s": 589.4949063910166
+  },
+  "requests": [
+    {
+      "request_id": "10000-session-c10-warmup-0",
+      "warmup": true,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 15.643208,
+      "sql_count": 2,
+      "sql_elapsed_ms": 8.888751000000001,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 6.923167,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 1.965584,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-warmup-3",
+      "warmup": true,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 19.661,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.857666,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.4235,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.434166,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-warmup-1",
+      "warmup": true,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 21.932333,
+      "sql_count": 2,
+      "sql_elapsed_ms": 4.076583,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 2.64,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 1.436583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-warmup-2",
+      "warmup": true,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 23.198084,
+      "sql_count": 2,
+      "sql_elapsed_ms": 2.983167,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 2.127958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.855209,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-warmup-4",
+      "warmup": true,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 23.832458,
+      "sql_count": 2,
+      "sql_elapsed_ms": 2.900667,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 2.512375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.388292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-warmup-5",
+      "warmup": true,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 24.568834,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.34975,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.897708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.452042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-warmup-6",
+      "warmup": true,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 25.483167,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.286834,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.971584,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.31525,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-warmup-7",
+      "warmup": true,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 26.211417,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.290709,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.903875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.386834,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-warmup-8",
+      "warmup": true,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 26.439833,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.362417,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.983542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.378875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-warmup-9",
+      "warmup": true,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 27.020458,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.023501,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.789959,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.233542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-0",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 7.535,
+      "sql_count": 2,
+      "sql_elapsed_ms": 3.771708,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.993083,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.778625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-1",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 8.130417,
+      "sql_count": 2,
+      "sql_elapsed_ms": 3.9211659999999995,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.279208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.641958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-3",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 9.733375,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.368167,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.040625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.327542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-4",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.714917,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.721168,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.954709,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.766459,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-2",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 12.657625,
+      "sql_count": 2,
+      "sql_elapsed_ms": 3.259667,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.978875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 1.280792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-5",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 12.920125,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.184667,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.714333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.470334,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-6",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 13.470542,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.557126,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.929834,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.627292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-7",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 15.165291,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.4990839999999999,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.107292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.391792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-8",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 15.620542,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.473708,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.073083,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.400625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-9",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 15.959625,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.5227909999999998,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.010333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.512458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-11",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 7.671042,
+      "sql_count": 2,
+      "sql_elapsed_ms": 3.542417,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.2165,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.325917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-10",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 7.876791,
+      "sql_count": 2,
+      "sql_elapsed_ms": 3.8320419999999995,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.598167,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.233875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-13",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 11.207459,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.838084,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.556875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 1.281209,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-12",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 11.642292,
+      "sql_count": 2,
+      "sql_elapsed_ms": 2.492916,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.597375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.895541,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-14",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 11.72075,
+      "sql_count": 2,
+      "sql_elapsed_ms": 2.416667,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.647208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.769459,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-15",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 14.218375,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.5188329999999999,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.878875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.639958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-16",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 14.307917,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.652208,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.97125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.680958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-17",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 14.695542,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.6392499999999999,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.007,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.63225,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-19",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 16.593375,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.239833,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.868958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.370875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-18",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 17.0405,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.722416,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.320333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.402083,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-20",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 7.402209,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.1508340000000001,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.682709,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.468125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-21",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 7.805542,
+      "sql_count": 2,
+      "sql_elapsed_ms": 3.4122090000000003,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.981834,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.430375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-23",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 9.562917,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.158333,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.738542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.419791,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-24",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.290666,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.577333,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.084375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.492958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-25",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 11.94125,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.177834,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.787625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.390209,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-26",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 12.593,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.464667,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.981667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.483,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-22",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 13.555167,
+      "sql_count": 2,
+      "sql_elapsed_ms": 3.826125,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 2.513541,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 1.312584,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-27",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 14.820459,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.574584,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.150917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.423667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-28",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 15.227709,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.5237910000000001,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.9945,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.529291,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-29",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 15.504958,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.243625,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.759791,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.483834,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-30",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 7.226959,
+      "sql_count": 2,
+      "sql_elapsed_ms": 3.303125,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.895667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.407458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-31",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 7.625458,
+      "sql_count": 2,
+      "sql_elapsed_ms": 3.442875,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 3.06675,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.376125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-33",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 9.702916,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.167291,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.770166,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.397125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-34",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 9.916667,
+      "sql_count": 2,
+      "sql_elapsed_ms": 0.999,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.681125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.317875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-32",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 11.398334,
+      "sql_count": 2,
+      "sql_elapsed_ms": 3.188041,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 2.229458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.958583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-35",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 12.085416,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.338792,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.734875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.603917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-36",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 12.6095,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.3525,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.873375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.479125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-37",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 14.219458,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.464625,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.92125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.543375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-39",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 15.053708,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.38475,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.842625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.542125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-38",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 15.5,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.871833,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.413333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.4585,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-41",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 7.908708,
+      "sql_count": 2,
+      "sql_elapsed_ms": 3.514167,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.835292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.678875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-40",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 8.578,
+      "sql_count": 2,
+      "sql_elapsed_ms": 3.919042,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.407292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 2.51175,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-43",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.305125,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.255668,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.891709,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.363959,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-44",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.987583,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.198375,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.784334,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.414041,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-42",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 13.219458,
+      "sql_count": 2,
+      "sql_elapsed_ms": 3.665709,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 2.387125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 1.278584,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-45",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 13.458125,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.533,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.004583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.528417,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-46",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 13.254834,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.089791,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.681833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.407958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-49",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 15.792916,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.4776669999999998,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 1.047292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.430375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-47",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 16.003625,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.547583,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.956625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.590958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-session-c10-sample-48",
+      "warmup": false,
+      "endpoint": "session",
+      "path": "/api/session",
+      "concurrency": 10,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 69,
+      "response_items": 1,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 16.094875,
+      "sql_count": 2,
+      "sql_elapsed_ms": 1.4080430000000002,
+      "sql_rows": 2,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "16327e8070019c9d",
+          "elapsed_ms": 0.941084,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "546a6fb98b65a9fa",
+          "elapsed_ms": 0.466959,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    }
+  ]
+}

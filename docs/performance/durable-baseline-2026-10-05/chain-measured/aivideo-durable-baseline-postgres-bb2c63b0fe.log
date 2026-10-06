@@ -1,0 +1,72 @@
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+fixing permissions on existing directory /var/lib/postgresql/data ... ok
+creating subdirectories ... ok
+selecting dynamic shared memory implementation ... posix
+selecting default max_connections ... 100
+selecting default shared_buffers ... 128MB
+selecting default time zone ... UTC
+creating configuration files ... ok
+running bootstrap script ... ok
+sh: locale: not found
+2026-10-05 15:52:59.867 UTC [34] WARNING:  no usable system locales were found
+performing post-bootstrap initialization ... ok
+syncing data to disk ... ok
+
+
+Success. You can now start the database server using:
+
+    pg_ctl -D /var/lib/postgresql/data -l logfile start
+
+initdb: warning: enabling "trust" authentication for local connections
+initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+waiting for server to start....2026-10-05 15:53:00.228 UTC [40] LOG:  starting PostgreSQL 16.15 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+2026-10-05 15:53:00.230 UTC [40] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-10-05 15:53:00.234 UTC [43] LOG:  database system was shut down at 2026-10-05 15:53:00 UTC
+2026-10-05 15:53:00.236 UTC [40] LOG:  database system is ready to accept connections
+ done
+server started
+2026-10-05 15:53:00.355 UTC [51] LOG:  duration: 37.774 ms  statement: CREATE DATABASE "baseline" ;
+CREATE DATABASE
+
+
+/usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+
+waiting for server to shut down....2026-10-05 15:53:00.357 UTC [40] LOG:  received fast shutdown request
+2026-10-05 15:53:00.359 UTC [40] LOG:  aborting any active transactions
+2026-10-05 15:53:00.362 UTC [40] LOG:  background worker "logical replication launcher" (PID 46) exited with exit code 1
+2026-10-05 15:53:00.362 UTC [41] LOG:  shutting down
+2026-10-05 15:53:00.363 UTC [41] LOG:  checkpoint starting: shutdown immediate
+2026-10-05 15:53:00.393 UTC [41] LOG:  checkpoint complete: wrote 926 buffers (5.7%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.014 s, sync=0.015 s, total=0.032 s; sync files=301, longest=0.007 s, average=0.001 s; distance=4283 kB, estimate=4283 kB; lsn=0/1925D20, redo lsn=0/1925D20
+2026-10-05 15:53:00.398 UTC [40] LOG:  database system is shut down
+ done
+server stopped
+
+PostgreSQL init process complete; ready for start up.
+
+2026-10-05 15:53:00.470 UTC [1] LOG:  starting PostgreSQL 16.15 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit
+2026-10-05 15:53:00.470 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-10-05 15:53:00.470 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-10-05 15:53:00.472 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-10-05 15:53:00.475 UTC [56] LOG:  database system was shut down at 2026-10-05 15:53:00 UTC
+2026-10-05 15:53:00.478 UTC [1] LOG:  database system is ready to accept connections
+2026-10-05 15:53:06.929 UTC [64] LOG:  duration: 23.664 ms  statement: SELECT pg_advisory_xact_lock(72140901)
+2026-10-05 15:53:06.940 UTC [65] LOG:  duration: 22.552 ms  statement: SELECT pg_advisory_xact_lock(72140901)
+2026-10-05 15:53:06.952 UTC [66] LOG:  duration: 20.706 ms  statement: SELECT pg_advisory_xact_lock(72140901)
+2026-10-05 15:53:06.987 UTC [66] LOG:  duration: 22.871 ms  statement: SELECT pg_advisory_xact_lock(72140901)
+2026-10-05 15:53:06.999 UTC [64] LOG:  duration: 25.728 ms  statement: SELECT pg_advisory_xact_lock(72140901)
+2026-10-05 15:53:07.012 UTC [65] LOG:  duration: 23.070 ms  statement: SELECT pg_advisory_xact_lock(72140901)
+2026-10-05 15:53:13.177 UTC [72] LOG:  duration: 33.067 ms  statement: ;
+2026-10-05 15:54:18.241 UTC [64] LOG:  duration: 61.065 ms  parse <unnamed>: SELECT jobs.id, jobs.workspace_id, jobs.document_id, jobs.parent_id, jobs.generation_request_id, jobs.kind, jobs.status, jobs.params, jobs.progress, jobs.message, jobs.error, jobs.error_code, jobs.recovery, jobs.external_task_id, jobs.attempt_count, jobs.state_version, jobs.execution_epoch, jobs.phase, jobs.lease_owner, jobs.lease_until, jobs.dispatched_until, jobs.reconcile_deadline, jobs.queue_deadline, jobs.execution_deadline, jobs.download_deadline, jobs.cancel_requested_at, jobs.phase_failures, jobs.provider_snapshot, jobs.phase_payload, jobs.next_poll_at, jobs.slot_scope, jobs.slot_acquired_at, jobs.created_at, jobs.updated_at, jobs.finished_at 
+	FROM jobs 
+	WHERE jobs.id IN ($1::UUID, $2::UUID, $3::UUID, $4::UUID, $5::UUID, $6::UUID, $7::UUID, $8::UUID, $9::UUID, $10::UUID)
+2026-10-05 15:54:20.381 UTC [64] LOG:  duration: 24.795 ms  parse <unnamed>: SELECT jobs.id, jobs.workspace_id, jobs.document_id, jobs.parent_id, jobs.generation_request_id, jobs.kind, jobs.status, jobs.params, jobs.progress, jobs.message, jobs.error, jobs.error_code, jobs.recovery, jobs.external_task_id, jobs.attempt_count, jobs.state_version, jobs.execution_epoch, jobs.phase, jobs.lease_owner, jobs.lease_until, jobs.dispatched_until, jobs.reconcile_deadline, jobs.queue_deadline, jobs.execution_deadline, jobs.download_deadline, jobs.cancel_requested_at, jobs.phase_failures, jobs.provider_snapshot, jobs.phase_payload, jobs.next_poll_at, jobs.slot_scope, jobs.slot_acquired_at, jobs.created_at, jobs.updated_at, jobs.finished_at 
+	FROM jobs 
+	WHERE jobs.id IN ($1::UUID, $2::UUID, $3::UUID, $4::UUID, $5::UUID, $6::UUID, $7::UUID, $8::UUID, $9::UUID, $10::UUID)

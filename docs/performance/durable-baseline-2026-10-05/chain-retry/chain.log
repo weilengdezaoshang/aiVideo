@@ -1,0 +1,69 @@
+Traceback (most recent call last):
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/.venv/lib/python3.11/site-packages/kombu/connection.py", line 474, in _reraise_as_library_errors
+    yield
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/.venv/lib/python3.11/site-packages/kombu/connection.py", line 461, in _ensure_connection
+    return retry_over_time(
+           ^^^^^^^^^^^^^^^^
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/.venv/lib/python3.11/site-packages/kombu/utils/functional.py", line 318, in retry_over_time
+    return fun(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/.venv/lib/python3.11/site-packages/kombu/connection.py", line 941, in _connection_factory
+    self._connection = self._establish_connection()
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/.venv/lib/python3.11/site-packages/kombu/connection.py", line 863, in _establish_connection
+    conn = self.transport.establish_connection()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/.venv/lib/python3.11/site-packages/kombu/transport/pyamqp.py", line 203, in establish_connection
+    conn.connect()
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/.venv/lib/python3.11/site-packages/amqp/connection.py", line 324, in connect
+    self.transport.connect()
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/.venv/lib/python3.11/site-packages/amqp/transport.py", line 132, in connect
+    self._connect(self.host, self.port, self.connect_timeout)
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/.venv/lib/python3.11/site-packages/amqp/transport.py", line 187, in _connect
+    self.sock.connect(sa)
+ConnectionRefusedError: [Errno 61] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/scripts/perf/durable_chain_baseline.py", line 82, in wait_for_broker
+    await asyncio.to_thread(connect)
+  File "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/threads.py", line 25, in to_thread
+    return await loop.run_in_executor(None, func_call)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/scripts/perf/durable_chain_baseline.py", line 72, in connect
+    connection.ensure_connection(max_retries=0)
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/.venv/lib/python3.11/site-packages/kombu/connection.py", line 408, in ensure_connection
+    self._ensure_connection(*args, **kwargs)
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/.venv/lib/python3.11/site-packages/kombu/connection.py", line 460, in _ensure_connection
+    with ctx():
+  File "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/contextlib.py", line 158, in __exit__
+    self.gen.throw(typ, value, traceback)
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/.venv/lib/python3.11/site-packages/kombu/connection.py", line 478, in _reraise_as_library_errors
+    raise ConnectionError(str(exc)) from exc
+kombu.exceptions.OperationalError: [Errno 61] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/scripts/perf/durable_chain_baseline.py", line 875, in <module>
+    main()
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/scripts/perf/durable_chain_baseline.py", line 871, in main
+    asyncio.run(collect(args, output))
+  File "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/scripts/perf/durable_chain_baseline.py", line 357, in collect
+    await wait_for_broker(broker, output)
+  File "/Users/weilengdezaoshang/Documents/项目/aiVideo/scripts/perf/durable_chain_baseline.py", line 97, in wait_for_broker
+    raise RuntimeError(
+RuntimeError: isolated RabbitMQ AMQP handshake failed after 148 attempts: OperationalError: [Errno 61] Connection refused

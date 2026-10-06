@@ -1,0 +1,319 @@
+{
+  "python": "3.11.15",
+  "platform": "macOS-26.4.1-arm64-arm-64bit",
+  "profiling": "deterministic instrumentation; Python/C boundary, not native-stack sampling",
+  "cpu": [
+    {
+      "documents": 100,
+      "document_bytes": 10020200,
+      "cprofile": {
+        "wall_ms": 324.17350000469014,
+        "thread_cpu_ms": 323.43662499999994
+      },
+      "flame": {
+        "attributed_thread_cpu_ms": 329.86,
+        "distinct_stacks": 298
+      },
+      "top_self_cpu": [
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'findall' of 're.Pattern' objects>",
+          "primitive_calls": 300,
+          "calls": 300,
+          "self_cpu_ms": 256.379,
+          "inclusive_cpu_ms": 256.379
+        },
+        {
+          "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/decoder.py",
+          "line": 343,
+          "function": "raw_decode",
+          "primitive_calls": 300,
+          "calls": 300,
+          "self_cpu_ms": 27.816,
+          "inclusive_cpu_ms": 27.816
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<built-in method io.open>",
+          "primitive_calls": 606,
+          "calls": 606,
+          "self_cpu_ms": 10.5,
+          "inclusive_cpu_ms": 12.241
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'read' of '_io.TextIOWrapper' objects>",
+          "primitive_calls": 600,
+          "calls": 600,
+          "self_cpu_ms": 7.972,
+          "inclusive_cpu_ms": 11.276
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<built-in method _codecs.utf_8_decode>",
+          "primitive_calls": 600,
+          "calls": 600,
+          "self_cpu_ms": 2.923,
+          "inclusive_cpu_ms": 2.923
+        },
+        {
+          "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+          "line": 353,
+          "function": "_select_from",
+          "primitive_calls": 606,
+          "calls": 606,
+          "self_cpu_ms": 1.155,
+          "inclusive_cpu_ms": 2.445
+        },
+        {
+          "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+          "line": 1053,
+          "function": "read_text",
+          "primitive_calls": 600,
+          "calls": 600,
+          "self_cpu_ms": 0.826,
+          "inclusive_cpu_ms": 25.016
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method '__exit__' of '_io._IOBase' objects>",
+          "primitive_calls": 606,
+          "calls": 606,
+          "self_cpu_ms": 0.801,
+          "inclusive_cpu_ms": 0.801
+        },
+        {
+          "file": "/Users/weilengdezaoshang/Documents/\u9879\u76ee/aiVideo/apps/api/backend/storage.py",
+          "line": 24,
+          "function": "referenced_history_files",
+          "primitive_calls": 3,
+          "calls": 3,
+          "self_cpu_ms": 0.623,
+          "inclusive_cpu_ms": 271.474
+        },
+        {
+          "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+          "line": 536,
+          "function": "__str__",
+          "primitive_calls": 636,
+          "calls": 636,
+          "self_cpu_ms": 0.532,
+          "inclusive_cpu_ms": 1.025
+        }
+      ]
+    },
+    {
+      "documents": 1000,
+      "document_bytes": 100202000,
+      "cprofile": {
+        "wall_ms": 3208.3977080183104,
+        "thread_cpu_ms": 3205.147541
+      },
+      "flame": {
+        "attributed_thread_cpu_ms": 3253.97,
+        "distinct_stacks": 298
+      },
+      "top_self_cpu": [
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'findall' of 're.Pattern' objects>",
+          "primitive_calls": 3000,
+          "calls": 3000,
+          "self_cpu_ms": 2569.152,
+          "inclusive_cpu_ms": 2569.152
+        },
+        {
+          "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/decoder.py",
+          "line": 343,
+          "function": "raw_decode",
+          "primitive_calls": 3000,
+          "calls": 3000,
+          "self_cpu_ms": 271.993,
+          "inclusive_cpu_ms": 271.993
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<built-in method io.open>",
+          "primitive_calls": 6006,
+          "calls": 6006,
+          "self_cpu_ms": 105.94,
+          "inclusive_cpu_ms": 123.755
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method 'read' of '_io.TextIOWrapper' objects>",
+          "primitive_calls": 6000,
+          "calls": 6000,
+          "self_cpu_ms": 82.31,
+          "inclusive_cpu_ms": 114.757
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<built-in method _codecs.utf_8_decode>",
+          "primitive_calls": 6000,
+          "calls": 6000,
+          "self_cpu_ms": 28.619,
+          "inclusive_cpu_ms": 28.619
+        },
+        {
+          "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+          "line": 353,
+          "function": "_select_from",
+          "primitive_calls": 6006,
+          "calls": 6006,
+          "self_cpu_ms": 11.285,
+          "inclusive_cpu_ms": 22.894
+        },
+        {
+          "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+          "line": 1053,
+          "function": "read_text",
+          "primitive_calls": 6000,
+          "calls": 6000,
+          "self_cpu_ms": 8.121,
+          "inclusive_cpu_ms": 258.847
+        },
+        {
+          "file": "~",
+          "line": 0,
+          "function": "<method '__exit__' of '_io._IOBase' objects>",
+          "primitive_calls": 6006,
+          "calls": 6006,
+          "self_cpu_ms": 7.297,
+          "inclusive_cpu_ms": 7.297
+        },
+        {
+          "file": "/Users/weilengdezaoshang/Documents/\u9879\u76ee/aiVideo/apps/api/backend/storage.py",
+          "line": 24,
+          "function": "referenced_history_files",
+          "primitive_calls": 3,
+          "calls": 3,
+          "self_cpu_ms": 6.127,
+          "inclusive_cpu_ms": 2723.79
+        },
+        {
+          "file": "/opt/homebrew/Cellar/python@3.11/3.11.15_4/Frameworks/Python.framework/Versions/3.11/lib/python3.11/pathlib.py",
+          "line": 536,
+          "function": "__str__",
+          "primitive_calls": 6036,
+          "calls": 6036,
+          "self_cpu_ms": 5.761,
+          "inclusive_cpu_ms": 10.495
+        }
+      ]
+    }
+  ],
+  "chains": [
+    {
+      "documents": 100,
+      "queue_ms": {
+        "samples": 8,
+        "p50_ms": 673.5,
+        "p95_ms": 1382.0,
+        "max_ms": 1382.0,
+        "samples_ms": [
+          7.0,
+          7.0,
+          368.0,
+          462.0,
+          885.0,
+          980.0,
+          1291.0,
+          1382.0
+        ]
+      },
+      "request_to_finished_ms": {
+        "samples": 8,
+        "p50_ms": 1148.57,
+        "p95_ms": 1809.3,
+        "max_ms": 1809.3,
+        "samples_ms": [
+          387.117,
+          474.09,
+          897.728,
+          992.659,
+          1304.488,
+          1396.02,
+          1718.505,
+          1809.295
+        ]
+      },
+      "persist_ms": {
+        "samples": 8,
+        "p50_ms": 92.3,
+        "p95_ms": 213.72,
+        "max_ms": 213.72,
+        "samples_ms": [
+          91.242,
+          93.363,
+          213.724,
+          91.159,
+          105.097,
+          88.733,
+          114.542,
+          88.415
+        ]
+      }
+    },
+    {
+      "documents": 1000,
+      "queue_ms": {
+        "samples": 8,
+        "p50_ms": 2660.5,
+        "p95_ms": 6119.0,
+        "max_ms": 6119.0,
+        "samples_ms": [
+          4.0,
+          4.0,
+          1202.0,
+          2099.0,
+          3222.0,
+          4110.0,
+          5230.0,
+          6119.0
+        ]
+      },
+      "request_to_finished_ms": {
+        "samples": 8,
+        "p50_ms": 4675.3,
+        "p95_ms": 8146.66,
+        "max_ms": 8146.66,
+        "samples_ms": [
+          1205.457,
+          2103.533,
+          3226.084,
+          4114.967,
+          5235.626,
+          6125.094,
+          7252.291,
+          8146.659
+        ]
+      },
+      "persist_ms": {
+        "samples": 8,
+        "p50_ms": 904.38,
+        "p95_ms": 938.45,
+        "max_ms": 938.45,
+        "samples_ms": [
+          938.449,
+          896.233,
+          915.083,
+          886.055,
+          912.527,
+          886.547,
+          919.507,
+          886.384
+        ]
+      }
+    }
+  ]
+}

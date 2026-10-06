@@ -1,0 +1,1433 @@
+{
+  "protocol": "web-bundle-v1",
+  "createdAt": "2026-10-03T15:13:13.264Z",
+  "revision": "9868f59a21d53480c0e489e86cd8f8e78e5d6e3a",
+  "dirty": true,
+  "environment": {
+    "node": "v24.19.0",
+    "esbuild": "0.28.2",
+    "lockSha256": "e9539a9f04918d40c00813472076d5aa0c4611e0144ef2702c1a0a6cb124983d"
+  },
+  "totals": {
+    "all": {
+      "raw": 9154912,
+      "gzip": 2191618,
+      "brotli": 1768045
+    },
+    "sourceMaps": {
+      "raw": 7299464,
+      "gzip": 1618803,
+      "brotli": 1288277
+    },
+    "runtime": {
+      "raw": 1855448,
+      "gzip": 572815,
+      "brotli": 479768
+    }
+  },
+  "files": [
+    {
+      "path": "canvas/components/timeline-assets.js",
+      "sha256": "426f54182d336b26b2419811263d1c3451d4f342d284c660f7aa908ebed01c0f",
+      "raw": 4037,
+      "gzip": 1368,
+      "brotli": 1115
+    },
+    {
+      "path": "canvas/components/timeline-assets.js.map",
+      "sha256": "bcfa2b02a64979ee862bf720310c739402127f11f7f947158e711ef4f4fea824",
+      "raw": 4387,
+      "gzip": 1053,
+      "brotli": 964
+    },
+    {
+      "path": "canvas/components/timeline-controls.js",
+      "sha256": "9af1780c5ae0a1953f391e1d2bd7fad8216b49a98f6c45462262b7cf5661d594",
+      "raw": 532,
+      "gzip": 309,
+      "brotli": 226
+    },
+    {
+      "path": "canvas/components/timeline-controls.js.map",
+      "sha256": "bcb7af705b90d4411e94d439eb5984798585aaa53462eb95c8745234d7fbb216",
+      "raw": 780,
+      "gzip": 360,
+      "brotli": 314
+    },
+    {
+      "path": "canvas/components/timeline-track.js",
+      "sha256": "bad3b2e30aa25663b2f2f1cc5ed4116b831b4a7c3d6fe203f5e5b7979e9cdede",
+      "raw": 5333,
+      "gzip": 1651,
+      "brotli": 1396
+    },
+    {
+      "path": "canvas/components/timeline-track.js.map",
+      "sha256": "d0669c703d873a3631e32b8e6afd98dfae3fc41228631b02b954d9407bf81a64",
+      "raw": 5718,
+      "gzip": 1285,
+      "brotli": 1175
+    },
+    {
+      "path": "canvas/core/canvas-view.js",
+      "sha256": "76d7f732ca7cff09499e530b87f3f1f2e84b62edc534c44011b6d8656705cd7d",
+      "raw": 19067,
+      "gzip": 3897,
+      "brotli": 3405
+    },
+    {
+      "path": "canvas/core/canvas-view.js.map",
+      "sha256": "4e3aaf4d5ab3804935b367c6543762b6a8fac37b4fff7d9ae76d89295424b584",
+      "raw": 20120,
+      "gzip": 3362,
+      "brotli": 3059
+    },
+    {
+      "path": "canvas/core/event-hub.js",
+      "sha256": "fa223b366596a0a90eb7b9976ebc56a558d6aa66d073afd6e8fe41bfc8016b8a",
+      "raw": 684,
+      "gzip": 303,
+      "brotli": 251
+    },
+    {
+      "path": "canvas/core/event-hub.js.map",
+      "sha256": "4220b24eaf5f4cba50286faa9db04265ea443e3dc768f0fa689deea01d802fd4",
+      "raw": 1011,
+      "gzip": 421,
+      "brotli": 378
+    },
+    {
+      "path": "canvas/core/geometry.js",
+      "sha256": "5a894bf392746e328484814cb1093ff45b4e7b862f79fda1a8b7b4212c7237e2",
+      "raw": 1574,
+      "gzip": 563,
+      "brotli": 482
+    },
+    {
+      "path": "canvas/core/geometry.js.map",
+      "sha256": "ea4afc94b43982d8a72591a877024ed5b4ee25a1ed370bcfe24dbc227f54b5fa",
+      "raw": 2541,
+      "gzip": 616,
+      "brotli": 542
+    },
+    {
+      "path": "canvas/core/index.js",
+      "sha256": "a127422d12211866499689b8901cc4d1e78cf95583c57dd2ce175394028b03a1",
+      "raw": 226,
+      "gzip": 166,
+      "brotli": 134
+    },
+    {
+      "path": "canvas/core/index.js.map",
+      "sha256": "8732cb6dba53d738f3475336f33f6a72a5b9333d925c1a50d217229f97ce9082",
+      "raw": 351,
+      "gzip": 248,
+      "brotli": 208
+    },
+    {
+      "path": "canvas/core/layers.js",
+      "sha256": "180b53102a2938c462bf1059be804b0e6edf4d3901feaf152db86317c187b0a3",
+      "raw": 13367,
+      "gzip": 2421,
+      "brotli": 2134
+    },
+    {
+      "path": "canvas/core/layers.js.map",
+      "sha256": "44e8769ea6e801427364097c40736e49bef0b0a4d93ddcc719d221854b0451e7",
+      "raw": 14331,
+      "gzip": 2317,
+      "brotli": 2085
+    },
+    {
+      "path": "canvas/core/monos.js",
+      "sha256": "efea9836688daf871a81de4a3b48926c7ef8a9f832ac6b1a83775a74d22f9891",
+      "raw": 12338,
+      "gzip": 2072,
+      "brotli": 1881
+    },
+    {
+      "path": "canvas/core/monos.js.map",
+      "sha256": "8de2e2099aa369243b541da5bf395b2c3a55134d72f822f34017a3d9f5a83fb6",
+      "raw": 13822,
+      "gzip": 2104,
+      "brotli": 1879
+    },
+    {
+      "path": "canvas/core/types.js",
+      "sha256": "01ae2a5b120382f9a648ced7ee8507493a134f216d100fc61600c6c9738235d2",
+      "raw": 44,
+      "gzip": 64,
+      "brotli": 48
+    },
+    {
+      "path": "canvas/core/types.js.map",
+      "sha256": "d388d1056d686a1e242303f488194ae11a6fef8ca21c9da925a8e5f8c88553e8",
+      "raw": 192,
+      "gzip": 164,
+      "brotli": 131
+    },
+    {
+      "path": "canvas/engine/transform-geometry.js",
+      "sha256": "d5d846452458d547e0d983ba6a158fd84e873c7b17a3a07b702f0d4502f43b1c",
+      "raw": 2546,
+      "gzip": 964,
+      "brotli": 831
+    },
+    {
+      "path": "canvas/engine/transform-geometry.js.map",
+      "sha256": "89d52b8d430178771f4d2f68f96096c4a8ad6466d1936012034d9936592bf69f",
+      "raw": 4215,
+      "gzip": 861,
+      "brotli": 775
+    },
+    {
+      "path": "canvas/flows/agent.js",
+      "sha256": "29b2a30cd357a8e4d6fcee17cc35d3dc7c1c2d91e7a76736fa061b01ecd900eb",
+      "raw": 6925,
+      "gzip": 2656,
+      "brotli": 2151
+    },
+    {
+      "path": "canvas/flows/agent.js.map",
+      "sha256": "699195b8f0226e9798511a4de960d3cffe3b242ccb6ac7fedada35d3035b634d",
+      "raw": 5872,
+      "gzip": 1451,
+      "brotli": 1322
+    },
+    {
+      "path": "canvas/flows/asset-util.js",
+      "sha256": "0c154b9ae7b18a263f952c17faf02affcc33de08fab3f4d2d1a342b7e4dc30e3",
+      "raw": 3746,
+      "gzip": 1508,
+      "brotli": 1261
+    },
+    {
+      "path": "canvas/flows/asset-util.js.map",
+      "sha256": "f7f3642c021240d2f5e38d03959a44d4f072c0b2317a31bd62f5597bec2f3bee",
+      "raw": 3887,
+      "gzip": 978,
+      "brotli": 883
+    },
+    {
+      "path": "canvas/flows/audio-preview.js",
+      "sha256": "ba291e2b13b07a8a9b06040072244869f7be853ba4d50641698edd0686f14251",
+      "raw": 3755,
+      "gzip": 1087,
+      "brotli": 892
+    },
+    {
+      "path": "canvas/flows/audio-preview.js.map",
+      "sha256": "1da36231b44dbc2ce809a575a269b2520c4a1970afa6e699bf12738518c9bbcf",
+      "raw": 3885,
+      "gzip": 944,
+      "brotli": 861
+    },
+    {
+      "path": "canvas/flows/audio-tracks.js",
+      "sha256": "00a3e2c039874e607b5aee828c17d09dcf3bd4ddce3cd076e86b181c66531f98",
+      "raw": 6797,
+      "gzip": 2219,
+      "brotli": 1794
+    },
+    {
+      "path": "canvas/flows/audio-tracks.js.map",
+      "sha256": "a7f298339167ce9b0896e5dca179439bac1ab39ed3fab35c7653bcdd2afd9f7a",
+      "raw": 6839,
+      "gzip": 1568,
+      "brotli": 1420
+    },
+    {
+      "path": "canvas/flows/chat.js",
+      "sha256": "679493094a19ce7ed58b23a96e68ef09bbe22e5d1e5454a4d761588e2fc0612e",
+      "raw": 15172,
+      "gzip": 4799,
+      "brotli": 3950
+    },
+    {
+      "path": "canvas/flows/chat.js.map",
+      "sha256": "f613d8d9f5ee6433b1bc9d739c932782c6a6cd5ba0917659ea414a20c24b676f",
+      "raw": 14984,
+      "gzip": 2880,
+      "brotli": 2595
+    },
+    {
+      "path": "canvas/flows/composer-reference.js",
+      "sha256": "7ed54a26266b4602dd2ef9e4e9cc51a88fef3ee73cb9ab7af413027e8e14e988",
+      "raw": 2875,
+      "gzip": 1429,
+      "brotli": 1103
+    },
+    {
+      "path": "canvas/flows/composer-reference.js.map",
+      "sha256": "48f3a3435770974fc35352b5717c5a06ff8ff750a4d52139f4b1da52bb896e69",
+      "raw": 3296,
+      "gzip": 884,
+      "brotli": 798
+    },
+    {
+      "path": "canvas/flows/connect-reference.js",
+      "sha256": "f70e740adbb346391b9d948087df0a29cc581bfa94987e8ac62e7aa24394f296",
+      "raw": 2502,
+      "gzip": 967,
+      "brotli": 780
+    },
+    {
+      "path": "canvas/flows/connect-reference.js.map",
+      "sha256": "57d84c5a945c32fa6a1350522ee434a040d8af636ad2619f48afd88993df136b",
+      "raw": 2632,
+      "gzip": 792,
+      "brotli": 714
+    },
+    {
+      "path": "canvas/flows/connection-inspector.js",
+      "sha256": "fdd978bf29388d355e88a50a6aaf3dd9d5262e24ffa208096e5a4c243d8608b4",
+      "raw": 2725,
+      "gzip": 1056,
+      "brotli": 812
+    },
+    {
+      "path": "canvas/flows/connection-inspector.js.map",
+      "sha256": "0bd6cf89eeb178c537e9f1338e65979f87057877056e865e24d9bd5f2d03a3bd",
+      "raw": 2713,
+      "gzip": 793,
+      "brotli": 724
+    },
+    {
+      "path": "canvas/flows/generate.js",
+      "sha256": "bf3f86c9143ffbca45ba59e8833c71d5da4c3a38f900a5364796febba2b5a882",
+      "raw": 4152,
+      "gzip": 1387,
+      "brotli": 1133
+    },
+    {
+      "path": "canvas/flows/generate.js.map",
+      "sha256": "da93ae1659a34f6f4fa75a6ff6d1661888c8095bfe7a555b96dc3b36cd0bac78",
+      "raw": 3964,
+      "gzip": 1023,
+      "brotli": 929
+    },
+    {
+      "path": "canvas/flows/group-generate.js",
+      "sha256": "35f69103142d7f1889bf464db52f83b938bc27e424afddeb2bf06e113fe76c8d",
+      "raw": 8549,
+      "gzip": 3324,
+      "brotli": 2706
+    },
+    {
+      "path": "canvas/flows/group-generate.js.map",
+      "sha256": "8b8dd2ec7f6d63c71fccc67e54fcfa56789973b6aaa74fc6a1ed7b035366b4f8",
+      "raw": 8212,
+      "gzip": 1785,
+      "brotli": 1625
+    },
+    {
+      "path": "canvas/flows/mask-selection.js",
+      "sha256": "4ee9cfbe8203b83ccf25a3f96b6a3109eef7eb71669f34e06bd00221d66e76a5",
+      "raw": 1329,
+      "gzip": 651,
+      "brotli": 551
+    },
+    {
+      "path": "canvas/flows/mask-selection.js.map",
+      "sha256": "a382c1cc6926121f1807dc08e5dfa78d783604c7512c3358b7fff09bf5bad872",
+      "raw": 2017,
+      "gzip": 568,
+      "brotli": 506
+    },
+    {
+      "path": "canvas/flows/media-duration.js",
+      "sha256": "37682510b8bb068ac82795698ea0005f38fd8c8a813a6c1fdee8e8712847cb06",
+      "raw": 1055,
+      "gzip": 569,
+      "brotli": 454
+    },
+    {
+      "path": "canvas/flows/media-duration.js.map",
+      "sha256": "9edbb162e24ef06eabf80690c9afc45e053361a6f1ac6df279b78ffacac556bc",
+      "raw": 1229,
+      "gzip": 475,
+      "brotli": 425
+    },
+    {
+      "path": "canvas/flows/node-generation.js",
+      "sha256": "4f1d87b02b4b4946495e0712aa04a219bb88098ecca6a14e5044465059521ddc",
+      "raw": 9237,
+      "gzip": 2588,
+      "brotli": 2126
+    },
+    {
+      "path": "canvas/flows/node-generation.js.map",
+      "sha256": "84c0b14957cc09bee87d13a3ccf39c687eb1f485217626a52ad623ba2949a201",
+      "raw": 8877,
+      "gzip": 1903,
+      "brotli": 1730
+    },
+    {
+      "path": "canvas/flows/node-request.js",
+      "sha256": "710d3b1b1b930538358d050b10fc4eb331afc736b24f5191bcf5d476b915a402",
+      "raw": 1958,
+      "gzip": 922,
+      "brotli": 734
+    },
+    {
+      "path": "canvas/flows/node-request.js.map",
+      "sha256": "c8fa56dbfa157a1beac508b7a164daaf552093d2f2421d388922e26957503b29",
+      "raw": 2255,
+      "gzip": 697,
+      "brotli": 622
+    },
+    {
+      "path": "canvas/flows/recognition-lock.js",
+      "sha256": "2f6954b723bed6d2fa2932f759e7148c148db6a562477872d8aa1971a62b9ca8",
+      "raw": 3549,
+      "gzip": 1203,
+      "brotli": 944
+    },
+    {
+      "path": "canvas/flows/recognition-lock.js.map",
+      "sha256": "d267f6d466ae86a1577f866e7302b3458dda08085f0aee113b52521a97d9a2cf",
+      "raw": 3755,
+      "gzip": 926,
+      "brotli": 813
+    },
+    {
+      "path": "canvas/flows/recognition-operation.js",
+      "sha256": "5e38a9d885b1127786834f2d972e388989ea31e9033bd12668aaa8ba5f8401c2",
+      "raw": 1772,
+      "gzip": 732,
+      "brotli": 579
+    },
+    {
+      "path": "canvas/flows/recognition-operation.js.map",
+      "sha256": "104819d34b69b688888556919812e8bfef4bc61450af5d3abeb488a60dbc1249",
+      "raw": 1917,
+      "gzip": 652,
+      "brotli": 589
+    },
+    {
+      "path": "canvas/flows/reference-picker.js",
+      "sha256": "8dd77b627a9f30ff94586c10a5a4be6e1d83a0554b6b1cf05f9b56587083d13a",
+      "raw": 2542,
+      "gzip": 1090,
+      "brotli": 857
+    },
+    {
+      "path": "canvas/flows/reference-picker.js.map",
+      "sha256": "25e581188ec9ed98687a5a154915c2d7677b74043a065cf5900d6cbaef6a86c6",
+      "raw": 2529,
+      "gzip": 739,
+      "brotli": 681
+    },
+    {
+      "path": "canvas/flows/shot-node.js",
+      "sha256": "e333e98829e5dfed3d8bd3c962425637a3748ee176fe5228f9f0edf838d1cc13",
+      "raw": 4903,
+      "gzip": 1924,
+      "brotli": 1583
+    },
+    {
+      "path": "canvas/flows/shot-node.js.map",
+      "sha256": "b140c4755ce3fb869dbcb97d658e4e09508503531139b2417cd88e5cacea621f",
+      "raw": 5857,
+      "gzip": 1349,
+      "brotli": 1226
+    },
+    {
+      "path": "canvas/flows/shot-subject.js",
+      "sha256": "2ab6850fb5f6933d144f3f663467a8513044cb22cdda20ff9d68044cb16f9168",
+      "raw": 3786,
+      "gzip": 1492,
+      "brotli": 1194
+    },
+    {
+      "path": "canvas/flows/shot-subject.js.map",
+      "sha256": "7e35eb7e002c9527fd59088527118ace8dca34e7fe477b26422c4b0987acb391",
+      "raw": 3454,
+      "gzip": 958,
+      "brotli": 864
+    },
+    {
+      "path": "canvas/flows/storyboard-checks.js",
+      "sha256": "6793349ae17945414f7e8165a7d7afa8a0fe5d09902bb2d8a48c29a3b67c60c3",
+      "raw": 3383,
+      "gzip": 1310,
+      "brotli": 1048
+    },
+    {
+      "path": "canvas/flows/storyboard-checks.js.map",
+      "sha256": "bd0567723039ce878ee8b8fc846cd4f3f899f8f49767ed66d59d93f056d49f56",
+      "raw": 3438,
+      "gzip": 821,
+      "brotli": 740
+    },
+    {
+      "path": "canvas/flows/storyboard-panel.js",
+      "sha256": "b3c7572efbe0684f517396d363e4ffb42fac07db4646a4e261e4ddebb7d3a2c3",
+      "raw": 32904,
+      "gzip": 7967,
+      "brotli": 6631
+    },
+    {
+      "path": "canvas/flows/storyboard-panel.js.map",
+      "sha256": "50c331ad1c2666fd9209d0767a758077301c66582b5aa24b55a94bbd81ecf653",
+      "raw": 31827,
+      "gzip": 5444,
+      "brotli": 4891
+    },
+    {
+      "path": "canvas/flows/storyboard-planner.js",
+      "sha256": "0572dc00208425669fb38b9b7677965ae7f4e0e3779d27d303e2055f777cf000",
+      "raw": 7422,
+      "gzip": 1975,
+      "brotli": 1580
+    },
+    {
+      "path": "canvas/flows/storyboard-planner.js.map",
+      "sha256": "c75711aa48ee1e711e81cd25d30a3e3192be89550b6dfb589c3d315abb33d413",
+      "raw": 6429,
+      "gzip": 1489,
+      "brotli": 1338
+    },
+    {
+      "path": "canvas/flows/storyboard-run.js",
+      "sha256": "43c1c2849b94bd4df08652f2df8a8049ba63908ba492cb4edd32636a080cbf93",
+      "raw": 22034,
+      "gzip": 5425,
+      "brotli": 4528
+    },
+    {
+      "path": "canvas/flows/storyboard-run.js.map",
+      "sha256": "c83e91a4ce60570cab24d28d8823330d844548be02dd3d8c02b2463d47ec4acd",
+      "raw": 19740,
+      "gzip": 3558,
+      "brotli": 3217
+    },
+    {
+      "path": "canvas/flows/storyboard-timeline.js",
+      "sha256": "02796f38687bdbf1ba29e93b8b9e63ff5d0dd51266ff0c4cc981d58625d3fc8d",
+      "raw": 4296,
+      "gzip": 1530,
+      "brotli": 1261
+    },
+    {
+      "path": "canvas/flows/storyboard-timeline.js.map",
+      "sha256": "bf919fd77820c376c3ae4839b3623ef1992b6edeff9728802a9bc3ae5c24f8a9",
+      "raw": 4883,
+      "gzip": 1186,
+      "brotli": 1072
+    },
+    {
+      "path": "canvas/flows/timeline-export.js",
+      "sha256": "c8d592477bbb10b26161956b677a7c4d816472b639e15d9edb36ccf7cdc74b0f",
+      "raw": 5971,
+      "gzip": 2005,
+      "brotli": 1565
+    },
+    {
+      "path": "canvas/flows/timeline-export.js.map",
+      "sha256": "4ce569ebfcbb1f42884588ecd62911a9bdf6656c2bb3a4c4207deba83d652ef1",
+      "raw": 5837,
+      "gzip": 1330,
+      "brotli": 1208
+    },
+    {
+      "path": "canvas/perf/analysis.js",
+      "sha256": "3d2874c1b9052dfed41bd7f330733f22e4d0eee1c3435364a7fe4fddf740d85c",
+      "raw": 5526,
+      "gzip": 1734,
+      "brotli": 1506
+    },
+    {
+      "path": "canvas/perf/analysis.js.map",
+      "sha256": "c6ae86fea7c1aa81474c80d77ec1ce07386b2a3891fc6e81e0bbfa983fdabd21",
+      "raw": 6495,
+      "gzip": 1455,
+      "brotli": 1315
+    },
+    {
+      "path": "canvas/perf/bridge.js",
+      "sha256": "f723de1c4de2dc19371dd0fcc8afcc4ad2e3b48aac864e52771cd0134e83fa12",
+      "raw": 1276,
+      "gzip": 517,
+      "brotli": 446
+    },
+    {
+      "path": "canvas/perf/bridge.js.map",
+      "sha256": "ea791bc4e6623598c06fdc1468fb92d2a19d6f578960abf41d60d3e3cd12f9d9",
+      "raw": 1506,
+      "gzip": 535,
+      "brotli": 487
+    },
+    {
+      "path": "canvas/perf/browser-collector.js",
+      "sha256": "a322cb56322123feb3d0cd2a4b11de140c74ddeefec74dc5a8803838daca6c47",
+      "raw": 4736,
+      "gzip": 1479,
+      "brotli": 1257
+    },
+    {
+      "path": "canvas/perf/browser-collector.js.map",
+      "sha256": "34e5583c684473a1811efbb2b34de3c0f529e85722ecd3b6c03c817a95a9b0c6",
+      "raw": 4863,
+      "gzip": 1303,
+      "brotli": 1190
+    },
+    {
+      "path": "canvas/perf/protocol.js",
+      "sha256": "b5ab69287989be4a830cf388cb3030d92eb9659a48f3e37ce718ba7282bd6417",
+      "raw": 47,
+      "gzip": 67,
+      "brotli": 51
+    },
+    {
+      "path": "canvas/perf/protocol.js.map",
+      "sha256": "c25c0033427456889379ff4aa1c52b89addb77dcd86590d3b1057b30005242cc",
+      "raw": 198,
+      "gzip": 166,
+      "brotli": 128
+    },
+    {
+      "path": "canvas/react/canvas-view-context.js",
+      "sha256": "fa045f3d94eb7da134c030ef64afa4cfaaf4934cdde06be54f7378ac31ddc80f",
+      "raw": 1494,
+      "gzip": 604,
+      "brotli": 507
+    },
+    {
+      "path": "canvas/react/canvas-view-context.js.map",
+      "sha256": "a0caadd468ea878f26f22fc84b74342589e4bed502da522f76ce2b57a090cba4",
+      "raw": 1614,
+      "gzip": 635,
+      "brotli": 574
+    },
+    {
+      "path": "canvas/renderer-konva/canvas-editor.js",
+      "sha256": "dd939035e138517a4910ddb880a1bcd6097b0e689ec631fd1a5cc6b515c33433",
+      "raw": 14713,
+      "gzip": 3861,
+      "brotli": 3376
+    },
+    {
+      "path": "canvas/renderer-konva/canvas-editor.js.map",
+      "sha256": "a33b1107bd3b92aec891c0781fcfc43b8dd1ca64c738ece44db3e488ea1383cb",
+      "raw": 17323,
+      "gzip": 3187,
+      "brotli": 2854
+    },
+    {
+      "path": "canvas/renderer-konva/index.js",
+      "sha256": "af438aea91312fdda7677b87ff46df37458e8c4c8879a097fa8b3a154921fb5f",
+      "raw": 84,
+      "gzip": 97,
+      "brotli": 88
+    },
+    {
+      "path": "canvas/renderer-konva/index.js.map",
+      "sha256": "85a93017ba04ade36ddd979c251bd49eb49081b9dbbfe1e8f9b0cdf9a94f2265",
+      "raw": 244,
+      "gzip": 207,
+      "brotli": 171
+    },
+    {
+      "path": "canvas/renderer-konva/perf-diagnostics.js",
+      "sha256": "fbbaa6ece850ebefdff4f464576adbe431bdb6d178af934299d0d4f43314e06c",
+      "raw": 2068,
+      "gzip": 754,
+      "brotli": 655
+    },
+    {
+      "path": "canvas/renderer-konva/perf-diagnostics.js.map",
+      "sha256": "6693a8a3953421907ca707735c8e9a564bba7ba17b585a80781e49978f157158",
+      "raw": 2408,
+      "gzip": 746,
+      "brotli": 679
+    },
+    {
+      "path": "canvas/renderer-konva/use-media.js",
+      "sha256": "f4070e1bb78e3bea26b1712806bb8875882cd7557512c454cfa49de0b2d59592",
+      "raw": 1457,
+      "gzip": 514,
+      "brotli": 434
+    },
+    {
+      "path": "canvas/renderer-konva/use-media.js.map",
+      "sha256": "a530847155e57b6d65907a35c62113880feea08c2cd5c0c493517f85be8e7afe",
+      "raw": 1957,
+      "gzip": 553,
+      "brotli": 497
+    },
+    {
+      "path": "canvas/settings.js",
+      "sha256": "16d8b359fc3d0cc24332cb3c3782d2146c651595366f5ef64b69018d6f9c4c4e",
+      "raw": 11451,
+      "gzip": 3546,
+      "brotli": 2913
+    },
+    {
+      "path": "canvas/settings.js.map",
+      "sha256": "dbe0ce64b1816110d3d17c8f83ebbddd3a2b89e2d6578b02bace69cbd5d00bdb",
+      "raw": 10191,
+      "gzip": 2087,
+      "brotli": 1883
+    },
+    {
+      "path": "canvas/state/autosave.js",
+      "sha256": "335f836c00e34636bcaf2e96883b65f111bce5dd29417c2be86e6fa6ee159f62",
+      "raw": 6354,
+      "gzip": 2323,
+      "brotli": 1920
+    },
+    {
+      "path": "canvas/state/autosave.js.map",
+      "sha256": "6eacde7dc39d5ee11ecbc3d3a30729d90299b5fb81a2fde0b499f0d56d17eb50",
+      "raw": 4970,
+      "gzip": 1325,
+      "brotli": 1199
+    },
+    {
+      "path": "canvas/state/commands.js",
+      "sha256": "c0ef3554c4a1c921367640142d5a487081e6554db8573ece78307e8f24633fb3",
+      "raw": 5425,
+      "gzip": 1785,
+      "brotli": 1489
+    },
+    {
+      "path": "canvas/state/commands.js.map",
+      "sha256": "5863138a05debdeace49b95ba33dd89f0c94a9c2815a1724d990222f35564952",
+      "raw": 5449,
+      "gzip": 1203,
+      "brotli": 1072
+    },
+    {
+      "path": "canvas/state/connections.js",
+      "sha256": "3f2591f26902add9eab5e791e9d4d5c3eff0abbf343172ac7d37619e2a89157f",
+      "raw": 1982,
+      "gzip": 912,
+      "brotli": 727
+    },
+    {
+      "path": "canvas/state/connections.js.map",
+      "sha256": "cc009a0f9282eb1825721b82db7cca3547eb9aca97d9b75cb7b7fd16ae4a3715",
+      "raw": 2302,
+      "gzip": 668,
+      "brotli": 608
+    },
+    {
+      "path": "canvas/state/doc-store.js",
+      "sha256": "41b76a2ab80c4e4881eda7e69dd7b17becf2adaffd8ace973adcc7b22871c196",
+      "raw": 1947,
+      "gzip": 692,
+      "brotli": 612
+    },
+    {
+      "path": "canvas/state/doc-store.js.map",
+      "sha256": "638fe86b1c1cbac5e8fc03514c233abf7a1c864c41767b53d7223eec63def543",
+      "raw": 2062,
+      "gzip": 697,
+      "brotli": 634
+    },
+    {
+      "path": "canvas/state/document-api.js",
+      "sha256": "8d0332eb28680aee2a72b60c4dc595e94ce018ab99739abc774b5b674d7e4eac",
+      "raw": 5203,
+      "gzip": 2204,
+      "brotli": 1781
+    },
+    {
+      "path": "canvas/state/document-api.js.map",
+      "sha256": "6bca2afe7dd9aed3c653663fe3bad400260a56339b67f1d24bc73191126ef498",
+      "raw": 4696,
+      "gzip": 1287,
+      "brotli": 1163
+    },
+    {
+      "path": "canvas/state/duplicate-tabs.js",
+      "sha256": "0678d399b8665b52cd6d7d459c7e5febf5daf80254b18308176f088b22b3d17c",
+      "raw": 1395,
+      "gzip": 738,
+      "brotli": 559
+    },
+    {
+      "path": "canvas/state/duplicate-tabs.js.map",
+      "sha256": "cd658f2d13452ac48ed4d8574953bbc0c264dc664e5a034938ecf44ce0f2e896",
+      "raw": 1312,
+      "gzip": 530,
+      "brotli": 478
+    },
+    {
+      "path": "canvas/state/generation-coordinator.js",
+      "sha256": "fc4d1793ba3fa9944f992ac668ba1af15ab3df51ab9df2587a6867d3cb1b1a31",
+      "raw": 12162,
+      "gzip": 2910,
+      "brotli": 2498
+    },
+    {
+      "path": "canvas/state/generation-coordinator.js.map",
+      "sha256": "4d7f4f1c5d148d360416bee801699449564b5aa1e75a4a8f3edca9476aceaa91",
+      "raw": 10503,
+      "gzip": 2302,
+      "brotli": 2080
+    },
+    {
+      "path": "canvas/state/generation-entity.js",
+      "sha256": "0d609ac5053b470d787cf9603ee981fd6c7aae6a78117a106310630c456a0787",
+      "raw": 4622,
+      "gzip": 1339,
+      "brotli": 1183
+    },
+    {
+      "path": "canvas/state/generation-entity.js.map",
+      "sha256": "55fe92e81fc0492f7308b4a7e05bffd6d76d6d91c153c13b85aa84a4c1eaf231",
+      "raw": 4919,
+      "gzip": 1217,
+      "brotli": 1095
+    },
+    {
+      "path": "canvas/state/generation-events.js",
+      "sha256": "c737f4dd6210ff73701ee4567c6ca92de47783481b09a56711702120f126b812",
+      "raw": 8635,
+      "gzip": 2755,
+      "brotli": 2261
+    },
+    {
+      "path": "canvas/state/generation-events.js.map",
+      "sha256": "a9aaccde82890e5df390e53c67b5013d0e0f6c18131e33d933b9dc8bda7191ba",
+      "raw": 7444,
+      "gzip": 1746,
+      "brotli": 1581
+    },
+    {
+      "path": "canvas/state/generation-reducer.js",
+      "sha256": "114ff436c0a37a6b1638883bfd408196b412d24da36ecb6ab578e54b653e22fd",
+      "raw": 6111,
+      "gzip": 2418,
+      "brotli": 1970
+    },
+    {
+      "path": "canvas/state/generation-reducer.js.map",
+      "sha256": "3756e63c4f5dea51e910f4b33684a172cfd3d6fdcd90f69ab8a1d9e8606da98e",
+      "raw": 5350,
+      "gzip": 1259,
+      "brotli": 1145
+    },
+    {
+      "path": "canvas/state/generation-runtime-store.js",
+      "sha256": "7c0b5a124cdc475d0f6925b87d1db049439c8a787929b1d40c479681b39d3c9b",
+      "raw": 2615,
+      "gzip": 896,
+      "brotli": 748
+    },
+    {
+      "path": "canvas/state/generation-runtime-store.js.map",
+      "sha256": "eacbba47f84fed1e1e9c987e45edd52cb8ffa347d041f460a1e4897479d3468f",
+      "raw": 2792,
+      "gzip": 790,
+      "brotli": 704
+    },
+    {
+      "path": "canvas/state/group-state.js",
+      "sha256": "b8d4c0d0922a320ea7a983cdb9fb3c74ed06e0addb4f8ff8d465cbc43ce7bf08",
+      "raw": 7181,
+      "gzip": 2619,
+      "brotli": 2133
+    },
+    {
+      "path": "canvas/state/group-state.js.map",
+      "sha256": "e5d47d13aa669b5a18f2009ad05461d0caf16b4a9a4ea103409601a31df7af1f",
+      "raw": 6126,
+      "gzip": 1495,
+      "brotli": 1339
+    },
+    {
+      "path": "canvas/state/history-manager.js",
+      "sha256": "a4283382562155e35cb85ca56d32df4e731d56f468d03d7a83288ecef228f817",
+      "raw": 2188,
+      "gzip": 681,
+      "brotli": 602
+    },
+    {
+      "path": "canvas/state/history-manager.js.map",
+      "sha256": "6468c6ed4d3bf6415bc455bb6d96832729e86c3775974b66626822bff898eaf2",
+      "raw": 2315,
+      "gzip": 700,
+      "brotli": 628
+    },
+    {
+      "path": "canvas/state/job-version.js",
+      "sha256": "87491d542f25ef362bd946c7b20e6e252e3c42ebd2b0f0188176f1f4c46f7278",
+      "raw": 766,
+      "gzip": 354,
+      "brotli": 285
+    },
+    {
+      "path": "canvas/state/job-version.js.map",
+      "sha256": "9272eb0c7a7c5627dad2a8c21e805df67df920770c8629808f3c1d91413d1d96",
+      "raw": 928,
+      "gzip": 404,
+      "brotli": 363
+    },
+    {
+      "path": "canvas/state/node-model.js",
+      "sha256": "49d2776105ad33cc91cc07cd2f933d92204f5342a6fb605d76aa655a3b73f1a1",
+      "raw": 3831,
+      "gzip": 1460,
+      "brotli": 1250
+    },
+    {
+      "path": "canvas/state/node-model.js.map",
+      "sha256": "a2f58ac8775b9bea63851bab64b6c3bfe276d41576836415a999b2cdc5a9513a",
+      "raw": 4922,
+      "gzip": 1150,
+      "brotli": 1031
+    },
+    {
+      "path": "canvas/state/placement.js",
+      "sha256": "70bf4b9e13c240f49fe517ae92627294e3ade17bb7c55ee4e198b727c0b2321c",
+      "raw": 4597,
+      "gzip": 1968,
+      "brotli": 1629
+    },
+    {
+      "path": "canvas/state/placement.js.map",
+      "sha256": "b37fc18e52c681319b4adc769af64d1711bb439a4dc165cbf1e6900d4a7f3e67",
+      "raw": 4952,
+      "gzip": 1083,
+      "brotli": 965
+    },
+    {
+      "path": "canvas/state/storyboard.js",
+      "sha256": "5f342149cc46fa3bd176b4046880640746a673d7f56bce3329258f30dae1f399",
+      "raw": 2236,
+      "gzip": 739,
+      "brotli": 645
+    },
+    {
+      "path": "canvas/state/storyboard.js.map",
+      "sha256": "cf30b732f76dd240b2490686af666248ab15cce0726a7237d5d33c2a218a2b1b",
+      "raw": 2641,
+      "gzip": 730,
+      "brotli": 658
+    },
+    {
+      "path": "canvas/state/subtitles.js",
+      "sha256": "ec21043f1216339afb893d6e4b42a67f06d6d2058d37fd1a1dfc359dd5b8ba62",
+      "raw": 965,
+      "gzip": 561,
+      "brotli": 471
+    },
+    {
+      "path": "canvas/state/subtitles.js.map",
+      "sha256": "ccf6c2333a65d0a498942bce05392b965daaf1958b6fcfb366e615d3bba9ac2c",
+      "raw": 1457,
+      "gzip": 487,
+      "brotli": 436
+    },
+    {
+      "path": "canvas/state/timeline.js",
+      "sha256": "ba176616eb9f8403e157cc96da246a3be512dd5583bad447610e24e8c49613e3",
+      "raw": 2631,
+      "gzip": 1003,
+      "brotli": 850
+    },
+    {
+      "path": "canvas/state/timeline.js.map",
+      "sha256": "1345015c528c0c43702a1311bb982d27031c72909189e2d45403e7a48c45bfab",
+      "raw": 3604,
+      "gzip": 871,
+      "brotli": 785
+    },
+    {
+      "path": "canvas/stress.js",
+      "sha256": "186f8725231747cc28cbe982c683928dbc568a658aa01fcd3db6bd0c48c575ba",
+      "raw": 5076,
+      "gzip": 2197,
+      "brotli": 1781
+    },
+    {
+      "path": "canvas/stress.js.map",
+      "sha256": "30efa6f710e25b4110c36441d335317645bb72ba3ac5712fa6eef1cf66edc0e5",
+      "raw": 5180,
+      "gzip": 1174,
+      "brotli": 1074
+    },
+    {
+      "path": "canvas/svg-export.js",
+      "sha256": "c96450f6e9eafe0830f71e7b08218cdc4604015d1632ea68ae4d5a4d81766ca3",
+      "raw": 6367,
+      "gzip": 2643,
+      "brotli": 2137
+    },
+    {
+      "path": "canvas/svg-export.js.map",
+      "sha256": "3d2e8da640346b86329c031cf9a862fc4126405b7d8cc09d6a75045e0a779ea1",
+      "raw": 6107,
+      "gzip": 1510,
+      "brotli": 1371
+    },
+    {
+      "path": "canvas/theme.js",
+      "sha256": "e5cbe0f8c449309bd4b8b478cebc9f5e32df6bd2b7db54531217b53903c16aa6",
+      "raw": 2168,
+      "gzip": 1041,
+      "brotli": 806
+    },
+    {
+      "path": "canvas/theme.js.map",
+      "sha256": "9b6998022b6890861d150fa1a78dddcbf2a34fc0455e85e25bb01751f2b05b61",
+      "raw": 2013,
+      "gzip": 662,
+      "brotli": 605
+    },
+    {
+      "path": "canvas/vector.js",
+      "sha256": "316c7f54285d7507daf3447e4fb6b6cd91347af7dba4d18f8cdb374eb49cbc58",
+      "raw": 3429,
+      "gzip": 1834,
+      "brotli": 1477
+    },
+    {
+      "path": "canvas/vector.js.map",
+      "sha256": "ef73177e5184e53d6d780495f6e64e5b63fcc75b75a939adefcb80cf78d35a66",
+      "raw": 2865,
+      "gzip": 850,
+      "brotli": 778
+    },
+    {
+      "path": "canvas-next/app.js",
+      "sha256": "b0e46dfb48fc58708f9f781f19271004882c0f66488cffba6a652ba92194540f",
+      "raw": 641005,
+      "gzip": 196362,
+      "brotli": 158909
+    },
+    {
+      "path": "canvas-next/app.js.map",
+      "sha256": "2bda7f3b1c7517dca63e770870f622ae0f4c90045c452ef91d777fc4c13d52ce",
+      "raw": 3161741,
+      "gzip": 698343,
+      "brotli": 514045
+    },
+    {
+      "path": "evaluation/app.js",
+      "sha256": "e1cb818f89051742c62019e81e030abef5739c13312f44aa299022eb86a94da5",
+      "raw": 302769,
+      "gzip": 90185,
+      "brotli": 78266
+    },
+    {
+      "path": "evaluation/app.js.map",
+      "sha256": "be0dbe558309605833abc81a00ac19c10375757db7730cf9fc41f619a0af5edc",
+      "raw": 1373475,
+      "gzip": 305217,
+      "brotli": 255265
+    },
+    {
+      "path": "landing/app.js",
+      "sha256": "e602458f5c4123cd51c29e84b8dc0022271b7ff4da81ab34cf6afce3a087c056",
+      "raw": 234801,
+      "gzip": 72965,
+      "brotli": 62775
+    },
+    {
+      "path": "landing/app.js.map",
+      "sha256": "28ee759d94b60502c1976369195693811c6417530b2d8090559a3ff7d85c6c2b",
+      "raw": 1088382,
+      "gzip": 241053,
+      "brotli": 200489
+    },
+    {
+      "path": "shared/action-menu.js",
+      "sha256": "d51f5a0e9d0fc538729c18710b8660efeb5398675ba25a07db19f3f2daacedc4",
+      "raw": 2871,
+      "gzip": 1002,
+      "brotli": 804
+    },
+    {
+      "path": "shared/action-menu.js.map",
+      "sha256": "a9f6dcd612acec4657877ac0425059b8b88ac679550591f8d86aeb931f7a4089",
+      "raw": 3187,
+      "gzip": 878,
+      "brotli": 804
+    },
+    {
+      "path": "shared/dropdown.js",
+      "sha256": "bc631432221609e27a6ed5bdd231aa734c1deb7753af6a8c744f698b320fac35",
+      "raw": 8807,
+      "gzip": 2448,
+      "brotli": 2063
+    },
+    {
+      "path": "shared/dropdown.js.map",
+      "sha256": "c3c6dd653d976241acf3cc80fee2d40436d8bb7f782f604b5537a5cedad040f8",
+      "raw": 9691,
+      "gzip": 1948,
+      "brotli": 1766
+    },
+    {
+      "path": "shared/init-dropdowns.js",
+      "sha256": "bbdc28d117d786183dde19ddc1c06c779f85088d95c7fb5bc1737c7bf5b2f996",
+      "raw": 582,
+      "gzip": 332,
+      "brotli": 273
+    },
+    {
+      "path": "shared/init-dropdowns.js.map",
+      "sha256": "3ca13c38b5563a4da995a13b424518a3a3f624de9ee2a8b6658f778437a468e5",
+      "raw": 754,
+      "gzip": 360,
+      "brotli": 310
+    },
+    {
+      "path": "shared/menu-icon.js",
+      "sha256": "5d8cc9a5df956b6e99237180065ec59d4a90ad3360caf542cb304f8284b282e9",
+      "raw": 1364,
+      "gzip": 702,
+      "brotli": 578
+    },
+    {
+      "path": "shared/menu-icon.js.map",
+      "sha256": "998d0d0a4a1182ac1c7cf2055f25317551a73e417a301636a076e7e3b7e1608d",
+      "raw": 1335,
+      "gzip": 512,
+      "brotli": 464
+    },
+    {
+      "path": "shared/menu-navigation.js",
+      "sha256": "8319d0bcf20c96d44ac48e0aa38f090a625642dbbd733a1fb5730801ac5de1d5",
+      "raw": 677,
+      "gzip": 304,
+      "brotli": 244
+    },
+    {
+      "path": "shared/menu-navigation.js.map",
+      "sha256": "837015669328d26527ea5de9772e58bd466e422055dea8ad09f3e81edf381d2c",
+      "raw": 976,
+      "gzip": 394,
+      "brotli": 343
+    },
+    {
+      "path": "shared/production-contracts.js",
+      "sha256": "b840371e8036b057a075235c832b38f612e3b24884d73578152953728d238148",
+      "raw": 134,
+      "gzip": 136,
+      "brotli": 93
+    },
+    {
+      "path": "shared/production-contracts.js.map",
+      "sha256": "ae08ef950fb5893589840c95320a79978b4001aea28d923afd33048bc3cae458",
+      "raw": 225,
+      "gzip": 181,
+      "brotli": 140
+    },
+    {
+      "path": "shared/session-fetch.js",
+      "sha256": "2b1484e5ba755c9639d067c72d13ad90706189ae2b38366f72477000429fad2f",
+      "raw": 1281,
+      "gzip": 603,
+      "brotli": 499
+    },
+    {
+      "path": "shared/session-fetch.js.map",
+      "sha256": "b13ec73b8153757c4faa9f44d708e54289aa910f5e57bfcae35ebb3520880378",
+      "raw": 1574,
+      "gzip": 567,
+      "brotli": 518
+    },
+    {
+      "path": "ui/media-cards.js",
+      "sha256": "68b0a1f58067cc4eb6a2bf86dbe7b277efeb0c21622a697ca21e788fe16760c3",
+      "raw": 2972,
+      "gzip": 1116,
+      "brotli": 925
+    },
+    {
+      "path": "ui/media-cards.js.map",
+      "sha256": "c1e107dca4cdae676d5f2a67736aa11c75ca4d8030df9befa1f5225fcc6d3682",
+      "raw": 2710,
+      "gzip": 859,
+      "brotli": 809
+    },
+    {
+      "path": "ui/primitives.js",
+      "sha256": "09a5130b942c48d908d50e268e635f224c3bf41ec7e7d6154df84da00bc2df08",
+      "raw": 3790,
+      "gzip": 1257,
+      "brotli": 1041
+    },
+    {
+      "path": "ui/primitives.js.map",
+      "sha256": "ec790ff06398a1567c0eb73a35925e4321c48bed877e0eceedd2badf922347d6",
+      "raw": 3950,
+      "gzip": 1129,
+      "brotli": 1039
+    },
+    {
+      "path": "workspace/api.js",
+      "sha256": "d2f2e0e0ba82140a21df8970a39c7b6982c33cc31fbd805ad05885dec6a99561",
+      "raw": 6384,
+      "gzip": 2449,
+      "brotli": 2012
+    },
+    {
+      "path": "workspace/api.js.map",
+      "sha256": "da03d8f91ce21177568657cefbd1d2cb08222e67dd82b634cf25ea567ad3d1c0",
+      "raw": 6448,
+      "gzip": 1652,
+      "brotli": 1506
+    },
+    {
+      "path": "workspace/app.js",
+      "sha256": "0a224d363c241b469d445f286287e40ccb4df2cc6e40826e0688aeb6a121c25e",
+      "raw": 284186,
+      "gzip": 88116,
+      "brotli": 76119
+    },
+    {
+      "path": "workspace/app.js.map",
+      "sha256": "6bede520a5615653b2cabd39c885dab52c7bc97523100e3250becbc786658e2a",
+      "raw": 1275512,
+      "gzip": 282712,
+      "brotli": 235906
+    }
+  ],
+  "inputs": {
+    "workspace/app.js": {
+      "node_modules/react-dom/cjs/react-dom-client.production.js": 205250,
+      "node_modules/react/cjs/react.production.js": 7969,
+      "apps/web/workspace/app.tsx": 7541,
+      "apps/web/workspace/Composer.tsx": 5574,
+      "apps/web/workspace/AssetLibrary.tsx": 4918,
+      "apps/web/shared/dropdown.ts": 4496,
+      "node_modules/react-dom/cjs/react-dom.production.js": 3666,
+      "node_modules/scheduler/cjs/scheduler.production.js": 3662,
+      "apps/web/workspace/api.ts": 3616,
+      "apps/web/workspace/HomePage.tsx": 3261,
+      "apps/web/workspace/inspiration.ts": 3114,
+      "apps/web/ui/library.tsx": 2552,
+      "apps/web/workspace/SettingsDialog.tsx": 2431,
+      "apps/web/ui/primitives.tsx": 2386,
+      "apps/web/workspace/CanvasLibrary.tsx": 2361,
+      "apps/web/ui/media-cards.tsx": 2019,
+      "apps/web/ui/Sidebar.tsx": 1667,
+      "apps/web/workspace/library-model.ts": 1467,
+      "node_modules/lucide-react/dist/esm/shared/src/build/buildLucideIconNode.mjs": 1141,
+      "apps/web/shared/menu-icon.ts": 996,
+      "node_modules/lucide-react/dist/esm/Icon.mjs": 641,
+      "apps/web/canvas/state/node-model.ts": 580,
+      "apps/web/shared/session-fetch.ts": 543,
+      "node_modules/lucide-react/dist/esm/icons/settings.mjs": 465,
+      "node_modules/react/cjs/react-jsx-runtime.production.js": 364,
+      "node_modules/lucide-react/dist/esm/icons/image-plus.mjs": 341,
+      "node_modules/lucide-react/dist/esm/icons/layout-grid.mjs": 324,
+      "node_modules/lucide-react/dist/esm/icons/trash.mjs": 324,
+      "node_modules/lucide-react/dist/esm/icons/scan-line.mjs": 309,
+      "node_modules/lucide-react/dist/esm/icons/pencil-line.mjs": 296,
+      "node_modules/lucide-react/dist/esm/icons/list.mjs": 280,
+      "node_modules/lucide-react/dist/esm/icons/house.mjs": 276,
+      "node_modules/lucide-react/dist/esm/icons/circle-question-mark.mjs": 264,
+      "node_modules/lucide-react/dist/esm/icons/pencil.mjs": 254,
+      "node_modules/react-dom/index.js": 253,
+      "node_modules/react-dom/client.js": 253,
+      "node_modules/lucide-react/dist/esm/icons/image.mjs": 247,
+      "node_modules/lucide-react/dist/esm/icons/ellipsis.mjs": 232,
+      "node_modules/lucide-react/dist/esm/icons/square-plus.mjs": 226,
+      "node_modules/lucide-react/dist/esm/icons/panels-top-left.mjs": 225,
+      "node_modules/lucide-react/dist/esm/createLucideIcon.mjs": 224,
+      "node_modules/lucide-react/dist/esm/shared/src/build/buildLucideIconForReact.mjs": 223,
+      "apps/web/shared/menu-navigation.ts": 222,
+      "node_modules/lucide-react/dist/esm/icons/download.mjs": 210,
+      "node_modules/lucide-react/dist/esm/icons/upload.mjs": 208,
+      "node_modules/lucide-react/dist/esm/icons/folder.mjs": 206,
+      "node_modules/lucide-react/dist/esm/shared/src/build/defaultAttributes.mjs": 185,
+      "node_modules/lucide-react/dist/esm/shared/src/utils/toLucideIconData.mjs": 169,
+      "node_modules/lucide-react/dist/esm/icons/play.mjs": 168,
+      "node_modules/lucide-react/dist/esm/shared/src/utils/toCamelCase.mjs": 162,
+      "node_modules/lucide-react/dist/esm/icons/search.mjs": 152,
+      "node_modules/lucide-react/dist/esm/icons/arrow-up-right.mjs": 145,
+      "node_modules/lucide-react/dist/esm/icons/arrow-right.mjs": 143,
+      "node_modules/lucide-react/dist/esm/icons/loader-circle.mjs": 143,
+      "node_modules/lucide-react/dist/esm/icons/x.mjs": 132,
+      "node_modules/lucide-react/dist/esm/icons/plus.mjs": 131,
+      "node_modules/lucide-react/dist/esm/shared/src/utils/hasA11yProp.mjs": 95,
+      "node_modules/lucide-react/dist/esm/shared/src/utils/mergeClasses.mjs": 88,
+      "node_modules/lucide-react/dist/esm/context.mjs": 82,
+      "node_modules/lucide-react/dist/esm/shared/src/utils/toPascalCase.mjs": 68,
+      "node_modules/lucide-react/dist/esm/shared/src/utils/toKebabCase.mjs": 65,
+      "node_modules/react/index.js": 51,
+      "node_modules/scheduler/index.js": 51,
+      "node_modules/react/jsx-runtime.js": 51,
+      "node_modules/lucide-react/dist/esm/lucide-react.mjs": 0
+    },
+    "landing/app.js": {
+      "node_modules/react-dom/cjs/react-dom-client.production.js": 204993,
+      "apps/web/landing/LandingPage.tsx": 9337,
+      "node_modules/react/cjs/react.production.js": 7942,
+      "node_modules/react-dom/cjs/react-dom.production.js": 3666,
+      "node_modules/scheduler/cjs/scheduler.production.js": 3638,
+      "apps/web/landing/modes.ts": 1329,
+      "apps/web/shared/session-fetch.ts": 543,
+      "node_modules/react/cjs/react-jsx-runtime.production.js": 364,
+      "node_modules/react-dom/index.js": 253,
+      "node_modules/react-dom/client.js": 253,
+      "apps/web/landing/main.tsx": 191,
+      "node_modules/react/index.js": 51,
+      "node_modules/scheduler/index.js": 51,
+      "node_modules/react/jsx-runtime.js": 51
+    },
+    "evaluation/app.js": {
+      "node_modules/react-dom/cjs/react-dom-client.production.js": 205083,
+      "apps/web/evaluation/EvaluationApp.tsx": 42970,
+      "node_modules/react/cjs/react.production.js": 7942,
+      "node_modules/@tanstack/query-core/build/modern/queryObserver.js": 6347,
+      "node_modules/@tanstack/query-core/build/modern/query.js": 6283,
+      "node_modules/@tanstack/query-core/build/modern/queryClient.js": 4344,
+      "node_modules/react-dom/cjs/react-dom.production.js": 3666,
+      "node_modules/scheduler/cjs/scheduler.production.js": 3662,
+      "node_modules/@tanstack/query-core/build/modern/mutation.js": 3375,
+      "node_modules/@tanstack/query-core/build/modern/utils.js": 3022,
+      "apps/web/evaluation/api.ts": 2915,
+      "node_modules/@tanstack/query-core/build/modern/mutationCache.js": 1430,
+      "node_modules/@tanstack/query-core/build/modern/retryer.js": 1240,
+      "node_modules/@tanstack/query-core/build/modern/infiniteQueryBehavior.js": 1227,
+      "node_modules/@tanstack/query-core/build/modern/queryCache.js": 1012,
+      "node_modules/@tanstack/query-core/build/modern/focusManager.js": 707,
+      "node_modules/@tanstack/react-query/build/modern/useBaseQuery.js": 693,
+      "node_modules/@tanstack/query-core/build/modern/onlineManager.js": 627,
+      "node_modules/@tanstack/query-core/build/modern/timeoutManager.js": 419,
+      "node_modules/@tanstack/react-query/build/modern/errorBoundaryUtils.js": 398,
+      "node_modules/@tanstack/query-core/build/modern/notifyManager.js": 379,
+      "node_modules/react/cjs/react-jsx-runtime.production.js": 364,
+      "node_modules/@tanstack/react-query/build/modern/QueryClientProvider.js": 322,
+      "node_modules/@tanstack/query-core/build/modern/removable.js": 315,
+      "node_modules/@tanstack/react-query/build/modern/suspense.js": 301,
+      "node_modules/@tanstack/query-core/build/modern/subscribable.js": 282,
+      "node_modules/react-dom/index.js": 253,
+      "node_modules/react-dom/client.js": 253,
+      "apps/web/evaluation/app.tsx": 185,
+      "node_modules/@tanstack/react-query/build/modern/QueryErrorResetBoundary.js": 171,
+      "apps/web/evaluation/queries.ts": 147,
+      "node_modules/@tanstack/react-query/build/modern/IsRestoringProvider.js": 82,
+      "node_modules/react/index.js": 51,
+      "node_modules/scheduler/index.js": 51,
+      "node_modules/react/jsx-runtime.js": 51,
+      "node_modules/@tanstack/react-query/build/modern/useQuery.js": 35,
+      "node_modules/@tanstack/query-core/build/modern/environmentManager.js": 26,
+      "node_modules/@tanstack/react-query/build/modern/index.js": 0
+    },
+    "canvas-next/app.js": {
+      "node_modules/react-dom/cjs/react-dom-client.production.js": 205685,
+      "node_modules/react-reconciler/cjs/react-reconciler.production.js": 130325,
+      "node_modules/konva/lib/Node.js": 25481,
+      "apps/web/canvas-next/app.tsx": 23335,
+      "node_modules/konva/lib/shapes/Transformer.js": 21747,
+      "node_modules/konva/lib/Stage.js": 14839,
+      "node_modules/konva/lib/Util.js": 14578,
+      "node_modules/konva/lib/Shape.js": 13012,
+      "node_modules/konva/lib/shapes/Text.js": 10355,
+      "apps/web/canvas/core/canvas-view.ts": 10117,
+      "node_modules/konva/lib/Context.js": 8269,
+      "node_modules/konva/lib/shapes/Path.js": 8175,
+      "apps/web/canvas/renderer-konva/canvas-editor.tsx": 8123,
+      "node_modules/react/cjs/react.production.js": 8014,
+      "node_modules/konva/lib/Tween.js": 6819,
+      "apps/web/canvas/core/monos.ts": 6746,
+      "apps/web/canvas/core/layers.ts": 6145,
+      "node_modules/konva/lib/Layer.js": 6099,
+      "apps/web/canvas/state/generation-coordinator.ts": 4816,
+      "node_modules/konva/lib/Container.js": 4630,
+      "node_modules/konva/lib/shapes/TextPath.js": 4591,
+      "node_modules/react-konva/es/ReactKonvaHostConfig.js": 4376,
+      "node_modules/konva/lib/filters/Blur.js": 3949,
+      "node_modules/react-dom/cjs/react-dom.production.js": 3666,
+      "node_modules/scheduler/cjs/scheduler.production.js": 3662,
+      "node_modules/react-konva/es/ReactKonvaCore.js": 2909,
+      "node_modules/konva/lib/shapes/Line.js": 2745,
+      "node_modules/konva/lib/DragAndDrop.js": 2581,
+      "apps/web/canvas/state/generation-events.ts": 2368,
+      "apps/web/canvas/state/commands.ts": 2252,
+      "apps/web/canvas/state/generation-entity.ts": 2225,
+      "node_modules/konva/lib/shapes/Image.js": 2186,
+      "apps/web/canvas/state/generation-reducer.ts": 2145,
+      "node_modules/konva/lib/shapes/Sprite.js": 2144,
+      "apps/web/canvas/state/group-state.ts": 2137,
+      "node_modules/konva/lib/shapes/Arrow.js": 2127,
+      "node_modules/konva/lib/shapes/Label.js": 2096,
+      "node_modules/konva/lib/Canvas.js": 2074,
+      "node_modules/konva/lib/filters/Mask.js": 2024,
+      "node_modules/konva/lib/Validators.js": 1963,
+      "node_modules/konva/lib/BezierFunctions.js": 1946,
+      "apps/web/canvas/state/autosave.ts": 1870,
+      "node_modules/konva/lib/filters/Kaleidoscope.js": 1864,
+      "node_modules/react-konva/es/makeUpdates.js": 1710,
+      "node_modules/konva/lib/Factory.js": 1609,
+      "node_modules/konva/lib/filters/Emboss.js": 1552,
+      "apps/web/canvas/flows/connect-reference.ts": 1467,
+      "node_modules/konva/lib/Animation.js": 1439,
+      "apps/web/canvas/state/document-api.ts": 1415,
+      "apps/web/canvas/flows/asset-util.ts": 1350,
+      "node_modules/its-fine/dist/index.js": 1277,
+      "node_modules/konva/lib/shapes/Arc.js": 1199,
+      "node_modules/konva/lib/Global.js": 1152,
+      "node_modules/konva/lib/shapes/RegularPolygon.js": 1086,
+      "apps/web/canvas/flows/recognition-operation.ts": 1062,
+      "apps/web/canvas/renderer-konva/perf-diagnostics.ts": 964,
+      "apps/web/canvas/state/generation-runtime-store.ts": 855,
+      "apps/web/canvas/state/node-model.ts": 832,
+      "node_modules/konva/lib/filters/Enhance.js": 764,
+      "node_modules/konva/lib/PointerEvents.js": 763,
+      "apps/web/canvas/state/doc-store.ts": 758,
+      "node_modules/konva/lib/filters/HSL.js": 694,
+      "apps/web/canvas/flows/generate.ts": 687,
+      "node_modules/konva/lib/filters/HSV.js": 682,
+      "apps/web/canvas/react/canvas-view-context.tsx": 681,
+      "node_modules/konva/lib/shapes/Star.js": 680,
+      "apps/web/canvas/state/connections.ts": 664,
+      "apps/web/canvas/state/placement.ts": 656,
+      "apps/web/canvas/renderer-konva/use-media.ts": 633,
+      "node_modules/konva/lib/shapes/Wedge.js": 632,
+      "apps/web/canvas/core/geometry.ts": 628,
+      "node_modules/konva/lib/shapes/Ring.js": 604,
+      "apps/web/canvas/perf/bridge.ts": 599,
+      "node_modules/konva/lib/filters/Pixelate.js": 597,
+      "node_modules/konva/lib/shapes/Ellipse.js": 585,
+      "apps/web/canvas/state/history-manager.ts": 565,
+      "apps/web/shared/session-fetch.ts": 543,
+      "node_modules/react-konva/es/EventBatch.js": 531,
+      "node_modules/konva/lib/shapes/Circle.js": 442,
+      "node_modules/konva/lib/_FullInternals.js": 424,
+      "node_modules/konva/lib/filters/Contrast.js": 381,
+      "node_modules/react/cjs/react-jsx-runtime.production.js": 364,
+      "node_modules/konva/lib/filters/RGB.js": 346,
+      "apps/web/canvas/core/event-hub.ts": 306,
+      "apps/web/canvas/state/timeline.ts": 298,
+      "apps/web/canvas/state/job-version.ts": 285,
+      "node_modules/konva/lib/shapes/Rect.js": 279,
+      "node_modules/konva/lib/filters/RGBA.js": 267,
+      "node_modules/react-dom/index.js": 253,
+      "node_modules/react-dom/client.js": 253,
+      "node_modules/konva/lib/filters/Noise.js": 227,
+      "node_modules/konva/lib/filters/Sepia.js": 224,
+      "node_modules/konva/lib/FastLayer.js": 211,
+      "node_modules/konva/lib/filters/Brightness.js": 204,
+      "node_modules/react-reconciler/cjs/react-reconciler-constants.production.js": 201,
+      "apps/web/canvas/state/storyboard.ts": 197,
+      "node_modules/konva/lib/_CoreInternals.js": 190,
+      "node_modules/konva/lib/filters/Posterize.js": 187,
+      "node_modules/konva/lib/Group.js": 180,
+      "node_modules/konva/lib/filters/Brighten.js": 174,
+      "node_modules/konva/lib/filters/Solarize.js": 169,
+      "node_modules/konva/lib/filters/Threshold.js": 163,
+      "apps/web/canvas/engine/transform-geometry.ts": 129,
+      "node_modules/konva/lib/filters/Grayscale.js": 128,
+      "node_modules/konva/lib/filters/Invert.js": 115,
+      "node_modules/react/index.js": 51,
+      "node_modules/scheduler/index.js": 51,
+      "node_modules/react-reconciler/index.js": 51,
+      "node_modules/react-reconciler/constants.js": 51,
+      "node_modules/react/jsx-runtime.js": 51,
+      "node_modules/konva/lib/index.js": 10,
+      "node_modules/konva/lib/Core.js": 10,
+      "node_modules/react-konva/es/ReactKonva.js": 0,
+      "apps/web/canvas/renderer-konva/index.ts": 0
+    }
+  }
+}

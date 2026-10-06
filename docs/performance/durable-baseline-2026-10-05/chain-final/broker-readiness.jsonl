@@ -1,0 +1,25 @@
+{"attempt": 1, "observed_unix_ns": 1791215441259446000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 2, "observed_unix_ns": 1791215441482656000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 3, "observed_unix_ns": 1791215441685410000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 4, "observed_unix_ns": 1791215441888215000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 5, "observed_unix_ns": 1791215442091860000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 6, "observed_unix_ns": 1791215442295845000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 7, "observed_unix_ns": 1791215442499293000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 8, "observed_unix_ns": 1791215442702040000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 9, "observed_unix_ns": 1791215442905808000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 10, "observed_unix_ns": 1791215443109060000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 11, "observed_unix_ns": 1791215443312335000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 12, "observed_unix_ns": 1791215443514808000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 13, "observed_unix_ns": 1791215443718030000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 14, "observed_unix_ns": 1791215443920814000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 15, "observed_unix_ns": 1791215444123127000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 16, "observed_unix_ns": 1791215444325955000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 17, "observed_unix_ns": 1791215444530239000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 18, "observed_unix_ns": 1791215444732186000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 19, "observed_unix_ns": 1791215444934240000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 20, "observed_unix_ns": 1791215445137569000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 21, "observed_unix_ns": 1791215445341065000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 22, "observed_unix_ns": 1791215445544414000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 23, "observed_unix_ns": 1791215445747502000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 24, "observed_unix_ns": 1791215445950069000, "ready": false, "error_type": "OperationalError", "error": "Server unexpectedly closed connection"}
+{"attempt": 25, "observed_unix_ns": 1791215446153107000, "ready": true}

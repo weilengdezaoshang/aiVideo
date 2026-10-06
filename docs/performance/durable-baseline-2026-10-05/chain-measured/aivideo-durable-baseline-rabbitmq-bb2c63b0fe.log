@@ -1,0 +1,530 @@
+=INFO REPORT==== 5-Oct-2026::15:53:00.183137 ===
+    alarm_handler: {set,{system_memory_high_watermark,[]}}
+2026-10-05 15:53:01.896825+00:00 [notice] <0.44.0> Application syslog exited with reason: stopped
+2026-10-05 15:53:01.900945+00:00 [notice] <0.254.0> Logging: switching to configured handler(s); following messages may not be visible in this log output
+[38;5;87m2026-10-05 15:53:01.901311+00:00 [notice] <0.254.0> Logging: configured log handlers are now ACTIVE[0m
+2026-10-05 15:53:01.907191+00:00 [info] <0.254.0> ra: starting system quorum_queues[0m
+2026-10-05 15:53:01.907212+00:00 [info] <0.254.0> starting Ra system: quorum_queues in directory: /var/lib/rabbitmq/mnesia/rabbit@542e49af1d78/quorum/rabbit@542e49af1d78[0m
+2026-10-05 15:53:01.948463+00:00 [info] <0.268.0> ra system 'quorum_queues' running pre init for 0 registered servers[0m
+2026-10-05 15:53:01.955279+00:00 [info] <0.269.0> ra: meta data store initialised for system quorum_queues. 0 record(s) recovered[0m
+[38;5;87m2026-10-05 15:53:01.964369+00:00 [notice] <0.274.0> WAL: ra_log_wal init, open tbls: ra_log_open_mem_tables, closed tbls: ra_log_closed_mem_tables[0m
+2026-10-05 15:53:01.973492+00:00 [info] <0.254.0> ra: starting system coordination[0m
+2026-10-05 15:53:01.973507+00:00 [info] <0.254.0> starting Ra system: coordination in directory: /var/lib/rabbitmq/mnesia/rabbit@542e49af1d78/coordination/rabbit@542e49af1d78[0m
+2026-10-05 15:53:01.973998+00:00 [info] <0.282.0> ra system 'coordination' running pre init for 0 registered servers[0m
+2026-10-05 15:53:01.974278+00:00 [info] <0.283.0> ra: meta data store initialised for system coordination. 0 record(s) recovered[0m
+[38;5;87m2026-10-05 15:53:01.974348+00:00 [notice] <0.288.0> WAL: ra_coordination_log_wal init, open tbls: ra_coordination_log_open_mem_tables, closed tbls: ra_coordination_log_closed_mem_tables[0m
+2026-10-05 15:53:01.975206+00:00 [info] <0.254.0> ra: starting system coordination[0m
+2026-10-05 15:53:01.975220+00:00 [info] <0.254.0> starting Ra system: coordination in directory: /var/lib/rabbitmq/mnesia/rabbit@542e49af1d78/coordination/rabbit@542e49af1d78[0m
+2026-10-05 15:53:02.025204+00:00 [info] <0.254.0> Waiting for Khepri leader for 30000 ms, 9 retries left[0m
+[38;5;87m2026-10-05 15:53:02.026877+00:00 [notice] <0.292.0> RabbitMQ metadata store: candidate -> leader in term: 1 machine version: 1[0m
+2026-10-05 15:53:02.031982+00:00 [info] <0.254.0> Khepri leader elected[0m
+2026-10-05 15:53:02.031996+00:00 [info] <0.254.0> Waiting for Khepri projections for 30000 ms, 9 retries left[0m
+2026-10-05 15:53:02.190011+00:00 [info] <0.254.0> [0m
+2026-10-05 15:53:02.190011+00:00 [info] <0.254.0>  Starting RabbitMQ 3.13.7 on Erlang 26.2.5.16 [jit][0m
+2026-10-05 15:53:02.190011+00:00 [info] <0.254.0>  Copyright (c) 2007-2024 Broadcom Inc and/or its subsidiaries[0m
+2026-10-05 15:53:02.190011+00:00 [info] <0.254.0>  Licensed under the MPL 2.0. Website: https://rabbitmq.com[0m
+
+  ##  ##      RabbitMQ 3.13.7
+  ##  ##
+  ##########  Copyright (c) 2007-2024 Broadcom Inc and/or its subsidiaries
+  ######  ##
+  ##########  Licensed under the MPL 2.0. Website: https://rabbitmq.com
+
+  Erlang:      26.2.5.16 [jit]
+  TLS Library: OpenSSL - OpenSSL 3.1.8 11 Feb 2025
+  Release series support status: see https://www.rabbitmq.com/release-information
+
+  Doc guides:  https://www.rabbitmq.com/docs
+  Support:     https://www.rabbitmq.com/docs/contact
+  Tutorials:   https://www.rabbitmq.com/tutorials
+  Monitoring:  https://www.rabbitmq.com/docs/monitoring
+  Upgrading:   https://www.rabbitmq.com/docs/upgrade
+
+  Logs: <stdout>
+
+  Config file(s): /etc/rabbitmq/conf.d/10-defaults.conf
+                  /etc/rabbitmq/conf.d/20-management_agent.disable_metrics_collector.conf
+                  /etc/rabbitmq/conf.d/99-baseline-metrics.conf
+
+  Starting broker...2026-10-05 15:53:02.191132+00:00 [info] <0.254.0> [0m
+2026-10-05 15:53:02.191132+00:00 [info] <0.254.0>  node           : rabbit@542e49af1d78[0m
+2026-10-05 15:53:02.191132+00:00 [info] <0.254.0>  home dir       : /var/lib/rabbitmq[0m
+2026-10-05 15:53:02.191132+00:00 [info] <0.254.0>  config file(s) : /etc/rabbitmq/conf.d/10-defaults.conf[0m
+2026-10-05 15:53:02.191132+00:00 [info] <0.254.0>                 : /etc/rabbitmq/conf.d/20-management_agent.disable_metrics_collector.conf[0m
+2026-10-05 15:53:02.191132+00:00 [info] <0.254.0>                 : /etc/rabbitmq/conf.d/99-baseline-metrics.conf[0m
+2026-10-05 15:53:02.191132+00:00 [info] <0.254.0>  cookie hash    : hV5S0aMNwjDsLn1swSTOTA==[0m
+2026-10-05 15:53:02.191132+00:00 [info] <0.254.0>  log(s)         : <stdout>[0m
+2026-10-05 15:53:02.191132+00:00 [info] <0.254.0>  data dir       : /var/lib/rabbitmq/mnesia/rabbit@542e49af1d78[0m
+2026-10-05 15:53:02.348241+00:00 [info] <0.254.0> Running boot step pre_boot defined by app rabbit[0m
+2026-10-05 15:53:02.348280+00:00 [info] <0.254.0> Running boot step rabbit_global_counters defined by app rabbit[0m
+2026-10-05 15:53:02.348469+00:00 [info] <0.254.0> Running boot step rabbit_osiris_metrics defined by app rabbit[0m
+2026-10-05 15:53:02.348514+00:00 [info] <0.254.0> Running boot step rabbit_core_metrics defined by app rabbit[0m
+2026-10-05 15:53:02.348654+00:00 [info] <0.254.0> Running boot step rabbit_alarm defined by app rabbit[0m
+2026-10-05 15:53:02.353207+00:00 [info] <0.329.0> Memory high watermark set to 1561 MiB (1637779046 bytes) of 3904 MiB (4094447616 bytes) total[0m
+2026-10-05 15:53:02.354688+00:00 [info] <0.331.0> Enabling free disk space monitoring (disk free space: 1475641344, total memory: 4094447616)[0m
+2026-10-05 15:53:02.354714+00:00 [info] <0.331.0> Disk free limit set to 50MB[0m
+2026-10-05 15:53:02.355428+00:00 [info] <0.254.0> Running boot step code_server_cache defined by app rabbit[0m
+2026-10-05 15:53:02.355462+00:00 [info] <0.254.0> Running boot step file_handle_cache defined by app rabbit[0m
+2026-10-05 15:53:02.360579+00:00 [info] <0.334.0> Limiting to approx 927 file handles (832 sockets)[0m
+2026-10-05 15:53:02.360643+00:00 [info] <0.335.0> FHC read buffering: OFF[0m
+2026-10-05 15:53:02.360657+00:00 [info] <0.335.0> FHC write buffering: ON[0m
+2026-10-05 15:53:02.360938+00:00 [info] <0.254.0> Running boot step worker_pool defined by app rabbit[0m
+2026-10-05 15:53:02.360967+00:00 [info] <0.315.0> Will use 2 processes for default worker pool[0m
+2026-10-05 15:53:02.360985+00:00 [info] <0.315.0> Starting worker pool 'worker_pool' with 2 processes in it[0m
+2026-10-05 15:53:02.361113+00:00 [info] <0.254.0> Running boot step database defined by app rabbit[0m
+2026-10-05 15:53:02.361389+00:00 [info] <0.254.0> Peer discovery: configured backend: rabbit_peer_discovery_classic_config[0m
+[38;5;87m2026-10-05 15:53:02.361853+00:00 [notice] <0.316.0> Feature flags: attempt to enable `detailed_queues_endpoint`...[0m
+[38;5;87m2026-10-05 15:53:02.403303+00:00 [notice] <0.316.0> Feature flags: `detailed_queues_endpoint` enabled[0m
+[38;5;87m2026-10-05 15:53:02.403378+00:00 [notice] <0.316.0> Feature flags: attempt to enable `quorum_queue_non_voters`...[0m
+[38;5;87m2026-10-05 15:53:02.447046+00:00 [notice] <0.316.0> Feature flags: `quorum_queue_non_voters` enabled[0m
+[38;5;87m2026-10-05 15:53:02.447149+00:00 [notice] <0.316.0> Feature flags: attempt to enable `stream_update_config_command`...[0m
+[38;5;87m2026-10-05 15:53:02.486500+00:00 [notice] <0.316.0> Feature flags: `stream_update_config_command` enabled[0m
+[38;5;87m2026-10-05 15:53:02.486568+00:00 [notice] <0.316.0> Feature flags: attempt to enable `stream_filtering`...[0m
+[38;5;87m2026-10-05 15:53:02.526179+00:00 [notice] <0.316.0> Feature flags: `stream_filtering` enabled[0m
+[38;5;87m2026-10-05 15:53:02.526238+00:00 [notice] <0.316.0> Feature flags: attempt to enable `stream_sac_coordinator_unblock_group`...[0m
+[38;5;87m2026-10-05 15:53:02.564374+00:00 [notice] <0.316.0> Feature flags: `stream_sac_coordinator_unblock_group` enabled[0m
+[38;5;87m2026-10-05 15:53:02.564420+00:00 [notice] <0.316.0> Feature flags: attempt to enable `restart_streams`...[0m
+[38;5;87m2026-10-05 15:53:02.600922+00:00 [notice] <0.316.0> Feature flags: `restart_streams` enabled[0m
+[38;5;87m2026-10-05 15:53:02.601037+00:00 [notice] <0.316.0> Feature flags: attempt to enable `message_containers`...[0m
+[38;5;87m2026-10-05 15:53:02.639215+00:00 [notice] <0.316.0> Feature flags: `message_containers` enabled[0m
+[38;5;87m2026-10-05 15:53:02.639278+00:00 [notice] <0.316.0> Feature flags: attempt to enable `message_containers_deaths_v2`...[0m
+[38;5;87m2026-10-05 15:53:02.677977+00:00 [notice] <0.316.0> Feature flags: `message_containers_deaths_v2` enabled[0m
+2026-10-05 15:53:02.678087+00:00 [info] <0.254.0> DB: virgin node -> run peer discovery[0m
+[38;5;214m2026-10-05 15:53:02.678109+00:00 [warning] <0.254.0> Classic peer discovery backend: list of nodes does not contain the local node [][0m
+[38;5;87m2026-10-05 15:53:02.684689+00:00 [notice] <0.44.0> Application mnesia exited with reason: stopped[0m
+2026-10-05 15:53:02.742571+00:00 [info] <0.254.0> Waiting for Mnesia tables for 30000 ms, 9 retries left[0m
+2026-10-05 15:53:02.742623+00:00 [info] <0.254.0> Successfully synced tables from a peer[0m
+2026-10-05 15:53:02.742665+00:00 [info] <0.254.0> Waiting for Mnesia tables for 30000 ms, 9 retries left[0m
+2026-10-05 15:53:02.742696+00:00 [info] <0.254.0> Successfully synced tables from a peer[0m
+2026-10-05 15:53:02.744375+00:00 [info] <0.254.0> Waiting for Mnesia tables for 30000 ms, 9 retries left[0m
+2026-10-05 15:53:02.744400+00:00 [info] <0.254.0> Successfully synced tables from a peer[0m
+2026-10-05 15:53:02.744451+00:00 [info] <0.254.0> Running boot step tracking_metadata_store defined by app rabbit[0m
+2026-10-05 15:53:02.744475+00:00 [info] <0.556.0> Setting up a table for connection tracking on this node: tracked_connection[0m
+2026-10-05 15:53:02.744494+00:00 [info] <0.556.0> Setting up a table for per-vhost connection counting on this node: tracked_connection_per_vhost[0m
+2026-10-05 15:53:02.744530+00:00 [info] <0.556.0> Setting up a table for per-user connection counting on this node: tracked_connection_per_user[0m
+2026-10-05 15:53:02.744596+00:00 [info] <0.556.0> Setting up a table for channel tracking on this node: tracked_channel[0m
+2026-10-05 15:53:02.744626+00:00 [info] <0.556.0> Setting up a table for channel tracking on this node: tracked_channel_per_user[0m
+2026-10-05 15:53:02.744684+00:00 [info] <0.254.0> Running boot step networking_metadata_store defined by app rabbit[0m
+2026-10-05 15:53:02.744750+00:00 [info] <0.254.0> Running boot step feature_flags defined by app rabbit[0m
+2026-10-05 15:53:02.744784+00:00 [info] <0.254.0> Running boot step codec_correctness_check defined by app rabbit[0m
+2026-10-05 15:53:02.744801+00:00 [info] <0.254.0> Running boot step external_infrastructure defined by app rabbit[0m
+2026-10-05 15:53:02.744813+00:00 [info] <0.254.0> Running boot step rabbit_event defined by app rabbit[0m
+2026-10-05 15:53:02.744883+00:00 [info] <0.254.0> Running boot step rabbit_registry defined by app rabbit[0m
+2026-10-05 15:53:02.744957+00:00 [info] <0.254.0> Running boot step rabbit_auth_mechanism_amqplain defined by app rabbit[0m
+2026-10-05 15:53:02.744988+00:00 [info] <0.254.0> Running boot step rabbit_auth_mechanism_cr_demo defined by app rabbit[0m
+2026-10-05 15:53:02.745015+00:00 [info] <0.254.0> Running boot step rabbit_auth_mechanism_plain defined by app rabbit[0m
+2026-10-05 15:53:02.745033+00:00 [info] <0.254.0> Running boot step rabbit_exchange_type_direct defined by app rabbit[0m
+2026-10-05 15:53:02.745053+00:00 [info] <0.254.0> Running boot step rabbit_exchange_type_fanout defined by app rabbit[0m
+2026-10-05 15:53:02.745071+00:00 [info] <0.254.0> Running boot step rabbit_exchange_type_headers defined by app rabbit[0m
+2026-10-05 15:53:02.745087+00:00 [info] <0.254.0> Running boot step rabbit_exchange_type_topic defined by app rabbit[0m
+2026-10-05 15:53:02.745105+00:00 [info] <0.254.0> Running boot step rabbit_mirror_queue_mode_all defined by app rabbit[0m
+2026-10-05 15:53:02.745127+00:00 [info] <0.254.0> Running boot step rabbit_mirror_queue_mode_exactly defined by app rabbit[0m
+2026-10-05 15:53:02.745140+00:00 [info] <0.254.0> Running boot step rabbit_mirror_queue_mode_nodes defined by app rabbit[0m
+2026-10-05 15:53:02.745151+00:00 [info] <0.254.0> Running boot step rabbit_priority_queue defined by app rabbit[0m
+2026-10-05 15:53:02.745159+00:00 [info] <0.254.0> Priority queues enabled, real BQ is rabbit_variable_queue[0m
+2026-10-05 15:53:02.745178+00:00 [info] <0.254.0> Running boot step rabbit_queue_location_client_local defined by app rabbit[0m
+2026-10-05 15:53:02.745191+00:00 [info] <0.254.0> Running boot step rabbit_queue_location_min_masters defined by app rabbit[0m
+2026-10-05 15:53:02.745203+00:00 [info] <0.254.0> Running boot step rabbit_queue_location_random defined by app rabbit[0m
+2026-10-05 15:53:02.745216+00:00 [info] <0.254.0> Running boot step kernel_ready defined by app rabbit[0m
+2026-10-05 15:53:02.745222+00:00 [info] <0.254.0> Running boot step rabbit_sysmon_minder defined by app rabbit[0m
+2026-10-05 15:53:02.745255+00:00 [info] <0.254.0> Running boot step rabbit_epmd_monitor defined by app rabbit[0m
+2026-10-05 15:53:02.745553+00:00 [info] <0.564.0> epmd monitor knows us, inter-node communication (distribution) port: 25672[0m
+2026-10-05 15:53:02.745581+00:00 [info] <0.254.0> Running boot step guid_generator defined by app rabbit[0m
+2026-10-05 15:53:02.746313+00:00 [info] <0.254.0> Running boot step rabbit_node_monitor defined by app rabbit[0m
+2026-10-05 15:53:02.746404+00:00 [info] <0.568.0> Starting rabbit_node_monitor (in ignore mode)[0m
+2026-10-05 15:53:02.746434+00:00 [info] <0.254.0> Running boot step delegate_sup defined by app rabbit[0m
+2026-10-05 15:53:02.746572+00:00 [info] <0.254.0> Running boot step rabbit_memory_monitor defined by app rabbit[0m
+2026-10-05 15:53:02.746644+00:00 [info] <0.254.0> Running boot step rabbit_fifo_dlx_sup defined by app rabbit[0m
+2026-10-05 15:53:02.746666+00:00 [info] <0.254.0> Running boot step core_initialized defined by app rabbit[0m
+2026-10-05 15:53:02.746673+00:00 [info] <0.254.0> Running boot step rabbit_channel_tracking_handler defined by app rabbit[0m
+2026-10-05 15:53:02.746697+00:00 [info] <0.254.0> Running boot step rabbit_connection_tracking_handler defined by app rabbit[0m
+2026-10-05 15:53:02.746711+00:00 [info] <0.254.0> Running boot step rabbit_definitions_hashing defined by app rabbit[0m
+2026-10-05 15:53:02.746731+00:00 [info] <0.254.0> Running boot step rabbit_exchange_parameters defined by app rabbit[0m
+2026-10-05 15:53:02.758942+00:00 [info] <0.254.0> Running boot step rabbit_mirror_queue_misc defined by app rabbit[0m
+2026-10-05 15:53:02.759123+00:00 [info] <0.254.0> Running boot step rabbit_policies defined by app rabbit[0m
+2026-10-05 15:53:02.759243+00:00 [info] <0.254.0> Running boot step rabbit_policy defined by app rabbit[0m
+2026-10-05 15:53:02.759363+00:00 [info] <0.254.0> Running boot step rabbit_queue_location_validator defined by app rabbit[0m
+2026-10-05 15:53:02.759381+00:00 [info] <0.254.0> Running boot step rabbit_quorum_memory_manager defined by app rabbit[0m
+2026-10-05 15:53:02.759394+00:00 [info] <0.254.0> Running boot step rabbit_quorum_queue defined by app rabbit[0m
+2026-10-05 15:53:02.759419+00:00 [info] <0.254.0> Running boot step rabbit_stream_coordinator defined by app rabbit[0m
+2026-10-05 15:53:02.759502+00:00 [info] <0.254.0> Running boot step rabbit_vhost_limit defined by app rabbit[0m
+2026-10-05 15:53:02.759526+00:00 [info] <0.254.0> Running boot step rabbit_mgmt_reset_handler defined by app rabbitmq_management[0m
+2026-10-05 15:53:02.759544+00:00 [info] <0.254.0> Running boot step rabbit_mgmt_db_handler defined by app rabbitmq_management_agent[0m
+2026-10-05 15:53:02.759554+00:00 [info] <0.254.0> Management plugin: using rates mode 'basic'[0m
+2026-10-05 15:53:02.759677+00:00 [info] <0.254.0> Running boot step recovery defined by app rabbit[0m
+2026-10-05 15:53:02.765695+00:00 [info] <0.254.0> Running boot step empty_db_check defined by app rabbit[0m
+2026-10-05 15:53:02.765719+00:00 [info] <0.254.0> Will seed default virtual host and user...[0m
+2026-10-05 15:53:02.765769+00:00 [info] <0.254.0> Adding vhost '/' (description: 'Default virtual host', tags: [])[0m
+2026-10-05 15:53:02.769059+00:00 [info] <0.615.0> Making sure data directory '/var/lib/rabbitmq/mnesia/rabbit@542e49af1d78/msg_stores/vhosts/628WB79CIFDYO9LJI6DKMI09L' for vhost '/' exists[0m
+2026-10-05 15:53:02.769542+00:00 [info] <0.615.0> Setting segment_entry_count for vhost '/' with 0 queues to '2048'[0m
+2026-10-05 15:53:02.773093+00:00 [info] <0.615.0> Starting message stores for vhost '/'[0m
+2026-10-05 15:53:02.777778+00:00 [info] <0.625.0> Message store "628WB79CIFDYO9LJI6DKMI09L/msg_store_transient": using rabbit_msg_store_ets_index to provide index[0m
+2026-10-05 15:53:02.778234+00:00 [info] <0.615.0> Started message store of type transient for vhost '/'[0m
+2026-10-05 15:53:02.778283+00:00 [info] <0.629.0> Message store "628WB79CIFDYO9LJI6DKMI09L/msg_store_persistent": using rabbit_msg_store_ets_index to provide index[0m
+[38;5;214m2026-10-05 15:53:02.778488+00:00 [warning] <0.629.0> Message store "628WB79CIFDYO9LJI6DKMI09L/msg_store_persistent": rebuilding indices from scratch[0m
+2026-10-05 15:53:02.778735+00:00 [info] <0.615.0> Started message store of type persistent for vhost '/'[0m
+2026-10-05 15:53:02.778773+00:00 [info] <0.615.0> Recovering 0 queues of type rabbit_classic_queue took 9ms[0m
+2026-10-05 15:53:02.778784+00:00 [info] <0.615.0> Recovering 0 queues of type rabbit_quorum_queue took 0ms[0m
+2026-10-05 15:53:02.778799+00:00 [info] <0.615.0> Recovering 0 queues of type rabbit_stream_queue took 0ms[0m
+2026-10-05 15:53:02.779662+00:00 [info] <0.254.0> Created user 'baseline'[0m
+2026-10-05 15:53:02.780059+00:00 [info] <0.254.0> Successfully set user tags for user 'baseline' to [administrator][0m
+2026-10-05 15:53:02.780518+00:00 [info] <0.254.0> Successfully set permissions for user 'baseline' in virtual host '/' to '.*', '.*', '.*'[0m
+2026-10-05 15:53:02.780551+00:00 [info] <0.254.0> Running boot step rabbit_observer_cli defined by app rabbit[0m
+2026-10-05 15:53:02.780583+00:00 [info] <0.254.0> Running boot step rabbit_looking_glass defined by app rabbit[0m
+2026-10-05 15:53:02.780592+00:00 [info] <0.254.0> Running boot step rabbit_core_metrics_gc defined by app rabbit[0m
+2026-10-05 15:53:02.780642+00:00 [info] <0.254.0> Running boot step background_gc defined by app rabbit[0m
+2026-10-05 15:53:02.780682+00:00 [info] <0.254.0> Running boot step routing_ready defined by app rabbit[0m
+2026-10-05 15:53:02.780689+00:00 [info] <0.254.0> Running boot step pre_flight defined by app rabbit[0m
+2026-10-05 15:53:02.780702+00:00 [info] <0.254.0> Running boot step notify_cluster defined by app rabbit[0m
+2026-10-05 15:53:02.780715+00:00 [info] <0.254.0> Running boot step networking defined by app rabbit[0m
+2026-10-05 15:53:02.780734+00:00 [info] <0.254.0> Running boot step rabbit_quorum_queue_periodic_membership_reconciliation defined by app rabbit[0m
+2026-10-05 15:53:02.780778+00:00 [info] <0.254.0> Running boot step definition_import_worker_pool defined by app rabbit[0m
+2026-10-05 15:53:02.780793+00:00 [info] <0.315.0> Starting worker pool 'definition_import_pool' with 2 processes in it[0m
+2026-10-05 15:53:02.780879+00:00 [info] <0.254.0> Running boot step cluster_name defined by app rabbit[0m
+2026-10-05 15:53:02.780895+00:00 [info] <0.254.0> Initialising internal cluster ID to 'rabbitmq-cluster-id-I-a8J992jRjP-mE6Gaiq9w'[0m
+2026-10-05 15:53:02.781857+00:00 [info] <0.254.0> Running boot step virtual_host_reconciliation defined by app rabbit[0m
+2026-10-05 15:53:02.781914+00:00 [info] <0.254.0> Running boot step direct_client defined by app rabbit[0m
+2026-10-05 15:53:02.781949+00:00 [info] <0.254.0> Running boot step rabbit_management_load_definitions defined by app rabbitmq_management[0m
+2026-10-05 15:53:02.781982+00:00 [info] <0.664.0> Resetting node maintenance status[0m
+[38;5;214m2026-10-05 15:53:02.873931+00:00 [warning] <0.693.0> Deprecated features: `management_metrics_collection`: Feature `management_metrics_collection` is deprecated.[0m
+[38;5;214m2026-10-05 15:53:02.873931+00:00 [warning] <0.693.0> By default, this feature can still be used for now.[0m
+[38;5;214m2026-10-05 15:53:02.873931+00:00 [warning] <0.693.0> Its use will not be permitted by default in a future minor RabbitMQ version and the feature will be removed from a future major RabbitMQ version; actual versions to be determined.[0m
+[38;5;214m2026-10-05 15:53:02.873931+00:00 [warning] <0.693.0> To continue using this feature when it is not permitted by default, set the following parameter in your configuration:[0m
+[38;5;214m2026-10-05 15:53:02.873931+00:00 [warning] <0.693.0>     "deprecated_features.permit.management_metrics_collection = true"[0m
+[38;5;214m2026-10-05 15:53:02.873931+00:00 [warning] <0.693.0> To test RabbitMQ as if the feature was removed, set this in your configuration:[0m
+[38;5;214m2026-10-05 15:53:02.873931+00:00 [warning] <0.693.0>     "deprecated_features.permit.management_metrics_collection = false"[0m
+2026-10-05 15:53:04.352487+00:00 [info] <0.730.0> Management plugin: HTTP (non-TLS) listener started on port 15672[0m
+2026-10-05 15:53:04.352575+00:00 [info] <0.760.0> Statistics database started.[0m
+2026-10-05 15:53:04.352653+00:00 [info] <0.759.0> Starting worker pool 'management_worker_pool' with 3 processes in it[0m
+2026-10-05 15:53:04.353377+00:00 [info] <0.664.0> Ready to start client connection listeners[0m
+2026-10-05 15:53:04.354257+00:00 [info] <0.784.0> started TCP listener on [::]:5672[0m
+ completed with 3 plugins.
+2026-10-05 15:53:04.435678+00:00 [info] <0.664.0> Server startup complete; 3 plugins started.[0m
+2026-10-05 15:53:04.435678+00:00 [info] <0.664.0>  * rabbitmq_management[0m
+2026-10-05 15:53:04.435678+00:00 [info] <0.664.0>  * rabbitmq_management_agent[0m
+2026-10-05 15:53:04.435678+00:00 [info] <0.664.0>  * rabbitmq_web_dispatch[0m
+2026-10-05 15:53:04.554143+00:00 [info] <0.788.0> accepting AMQP connection <0.788.0> (172.17.0.1:60798 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:04.557262+00:00 [info] <0.788.0> connection <0.788.0> (172.17.0.1:60798 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:04.558948+00:00 [info] <0.788.0> closing AMQP connection <0.788.0> (172.17.0.1:60798 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:04.591178+00:00 [info] <0.9.0> Time to start RabbitMQ: 4469 ms[0m
+2026-10-05 15:53:05.845962+00:00 [info] <0.809.0> accepting AMQP connection <0.809.0> (172.17.0.1:60814 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:05.855874+00:00 [info] <0.809.0> connection <0.809.0> (172.17.0.1:60814 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:05.859790+00:00 [info] <0.809.0> closing AMQP connection <0.809.0> (172.17.0.1:60814 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:06.335287+00:00 [info] <0.824.0> accepting AMQP connection <0.824.0> (172.17.0.1:60818 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:06.344126+00:00 [info] <0.827.0> accepting AMQP connection <0.827.0> (172.17.0.1:60830 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:06.346219+00:00 [info] <0.824.0> connection <0.824.0> (172.17.0.1:60818 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:06.349663+00:00 [info] <0.827.0> connection <0.827.0> (172.17.0.1:60830 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+[38;5;87m2026-10-05 15:53:06.367701+00:00 [notice] <0.850.0> queue 'aivideo.jobs.generation' in vhost '/': candidate -> leader in term: 1 machine version: 3[0m
+2026-10-05 15:53:06.367908+00:00 [info] <0.843.0> ra: started cluster %2F_aivideo.jobs.generation with 1 servers[0m
+2026-10-05 15:53:06.367908+00:00 [info] <0.843.0> 0 servers failed to start: [][0m
+2026-10-05 15:53:06.367908+00:00 [info] <0.843.0> Leader: {'%2F_aivideo.jobs.generation',rabbit@542e49af1d78}[0m
+[38;5;87m2026-10-05 15:53:06.377245+00:00 [notice] <0.861.0> queue 'aivideo.dead' in vhost '/': candidate -> leader in term: 1 machine version: 3[0m
+2026-10-05 15:53:06.377356+00:00 [info] <0.834.0> ra: started cluster %2F_aivideo.dead with 1 servers[0m
+2026-10-05 15:53:06.377356+00:00 [info] <0.834.0> 0 servers failed to start: [][0m
+2026-10-05 15:53:06.377356+00:00 [info] <0.834.0> Leader: {'%2F_aivideo.dead',rabbit@542e49af1d78}[0m
+[38;5;87m2026-10-05 15:53:06.389671+00:00 [notice] <0.876.0> queue 'aivideo.phase.events' in vhost '/': candidate -> leader in term: 1 machine version: 3[0m
+2026-10-05 15:53:06.389771+00:00 [info] <0.843.0> ra: started cluster %2F_aivideo.phase.events with 1 servers[0m
+2026-10-05 15:53:06.389771+00:00 [info] <0.843.0> 0 servers failed to start: [][0m
+2026-10-05 15:53:06.389771+00:00 [info] <0.843.0> Leader: {'%2F_aivideo.phase.events',rabbit@542e49af1d78}[0m
+[38;5;87m2026-10-05 15:53:06.394121+00:00 [notice] <0.883.0> queue 'aivideo.notifications' in vhost '/': candidate -> leader in term: 1 machine version: 3[0m
+2026-10-05 15:53:06.394180+00:00 [info] <0.834.0> ra: started cluster %2F_aivideo.notifications with 1 servers[0m
+2026-10-05 15:53:06.394180+00:00 [info] <0.834.0> 0 servers failed to start: [][0m
+2026-10-05 15:53:06.394180+00:00 [info] <0.834.0> Leader: {'%2F_aivideo.notifications',rabbit@542e49af1d78}[0m
+2026-10-05 15:53:06.557199+00:00 [info] <0.910.0> accepting AMQP connection <0.910.0> (172.17.0.1:60836 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:06.559675+00:00 [info] <0.910.0> connection <0.910.0> (172.17.0.1:60836 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:06.562530+00:00 [info] <0.918.0> accepting AMQP connection <0.918.0> (172.17.0.1:60846 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:06.566362+00:00 [info] <0.918.0> connection <0.918.0> (172.17.0.1:60846 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+[38;5;214m2026-10-05 15:53:06.572645+00:00 [warning] <0.931.0> Deprecated features: `global_qos`: Feature `global_qos` is deprecated.[0m
+[38;5;214m2026-10-05 15:53:06.572645+00:00 [warning] <0.931.0> By default, this feature can still be used for now.[0m
+[38;5;214m2026-10-05 15:53:06.572645+00:00 [warning] <0.931.0> Its use will not be permitted by default in a future minor RabbitMQ version and the feature will be removed from a future major RabbitMQ version; actual versions to be determined.[0m
+[38;5;214m2026-10-05 15:53:06.572645+00:00 [warning] <0.931.0> To continue using this feature when it is not permitted by default, set the following parameter in your configuration:[0m
+[38;5;214m2026-10-05 15:53:06.572645+00:00 [warning] <0.931.0>     "deprecated_features.permit.global_qos = true"[0m
+[38;5;214m2026-10-05 15:53:06.572645+00:00 [warning] <0.931.0> To test RabbitMQ as if the feature was removed, set this in your configuration:[0m
+[38;5;214m2026-10-05 15:53:06.572645+00:00 [warning] <0.931.0>     "deprecated_features.permit.global_qos = false"[0m
+[38;5;214m2026-10-05 15:53:06.577811+00:00 [warning] <0.943.0> Deprecated features: `transient_nonexcl_queues`: Feature `transient_nonexcl_queues` is deprecated.[0m
+[38;5;214m2026-10-05 15:53:06.577811+00:00 [warning] <0.943.0> By default, this feature can still be used for now.[0m
+[38;5;214m2026-10-05 15:53:06.577811+00:00 [warning] <0.943.0> Its use will not be permitted by default in a future minor RabbitMQ version and the feature will be removed from a future major RabbitMQ version; actual versions to be determined.[0m
+[38;5;214m2026-10-05 15:53:06.577811+00:00 [warning] <0.943.0> To continue using this feature when it is not permitted by default, set the following parameter in your configuration:[0m
+[38;5;214m2026-10-05 15:53:06.577811+00:00 [warning] <0.943.0>     "deprecated_features.permit.transient_nonexcl_queues = true"[0m
+[38;5;214m2026-10-05 15:53:06.577811+00:00 [warning] <0.943.0> To test RabbitMQ as if the feature was removed, set this in your configuration:[0m
+[38;5;214m2026-10-05 15:53:06.577811+00:00 [warning] <0.943.0>     "deprecated_features.permit.transient_nonexcl_queues = false"[0m
+2026-10-05 15:53:07.408008+00:00 [info] <0.824.0> closing AMQP connection <0.824.0> (172.17.0.1:60818 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:07.408004+00:00 [info] <0.827.0> closing AMQP connection <0.827.0> (172.17.0.1:60830 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:08.499199+00:00 [info] <0.972.0> accepting AMQP connection <0.972.0> (172.17.0.1:60858 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:08.503190+00:00 [info] <0.972.0> connection <0.972.0> (172.17.0.1:60858 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:08.527164+00:00 [info] <0.972.0> closing AMQP connection <0.972.0> (172.17.0.1:60858 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:09.411043+00:00 [info] <0.1007.0> accepting AMQP connection <0.1007.0> (172.17.0.1:60890 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:09.411041+00:00 [info] <0.1004.0> accepting AMQP connection <0.1004.0> (172.17.0.1:60874 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:09.415029+00:00 [info] <0.1007.0> connection <0.1007.0> (172.17.0.1:60890 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:09.415489+00:00 [info] <0.1004.0> connection <0.1004.0> (172.17.0.1:60874 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:10.447540+00:00 [info] <0.1004.0> closing AMQP connection <0.1004.0> (172.17.0.1:60874 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:10.633043+00:00 [info] <0.1063.0> accepting AMQP connection <0.1063.0> (172.17.0.1:60898 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:10.639127+00:00 [info] <0.1063.0> connection <0.1063.0> (172.17.0.1:60898 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:10.655631+00:00 [info] <0.1007.0> closing AMQP connection <0.1007.0> (172.17.0.1:60890 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:10.724162+00:00 [info] <0.1063.0> closing AMQP connection <0.1063.0> (172.17.0.1:60898 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:12.455859+00:00 [info] <0.1107.0> accepting AMQP connection <0.1107.0> (172.17.0.1:51236 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:12.461902+00:00 [info] <0.1107.0> connection <0.1107.0> (172.17.0.1:51236 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:12.580596+00:00 [info] <0.1107.0> closing AMQP connection <0.1107.0> (172.17.0.1:51236 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:12.663293+00:00 [info] <0.1136.0> accepting AMQP connection <0.1136.0> (172.17.0.1:51240 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:12.668969+00:00 [info] <0.1136.0> connection <0.1136.0> (172.17.0.1:51240 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:12.851026+00:00 [info] <0.1162.0> accepting AMQP connection <0.1162.0> (172.17.0.1:51248 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:12.854542+00:00 [info] <0.1162.0> connection <0.1162.0> (172.17.0.1:51248 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:12.872700+00:00 [info] <0.1162.0> closing AMQP connection <0.1162.0> (172.17.0.1:51248 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:13.902107+00:00 [info] <0.1136.0> closing AMQP connection <0.1136.0> (172.17.0.1:51240 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:14.587132+00:00 [info] <0.1202.0> accepting AMQP connection <0.1202.0> (172.17.0.1:51260 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:14.606143+00:00 [info] <0.1202.0> connection <0.1202.0> (172.17.0.1:51260 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:14.646714+00:00 [info] <0.1202.0> closing AMQP connection <0.1202.0> (172.17.0.1:51260 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:14.997665+00:00 [info] <0.1231.0> accepting AMQP connection <0.1231.0> (172.17.0.1:51276 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:15.004758+00:00 [info] <0.1231.0> connection <0.1231.0> (172.17.0.1:51276 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:15.059180+00:00 [info] <0.1231.0> closing AMQP connection <0.1231.0> (172.17.0.1:51276 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:15.911654+00:00 [info] <0.1263.0> accepting AMQP connection <0.1263.0> (172.17.0.1:51292 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:15.926167+00:00 [info] <0.1263.0> connection <0.1263.0> (172.17.0.1:51292 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:16.654187+00:00 [info] <0.1296.0> accepting AMQP connection <0.1296.0> (172.17.0.1:51304 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:16.660767+00:00 [info] <0.1296.0> connection <0.1296.0> (172.17.0.1:51304 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:16.684605+00:00 [info] <0.1296.0> closing AMQP connection <0.1296.0> (172.17.0.1:51304 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:16.984543+00:00 [info] <0.1263.0> closing AMQP connection <0.1263.0> (172.17.0.1:51292 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:18.690420+00:00 [info] <0.1337.0> accepting AMQP connection <0.1337.0> (172.17.0.1:51314 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:18.703040+00:00 [info] <0.1337.0> connection <0.1337.0> (172.17.0.1:51314 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:18.767192+00:00 [info] <0.1337.0> closing AMQP connection <0.1337.0> (172.17.0.1:51314 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:18.986651+00:00 [info] <0.1366.0> accepting AMQP connection <0.1366.0> (172.17.0.1:51324 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:18.991302+00:00 [info] <0.1366.0> connection <0.1366.0> (172.17.0.1:51324 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:20.016468+00:00 [info] <0.1366.0> closing AMQP connection <0.1366.0> (172.17.0.1:51324 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:20.773020+00:00 [info] <0.1403.0> accepting AMQP connection <0.1403.0> (172.17.0.1:51336 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:20.782587+00:00 [info] <0.1403.0> connection <0.1403.0> (172.17.0.1:51336 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:20.811581+00:00 [info] <0.1403.0> closing AMQP connection <0.1403.0> (172.17.0.1:51336 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:22.023164+00:00 [info] <0.1440.0> accepting AMQP connection <0.1440.0> (172.17.0.1:35920 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:22.029864+00:00 [info] <0.1440.0> connection <0.1440.0> (172.17.0.1:35920 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:22.815150+00:00 [info] <0.1469.0> accepting AMQP connection <0.1469.0> (172.17.0.1:35936 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:22.822230+00:00 [info] <0.1469.0> connection <0.1469.0> (172.17.0.1:35936 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:22.844301+00:00 [info] <0.1469.0> closing AMQP connection <0.1469.0> (172.17.0.1:35936 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:23.064844+00:00 [info] <0.1440.0> closing AMQP connection <0.1440.0> (172.17.0.1:35920 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:24.845879+00:00 [info] <0.1510.0> accepting AMQP connection <0.1510.0> (172.17.0.1:35948 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:24.849349+00:00 [info] <0.1510.0> connection <0.1510.0> (172.17.0.1:35948 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:24.872412+00:00 [info] <0.1510.0> closing AMQP connection <0.1510.0> (172.17.0.1:35948 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:25.072445+00:00 [info] <0.1539.0> accepting AMQP connection <0.1539.0> (172.17.0.1:35950 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:25.080512+00:00 [info] <0.1539.0> connection <0.1539.0> (172.17.0.1:35950 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:26.113263+00:00 [info] <0.1539.0> closing AMQP connection <0.1539.0> (172.17.0.1:35950 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:26.877940+00:00 [info] <0.1580.0> accepting AMQP connection <0.1580.0> (172.17.0.1:35952 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:26.886747+00:00 [info] <0.1580.0> connection <0.1580.0> (172.17.0.1:35952 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:26.920201+00:00 [info] <0.1580.0> closing AMQP connection <0.1580.0> (172.17.0.1:35952 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:28.117482+00:00 [info] <0.1613.0> accepting AMQP connection <0.1613.0> (172.17.0.1:35956 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:28.132577+00:00 [info] <0.1613.0> connection <0.1613.0> (172.17.0.1:35956 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:28.927060+00:00 [info] <0.1642.0> accepting AMQP connection <0.1642.0> (172.17.0.1:35958 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:28.929974+00:00 [info] <0.1642.0> connection <0.1642.0> (172.17.0.1:35958 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:28.959762+00:00 [info] <0.1642.0> closing AMQP connection <0.1642.0> (172.17.0.1:35958 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:29.154220+00:00 [info] <0.1613.0> closing AMQP connection <0.1613.0> (172.17.0.1:35956 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:30.965904+00:00 [info] <0.1683.0> accepting AMQP connection <0.1683.0> (172.17.0.1:37384 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:30.974192+00:00 [info] <0.1683.0> connection <0.1683.0> (172.17.0.1:37384 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:31.037739+00:00 [info] <0.1683.0> closing AMQP connection <0.1683.0> (172.17.0.1:37384 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:31.161812+00:00 [info] <0.1712.0> accepting AMQP connection <0.1712.0> (172.17.0.1:37400 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:31.173001+00:00 [info] <0.1712.0> connection <0.1712.0> (172.17.0.1:37400 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:32.204300+00:00 [info] <0.1712.0> closing AMQP connection <0.1712.0> (172.17.0.1:37400 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:33.043625+00:00 [info] <0.1754.0> accepting AMQP connection <0.1754.0> (172.17.0.1:37412 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:33.053177+00:00 [info] <0.1754.0> connection <0.1754.0> (172.17.0.1:37412 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:33.106712+00:00 [info] <0.1754.0> closing AMQP connection <0.1754.0> (172.17.0.1:37412 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:34.206955+00:00 [info] <0.1787.0> accepting AMQP connection <0.1787.0> (172.17.0.1:37420 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:34.210240+00:00 [info] <0.1787.0> connection <0.1787.0> (172.17.0.1:37420 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:35.116392+00:00 [info] <0.1816.0> accepting AMQP connection <0.1816.0> (172.17.0.1:37430 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:35.124123+00:00 [info] <0.1816.0> connection <0.1816.0> (172.17.0.1:37430 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:35.178675+00:00 [info] <0.1816.0> closing AMQP connection <0.1816.0> (172.17.0.1:37430 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:35.236186+00:00 [info] <0.1787.0> closing AMQP connection <0.1787.0> (172.17.0.1:37420 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:37.186851+00:00 [info] <0.1861.0> accepting AMQP connection <0.1861.0> (172.17.0.1:37442 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:37.196173+00:00 [info] <0.1861.0> connection <0.1861.0> (172.17.0.1:37442 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:37.239954+00:00 [info] <0.1888.0> accepting AMQP connection <0.1888.0> (172.17.0.1:37454 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:37.240239+00:00 [info] <0.1861.0> closing AMQP connection <0.1861.0> (172.17.0.1:37442 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:37.244117+00:00 [info] <0.1888.0> connection <0.1888.0> (172.17.0.1:37454 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:38.270005+00:00 [info] <0.1888.0> closing AMQP connection <0.1888.0> (172.17.0.1:37454 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:39.246641+00:00 [info] <0.1927.0> accepting AMQP connection <0.1927.0> (172.17.0.1:37468 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:39.251108+00:00 [info] <0.1927.0> connection <0.1927.0> (172.17.0.1:37468 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:39.271520+00:00 [info] <0.1927.0> closing AMQP connection <0.1927.0> (172.17.0.1:37468 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:40.278720+00:00 [info] <0.1960.0> accepting AMQP connection <0.1960.0> (172.17.0.1:37474 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:40.286833+00:00 [info] <0.1960.0> connection <0.1960.0> (172.17.0.1:37474 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:41.278799+00:00 [info] <0.1989.0> accepting AMQP connection <0.1989.0> (172.17.0.1:34854 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:41.290670+00:00 [info] <0.1989.0> connection <0.1989.0> (172.17.0.1:34854 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:41.319347+00:00 [info] <0.1960.0> closing AMQP connection <0.1960.0> (172.17.0.1:37474 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:41.331799+00:00 [info] <0.1989.0> closing AMQP connection <0.1989.0> (172.17.0.1:34854 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:43.324754+00:00 [info] <0.2034.0> accepting AMQP connection <0.2034.0> (172.17.0.1:34860 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:43.331983+00:00 [info] <0.2034.0> connection <0.2034.0> (172.17.0.1:34860 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:43.336964+00:00 [info] <0.2045.0> accepting AMQP connection <0.2045.0> (172.17.0.1:34866 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:43.345140+00:00 [info] <0.2045.0> connection <0.2045.0> (172.17.0.1:34866 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:43.393759+00:00 [info] <0.2045.0> closing AMQP connection <0.2045.0> (172.17.0.1:34866 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:44.385058+00:00 [info] <0.2034.0> closing AMQP connection <0.2034.0> (172.17.0.1:34860 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:45.401932+00:00 [info] <0.2100.0> accepting AMQP connection <0.2100.0> (172.17.0.1:34868 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:45.417172+00:00 [info] <0.2100.0> connection <0.2100.0> (172.17.0.1:34868 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:45.447800+00:00 [info] <0.2100.0> closing AMQP connection <0.2100.0> (172.17.0.1:34868 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:46.389295+00:00 [info] <0.2134.0> accepting AMQP connection <0.2134.0> (172.17.0.1:34882 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:46.392282+00:00 [info] <0.2134.0> connection <0.2134.0> (172.17.0.1:34882 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:47.416300+00:00 [info] <0.2134.0> closing AMQP connection <0.2134.0> (172.17.0.1:34882 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:47.457039+00:00 [info] <0.2170.0> accepting AMQP connection <0.2170.0> (172.17.0.1:34888 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:47.466434+00:00 [info] <0.2170.0> connection <0.2170.0> (172.17.0.1:34888 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:47.506061+00:00 [info] <0.2170.0> closing AMQP connection <0.2170.0> (172.17.0.1:34888 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:49.421365+00:00 [info] <0.2207.0> accepting AMQP connection <0.2207.0> (172.17.0.1:34896 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:49.425449+00:00 [info] <0.2207.0> connection <0.2207.0> (172.17.0.1:34896 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:49.506892+00:00 [info] <0.2232.0> accepting AMQP connection <0.2232.0> (172.17.0.1:34910 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:49.509924+00:00 [info] <0.2232.0> connection <0.2232.0> (172.17.0.1:34910 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:49.530419+00:00 [info] <0.2232.0> closing AMQP connection <0.2232.0> (172.17.0.1:34910 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:50.458971+00:00 [info] <0.2207.0> closing AMQP connection <0.2207.0> (172.17.0.1:34896 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:51.533089+00:00 [info] <0.2277.0> accepting AMQP connection <0.2277.0> (172.17.0.1:34064 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:51.537394+00:00 [info] <0.2277.0> connection <0.2277.0> (172.17.0.1:34064 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:51.558582+00:00 [info] <0.2277.0> closing AMQP connection <0.2277.0> (172.17.0.1:34064 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:52.467234+00:00 [info] <0.2310.0> accepting AMQP connection <0.2310.0> (172.17.0.1:34072 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:52.475185+00:00 [info] <0.2310.0> connection <0.2310.0> (172.17.0.1:34072 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:53.514397+00:00 [info] <0.2310.0> closing AMQP connection <0.2310.0> (172.17.0.1:34072 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:53.559981+00:00 [info] <0.2343.0> accepting AMQP connection <0.2343.0> (172.17.0.1:34078 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:53.564509+00:00 [info] <0.2343.0> connection <0.2343.0> (172.17.0.1:34078 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:53.583713+00:00 [info] <0.2343.0> closing AMQP connection <0.2343.0> (172.17.0.1:34078 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:55.520285+00:00 [info] <0.2380.0> accepting AMQP connection <0.2380.0> (172.17.0.1:34092 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:55.526801+00:00 [info] <0.2380.0> connection <0.2380.0> (172.17.0.1:34092 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:55.589038+00:00 [info] <0.2405.0> accepting AMQP connection <0.2405.0> (172.17.0.1:34102 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:55.602960+00:00 [info] <0.2405.0> connection <0.2405.0> (172.17.0.1:34102 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:55.625357+00:00 [info] <0.2405.0> closing AMQP connection <0.2405.0> (172.17.0.1:34102 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:56.559185+00:00 [info] <0.2380.0> closing AMQP connection <0.2380.0> (172.17.0.1:34092 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:57.633595+00:00 [info] <0.2450.0> accepting AMQP connection <0.2450.0> (172.17.0.1:34106 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:57.641135+00:00 [info] <0.2450.0> connection <0.2450.0> (172.17.0.1:34106 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:57.668166+00:00 [info] <0.2450.0> closing AMQP connection <0.2450.0> (172.17.0.1:34106 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:58.567030+00:00 [info] <0.2483.0> accepting AMQP connection <0.2483.0> (172.17.0.1:34122 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:58.572557+00:00 [info] <0.2483.0> connection <0.2483.0> (172.17.0.1:34122 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:59.607092+00:00 [info] <0.2483.0> closing AMQP connection <0.2483.0> (172.17.0.1:34122 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:53:59.673004+00:00 [info] <0.2516.0> accepting AMQP connection <0.2516.0> (172.17.0.1:34134 -> 172.17.0.4:5672)[0m
+2026-10-05 15:53:59.680223+00:00 [info] <0.2516.0> connection <0.2516.0> (172.17.0.1:34134 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:53:59.716284+00:00 [info] <0.2516.0> closing AMQP connection <0.2516.0> (172.17.0.1:34134 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:01.615098+00:00 [info] <0.2557.0> accepting AMQP connection <0.2557.0> (172.17.0.1:51680 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:01.621442+00:00 [info] <0.2557.0> connection <0.2557.0> (172.17.0.1:51680 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:01.723672+00:00 [info] <0.2584.0> accepting AMQP connection <0.2584.0> (172.17.0.1:51682 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:01.734764+00:00 [info] <0.2584.0> connection <0.2584.0> (172.17.0.1:51682 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:01.759910+00:00 [info] <0.2584.0> closing AMQP connection <0.2584.0> (172.17.0.1:51682 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:02.665530+00:00 [info] <0.2557.0> closing AMQP connection <0.2557.0> (172.17.0.1:51680 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:03.767070+00:00 [info] <0.2626.0> accepting AMQP connection <0.2626.0> (172.17.0.1:51692 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:03.771010+00:00 [info] <0.2626.0> connection <0.2626.0> (172.17.0.1:51692 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:03.798714+00:00 [info] <0.2626.0> closing AMQP connection <0.2626.0> (172.17.0.1:51692 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:04.678519+00:00 [info] <0.2657.0> accepting AMQP connection <0.2657.0> (172.17.0.1:51696 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:04.685983+00:00 [info] <0.2657.0> connection <0.2657.0> (172.17.0.1:51696 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:05.718081+00:00 [info] <0.2657.0> closing AMQP connection <0.2657.0> (172.17.0.1:51696 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:05.807257+00:00 [info] <0.2692.0> accepting AMQP connection <0.2692.0> (172.17.0.1:51704 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:05.816547+00:00 [info] <0.2692.0> connection <0.2692.0> (172.17.0.1:51704 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:05.848824+00:00 [info] <0.2692.0> closing AMQP connection <0.2692.0> (172.17.0.1:51704 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:07.735109+00:00 [info] <0.2731.0> accepting AMQP connection <0.2731.0> (172.17.0.1:51716 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:07.737744+00:00 [info] <0.2731.0> connection <0.2731.0> (172.17.0.1:51716 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:07.855950+00:00 [info] <0.2758.0> accepting AMQP connection <0.2758.0> (172.17.0.1:51726 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:07.858692+00:00 [info] <0.2758.0> connection <0.2758.0> (172.17.0.1:51726 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:07.884407+00:00 [info] <0.2758.0> closing AMQP connection <0.2758.0> (172.17.0.1:51726 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:08.757139+00:00 [info] <0.2731.0> closing AMQP connection <0.2731.0> (172.17.0.1:51716 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:09.900894+00:00 [info] <0.2799.0> accepting AMQP connection <0.2799.0> (172.17.0.1:51732 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:09.916418+00:00 [info] <0.2799.0> connection <0.2799.0> (172.17.0.1:51732 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:09.961704+00:00 [info] <0.2799.0> closing AMQP connection <0.2799.0> (172.17.0.1:51732 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:10.766368+00:00 [info] <0.2830.0> accepting AMQP connection <0.2830.0> (172.17.0.1:51740 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:10.773906+00:00 [info] <0.2830.0> connection <0.2830.0> (172.17.0.1:51740 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:11.812444+00:00 [info] <0.2830.0> closing AMQP connection <0.2830.0> (172.17.0.1:51740 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:12.000791+00:00 [info] <0.2869.0> accepting AMQP connection <0.2869.0> (172.17.0.1:44728 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:12.010612+00:00 [info] <0.2869.0> connection <0.2869.0> (172.17.0.1:44728 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:12.048854+00:00 [info] <0.2869.0> closing AMQP connection <0.2869.0> (172.17.0.1:44728 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:13.818474+00:00 [info] <0.2904.0> accepting AMQP connection <0.2904.0> (172.17.0.1:44740 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:13.821889+00:00 [info] <0.2904.0> connection <0.2904.0> (172.17.0.1:44740 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:14.056402+00:00 [info] <0.2931.0> accepting AMQP connection <0.2931.0> (172.17.0.1:44756 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:14.065877+00:00 [info] <0.2931.0> connection <0.2931.0> (172.17.0.1:44756 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:14.115386+00:00 [info] <0.2931.0> closing AMQP connection <0.2931.0> (172.17.0.1:44756 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:14.847492+00:00 [info] <0.2904.0> closing AMQP connection <0.2904.0> (172.17.0.1:44740 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:16.123280+00:00 [info] <0.2972.0> accepting AMQP connection <0.2972.0> (172.17.0.1:44764 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:16.132895+00:00 [info] <0.2972.0> connection <0.2972.0> (172.17.0.1:44764 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:16.161384+00:00 [info] <0.2972.0> closing AMQP connection <0.2972.0> (172.17.0.1:44764 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:16.856025+00:00 [info] <0.3007.0> accepting AMQP connection <0.3007.0> (172.17.0.1:44766 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:16.870463+00:00 [info] <0.3007.0> connection <0.3007.0> (172.17.0.1:44766 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:17.917465+00:00 [info] <0.3007.0> closing AMQP connection <0.3007.0> (172.17.0.1:44766 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:18.248785+00:00 [info] <0.3042.0> accepting AMQP connection <0.3042.0> (172.17.0.1:44772 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:18.262804+00:00 [info] <0.3042.0> connection <0.3042.0> (172.17.0.1:44772 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:18.454267+00:00 [info] <0.3042.0> closing AMQP connection <0.3042.0> (172.17.0.1:44772 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:19.947633+00:00 [info] <0.3077.0> accepting AMQP connection <0.3077.0> (172.17.0.1:44784 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:19.961665+00:00 [info] <0.3077.0> connection <0.3077.0> (172.17.0.1:44784 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:20.511005+00:00 [info] <0.3104.0> accepting AMQP connection <0.3104.0> (172.17.0.1:44792 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:20.531659+00:00 [info] <0.3104.0> connection <0.3104.0> (172.17.0.1:44792 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:20.669242+00:00 [info] <0.3104.0> closing AMQP connection <0.3104.0> (172.17.0.1:44792 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:21.033653+00:00 [info] <0.3077.0> closing AMQP connection <0.3077.0> (172.17.0.1:44784 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:22.677526+00:00 [info] <0.3149.0> accepting AMQP connection <0.3149.0> (172.17.0.1:55552 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:22.687548+00:00 [info] <0.3149.0> connection <0.3149.0> (172.17.0.1:55552 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:22.732463+00:00 [info] <0.3149.0> closing AMQP connection <0.3149.0> (172.17.0.1:55552 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:23.041737+00:00 [info] <0.3180.0> accepting AMQP connection <0.3180.0> (172.17.0.1:55558 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:23.053515+00:00 [info] <0.3180.0> connection <0.3180.0> (172.17.0.1:55558 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:24.081875+00:00 [info] <0.3180.0> closing AMQP connection <0.3180.0> (172.17.0.1:55558 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:24.741957+00:00 [info] <0.3215.0> accepting AMQP connection <0.3215.0> (172.17.0.1:55564 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:24.751652+00:00 [info] <0.3215.0> connection <0.3215.0> (172.17.0.1:55564 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:24.791705+00:00 [info] <0.3215.0> closing AMQP connection <0.3215.0> (172.17.0.1:55564 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:26.084152+00:00 [info] <0.3250.0> accepting AMQP connection <0.3250.0> (172.17.0.1:55572 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:26.088768+00:00 [info] <0.3250.0> connection <0.3250.0> (172.17.0.1:55572 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:26.798239+00:00 [info] <0.3281.0> accepting AMQP connection <0.3281.0> (172.17.0.1:55578 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:26.804852+00:00 [info] <0.3281.0> connection <0.3281.0> (172.17.0.1:55578 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:26.836931+00:00 [info] <0.3281.0> closing AMQP connection <0.3281.0> (172.17.0.1:55578 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:27.112474+00:00 [info] <0.3250.0> closing AMQP connection <0.3250.0> (172.17.0.1:55572 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:28.846468+00:00 [info] <0.3322.0> accepting AMQP connection <0.3322.0> (172.17.0.1:55586 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:28.860048+00:00 [info] <0.3322.0> connection <0.3322.0> (172.17.0.1:55586 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:28.898653+00:00 [info] <0.3322.0> closing AMQP connection <0.3322.0> (172.17.0.1:55586 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:29.117437+00:00 [info] <0.3353.0> accepting AMQP connection <0.3353.0> (172.17.0.1:55596 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:29.120187+00:00 [info] <0.3353.0> connection <0.3353.0> (172.17.0.1:55596 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:30.145323+00:00 [info] <0.3353.0> closing AMQP connection <0.3353.0> (172.17.0.1:55596 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:30.905575+00:00 [info] <0.3388.0> accepting AMQP connection <0.3388.0> (172.17.0.1:46958 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:30.910184+00:00 [info] <0.3388.0> connection <0.3388.0> (172.17.0.1:46958 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:30.949776+00:00 [info] <0.3388.0> closing AMQP connection <0.3388.0> (172.17.0.1:46958 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:32.149849+00:00 [info] <0.3427.0> accepting AMQP connection <0.3427.0> (172.17.0.1:46972 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:32.158848+00:00 [info] <0.3427.0> connection <0.3427.0> (172.17.0.1:46972 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:32.955757+00:00 [info] <0.3477.0> accepting AMQP connection <0.3477.0> (172.17.0.1:46984 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:32.963482+00:00 [info] <0.3477.0> connection <0.3477.0> (172.17.0.1:46984 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:32.993419+00:00 [info] <0.3477.0> closing AMQP connection <0.3477.0> (172.17.0.1:46984 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:33.187194+00:00 [info] <0.3427.0> closing AMQP connection <0.3427.0> (172.17.0.1:46972 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:34.999837+00:00 [info] <0.3518.0> accepting AMQP connection <0.3518.0> (172.17.0.1:46986 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:35.005860+00:00 [info] <0.3518.0> connection <0.3518.0> (172.17.0.1:46986 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:35.031093+00:00 [info] <0.3518.0> closing AMQP connection <0.3518.0> (172.17.0.1:46986 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:35.191076+00:00 [info] <0.3549.0> accepting AMQP connection <0.3549.0> (172.17.0.1:46998 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:35.198109+00:00 [info] <0.3549.0> connection <0.3549.0> (172.17.0.1:46998 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:36.397193+00:00 [info] <0.3549.0> closing AMQP connection <0.3549.0> (172.17.0.1:46998 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:37.036714+00:00 [info] <0.3588.0> accepting AMQP connection <0.3588.0> (172.17.0.1:47000 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:37.042753+00:00 [info] <0.3588.0> connection <0.3588.0> (172.17.0.1:47000 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:37.065947+00:00 [info] <0.3588.0> closing AMQP connection <0.3588.0> (172.17.0.1:47000 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:38.403094+00:00 [info] <0.3621.0> accepting AMQP connection <0.3621.0> (172.17.0.1:47012 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:38.416654+00:00 [info] <0.3621.0> connection <0.3621.0> (172.17.0.1:47012 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:39.074581+00:00 [info] <0.3650.0> accepting AMQP connection <0.3650.0> (172.17.0.1:47020 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:39.082092+00:00 [info] <0.3650.0> connection <0.3650.0> (172.17.0.1:47020 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:39.128052+00:00 [info] <0.3650.0> closing AMQP connection <0.3650.0> (172.17.0.1:47020 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:39.442852+00:00 [info] <0.3621.0> closing AMQP connection <0.3621.0> (172.17.0.1:47012 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:41.136036+00:00 [info] <0.3691.0> accepting AMQP connection <0.3691.0> (172.17.0.1:41076 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:41.143236+00:00 [info] <0.3691.0> connection <0.3691.0> (172.17.0.1:41076 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:41.169239+00:00 [info] <0.3691.0> closing AMQP connection <0.3691.0> (172.17.0.1:41076 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:41.447571+00:00 [info] <0.3724.0> accepting AMQP connection <0.3724.0> (172.17.0.1:41084 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:41.454206+00:00 [info] <0.3724.0> connection <0.3724.0> (172.17.0.1:41084 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:42.497609+00:00 [info] <0.3724.0> closing AMQP connection <0.3724.0> (172.17.0.1:41084 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:43.175566+00:00 [info] <0.3761.0> accepting AMQP connection <0.3761.0> (172.17.0.1:41096 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:43.186373+00:00 [info] <0.3761.0> connection <0.3761.0> (172.17.0.1:41096 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:43.232478+00:00 [info] <0.3761.0> closing AMQP connection <0.3761.0> (172.17.0.1:41096 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:44.505715+00:00 [info] <0.3794.0> accepting AMQP connection <0.3794.0> (172.17.0.1:41106 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:44.518711+00:00 [info] <0.3794.0> connection <0.3794.0> (172.17.0.1:41106 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:45.240294+00:00 [info] <0.3823.0> accepting AMQP connection <0.3823.0> (172.17.0.1:41122 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:45.248565+00:00 [info] <0.3823.0> connection <0.3823.0> (172.17.0.1:41122 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:45.285246+00:00 [info] <0.3823.0> closing AMQP connection <0.3823.0> (172.17.0.1:41122 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:45.566422+00:00 [info] <0.3794.0> closing AMQP connection <0.3794.0> (172.17.0.1:41106 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:47.293108+00:00 [info] <0.3868.0> accepting AMQP connection <0.3868.0> (172.17.0.1:41126 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:47.302837+00:00 [info] <0.3868.0> connection <0.3868.0> (172.17.0.1:41126 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:47.331908+00:00 [info] <0.3868.0> closing AMQP connection <0.3868.0> (172.17.0.1:41126 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:47.572268+00:00 [info] <0.3897.0> accepting AMQP connection <0.3897.0> (172.17.0.1:41140 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:47.580409+00:00 [info] <0.3897.0> connection <0.3897.0> (172.17.0.1:41140 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:48.633890+00:00 [info] <0.3897.0> closing AMQP connection <0.3897.0> (172.17.0.1:41140 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:49.339641+00:00 [info] <0.3934.0> accepting AMQP connection <0.3934.0> (172.17.0.1:41142 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:49.346616+00:00 [info] <0.3934.0> connection <0.3934.0> (172.17.0.1:41142 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:49.365781+00:00 [info] <0.3934.0> closing AMQP connection <0.3934.0> (172.17.0.1:41142 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:50.642874+00:00 [info] <0.3969.0> accepting AMQP connection <0.3969.0> (172.17.0.1:41148 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:50.651485+00:00 [info] <0.3969.0> connection <0.3969.0> (172.17.0.1:41148 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:51.367827+00:00 [info] <0.3996.0> accepting AMQP connection <0.3996.0> (172.17.0.1:37506 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:51.370459+00:00 [info] <0.3996.0> connection <0.3996.0> (172.17.0.1:37506 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:51.399986+00:00 [info] <0.3996.0> closing AMQP connection <0.3996.0> (172.17.0.1:37506 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:51.689497+00:00 [info] <0.3969.0> closing AMQP connection <0.3969.0> (172.17.0.1:41148 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:53.408064+00:00 [info] <0.4041.0> accepting AMQP connection <0.4041.0> (172.17.0.1:37512 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:53.414260+00:00 [info] <0.4041.0> connection <0.4041.0> (172.17.0.1:37512 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:53.442213+00:00 [info] <0.4041.0> closing AMQP connection <0.4041.0> (172.17.0.1:37512 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:53.694957+00:00 [info] <0.4072.0> accepting AMQP connection <0.4072.0> (172.17.0.1:37522 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:53.702229+00:00 [info] <0.4072.0> connection <0.4072.0> (172.17.0.1:37522 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:54.747128+00:00 [info] <0.4072.0> closing AMQP connection <0.4072.0> (172.17.0.1:37522 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:55.446826+00:00 [info] <0.4107.0> accepting AMQP connection <0.4107.0> (172.17.0.1:37538 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:55.453466+00:00 [info] <0.4107.0> connection <0.4107.0> (172.17.0.1:37538 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:56.481099+00:00 [info] <0.4107.0> closing AMQP connection <0.4107.0> (172.17.0.1:37538 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:56.746145+00:00 [info] <0.4146.0> accepting AMQP connection <0.4146.0> (172.17.0.1:37540 -> 172.17.0.4:5672)[0m
+2026-10-05 15:54:56.749136+00:00 [info] <0.4146.0> connection <0.4146.0> (172.17.0.1:37540 -> 172.17.0.4:5672): user 'baseline' authenticated and granted access to vhost '/'[0m
+2026-10-05 15:54:57.771483+00:00 [info] <0.4146.0> closing AMQP connection <0.4146.0> (172.17.0.1:37540 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:59.885514+00:00 [info] <0.918.0> closing AMQP connection <0.918.0> (172.17.0.1:60846 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m
+2026-10-05 15:54:59.896399+00:00 [info] <0.910.0> closing AMQP connection <0.910.0> (172.17.0.1:60836 -> 172.17.0.4:5672, vhost: '/', user: 'baseline')[0m

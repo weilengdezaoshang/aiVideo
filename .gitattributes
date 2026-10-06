@@ -1,0 +1,2 @@
+# Preserve archived performance evidence exactly as recorded by SHA256 manifests.
+docs/performance/** -text -whitespace

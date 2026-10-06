@@ -1,0 +1,33 @@
+{
+  "protocol": "durable-backend-baseline-v1",
+  "status": "completed_with_measured_read_errors",
+  "generated_at_utc": "2026-10-05T15:56:38.134839+00:00",
+  "selected_measurements": {
+    "reads": "reads/read-summary.json",
+    "sse": "sse/durable-sse.json",
+    "chain": "chain-measured/chain/production-chain.json"
+  },
+  "formal_read_requests": 1400,
+  "formal_read_errors": 2,
+  "warmup_read_requests": 154,
+  "warmup_read_errors": 5,
+  "sse_connections": 82,
+  "mock_chain_jobs": 10,
+  "all_attempt_backend_fingerprints_match": true,
+  "attempt_status": {
+    ".": "failed",
+    "chain-retry-2": "failed",
+    "chain-retry": "failed",
+    "chain-measured": "completed",
+    "chain-final": "failed"
+  },
+  "final_chain_owned_processes_remaining": false,
+  "baseline_named_containers_remaining": false,
+  "verification": {
+    "frontend_passed": 254,
+    "backend_passed": 310,
+    "backend_skipped": 2,
+    "final_collectors_ruff_and_compile": "passed"
+  },
+  "initial_collector_provenance": "See collector-snapshot.json: SSE cleanup changed before SSE execution; startup hashes preserved."
+}

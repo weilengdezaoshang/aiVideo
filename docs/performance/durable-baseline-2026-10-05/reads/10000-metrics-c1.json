@@ -1,0 +1,3320 @@
+{
+  "summary": {
+    "endpoint": "metrics",
+    "path": "/internal/metrics",
+    "concurrency": 1,
+    "measured_requests": 50,
+    "warmup_requests": 1,
+    "warmup_errors": 0,
+    "errors": 0,
+    "error_types": [],
+    "http_status_counts": {
+      "200": 50
+    },
+    "all_response_latency_ms": {
+      "samples": 50,
+      "p50": 11.437,
+      "p95": 31.5624,
+      "max": 59.7712
+    },
+    "successful_latency_ms": {
+      "samples": 50,
+      "p50": 11.437,
+      "p95": 31.5624,
+      "max": 59.7712
+    },
+    "sql_count": {
+      "samples": 50,
+      "p50": 7.0,
+      "p95": 7,
+      "max": 7
+    },
+    "sql_elapsed_ms": {
+      "samples": 50,
+      "p50": 8.3951,
+      "p95": 25.409,
+      "max": 46.3254
+    },
+    "sql_rows": {
+      "samples": 50,
+      "p50": 7.0,
+      "p95": 7,
+      "max": 7
+    },
+    "response_bytes": {
+      "samples": 50,
+      "p50": 502.0,
+      "p95": 502,
+      "max": 502
+    },
+    "measurement_wall_s": 0.7617890420369804,
+    "completed_requests_per_s": 65.63496879175743,
+    "valid_requests_per_s": 65.63496879175743
+  },
+  "requests": [
+    {
+      "request_id": "10000-metrics-c1-warmup-0",
+      "warmup": true,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 59.482666,
+      "sql_count": 7,
+      "sql_elapsed_ms": 43.304166,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 20.153708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 8.922167,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 2.220791,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 1.123375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 2.647458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 2.312458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 5.924209,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-0",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 31.562375,
+      "sql_count": 7,
+      "sql_elapsed_ms": 25.409044,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 8.422875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 2.673959,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 4.351125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 2.117208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 2.981584,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 2.719959,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 2.142334,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-1",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 20.075958,
+      "sql_count": 7,
+      "sql_elapsed_ms": 15.413750000000002,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 3.3815,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.397209,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 1.853625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 1.198458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.70025,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 2.686875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 3.195833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-2",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 12.874542,
+      "sql_count": 7,
+      "sql_elapsed_ms": 9.334293,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.399875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.556584,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.62625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.562042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.31775,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.138125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.733667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-3",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 11.640958,
+      "sql_count": 7,
+      "sql_elapsed_ms": 8.535291,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.319416,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.116208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.568875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.525792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.302583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.033083,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.669334,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-4",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 12.864625,
+      "sql_count": 7,
+      "sql_elapsed_ms": 9.126502,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.922,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.104834,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.554834,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.542334,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.339792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.057875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.604833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-5",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 14.558042,
+      "sql_count": 7,
+      "sql_elapsed_ms": 10.077584,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 3.360916,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.434375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.616667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.657125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.261167,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.138292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.609042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-6",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 13.228916,
+      "sql_count": 7,
+      "sql_elapsed_ms": 9.707001,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.819458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.147459,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.500584,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.464375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.427166,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.587209,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.76075,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-7",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 11.710125,
+      "sql_count": 7,
+      "sql_elapsed_ms": 8.450124,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.24975,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.089625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.48425,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.514416,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.272,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.048166,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.791917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-8",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 11.156458,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.914458,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.0405,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.068666,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.556375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.445584,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.0725,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.008833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.722,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-9",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 12.454417,
+      "sql_count": 7,
+      "sql_elapsed_ms": 9.215540999999998,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.975958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.02625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.488667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.465292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.086458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.253041,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.919875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-10",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 16.319,
+      "sql_count": 7,
+      "sql_elapsed_ms": 11.809709,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.264042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.137208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 1.063625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 1.101625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.873834,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.759583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 2.609792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-11",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 15.548458,
+      "sql_count": 7,
+      "sql_elapsed_ms": 9.954249,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 3.2515,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.601333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.703292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.459875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.213833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.182958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.541458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-12",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 59.771209,
+      "sql_count": 7,
+      "sql_elapsed_ms": 46.325418,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 4.885042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 2.874834,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 1.091917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.709375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 28.05125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 5.915,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 2.798,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-13",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 15.404417,
+      "sql_count": 7,
+      "sql_elapsed_ms": 11.806666,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.886708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.458125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.650042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.571041,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.383583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 3.046125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.811042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-14",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 15.063792,
+      "sql_count": 7,
+      "sql_elapsed_ms": 10.665752,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.920917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.144292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.67025,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.582958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.351334,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.151917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 2.844084,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-15",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 15.091667,
+      "sql_count": 7,
+      "sql_elapsed_ms": 11.168542,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.796,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.443375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.81025,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.503792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 2.326916,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.002667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 2.285542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-16",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 12.079667,
+      "sql_count": 7,
+      "sql_elapsed_ms": 8.749209,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.166917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.062083,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.995542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.7785,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.350042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.991125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.405,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-17",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 11.416542,
+      "sql_count": 7,
+      "sql_elapsed_ms": 8.430168,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.581542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.184875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.568708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.466417,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.134542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.919292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.574792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-18",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 11.12725,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.9850829999999995,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.371083,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.006875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.497625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.396333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.280542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.016792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.415833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-19",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 16.761958,
+      "sql_count": 7,
+      "sql_elapsed_ms": 12.896916000000001,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 3.413292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.1345,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 1.793291,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.563125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.299125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 2.561208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 2.132375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-20",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 20.850334,
+      "sql_count": 7,
+      "sql_elapsed_ms": 14.075081999999998,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.851166,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.397791,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 1.479625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.906791,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.730042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.677708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 4.031959,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-21",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 29.476709,
+      "sql_count": 7,
+      "sql_elapsed_ms": 18.763916000000002,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 3.593125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 2.724708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 1.787792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.586,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 3.670083,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 3.898208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 2.504,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-22",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 49.088959,
+      "sql_count": 7,
+      "sql_elapsed_ms": 31.005958999999997,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 7.585792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 5.444209,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 5.205083,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 2.728042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 3.834833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 2.324875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 3.883125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-23",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 27.10625,
+      "sql_count": 7,
+      "sql_elapsed_ms": 16.677082000000002,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 6.088583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.881667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 1.164291,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.734666,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 3.564042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.546833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.697,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-24",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 19.671083,
+      "sql_count": 7,
+      "sql_elapsed_ms": 14.202955999999999,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.767625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.486166,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 1.309416,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 1.082625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 3.62925,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.566583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 2.361291,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-25",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 11.37475,
+      "sql_count": 7,
+      "sql_elapsed_ms": 8.276332,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.318375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.155333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.494208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.46925,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.358333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.018833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.462,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-26",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.9835,
+      "sql_count": 7,
+      "sql_elapsed_ms": 8.067874999999999,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.134208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.341875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.543334,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.475042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.091167,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.913791,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.568458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-27",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 11.79775,
+      "sql_count": 7,
+      "sql_elapsed_ms": 8.544165,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.404208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.025458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.5415,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.432958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.07925,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.940708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 2.120083,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-28",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.681,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.841833,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.100917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.033959,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.583375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.490541,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.128417,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.027791,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.476833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-29",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.727375,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.9713330000000004,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.576208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.103375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.49075,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.448125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.042875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.917458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.392542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-30",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.870875,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.954292,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.311958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.039,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.526375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.440833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.056,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.962209,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.617917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-31",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.809917,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.8580820000000005,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.076667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.126042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.463208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.439583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.292791,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.000208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.459583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-32",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 11.218084,
+      "sql_count": 7,
+      "sql_elapsed_ms": 8.223124,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.023833,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.56025,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.655583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.452208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.130333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.95125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.449667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-33",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.738375,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.645376000000001,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.395,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 0.952792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.384709,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.339,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.027042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.931208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.615625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-34",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 11.457541,
+      "sql_count": 7,
+      "sql_elapsed_ms": 8.360125,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.200459,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.085167,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.850125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.469625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.121125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.056166,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.577458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-35",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.567833,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.917251,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.146208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.485459,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.55275,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.417542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.068375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.882792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.364125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-36",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.505125,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.497377,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.282042,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.013584,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.416584,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.367667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 0.96175,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.848583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.607167,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-37",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 9.994375,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.382041,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.077125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.001584,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.570583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.3785,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 0.994083,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.892208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.467958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-38",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.279458,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.697876,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 1.98025,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 0.998292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.642084,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.602208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.259542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.887125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.328375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-39",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 9.596083,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.236417,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.080542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.006,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.49025,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.39325,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.023834,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.807333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.435208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-40",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.00225,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.3882069999999995,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.272084,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 0.977333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.404375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.323333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 0.964541,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.963375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.483166,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-41",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.222166,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.576083999999999,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.10225,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.003708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.482125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.434917,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.0115,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.906292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.635292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-42",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.038875,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.256541,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.080292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 0.930625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.395125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.34775,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 0.995666,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.926958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.580125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-43",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 11.175791,
+      "sql_count": 7,
+      "sql_elapsed_ms": 8.079125999999999,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.15575,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.361875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.587875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.489958,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.1675,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.904584,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.411584,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-44",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 14.001375,
+      "sql_count": 7,
+      "sql_elapsed_ms": 9.281499,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.996875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.066292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.486916,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.424125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.173416,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 1.564459,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.569416,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-45",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 9.937042,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.2284999999999995,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.182708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 0.978667,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.518125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.388875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 0.95575,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.859709,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.344666,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-46",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.337666,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.715417,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.357209,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.003208,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.467125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.434709,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 0.996167,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.980666,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.476333,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-47",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.5125,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.7019589999999996,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.040292,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 0.946,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.415875,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.405583,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.009709,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.9025,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.982,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-48",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 9.896458,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.22725,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.105,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 0.992375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.472125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.388375,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 0.952458,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.920792,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.396125,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    },
+    {
+      "request_id": "10000-metrics-c1-sample-49",
+      "warmup": false,
+      "endpoint": "metrics",
+      "path": "/internal/metrics",
+      "concurrency": 1,
+      "background_jobs": 10000,
+      "http_status": 200,
+      "response_bytes": 502,
+      "response_items": 14,
+      "correct": true,
+      "error_type": null,
+      "latency_ms": 10.691167,
+      "sql_count": 7,
+      "sql_elapsed_ms": 7.748333000000001,
+      "sql_rows": 7,
+      "sql_unknown_rowcounts": 0,
+      "sql_errors": 0,
+      "pool_checkouts": 1,
+      "sql": [
+        {
+          "sql_id": "29d026ea9069db6b",
+          "elapsed_ms": 2.183708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "4607ef0061416131",
+          "elapsed_ms": 1.067416,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "7c900abf69015485",
+          "elapsed_ms": 0.688708,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "140068fd9de96175",
+          "elapsed_ms": 0.455625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "d59fa3e0f234fdb9",
+          "elapsed_ms": 1.048542,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "78bcaea51e43e85b",
+          "elapsed_ms": 0.878709,
+          "cursor_rowcount": 1,
+          "error_type": null
+        },
+        {
+          "sql_id": "ce3e4083a5f0ae20",
+          "elapsed_ms": 1.425625,
+          "cursor_rowcount": 1,
+          "error_type": null
+        }
+      ]
+    }
+  ]
+}

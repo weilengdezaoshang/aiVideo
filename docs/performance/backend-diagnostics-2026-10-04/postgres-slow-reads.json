@@ -1,0 +1,166 @@
+{
+  "threshold_ms": 20,
+  "records": [
+    {
+      "duration_ms": 125.738,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:30.249 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 421.768,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:30.750 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 188.106,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:31.012 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 199.354,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:31.285 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 163.245,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:31.524 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 225.466,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:31.848 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 182.469,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:32.099 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 151.974,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:32.339 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 153.458,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:32.556 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 137.829,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:32.758 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 192.214,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:33.016 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 157.769,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:43.701 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 202.395,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:43.969 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 369.722,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:44.405 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 127.071,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:44.630 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 261.483,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:44.960 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 241.707,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:45.307 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 201.21,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:45.596 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 226.13,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:45.893 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 105.927,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:46.065 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 167.354,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:46.315 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 158.478,
+      "statement_start": "SELECT documents.id, documents.workspace_id, documents.name, documents.revision, documents.data, documents.updated_at ",
+      "log_prefix": "2026-10-03 16:13:46.540 UTC [79] LOG:  "
+    },
+    {
+      "duration_ms": 26.872,
+      "statement_start": "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) SELECT status, count(*) FROM jobs WHERE kind != $1 GROUP BY status",
+      "log_prefix": "2026-10-03 16:13:47.799 UTC [84] LOG:  "
+    },
+    {
+      "duration_ms": 31.609,
+      "statement_start": "SELECT pg_advisory_xact_lock(72140901)",
+      "log_prefix": "2026-10-03 16:16:31.128 UTC [99] LOG:  "
+    },
+    {
+      "duration_ms": 53.776,
+      "statement_start": "SELECT pg_advisory_xact_lock(72140901)",
+      "log_prefix": "2026-10-03 16:16:31.152 UTC [98] LOG:  "
+    },
+    {
+      "duration_ms": 43.924,
+      "statement_start": "SELECT pg_advisory_xact_lock(72140901)",
+      "log_prefix": "2026-10-03 16:16:31.176 UTC [100] LOG:  "
+    },
+    {
+      "duration_ms": 34.853,
+      "statement_start": "SELECT pg_advisory_xact_lock(hashtext($1)::bigint)",
+      "log_prefix": "2026-10-03 16:16:33.986 UTC [106] LOG:  "
+    },
+    {
+      "duration_ms": 23.019,
+      "statement_start": "SELECT pg_advisory_xact_lock(72140901)",
+      "log_prefix": "2026-10-03 16:21:16.605 UTC [157] LOG:  "
+    },
+    {
+      "duration_ms": 40.302,
+      "statement_start": "SELECT pg_advisory_xact_lock(72140901)",
+      "log_prefix": "2026-10-03 16:21:16.624 UTC [156] LOG:  "
+    },
+    {
+      "duration_ms": 38.989,
+      "statement_start": "SELECT pg_advisory_xact_lock(72140901)",
+      "log_prefix": "2026-10-03 16:21:16.646 UTC [158] LOG:  "
+    },
+    {
+      "duration_ms": 40.946,
+      "statement_start": "SELECT pg_advisory_xact_lock(hashtext($1)::bigint)",
+      "log_prefix": "2026-10-03 16:21:19.438 UTC [167] LOG:  "
+    },
+    {
+      "duration_ms": 21.897,
+      "statement_start": "SELECT pg_advisory_xact_lock(hashtext($1)::bigint)",
+      "log_prefix": "2026-10-03 16:21:19.889 UTC [166] LOG:  "
+    }
+  ],
+  "note": "Read statement first lines only; bind parameters and multiline continuations omitted. Full normalized API SQL is retained in sql-*.json."
+}

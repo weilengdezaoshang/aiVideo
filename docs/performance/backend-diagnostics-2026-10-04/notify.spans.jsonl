@@ -1,0 +1,8 @@
+{"name": "notify.redis_publish", "job_id": "32b675e6-8ed5-4361-bdcd-4c4473bd4112", "start_unix_ns": 1791044482282914000, "duration_ms": 0.002, "pid": 53085, "thread": 6176878592}
+{"name": "notify.redis_publish", "job_id": "32b675e6-8ed5-4361-bdcd-4c4473bd4112", "start_unix_ns": 1791044484357553000, "duration_ms": 0.009916, "pid": 53085, "thread": 6176878592}
+{"name": "notify.redis_publish", "job_id": "ccf4adbf-8c90-43fe-b7f8-6e2967b05b08", "start_unix_ns": 1791044486423553000, "duration_ms": 0.007667, "pid": 53085, "thread": 6176878592}
+{"name": "notify.redis_publish", "job_id": "ccf4adbf-8c90-43fe-b7f8-6e2967b05b08", "start_unix_ns": 1791044488475347000, "duration_ms": 0.003709, "pid": 53085, "thread": 6176878592}
+{"name": "notify.redis_publish", "job_id": "5f0cb5c5-80dc-4a84-94bc-37f7ef2e03be", "start_unix_ns": 1791044490515450000, "duration_ms": 0.007542, "pid": 53085, "thread": 6176878592}
+{"name": "notify.redis_publish", "job_id": "5f0cb5c5-80dc-4a84-94bc-37f7ef2e03be", "start_unix_ns": 1791044492578664000, "duration_ms": 0.004208, "pid": 53085, "thread": 6176878592}
+{"name": "notify.redis_publish", "job_id": "32b675e6-8ed5-4361-bdcd-4c4473bd4112", "start_unix_ns": 1791044494624748000, "duration_ms": 0.010792, "pid": 53085, "thread": 6176878592}
+{"name": "notify.redis_publish", "job_id": "e318c78b-a144-46c7-9162-6a513f5f6e2d", "start_unix_ns": 1791044496691935000, "duration_ms": 0.009542, "pid": 53085, "thread": 6176878592}

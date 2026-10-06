@@ -1,0 +1,524 @@
+{
+  "page": "workspace",
+  "cache": "cold",
+  "trial": 3,
+  "sample": {
+    "fcpMs": 408,
+    "lcpObservedMs": 408,
+    "lcpElement": "h1#.",
+    "clsObserved": 0.033419300639253254,
+    "domReadyProxyMs": 505.19999998807907,
+    "fontReadyMs": 48.80000001192093,
+    "observedUntilMs": 10349.199999988079,
+    "longTaskCount": 0,
+    "longTaskTotalMs": 0,
+    "longTaskBlockingMs": 0,
+    "navigation": {
+      "ttfbMs": 2.899999976158142,
+      "domContentLoadedMs": 372.19999998807907,
+      "loadMs": 372.30000001192093,
+      "transfer": 1006,
+      "encoded": 706,
+      "decoded": 706
+    },
+    "resources": [
+      {
+        "url": "http://127.0.0.1:7815/brand/brand.css",
+        "type": "link",
+        "transfer": 1987,
+        "encoded": 1687,
+        "decoded": 1687,
+        "duration": 49.30000001192093
+      },
+      {
+        "url": "http://127.0.0.1:7815/ui/primitives.css",
+        "type": "link",
+        "transfer": 5558,
+        "encoded": 5258,
+        "decoded": 5258,
+        "duration": 62.39999997615814
+      },
+      {
+        "url": "http://127.0.0.1:7815/workspace/library.css",
+        "type": "link",
+        "transfer": 6992,
+        "encoded": 6692,
+        "decoded": 6692,
+        "duration": 67.19999998807907
+      },
+      {
+        "url": "http://127.0.0.1:7815/workspace/workspace.css",
+        "type": "link",
+        "transfer": 13470,
+        "encoded": 13170,
+        "decoded": 13170,
+        "duration": 75.59999996423721
+      },
+      {
+        "url": "http://127.0.0.1:7815/workspace/app.js",
+        "type": "script",
+        "transfer": 284486,
+        "encoded": 284186,
+        "decoded": 284186,
+        "duration": 294.30000001192093
+      },
+      {
+        "url": "http://127.0.0.1:7815/brand/logo.svg",
+        "type": "css",
+        "transfer": 631,
+        "encoded": 331,
+        "decoded": 331,
+        "duration": 47.30000001192093
+      },
+      {
+        "url": "http://127.0.0.1:7815/brand/wordmark.svg",
+        "type": "css",
+        "transfer": 1265,
+        "encoded": 965,
+        "decoded": 965,
+        "duration": 46.200000047683716
+      },
+      {
+        "url": "http://127.0.0.1:7815/brand/name-zh.svg",
+        "type": "css",
+        "transfer": 3260,
+        "encoded": 2960,
+        "decoded": 2960,
+        "duration": 49.5
+      },
+      {
+        "url": "http://127.0.0.1:7815/workspace/assets/sailboat.png",
+        "type": "img",
+        "transfer": 2544129,
+        "encoded": 2543829,
+        "decoded": 2543829,
+        "duration": 9721.300000011921
+      },
+      {
+        "url": "http://127.0.0.1:7815/workspace/assets/flower.png",
+        "type": "img",
+        "transfer": 2385984,
+        "encoded": 2385684,
+        "decoded": 2385684,
+        "duration": 9587
+      },
+      {
+        "url": "http://127.0.0.1:7815/landing/assets/ocean.jpg",
+        "type": "img",
+        "transfer": 360233,
+        "encoded": 359933,
+        "decoded": 359933,
+        "duration": 2281
+      },
+      {
+        "url": "http://127.0.0.1:7815/landing/assets/architecture.jpg",
+        "type": "img",
+        "transfer": 543741,
+        "encoded": 543441,
+        "decoded": 543441,
+        "duration": 4927.699999988079
+      },
+      {
+        "url": "http://127.0.0.1:7815/workspace/assets/creature.png",
+        "type": "img",
+        "transfer": 2328056,
+        "encoded": 2327756,
+        "decoded": 2327756,
+        "duration": 9520.800000011921
+      },
+      {
+        "url": "http://127.0.0.1:7815/workspace/assets/perfume.png",
+        "type": "img",
+        "transfer": 2389138,
+        "encoded": 2388838,
+        "decoded": 2388838,
+        "duration": 9594.100000023842
+      },
+      {
+        "url": "http://127.0.0.1:7815/landing/assets/flower.jpg",
+        "type": "img",
+        "transfer": 463269,
+        "encoded": 462969,
+        "decoded": 462969,
+        "duration": 5648.5
+      },
+      {
+        "url": "http://127.0.0.1:7815/landing/assets/plant.jpg",
+        "type": "img",
+        "transfer": 294549,
+        "encoded": 294249,
+        "decoded": 294249,
+        "duration": 6265.399999976158
+      },
+      {
+        "url": "http://127.0.0.1:7815/shared/dropdown.css?v=2",
+        "type": "link",
+        "transfer": 3526,
+        "encoded": 3226,
+        "decoded": 3226,
+        "duration": 83
+      },
+      {
+        "url": "http://127.0.0.1:7815/api/runtime",
+        "type": "fetch",
+        "transfer": 325,
+        "encoded": 25,
+        "decoded": 25,
+        "duration": 72.59999996423721
+      },
+      {
+        "url": "http://127.0.0.1:7815/api/documents",
+        "type": "fetch",
+        "transfer": 551,
+        "encoded": 251,
+        "decoded": 251,
+        "duration": 75.89999997615814
+      },
+      {
+        "url": "http://127.0.0.1:7815/api/generation-capabilities",
+        "type": "fetch",
+        "transfer": 952,
+        "encoded": 652,
+        "decoded": 652,
+        "duration": 116.5
+      },
+      {
+        "url": "http://127.0.0.1:7815/brand/favicon.svg",
+        "type": "other",
+        "transfer": 792,
+        "encoded": 492,
+        "decoded": 492,
+        "duration": 126
+      },
+      {
+        "url": "http://127.0.0.1:7815/api/documents/68480cb6-45d9-51af-a567-6a6cf3fa42b2",
+        "type": "fetch",
+        "transfer": 672067,
+        "encoded": 671767,
+        "decoded": 671767,
+        "duration": 3313
+      },
+      {
+        "url": "http://127.0.0.1:7815/api/documents/b748f281-7700-55b9-839f-37e783a5b26f",
+        "type": "fetch",
+        "transfer": 65106,
+        "encoded": 64806,
+        "decoded": 64806,
+        "duration": 427.89999997615814
+      }
+    ],
+    "canvas": null,
+    "supportedEntries": [
+      "element",
+      "event",
+      "first-input",
+      "interaction-contentful-paint",
+      "largest-contentful-paint",
+      "layout-shift",
+      "long-animation-frame",
+      "longtask",
+      "mark",
+      "measure",
+      "navigation",
+      "paint",
+      "resource",
+      "soft-navigation",
+      "visibility-state"
+    ],
+    "hidden": false
+  },
+  "requests": [
+    {
+      "id": "5706450B9A63DBCB62D5C46E24A925D4",
+      "url": "http://127.0.0.1:7815/workspace",
+      "type": "Document",
+      "receivedBytes": 1027,
+      "status": 200,
+      "mime": "text/html",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "no-cache",
+      "finished": true
+    },
+    {
+      "id": "46057.2",
+      "url": "http://127.0.0.1:7815/brand/brand.css",
+      "type": "Stylesheet",
+      "receivedBytes": 2008,
+      "status": 200,
+      "mime": "text/css",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "no-cache",
+      "finished": true
+    },
+    {
+      "id": "46057.3",
+      "url": "http://127.0.0.1:7815/ui/primitives.css",
+      "type": "Stylesheet",
+      "receivedBytes": 5579,
+      "status": 200,
+      "mime": "text/css",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "no-cache",
+      "finished": true
+    },
+    {
+      "id": "46057.4",
+      "url": "http://127.0.0.1:7815/workspace/workspace.css",
+      "type": "Stylesheet",
+      "receivedBytes": 13492,
+      "status": 200,
+      "mime": "text/css",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "no-cache",
+      "finished": true
+    },
+    {
+      "id": "46057.5",
+      "url": "http://127.0.0.1:7815/workspace/library.css",
+      "type": "Stylesheet",
+      "receivedBytes": 7013,
+      "status": 200,
+      "mime": "text/css",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "no-cache",
+      "finished": true
+    },
+    {
+      "id": "46057.6",
+      "url": "http://127.0.0.1:7815/workspace/app.js",
+      "type": "Script",
+      "receivedBytes": 284516,
+      "status": 200,
+      "mime": "text/javascript",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "no-cache",
+      "finished": true
+    },
+    {
+      "id": "46057.20",
+      "url": "http://127.0.0.1:7815/brand/logo.svg",
+      "type": "Image",
+      "receivedBytes": 616,
+      "status": 200,
+      "mime": "image/svg+xml",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46057.21",
+      "url": "http://127.0.0.1:7815/brand/wordmark.svg",
+      "type": "Image",
+      "receivedBytes": 1250,
+      "status": 200,
+      "mime": "image/svg+xml",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46057.22",
+      "url": "http://127.0.0.1:7815/brand/name-zh.svg",
+      "type": "Image",
+      "receivedBytes": 3246,
+      "status": 200,
+      "mime": "image/svg+xml",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46057.12",
+      "url": "http://127.0.0.1:7815/workspace/assets/sailboat.png",
+      "type": "Image",
+      "receivedBytes": 2544114,
+      "status": 200,
+      "mime": "image/png",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46057.13",
+      "url": "http://127.0.0.1:7815/workspace/assets/flower.png",
+      "type": "Image",
+      "receivedBytes": 2385969,
+      "status": 200,
+      "mime": "image/png",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46057.14",
+      "url": "http://127.0.0.1:7815/workspace/assets/perfume.png",
+      "type": "Image",
+      "receivedBytes": 2389123,
+      "status": 200,
+      "mime": "image/png",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46057.15",
+      "url": "http://127.0.0.1:7815/workspace/assets/creature.png",
+      "type": "Image",
+      "receivedBytes": 2328041,
+      "status": 200,
+      "mime": "image/png",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46057.16",
+      "url": "http://127.0.0.1:7815/landing/assets/ocean.jpg",
+      "type": "Image",
+      "receivedBytes": 360218,
+      "status": 200,
+      "mime": "image/jpeg",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46057.17",
+      "url": "http://127.0.0.1:7815/landing/assets/architecture.jpg",
+      "type": "Image",
+      "receivedBytes": 543726,
+      "status": 200,
+      "mime": "image/jpeg",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46057.18",
+      "url": "http://127.0.0.1:7815/landing/assets/flower.jpg",
+      "type": "Image",
+      "receivedBytes": 463254,
+      "status": 200,
+      "mime": "image/jpeg",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46057.19",
+      "url": "http://127.0.0.1:7815/landing/assets/plant.jpg",
+      "type": "Image",
+      "receivedBytes": 294534,
+      "status": 200,
+      "mime": "image/jpeg",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46057.31",
+      "url": "http://127.0.0.1:7815/shared/dropdown.css?v=2",
+      "type": "Stylesheet",
+      "receivedBytes": 3547,
+      "status": 200,
+      "mime": "text/css",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "no-cache",
+      "finished": true
+    },
+    {
+      "id": "46057.32",
+      "url": "http://127.0.0.1:7815/api/runtime",
+      "type": "Fetch",
+      "receivedBytes": 202,
+      "status": 200,
+      "mime": "application/json",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46057.33",
+      "url": "http://127.0.0.1:7815/api/documents",
+      "type": "Fetch",
+      "receivedBytes": 429,
+      "status": 200,
+      "mime": "application/json",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46057.34",
+      "url": "http://127.0.0.1:7815/api/generation-capabilities",
+      "type": "Fetch",
+      "receivedBytes": 830,
+      "status": 200,
+      "mime": "application/json",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46057.35",
+      "url": "http://127.0.0.1:7815/brand/favicon.svg",
+      "type": "Other",
+      "receivedBytes": 777,
+      "status": 200,
+      "mime": "image/svg+xml",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46057.36",
+      "url": "http://127.0.0.1:7815/api/documents/68480cb6-45d9-51af-a567-6a6cf3fa42b2",
+      "type": "Fetch",
+      "receivedBytes": 671948,
+      "status": 200,
+      "mime": "application/json",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    },
+    {
+      "id": "46057.37",
+      "url": "http://127.0.0.1:7815/api/documents/b748f281-7700-55b9-839f-37e783a5b26f",
+      "type": "Fetch",
+      "receivedBytes": 64986,
+      "status": 200,
+      "mime": "application/json",
+      "cache": false,
+      "encoding": "identity",
+      "cacheControl": "",
+      "finished": true
+    }
+  ],
+  "issues": [],
+  "networkBytes": 12370445,
+  "jsNetworkBytes": 284516,
+  "jsDecodedBytes": 284186
+}

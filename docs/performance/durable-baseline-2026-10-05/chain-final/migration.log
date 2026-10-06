@@ -1,0 +1,18 @@
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001, 初始 Schema:工作区/文档/幂等受理/任务/尝试/资产/引用/Outbox。
+INFO  [alembic.runtime.migration] Running upgrade 0001 -> 0002, Durable phase deadlines and execution ownership.
+INFO  [alembic.runtime.migration] Running upgrade 0002 -> 0003, Independent, bounded reconciliation deadlines.
+INFO  [alembic.runtime.migration] Running upgrade 0003 -> 0004, Server-side sessions and explicit workspace membership.
+INFO  [alembic.runtime.migration] Running upgrade 0004 -> 0005, Asset metadata for the database-backed public API.
+Revision ID: 0005
+Revises: 0004
+INFO  [alembic.runtime.migration] Running upgrade 0005 -> 0006, Independent batch children; parents are presentation-only.
+Revision ID: 0006
+Revises: 0005
+INFO  [alembic.runtime.migration] Running upgrade 0006 -> 0007, Audited operational actions and authorized legacy media aliases.
+Revision ID: 0007
+Revises: 0006
+INFO  [alembic.runtime.migration] Running upgrade 0007 -> 0008, Persist cancellation even when it races ahead of generation acceptance.
+Revision ID: 0008
+Revises: 0007

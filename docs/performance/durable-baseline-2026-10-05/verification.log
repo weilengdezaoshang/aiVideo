@@ -1,0 +1,324 @@
+
+> frayune@0.3.0 verify
+> npm run typecheck && npm run build:web && npm run lint && npm run test && npm run verify:backend
+
+
+> frayune@0.3.0 typecheck
+> tsc --noEmit
+
+
+> frayune@0.3.0 build:web
+> tsc -p tsconfig.web.json && npm run build:react
+
+
+> frayune@0.3.0 build:react
+> node --import tsx scripts/build-react.ts
+
+
+  .web-build/canvas-next/app.js      633.5kb
+  .web-build/evaluation/app.js       295.7kb
+  .web-build/workspace/app.js        277.8kb
+  .web-build/landing/app.js          229.3kb
+  .web-build/canvas-next/app.js.map    3.0mb
+  .web-build/evaluation/app.js.map     1.3mb
+  .web-build/workspace/app.js.map      1.2mb
+  .web-build/landing/app.js.map        1.0mb
+
+⚡ Done in 265ms
+
+> frayune@0.3.0 lint
+> eslint .
+
+
+> frayune@0.3.0 test
+> LOG_LEVEL=error node --import tsx --test --test-force-exit tests/*.test.ts tests/*.test.tsx
+
+✔ 音轨按时间线偏移和源入点定位，并应用淡化和暂停 (5.523458ms)
+✔ 音频解码失败显示具体音轨，删除后清理错误回调 (1.268583ms)
+✔ 暂停期间迟到的播放拒绝不会显示素材错误 (4.470042ms)
+✔ 导入音频使用实际时长，编辑可撤销，超出画面结尾显示警告 (226.956917ms)
+✔ 确认保存等待旧请求完成并保存最新分镜和 revision (12.479625ms)
+✔ 确认保存遇到网络错误或冲突时拒绝，不强制覆盖服务端 (3.331667ms)
+✔ unload 与旧保存串行，旧确认不清除新草稿，下一次使用新 revision (24.0075ms)
+✔ 未编辑的页面退出不覆盖既存草稿；冲突后不自动重发 (2.600875ms)
+▶ 对话栏
+  ✔ 空状态给出引导文案 (2.642875ms)
+  ✔ 文本消息追加进文档 chat 字段并渲染角色气泡 (10.743375ms)
+  ✔ 组卡从画布对象实时推导槽位状态 (7.44275ms)
+  ✔ pendingConfirm 槽位显示"结果待确认"并提供查询入口 (1.323ms)
+  ✔ 结果卡 pendingPlace 显示"放入画布",markPlaced 后回到定位入口 (4.069541ms)
+  ✔ updateSession 合并到同会话消息,不追加新消息 (1.313083ms)
+✔ 对话栏 (28.220708ms)
+✔ cmdBatch:顺序应用,一次撤销同时回滚派生对象与顺延位移 (1.612875ms)
+✔ cmdBatch:含 updateObject 时撤销恢复原尺寸 (0.11575ms)
+✔ DocStore:批量命令整体进撤销栈,undo/redo 一步到位 (0.339209ms)
+✔ videoFormatOptions:云端精确档位直出并带比例标注 (1.643875ms)
+✔ videoFormatOptions:本地后端回退 ratios×resolutions 且 8 像素对齐 (0.378042ms)
+✔ videoDurationOptions:能力缺失时回退 4 秒 (0.128291ms)
+✔ readReferenceWeight:契约外取值返回 undefined (0.066166ms)
+✔ 端口连接写入生成参考，拒绝重复并支持撤销 (30.174625ms)
+✔ 并发连接不会突破模型上限或覆盖先完成的引用 (0.92925ms)
+✔ 连线详情断开真实引用，可撤销，弹窗键盘不影响画布 (336.10375ms)
+✔ 引用连线随引用删除、撤销和文档序列化恢复；删除源节点不会产生悬空线 (3.23025ms)
+✔ 已生成结果显示实际多参考谱系，不把后来修改的草稿误当生成来源 (0.26675ms)
+✔ 旋转后的端口与对象几何一致，向左连接仍有有效曲线 (0.317375ms)
+✔ 本机草稿:写入后可读,clear 之后不可读 (2.001584ms)
+✔ GET 文档成功:草稿与服务器一致才清除,含未保存内容时保留 (1.168375ms)
+✔ draftMatchesDocument 忽略 revision/updatedAt,内容差异可检出 (0.402292ms)
+✔ 保存成功(保存确认)后清除本机草稿 (46.915375ms)
+✔ 保存失败后保留本机草稿,刷新后仍可恢复 (42.611375ms)
+✔ ?doc= 严格打开:404 抛 DocumentMissingError,不新建兜底 (6.599417ms)
+✔ ?doc= 打开成功:记住文档 id 并返回文档 (0.440167ms)
+✔ createDocument 携带幂等键;服务端错误带状态上抛 (0.263958ms)
+✔ renameDocument 只提交名称字段 (0.179083ms)
+✔ 存在草稿时不挂载编辑器或卸载保存，选择恢复后以服务器最新 revision 保存 (430.314583ms)
+✔ 读取失败保留草稿；重试后允许显式放弃 (33.30225ms)
+✔ 环境不支持 BroadcastChannel 时静默降级,不误报 (1.168958ms)
+✔ 收到 hello / exists 握手时只警告一次,close 后不再接收 (3.292958ms)
+✔ 锚点空时直接落位 (0.937917ms)
+✔ 锚点被占:顺时针螺旋找到第一个空位(右侧优先) (0.096875ms)
+✔ 连续以图生图形成右侧变体群(空间谱系布局) (0.129542ms)
+✔ overlapsAny 保留 GAP 间距 (0.074ms)
+✔ 生成四个变体时占位锚点在源图右侧同一行 (0.1ms)
+✔ 视野内的候选位原样保留 (0.074125ms)
+✔ 螺旋走出视野上方(y 为负)时钳回视野内 (0.719625ms)
+✔ 视野右/下越界钳到右/下边界内侧 (0.083459ms)
+✔ 视野小于对象时落到左上角 margin 处(保证左上角可见) (0.074875ms)
+✔ 提交成功:占位入 undo 栈 + jobId 回填 + batchCount 强制 1 (55.803541ms)
+✔ 提交失败(4xx):占位转错误卡并携带原因 (0.52825ms)
+✔ 网络异常:保留待确认占位，不允许误当失败重提 (0.274584ms)
+✔ 取消占位:DELETE 任务 + 占位移除(可撤销) (0.318209ms)
+✔ 重试:错误卡原位转占位,按谱系参数重发并回填 jobId (0.602584ms)
+✔ 重试携带参考图:源图可得时 initImage 透传 (2.640416ms)
+✔ 重试再次失败:回到错误卡并更新原因 (0.488ms)
+✔ 重试非错误卡/缺谱系:拒绝 (0.282458ms)
+✔ 工作台提交后跳转画布：完成结果入库快照，刷新后恢复且不重新生成 (18.983875ms)
+✔ 生成完成后 Undo/Redo 恢复同一产物且不重新生成 (1.154958ms)
+✔ Undo 后迟到完成不复活节点，Redo 恢复迟到产物与原位置 (0.345417ms)
+✔ 生成结果上的后续编辑保持独立的 Undo/Redo 顺序 (0.329375ms)
+✔ 旧 gen 字段迁入运行态且不再序列化进文档 (0.129083ms)
+✔ 完成事件先于 POST 响应时不会被回退为排队状态 (0.260041ms)
+✔ 生成完成只更新实体，不覆盖 placement 的后续布局 (0.279667ms)
+✔ 同一生成实体可被多个 placement 引用，删除一个不影响另一个 (0.27325ms)
+✔ 实体版本拒绝重复和乱序 SSE (0.241917ms)
+✔ 重试复用 placement id 时，SSE 落到最新 generation (0.469375ms)
+✔ 生成实体写入与补全会发出可持久化事件 (0.12125ms)
+✔ 旧工作台非方形占位只迁移一次；自定义尺寸、移动和刷新不被结果覆盖 (0.269708ms)
+✔ groupJobs 按 groupId 分桶并按 slot 排序 (0.800583ms)
+✔ 组未终结时四格统一状态,不逐张发布 (0.186083ms)
+✔ 组全部终结时整组发布:完成槽落位、失败槽转错误卡 (0.20825ms)
+✔ 被删除的槽位不复活;组卡状态分级正确 (0.110791ms)
+✔ groupInsertion:派生结果插入源图右侧,同组右侧成员顺延,组外不动 (0.158667ms)
+✔ reconcile 不碰组槽位(单任务查无即丢的规则不适用于组) (0.107125ms)
+✔ sweepLostGroupSlots:任务记录过期的组槽位转错误卡,在列的不动 (0.127625ms)
+✔ markDisconnected:绑定任务的占位统一切换断线文案,未绑定的不动 (0.092458ms)
+✔ confirmPendingGroup:服务端已接受 → 清除待确认标记并交还整组流程 (0.529083ms)
+✔ confirmPendingGroup:确认未入队 → 清理占位、保留组元数据可重试 (0.564541ms)
+✔ confirmPendingGroup:查询网络失败 → 不清理、可再次查询 (0.270917ms)
+✔ 快速选择只切换点击的连通主体，可恢复选区且不修改识别底稿 (0.470584ms)
+✔ 准备参数不修改节点，构造请求保留模型引用和幂等标识 (1.108292ms)
+✔ 准备拒绝不支持的视频时长、超限引用及已有输出，不静默修改时长 (0.284125ms)
+✔ 三个节点保持类型、独立草稿和固定文本卡片 (2.13575ms)
+✔ 结果只回填对应画布、节点与请求，迟到事件不能覆盖结果 (0.212375ms)
+✔ 旧草稿加载时迁移为稳定媒体节点 (0.341083ms)
+✔ 撤销提交会取消原请求，重做只查询状态，迟到结果不会恢复已撤销任务 (39.563166ms)
+✔ 生成面板只适用于空图片和视频，结果即使保留草稿也不显示 (0.202ms)
+✔ 新建元素使用固定画布尺寸，保存和恢复不会引入视口缩放 (0.116292ms)
+✔ 旧版反向放大的空占位只修正一次，5% 下图片为 16px (0.085083ms)
+✔ trajectory has a fixed event count, duration and endpoint independent of rAF (0.816792ms)
+✔ invalid input workloads and wrong world-coordinate outcomes are rejected (0.480166ms)
+✔ late schedule, background page, empty samples and failed selection are explicit (0.0985ms)
+✔ unsupported measurements stay null and incompatible DPR is not compared (0.101667ms)
+✔ 识别提示跟随图片可见区域，贴边避让且离屏回退居中 (0.843792ms)
+✔ 识别提示取消和完成时关闭，重复解锁安全 (0.318167ms)
+✔ 取消后即使响应迟到也不解析或应用，并只发送一次取消 (21.427ms)
+✔ 解析响应期间源图替换使旧操作失效，新操作不受影响 (0.227208ms)
+✔ 只接受匹配的操作结果，完成后取消不会影响已提交任务 (0.731541ms)
+✔ 空选择、多选、切换工具和 Escape 同步取消识别，迟到结果不重开蒙版 (83.57525ms)
+✔ 场景① 提交:SSE 先于 POST 响应到达,clientRef 对齐占位对象 (0.478042ms)
+✔ 场景② 进度:running 事件推进百分比与文案 (0.089958ms)
+✔ 场景③ 落位:completed → 图片对象(带谱系字段与资源引用) (0.107542ms)
+✔ 场景④ 取消:服务端取消= failed 事件 → 错误卡(可重试) (0.068834ms)
+✔ 场景⑤ 失败重试的参数来源:谱系 params 保留在 lineage(协议约定) (0.401834ms)
+✔ 场景⑥ 刷新恢复:对账把占位校正为 服务端状态/丢失 (0.203375ms)
+✔ events 层:未知 jobId 丢弃、clientRef 对齐、重连触发对账 (21.172709ms)
+✔ 丢失受理响应：持久化 requestId/documentId 后提交，按原请求找回且只 POST 一次 (3.154042ms)
+✔ 未知提交经刷新仍阻止重复 POST，取消确认前不释放请求 (0.937125ms)
+✔ 生成意图保存失败时不发送付费生成请求 (0.187666ms)
+✔ 近期列表没有旧任务时按 ID 找回；迟到的旧版本不覆盖完成结果 (1.3295ms)
+✔ SSE 活跃快照和失败的单任务查询不能把遗漏任务误判丢失 (0.427084ms)
+✔ 分镜归属的节点：完成的任务事件不直接落位，进度仍同步 (23.671041ms)
+✔ 分镜归属节点 404 不标记不确定，删除节点不误取消执行请求 (44.314958ms)
+✔ 镜头创建节点保留图片参考，撤销同时恢复关联且不提交任务 (1.7775ms)
+✔ 批量补齐跳过锁定及已有节点，一次撤销整批且校验失败不留半成品 (0.594208ms)
+✔ 批量图片转视频导入历史图片并保留参考和原版本，可整体撤销 (0.2845ms)
+✔ 图片入库期间分镜变化时不会覆盖用户新选择 (0.177042ms)
+✔ 主体一次引用到全部待生成镜头，跳过已完成/已有参考/未关联/锁定，整批一次撤销 (3.7315ms)
+✔ 素材库主体（已有 assetId）不再入库，引用直接写入 (0.251083ms)
+✔ 异步入库期间分镜变化或主体变化时放弃全部写入 (0.3725ms)
+✔ 非图片或未生成素材不能作为主体 (0.165125ms)
+✔ addObjects / removeObjects 互逆且维护 order (0.851083ms)
+✔ moveObjects 逆命令恢复原位 (0.543416ms)
+✔ updateObject 前后 patch 互逆;对象缺失抛错 (0.26775ms)
+✔ canCoalesce:同对象组 move 可合并,不同组/不同类型不可 (0.139583ms)
+✔ apply/undo/redo 全链路;redo 栈被新命令清空 (0.369458ms)
+✔ 窗口内同组 move 合并为一条 undo (0.161375ms)
+✔ mutateTransient 不进 undo 栈(SSE 落位语义) (0.121083ms)
+✔ 初始文档被浅拷贝,外部改动不泄漏进 store (0.09375ms)
+✔ autoSaver:防抖后全量 POST;unload 走 keepalive;串行化排队 (166.514125ms)
+✔ 健康分镜与已装配时间线不报问题 (2.648792ms)
+✔ 逐镜头检查未关联、已删除、生成中、失败与空画面 (0.470708ms)
+✔ 时间线检查外部素材地址、过短字幕与未装配镜头 (0.141583ms)
+✔ 空分镜给出明确提示 (0.112458ms)
+✔ 分镜面板添加编辑锁定与撤销 (534.445875ms)
+✔ 规划候选按项目恢复，采用后清除候选缓存 (21.893166ms)
+✔ 分镜执行按钮调用共享执行入口，锁定镜头不可提交 (49.15325ms)
+✔ 生成状态更新不会清空尚未提交的分镜输入 (28.823333ms)
+✔ 版本比较展开后显示真实图片并支持切换选用与撤销 (32.979875ms)
+✔ 顺序生成接入服务端执行，准备期间输入不被覆盖 (104.742125ms)
+✔ 恢复暂停执行后显示重试入口，完成后装配时间线默认开启可关闭 (119.673083ms)
+✔ 创作工作流传入规划请求并按项目恢复 (28.994542ms)
+✔ 批量准备按钮创建节点并可撤销，图片转视频后保留图片版本 (111.404875ms)
+✔ 从服务端历史取回候选，重复采用时创建独立镜头标识 (77.398916ms)
+✔ 质量检查列出问题并在素材齐备后显示未发现问题 (79.242667ms)
+✔ 主体引用按钮按选中态启用，应用后待生成节点携带参考且可撤销 (94.559209ms)
+✔ 重复创建前必须 dispose，否则会留下第二枚分镜按钮 (2.827833ms)
+✔ 规划刷新只查询原任务，完成后交付候选并清理恢复标识 (40.504291ms)
+✔ 未查到提交时人工确认复用原标识与需求，关闭页面不发送取消 (9.466958ms)
+✔ 两个镜头按顺序提交，结果回填后自动装配一次，撤销后不再追加 (185.695292ms)
+✔ 页面关闭后服务端继续执行，刷新后只查询不重复提交 (30.964334ms)
+✔ 提交响应丢失后确认复用同一执行标识，不重复提交 (16.156208ms)
+✔ 多标签页不能启动重复执行，第二个标签页接管同一执行 (20.095917ms)
+✔ 暂停后恢复继续推进；第二镜失败只重试第二镜并保留旧尝试 (82.532292ms)
+✔ unknown 结果重试只对账上游，不重新调用模型 (39.155959ms)
+✔ 参数被修改后迟到结果不覆盖节点，保留为可查看的历史产物 (64.261625ms)
+✔ 镜头切换版本后，迟到结果不覆盖新选用节点 (57.865375ms)
+✔ 执行期间时间线被手动修改时展示待装配，手动追加保留用户编辑 (123.841375ms)
+✔ 取消执行后清除镜头归属标记，不重复轮询 (12.244167ms)
+✔ 分镜装配保留计划时长，追加且可一次撤销 (1.292917ms)
+✔ 短视频或异步期间修改分镜时不写入部分剪辑 (0.333709ms)
+✔ 按执行轮次装配：使用本轮镜头顺序并写入执行标识，同一轮只追加一次 (0.699333ms)
+✔ 执行轮次装配校验素材缺失与视频时长不足 (0.184584ms)
+✔ 分镜命令保存独立快照并支持撤销重做 (1.077208ms)
+✔ 字幕按剪辑后的帧时长排列，空字幕保留间隔，分割保持同步 (0.647375ms)
+✔ applyTheme 切换 data-theme 与 Shoelace 深色命名空间 (5.041542ms)
+✔ saveTheme/loadTheme 往返;loadTheme 拒绝非法值 (0.256583ms)
+✔ initThemeToggle:点击切换主题、持久化并派发事件 (7.497792ms)
+✔ 共享轨道按真实帧长定位，图片缩略图、选择和播放头使用相同比例 (20.082292ms)
+✔ 素材库仅允许完成素材加入，已添加状态从时间线引用计算 (3.838875ms)
+✔ 导出提交当前快照并显示实际任务的下载链接 (184.526334ms)
+✔ 分割保留非零入点、连续源帧和总时长；移动不改变裁剪 (0.817667ms)
+✔ 拒绝越界、空片段、小数帧、边界分割和重复 ID (0.208041ms)
+✔ 时间线命令可撤销到旧文档并重做，命令和源素材快照互不污染 (0.470625ms)
+✔ 四角缩放固定对角并保持图片比例,包括旋转后的图片 (0.802334ms)
+✔ 画板自由缩放并阻止越过对角后翻转 (0.128334ms)
+✔ 旋转保持中心位置,旋转包围盒覆盖实际内容 (0.137292ms)
+✔ 旋转命令支持保存序列化、撤销与重做 (0.608209ms)
+✔ 左右、上下边中点只调整对应尺寸并固定对侧,支持旋转 (0.1755ms)
+✔ 四角可以独立横向、纵向及双向缩放,保持对角固定 (0.265375ms)
+✔ 四角和边缘双向光标随旋转匹配实际缩放方向 (0.082ms)
+✔ defaultVectorParams 是 S12 滑杆的中位档 (0.706208ms)
+✔ vectorEngineReady 依赖 window.ImageTracer (0.094291ms)
+✔ 引擎未加载时 vectorize 给出明确错误 (0.585834ms)
+✔ 开始前已取消的请求抛出 AbortError,不进入队列执行 (0.17525ms)
+✔ CanvasView 通过 Layer/Mono 将拖动提交为单条 Command (2.006167ms)
+✔ 只读 CanvasView 允许选择但不会创建移动 Mono (0.362208ms)
+✔ CanvasView 将 generation entity 投影为可渲染产物，不改写 placement (0.619584ms)
+✔ Layer 内部右键请求经 CanvasView 发布给上层 (0.443083ms)
+✔ 框选只更新 CanvasView 选择状态 (0.952291ms)
+✔ 连线 Mono 只对外发布语义请求，不直接修改文档 (0.668417ms)
+✔ 文字 Layer 创建对象后通过 CanvasView 请求 DOM 编辑器 (0.607041ms)
+✔ 蒙版笔画高频数据留在 Snapshot，结束时才流向上层 (0.200917ms)
+✔ 局部重绘区域只在手势完成后发布 (0.218666ms)
+✔ 快捷键通过 CanvasView 执行全选、复制和撤销 (0.317375ms)
+✔ Shift 点击切换多选成员 (0.12125ms)
+✔ CanvasViewProvider 在 StrictMode 重挂载后仍可切换 Layer (88.484208ms)
+✔ Provider 卸载后延迟销毁内部 CanvasView (1.573542ms)
+▶ 评测工作台
+  ✔ 状态中文映射覆盖新增终态(取消中/预算中止/中断) (0.476ms)
+  ✔ 总览:数据集与运行列表渲染,空态有引导 (59.8315ms)
+  ✔ 运行详情:显示进度、取消按钮、回放证据与覆盖缺口 (126.161667ms)
+  ✔ 取消按钮调用真实取消端点并刷新 (65.94075ms)
+  ✔ 预算面板:上限/双口径结算/未结预留/未知,不把预留伪装成实际费用 (79.416333ms)
+  ✔ 审核:无审核人时操作被拦截并提示身份要求 (45.0755ms)
+  ✔ 比较结果:mock 不计独立样本,总体差值显示 N/A (25.373875ms)
+  ✔ 运营:Langfuse 未配置如实显示,不显示已接通 (14.061458ms)
+✔ 评测工作台 (417.513ms)
+▶ 评测工作台·审核闭环与调用记录
+  ✔ 审核详情:展示素材、自动证据,并可冻结进回归集 (70.930541ms)
+  ✔ trial 详情:展示调用记录(调用点/状态/用量/费用) (25.980167ms)
+✔ 评测工作台·审核闭环与调用记录 (97.123666ms)
+✔ 合法提交信息通过校验 (0.7395ms)
+✔ scope 缺失被拒绝 (0.071083ms)
+✔ 非法 type 被拒绝 (0.054334ms)
+✔ 模糊 scope(all/misc/other)被拒绝 (0.06125ms)
+✔ 大写 scope 被拒绝 (0.05225ms)
+✔ 英文描述被拒绝 (0.125458ms)
+✔ 缺少结尾句点被拒绝 (0.053917ms)
+✔ 主题行含 issue 编号被拒绝 (0.043667ms)
+✔ 破坏性变更缺少 BREAKING CHANGE 说明被拒绝,有说明通过 (0.094917ms)
+✔ Merge/Revert 主题行直接放行 (0.09675ms)
+✔ 空消息或纯空白被拒绝 (0.054417ms)
+✔ 正文可携带英文技术标识符,不影响主题校验 (0.045334ms)
+✔ 选测:后端路径选中 backend 套件 (0.586917ms)
+✔ 选测:前端路径选中 web 套件,tests/backend 不误入 web (0.06975ms)
+✔ 选测:公共基础设施变更扩大到 web 套件(hook 脚本测试随全量前端运行) (0.054875ms)
+✔ 选测:删除与重命名路径参与匹配,空格与中文文件名不漏检 (0.151875ms)
+✔ 选测:纯文档变更无需测试,返回空列表 (0.047375ms)
+✔ readStagedFiles:NUL 分隔读取,覆盖删除与中文空格文件名 (218.322542ms)
+✔ 集成:临时仓库中 commit-msg hook 阻断不合规提交并放行合规提交 (530.913958ms)
+✔ late snapshots and duplicate progress cannot regress a completed job (1.010708ms)
+▶ 落地页
+  ✔ 首屏渲染标题与三个创作模式 Tab,默认选中 AI 生图 (113.23725ms)
+  ✔ 切换到图片加工:面板文案与示例跟随更新 (23.270917ms)
+  ✔ 视频模式显示镜头运动控件与首帧参考标注 (12.140958ms)
+  ✔ 播放按钮在播放/暂停之间切换文案与按压态 (19.351708ms)
+  ✔ 拖动进度条更新时间输出并暂停播放 (12.507958ms)
+  ✔ 「探索视频创作」切到视频模式并选中对应 Tab (18.462167ms)
+  ✔ 首屏视觉参考按钮切换 aria-pressed 并更换图片 (14.356084ms)
+  ✔ Tab 键盘导航:ArrowRight 循环到下一个模式 (19.357417ms)
+✔ 落地页 (233.611667ms)
+✔ canvas search preserves source order and groups by local calendar day (12.30425ms)
+✔ asset filtering combines name, type and date without inventing legacy names (0.143458ms)
+✔ library upload rejects invalid formats, empty and oversized files before dispatch (0.249333ms)
+✔ CSRF is attached only to same-origin mutations, preserving headers (25.397167ms)
+✔ unload save carries the same CSRF protection and revision as ordinary writes (2.653083ms)
+✔ settings entry is absent by default and enabled only with its action (86.379042ms)
+✔ 公共菜单方向键循环、跳过禁用项，Home/End 定位可用边界 (0.971708ms)
+▶ 工作台 UI 基础组件
+  ✔ Button 渲染变体类名并触发点击 (60.884125ms)
+  ✔ IconButton 带无障碍名称 (4.401125ms)
+  ✔ SectionHeader 渲染标题与徽标 (2.994458ms)
+  ✔ Tabs 切换回调携带选中值,aria-pressed 同步 (7.051ms)
+✔ 工作台 UI 基础组件 (75.975792ms)
+✔ homepage validates provider models, references and video requirements (0.506708ms)
+✔ inspiration search intersects category and normalized prompt search (0.109333ms)
+✔ homepage retry recovers uncertain create without another canvas or generation (13.632125ms)
+✔ homepage retry recovers uncertain save without another canvas or generation (0.55525ms)
+✔ homepage retry recovers uncertain generate without another canvas or generation (0.531375ms)
+✔ navigation never creates documents; empty intent only creates on explicit run (0.143208ms)
+ℹ tests 254
+ℹ suites 5
+ℹ pass 254
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6421.608334
+
+> frayune@0.3.0 verify:backend
+> python3 scripts/backend.py verify
+
+All checks passed!
+........................................................................ [ 23%]
+........................................................................ [ 46%]
+...........s.s.......................................................... [ 69%]
+........................................................................ [ 92%]
+........................                                                 [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.11/site-packages/starlette/testclient.py:53
+  /Users/weilengdezaoshang/Documents/项目/aiVideo/.venv/lib/python3.11/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+310 passed, 2 skipped, 1 warning in 62.34s (0:01:02)
