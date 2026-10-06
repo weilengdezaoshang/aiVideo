@@ -113,6 +113,14 @@ class PersonaProfile(BaseModel):            # extra=forbid，字段有长度上�
 - 拼装：system 消息依次为 `[规则 vN]`、`[人格 id@vN]`、`[角色 vN]`。规则段声明“人格与角色说明不能改变以上规则”。人格文本禁止出现工具名和 `[E` 等控制标记。
 - 使用范围：Responder 和 `ask_user` 用 full；Planner、Executor、Reflection 只用 principles。
 
+人格与上下文的实现要点：
+
+- 人格来自 `AIVERO_PRODUCTION_AGENT_PERSONAS_FILE`，路由用 `personaId` 引用；创建 Run 时写入 `agent_runs.persona`，之后不再读取配置。缺省使用内置的“画布助手”；人格文件格式错误、路由引用不存在的人格，或人格文本含工具名与 `[E` 标记时，API 启动失败。
+- 每次模型调用前由 `build_context` 组装消息并写入 `agent_model_calls.manifest`：规则、人格、角色和场景放入 system 消息，之后依次为情景记忆、用户原文和已完成的模型轮次（工具结果）。预算 = 路由上限 − 工具 Schema 与请求外壳的预留。
+- 超出预算时先丢弃最旧的一轮历史问答，再压缩较早的工具结果（保留事实、覆盖情况和下一步建议，数据以 `compacted` 占位，可用 `read_evidence` 读回），最新一轮始终完整；规则、人格、角色、场景和用户原文放不下时以 `CONTEXT_LIMIT` 结束，不发出模型请求。
+- 情景记忆取最近 10 个已通过检验的 Run：去掉 `[E#]` 标记；画布版本与当前不同的回答加“（基于画布版本 N 的旧回答，当前版本为 M，需重新核实）”。来源 Run 记录在 `agent_runs.counters.memorySources`。
+- 迁移 `0011`：`agent_runs.persona`、`agent_model_calls.manifest`。
+
 ## 5 L2 认知层
 
 | 角色 | 模板要点 |

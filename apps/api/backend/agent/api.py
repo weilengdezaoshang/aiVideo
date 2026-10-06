@@ -33,8 +33,10 @@ def install_agent_routes(app, read_json):
     async def create(ident: uuid.UUID, request: Request, identity: Identity = Depends(authenticated)):
         body = await read_json(request)
         route = next((item for item in app.state.agent_routes if item.id == body.get("modelId")), None)
+        from backend.agent.persona import resolve
+        persona = resolve(app.state.agent_personas, route.persona_id) if route else None
         result = await app.state.agent.create_run(identity.workspace_id, ident, body, route,
-            principal=identity.principal)
+            principal=identity.principal, persona=persona)
         return JSONResponse(result, status_code=200 if result.get("replayed") else 202)
 
     @app.get("/api/agent/runs/{ident}")

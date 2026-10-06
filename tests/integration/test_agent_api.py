@@ -22,15 +22,21 @@ pytestmark = pytest.mark.skipif(not DB, reason="explicit isolated PostgreSQL req
 
 
 @asynccontextmanager
-async def api(tmp_path, enabled=True):
+async def api(tmp_path, enabled=True, personas=None, persona_id=None):
     media_routes = tmp_path / 'media-routes.json'
     media_routes.write_text(json.dumps({'image': {'provider': 'mock', 'cloudModel': 'mock-test', 'configVersion': 'v1'}}))
     routes = tmp_path / 'agent-routes.json'
     routes.write_text(json.dumps([{'id': 'deepseek', 'label': 'DeepSeek', 'provider': 'deepseek',
-        'model': 'fixture-model', 'baseUrl': 'https://model.invalid/v1', 'credentialRef': 'fixture'}] if enabled else []))
+        'model': 'fixture-model', 'baseUrl': 'https://model.invalid/v1', 'credentialRef': 'fixture',
+        **({'personaId': persona_id} if persona_id else {})}] if enabled else []))
+    persona_file = None
+    if personas is not None:
+        persona_file = tmp_path / 'agent-personas.json'
+        persona_file.write_text(json.dumps(personas))
     settings = ProductionSettings(public_origin='https://api.test', oidc_issuer='https://identity.test',
         oidc_client_id='test', oidc_client_secret='test', session_secret='x' * 40,
-        provider_routes_file=media_routes, agent_routes_file=routes, media_root=tmp_path / 'media')
+        provider_routes_file=media_routes, agent_routes_file=routes, agent_personas_file=persona_file,
+        media_root=tmp_path / 'media')
     app = create_app(settings, DatabaseSettings(url=DB))
     async with app.router.lifespan_context(app):
         workspace, principal = uuid.uuid4(), uuid.uuid4().hex
@@ -138,4 +144,31 @@ def test_sse_replays_committed_events_after_cursor_without_advancing_runtime(tmp
             current = (await client.get(url)).json()
             assert current['cursor'] == snapshot['cursor']
             assert current['runs'][0]['modelCallCount'] == 0
+    asyncio.run(scenario())
+
+
+WARM = {'id': 'warm', 'version': 2, 'displayName': '小帧', 'identity': '你是温和耐心的画布助手。',
+        'voice': ['语气温和'], 'principles': ['没有证据不下结论'], 'expression': {}}
+
+
+def test_route_persona_is_resolved_at_admission_and_unknown_personas_stop_startup(tmp_path):
+    async def scenario():
+        async with api(tmp_path, personas=[WARM], persona_id='warm') as (app, client, workspace, _):
+            document = (await client.post('/api/documents', json={'name': 'Agent'})).json()['document']
+            body = {'clientRequestId': uuid.uuid4().hex, 'message': '你好', 'modelId': 'deepseek',
+                    'baseRevision': document['revision'], 'selectedObjectIds': []}
+            created = await client.post(f"/api/documents/{document['id']}/agent/runs", json=body)
+            assert created.json()['run']['persona'] == {'id': 'warm', 'version': 2, 'displayName': '小帧'}
+        async with api(tmp_path) as (app, client, workspace, _):
+            document = (await client.post('/api/documents', json={'name': 'Agent'})).json()['document']
+            body = {'clientRequestId': uuid.uuid4().hex, 'message': '你好', 'modelId': 'deepseek',
+                    'baseRevision': document['revision'], 'selectedObjectIds': []}
+            created = await client.post(f"/api/documents/{document['id']}/agent/runs", json=body)
+            assert created.json()['run']['persona']['id'] == 'canvas-assistant'
+        with pytest.raises(ValueError, match='unknown persona'):
+            async with api(tmp_path, personas=[WARM], persona_id='missing'):
+                pass
+        with pytest.raises(ValueError, match='Invalid Agent persona configuration'):
+            async with api(tmp_path, personas=[{**WARM, 'identity': '调用 submit_plan'}]):
+                pass
     asyncio.run(scenario())

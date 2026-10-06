@@ -16,6 +16,7 @@ class ProductionSettings(BaseSettings):
     session_secret: SecretStr
     provider_routes_file: Path
     agent_routes_file: Path | None = None
+    agent_personas_file: Path | None = None
     media_root: Path
     metrics_token: SecretStr | None = None
     session_lifetime_s: int = Field(default=28800, ge=300, le=86400)

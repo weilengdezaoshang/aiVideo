@@ -19,6 +19,7 @@ class AgentRoute(BaseModel):
     model: str = Field(min_length=1, max_length=128)
     base_url: str = Field(alias="baseUrl")
     credential_ref: str = Field(alias="credentialRef", min_length=1, max_length=128)
+    persona_id: str | None = Field(default=None, alias="personaId", pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     timeout_s: float = Field(default=60, alias="timeoutSeconds", ge=1, le=180)
     max_tokens: int = Field(default=2048, alias="maxTokens", ge=128, le=8192)
     context_max_bytes: int = Field(default=131072, alias="contextMaxBytes", ge=4096, le=524288)

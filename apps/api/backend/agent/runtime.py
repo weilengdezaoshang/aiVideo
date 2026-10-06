@@ -12,7 +12,8 @@ from fastapi import HTTPException
 from sqlalchemy import select
 
 from backend.agent.kernel import ACTIVE, Kernel, Limits
-from backend.agent.legacy_loop import SYSTEM_PROMPT  # noqa: F401  (re-exported)
+from backend.agent import memory
+from backend.agent.persona import DEFAULT_PERSONA
 from backend.agent.orm import AgentEvent, AgentRun, AgentSession
 from backend.agent.util import encoded, error, now, public_error, stamp  # noqa: F401
 from backend.infrastructure.orm import Asset, AssetReference, Document
@@ -55,7 +56,7 @@ class AgentService(Kernel):
             query = query.with_for_update()
         return await db.scalar(query)
 
-    async def create_run(self, workspace_id, document_id, body, route, principal=""):
+    async def create_run(self, workspace_id, document_id, body, route, principal="", persona=None):
         from backend.agent.config import AgentRoute
         from backend.agent.tools import ToolError, project_snapshot
         body = _body(body)
@@ -123,14 +124,12 @@ class AgentService(Kernel):
             previous_runs = list(await db.scalars(select(AgentRun).where(AgentRun.session_id == session.id,
                 AgentRun.status == "completed", AgentRun.reply.is_not(None))
                 .order_by(AgentRun.created_at.desc(), AgentRun.id.desc()).limit(10)))
-            history = []
-            for prior in reversed(previous_runs):
-                pair = [{"role": "user", "content": prior.message}, {"role": "assistant", "content": prior.reply}]
-                history.extend(pair)
+            history, sources = memory.episodic(list(reversed(previous_runs)), doc.revision)
             run = AgentRun(session_id=session.id, workspace_id=workspace_id,
                 client_request_id=body["clientRequestId"], request_hash=fingerprint, principal=principal,
                 message=body["message"], route=route_snapshot, snapshot=snapshot, assets=assets,
-                history=history, status="queued", phase="model", state_version=0, execution_epoch=0,
+                history=history, persona=(persona or DEFAULT_PERSONA).model_dump(mode="json"),
+                counters={"memorySources": sources}, status="queued", phase="model", state_version=0, execution_epoch=0,
                 model_call_count=0, tool_call_count=0)
             db.add(run)
             await db.flush()

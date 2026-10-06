@@ -96,6 +96,11 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
     from backend.agent.config import load_routes as load_agent_routes
     from backend.agent.runtime import AgentService
     agent_routes = load_agent_routes(settings.agent_routes_file)
+    from backend.agent.persona import load_personas
+    agent_personas = load_personas(settings.agent_personas_file)
+    for route in agent_routes:
+        if route.persona_id is not None and route.persona_id not in agent_personas:
+            raise ValueError(f"Agent route {route.id} references an unknown persona")
 
     @asynccontextmanager
     async def lifespan(app):
@@ -119,6 +124,7 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
     app = FastAPI(title="FRAYUNE production API", lifespan=lifespan)
     app.state.settings = settings
     app.state.agent_routes = agent_routes
+    app.state.agent_personas = agent_personas
     app.add_middleware(SessionMiddleware, secret_key=settings.session_secret.get_secret_value(),
         session_cookie="__Host-aivideo-oidc", https_only=True, same_site="lax", max_age=600)
     oauth = OAuth()

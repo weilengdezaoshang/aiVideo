@@ -16,9 +16,10 @@ from fastapi import HTTPException
 from sqlalchemy import or_, select
 
 from backend.agent import evidence as ev
+from backend.agent.context import ContextLimit
 from backend.agent.legacy_loop import LegacyLoop
 from backend.agent.orm import AgentEvent, AgentModelCall, AgentRun, AgentSession, AgentToolCall
-from backend.agent.util import encoded, error, now, public_error, stamp
+from backend.agent.util import error, now, public_error, stamp
 from backend.infrastructure.orm import Outbox
 
 ACTIVE = ("queued", "running")
@@ -72,6 +73,8 @@ class Kernel:
                 "usage": c.usage, "error": public_error(c.error), "createdAt": stamp(c.created_at),
                 "finishedAt": stamp(c.finished_at)} for c in models],
             "claims": run.claims,
+            "persona": ({key: run.persona[key] for key in ("id", "version", "displayName")}
+                if run.persona else None),
             "toolCalls": [{"id": str(c.id), "modelCallId": str(c.model_call_id),
                 "toolCallId": c.tool_call_id, "ordinal": c.ordinal, "kind": c.kind,
                 "evidenceId": ev.evidence_id(c.ordinal) if c.kind == "read" else None,
@@ -138,18 +141,19 @@ class Kernel:
                     self._finish(run, "limit_reached", error("MODEL_CALL_LIMIT", "已达到模型调用上限"))
                     await self._event(db, session, run, "run.limit_reached")
                     return None
-                messages = await self.loop.messages(db, run)
-                if len(encoded(messages).encode()) > route.context_max_bytes:
+                try:
+                    built = await self.loop.context(db, run, route)
+                except ContextLimit:
                     self._finish(run, "limit_reached", error("CONTEXT_LIMIT", "上下文已超过配置上限"))
                     await self._event(db, session, run, "run.limit_reached")
                     return None
                 run.model_call_count += 1
                 call = AgentModelCall(run_id=run.id, ordinal=run.model_call_count, status="sending",
-                    execution_epoch=run.execution_epoch, messages=messages, usage={})
+                    execution_epoch=run.execution_epoch, messages=built.messages, manifest=built.manifest, usage={})
                 db.add(call)
                 await self._event(db, session, run, "model.started")
                 return {"kind": "model", "callId": call.id, "epoch": run.execution_epoch,
-                    "route": route, "messages": messages}
+                    "route": route, "messages": built.messages}
             call = await db.scalar(select(AgentToolCall).where(AgentToolCall.run_id == run.id,
                 AgentToolCall.status == "pending").order_by(AgentToolCall.ordinal).limit(1))
             if call is None:

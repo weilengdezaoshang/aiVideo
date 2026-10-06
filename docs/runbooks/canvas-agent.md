@@ -25,6 +25,7 @@ flowchart LR
 1. 执行 `alembic upgrade head`，本功能新增迁移 `0009`。
 2. 复制 `deploy/agent-routes.example.json` 到部署配置目录，填入供应商实际可用的模型名、区域/工作区 `baseUrl`、路由标签及 `credentialRef`。地址为 Chat Completions 的基础地址，不含 `/chat/completions`。
 3. API 设置 `AIVERO_PRODUCTION_AGENT_ROUTES_FILE`；Compose 使用宿主机 `AIVERO_AGENT_ROUTES_FILE` 映射它。未配置时加载空列表，面板显示暂无可用模型。
+4. 可选：复制 `deploy/agent-personas.example.json` 并修改，API 设置 `AIVERO_PRODUCTION_AGENT_PERSONAS_FILE`（Compose 使用宿主机 `AIVERO_AGENT_PERSONAS_FILE`）。人格只描述身份、语气、工作信条和表达规范，不能包含工具名或 `[E1]` 这类控制标记，也不授予任何权限；格式错误或路由引用了不存在的人格时 API 拒绝启动。在路由中用 `"personaId"` 选择人格，未配置时使用内置的“画布助手”。人格在创建 Run 时冻结，修改配置只影响之后的新 Run。
 4. Worker 的 `AIVERO_CREDENTIALS_FILE` 与现有生成 Worker 共用凭据注册表，新增所引用的条目，例如 `{"deepseek":{"apiKey":"实际密钥"},"bailian":{"apiKey":"实际密钥"}}`。密钥不放路由文件、不返回浏览器。
 5. `npm run stack:up` 会启动 `agent-worker` 和 `agent-bridge`；现有 scheduler 同时处理 Agent 恢复，dispatcher 负责发布 Agent Outbox。Agent worker 只消费 `agent` 队列，媒体 Job 契约保持原样。
 

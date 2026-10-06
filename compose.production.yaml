@@ -20,12 +20,14 @@ services:
       AIVERO_PRODUCTION_SESSION_SECRET: ${AIVERO_SESSION_SECRET:?required at least 32 characters}
       AIVERO_PRODUCTION_PROVIDER_ROUTES_FILE: /run/config/provider-routes.json
       AIVERO_PRODUCTION_AGENT_ROUTES_FILE: /run/config/agent-routes.json
+      AIVERO_PRODUCTION_AGENT_PERSONAS_FILE: /run/config/agent-personas.json
       AIVERO_PRODUCTION_MEDIA_ROOT: /app/data
       AIVERO_PRODUCTION_METRICS_TOKEN: ${AIVERO_METRICS_TOKEN:-}
     volumes:
       - media:/app/data
       - ${AIVERO_ROUTES_FILE:?required absolute provider routes path}:/run/config/provider-routes.json:ro
       - ${AIVERO_AGENT_ROUTES_FILE:-./deploy/agent-routes.disabled.json}:/run/config/agent-routes.json:ro
+      - ${AIVERO_AGENT_PERSONAS_FILE:-./deploy/agent-personas.default.json}:/run/config/agent-personas.json:ro
     depends_on:
       migrate:
         condition: service_completed_successfully
