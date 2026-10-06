@@ -1,0 +1,15 @@
+{
+  "tool": "built-in imagegen",
+  "date": "2026-10-02",
+  "deliverables": ["01-preview.png", "02-local-edit.png", "03-model-menu.png"],
+  "logicalViewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "reference": "01-preview.png",
+  "review": {
+    "visual": "浅灰点阵画布与暖色室内照片形成主次，右侧对话和底部手动框保持独立。",
+    "content": "三个确认动作、显式引用、涂抹待发送和模型分组已检查。第二张初稿对话缩略图缺少落地灯，已用内置图片编辑修正；首稿保留。",
+    "limitations": "设计稿未进行交互或响应式验证。生成摄影细节并非像素级一致性证明。模型名称为示例，自动选择与严格指定的产品规则尚未最终锁定。"
+  }
+}

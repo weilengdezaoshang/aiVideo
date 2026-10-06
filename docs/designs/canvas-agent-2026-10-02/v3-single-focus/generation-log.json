@@ -1,0 +1,7 @@
+{
+  "tool": "built-in imagegen",
+  "source": "../v2-project-flow/02-image-preview.png",
+  "output": "01-single-focus.png",
+  "review": "已查看生成稿：默认仅右侧有文本输入区，底部手动生成收为中性按钮；主体/构图引用、来源线、三动作确认保留。",
+  "limits": "静态设计稿。手动面板打开时收起右侧输入、关闭时恢复草稿与引用的行为只记录为建议，未实现或实测。"
+}

@@ -1,0 +1,70 @@
+{
+  "tool": "built-in imagegen",
+  "logicalViewport": [1600, 1000],
+  "records": [
+    {
+      "file": "01-references.png",
+      "source": "/Users/weilengdezaoshang/.codex/generated_images/01a0fd3b-792e-7e90-b25e-733b78f6949a/exec-5b6644d1-8be3-48c0-aefd-e71e88f3325c.png",
+      "pixels": [1586, 992],
+      "final": true
+    },
+    {
+      "file": "02-image-preview.png",
+      "source": "/Users/weilengdezaoshang/.codex/generated_images/01a0fd3b-792e-7e90-b25e-733b78f6949a/exec-d4a36508-3e70-44d0-ba65-68a11c87b484.png",
+      "pixels": [1585, 992],
+      "final": true
+    },
+    {
+      "file": "03-video-preview.png",
+      "source": "/Users/weilengdezaoshang/.codex/generated_images/01a0fd3b-792e-7e90-b25e-733b78f6949a/exec-19ee9734-4a5e-4e31-9ca2-0c4cd0336e86.png",
+      "pixels": [1586, 992],
+      "final": true
+    },
+    {
+      "file": "04-timeline.png",
+      "source": "/Users/weilengdezaoshang/.codex/generated_images/01a0fd3b-792e-7e90-b25e-733b78f6949a/exec-bb649256-2877-415b-b4ee-fbbfd71247e6.png",
+      "pixels": [1586, 992],
+      "final": true
+    },
+    {
+      "file": "draft-01.png",
+      "source": "/Users/weilengdezaoshang/.codex/generated_images/01a0fd3b-792e-7e90-b25e-733b78f6949a/exec-50c4e156-1dd5-44d1-9507-b8a0be6adf8a.png",
+      "pixels": [1586, 992],
+      "final": false
+    },
+    {
+      "file": "draft-02.png",
+      "source": "/Users/weilengdezaoshang/.codex/generated_images/01a0fd3b-792e-7e90-b25e-733b78f6949a/exec-c20046b8-a5d1-4a6c-b696-382237e6a59e.png",
+      "pixels": [1585, 992],
+      "final": false
+    },
+    {
+      "file": "draft-03.png",
+      "source": "/Users/weilengdezaoshang/.codex/generated_images/01a0fd3b-792e-7e90-b25e-733b78f6949a/exec-57f05947-a5f3-4ba5-95f6-0f41e93e9348.png",
+      "pixels": [1586, 992],
+      "final": false
+    },
+    {
+      "file": "draft-04.png",
+      "source": "/Users/weilengdezaoshang/.codex/generated_images/01a0fd3b-792e-7e90-b25e-733b78f6949a/exec-33a5a8a2-93a2-4185-8f4c-7620c555f446.png",
+      "pixels": [1586, 992],
+      "final": false
+    }
+  ],
+  "review": {
+    "content": "已逐图检查显式主体/构图引用、单张预览三动作、已确认首帧、首段样片与等待下一段、用户要求后接入时间线。",
+    "repairs": [
+      "01调整草图横向比例并补生成图片入口",
+      "02删除待确认预览下方重复工具栏",
+      "03去掉对话模型参数表单并改正首帧引用缩略图",
+      "04去掉重复模型选择器并改正主体/草图参考缩略图"
+    ],
+    "limits": [
+      "静态栅格设计稿，无真实交互验证",
+      "生成稿几何尺寸为近似；实现须以真实画幅比例为准",
+      "生成摄影只用于交互示意，不证明主体或视频帧的像素级一致性",
+      "视频预览转正式版的内容保持及首尾帧衔接尚未验证",
+      "时长为场景示例，未验证实际模型限制"
+    ]
+  }
+}

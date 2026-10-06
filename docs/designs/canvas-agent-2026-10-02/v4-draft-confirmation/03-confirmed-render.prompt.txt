@@ -1,0 +1,11 @@
+Use case: ui-mockup. Edit the supplied aiVideo screenshot to a LATER STATE of the same project: user has received revision v2 and already clicked 就用这张 on v2; formal size generation is NOW IN PROGRESS. One desktop 1600x1000 logical screen 16:10 landscape. Preserve exact app shell, white header, slim left toolbar, light grey dotted canvas, right-side chat and left separate subject+sketch references and positions, same adult woman in mustard coat and cafe setting.
+Main large canvas image still depicts the LOW-RES PREVIEW with only the cafe entrance hanging lamp glow made slightly softer than reference. Keep woman, composition, rest of street unchanged. No mask. Main title now 画面 01 · 预览 v2. Green badge 已确认, resolution 768 × 432. This is the accepted preview, NOT a completed official output.
+Remove all acceptance buttons under the main image. In the same attached strip show a subtle spinner and title 正式版生成中, metadata 2048 × 1152 · 本次预计 6 积分. Smaller supporting sentence 已确认预览保留在这里. Add one low-emphasis control 停止生成. Do not invent numeric progress, ETA, finished high resolution output, or a second confirmation. No official output image yet.
+Right chat adjusts to show chronological context compactly:
+at top a compact historical row 预览 v1 · 已有新版, with a small dim thumbnail and no action buttons.
+Below user bubble with named target chip 修改 · 画面 01 v1 and small marking chip 涂抹 · 门口灯光, text 只把门口灯光调柔和，人物和构图不变。
+Next agent text 门口灯光已调柔和，请查看预览 v2。
+Next a compact linked thumbnail card 画面 01 · 预览 v2, green status 已确认, link 定位到预览. NO accept/modify/stop buttons here.
+Next compact chronological activity line with check icon 你已确认预览 v2 and below spinner 正在生成正式版 . It is a task status, not a plan card and not an additional chatbot.
+Bottom-right single Agent composer remains visible and empty with placeholder 补充要求，或引用画布对象… . It can display one explicit removable chip 已确认 · 预览 v2 × because that image exists; do NOT reference a nonexistent finished formal image. Standard + @ / model-icon / send. Tiny footer 输入自动保存.
+Keep bottom-left zoom75%, fit, 手动生成 small control. Keep bottom-right canvas 分镜 and 时间线. Formal generation status is clear, with no duplicate clickable confirmation anywhere, no standalone chat screen, no large manual text box. Chinese clean legible type and same design system.

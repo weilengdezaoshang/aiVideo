@@ -1,0 +1,43 @@
+{
+  "mode": "built-in imagegen",
+  "kind": "static-ui-design",
+  "logical_viewport": [1600, 1000],
+  "date": "2026-10-03",
+  "base": "../v3-single-focus/01-single-focus.png",
+  "images": [
+    {
+      "file": "01-review-draft.png",
+      "prompt": "01-review-draft.prompt.txt",
+      "source": "/Users/weilengdezaoshang/.codex/generated_images/01a0fd3b-792e-7e90-b25e-733b78f6949a/exec-cdc1b1f0-1618-40f4-b818-e38b8a4aaa3f.png",
+      "pixels": [1586, 992],
+      "review": "Single confirmation strip attached to canvas preview; chat card only locates; exact three actions; dimensions and cost visible before acceptance. Photo/thumbnail crops approximate."
+    },
+    {
+      "file": "02-refine-draft.png",
+      "prompt": "02-refine-draft.prompt.txt",
+      "source": "/Users/weilengdezaoshang/.codex/generated_images/01a0fd3b-792e-7e90-b25e-733b78f6949a/exec-9f6a57fd-4f9d-4a5f-8d13-3f99c4f76301.png",
+      "pixels": [1586, 992],
+      "review": "Blue local mask only, unsent text with explicit removable references, estimated low-res preview cost, single send action, no duplicate approval or automatic regeneration."
+    },
+    {
+      "file": "03-confirmed-render.png",
+      "prompt": "03-confirmed-render.prompt.txt",
+      "repair_prompt": "03-repair.prompt.txt",
+      "source": "/Users/weilengdezaoshang/.codex/generated_images/01a0fd3b-792e-7e90-b25e-733b78f6949a/exec-cdcd6c74-d420-41ee-8cf3-977f9eeac8c1.png",
+      "pixels": [1584, 993],
+      "review": "Retained v1 is a separate historical result to the left of v2; subject and sketch remain separate source thumbnails. v2 confirmed while formal generation is in progress, no fictional completed output, repeat approval removed, current composer references only existing confirmed preview. Canvas layout is illustrative rather than pixel-accurate camera continuity."
+    }
+  ],
+  "discarded": [
+    {
+      "file": "draft-03.png",
+      "reason": "Kept correct in-progress status but lacked visible retained v1 object on canvas; repaired left canvas to make version relationship explicit."
+    }
+  ],
+  "verification": {
+    "method": "visual inspection of all generated screens; independent product-state review",
+    "application_code_changed": false,
+    "interactive_prototype": false,
+    "example_values_only": true
+  }
+}

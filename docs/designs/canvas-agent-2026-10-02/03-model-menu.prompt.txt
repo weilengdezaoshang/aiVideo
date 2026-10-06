@@ -1,0 +1,13 @@
+Use case: ui-mockup, edit desktop UI to show MODEL MENU OPEN. Reference image 1 is the base screenshot. Preserve everything from it: exact main editor geometry, light grey dotted canvas, aiVideo topbar, document title 午后客厅, original left room photo, preview right photo, three confirmation actions in right chat card, and manual generator bottom center. No new photos or generations. One crisp screenshot at same 16:10 ratio.
+ONLY substantial change: right chat composer's small sliders/model icon is selected blue, and a compact white POPOVER opens UPWARD from that icon within sidebar, floating over some chat history. This is a real anchored menu roughly 300 logical pixels wide, not a new sidebar or modal. White #FFFFFF, fine #DFE1E6 border, radius 12, restrained shadow, generous 36px row heights and clear selected checks. Popover title “生成模型”. Two clearly separated groups:
+“图片模型”
+ row “自动选择” with blue check at right
+ row “GPT Image” with understated image icon
+ row “FLUX Kontext” with understated image icon
+divider
+“视频模型”
+ row “自动选择” with blue check at right
+ row “Kling” with understated video icon
+ row “Wan” with understated video icon
+Tiny muted footer “仅影响对话生成”.
+No duration, ratio, quantity, resolution, temperature, agent/LLM model selector, pricing or extra form fields inside popover. No automatic switch explanation needed. Each group is a single choice list. All names are illustrative UI entries, not availability claims. Make the popover tall enough so text is cleanly readable but keep both canvas images entirely unobscured. Keep the underlying chat input reference chip “客厅 · 原图 ×” and send arrow visible. Bottom manual generator remains completely unchanged. Preserve styling precisely; only open the model menu.
