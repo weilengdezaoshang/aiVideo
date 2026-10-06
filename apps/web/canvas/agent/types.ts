@@ -1,9 +1,30 @@
+import type { AgentClaim } from './contracts.js'
+
 export type AgentRunStatus =
   'queued' | 'running' | 'completed' | 'stopped' | 'failed' | 'needs_attention' | 'limit_reached'
 
+export type AgentClaimsPayload = {
+  answer: string
+  claims: AgentClaim[]
+  verification: AgentVerification
+}
+export type AgentVerificationIssue = {
+  check: string
+  code: string
+  detail: string
+  claim: number | null
+  ref: string | null
+}
+export type AgentVerification = {
+  passed: boolean
+  checks: { id: string; passed: boolean; issues: AgentVerificationIssue[] }[]
+}
+
 export type AgentToolCall = {
   id: string
-  evidenceId?: string
+  evidenceId?: string | null
+  kind?: 'read' | 'control'
+  dedupeOf?: string | null
   name: string
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'late'
   arguments: Record<string, unknown>
@@ -26,6 +47,8 @@ export type AgentRun = {
   message: string
   reply: string | null
   error: string | null
+  errorCode?: string | null
+  claims?: AgentClaimsPayload | null
   modelId: string
   baseRevision: number
   modelCalls: AgentModelCall[]

@@ -540,6 +540,28 @@ a {
 .next-agent-next [data-priority='required'] .next-agent-badge {
   background: #fef3c7;
 }
+.next-agent-cite {
+  margin: 0 2px;
+  border-radius: 4px;
+  background: #eef2ff;
+  padding: 0 4px;
+  font-size: 11px;
+  text-decoration: none;
+}
+.next-agent-cite.is-unknown {
+  background: #fee4e2;
+  color: #b42318;
+}
+.next-agent-verdict {
+  margin: 4px 0;
+  font-size: 12px;
+}
+.next-agent-verdict.is-pass {
+  color: #067647;
+}
+.next-agent-verdict.is-fail {
+  color: #b42318;
+}
 .next-agent-error {
   color: #b42318;
   overflow-wrap: anywhere;

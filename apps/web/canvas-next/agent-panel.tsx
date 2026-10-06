@@ -1,9 +1,10 @@
 import { useSyncExternalStore } from 'react'
 import type { ChatMessage } from '../canvas/state/doc-store.js'
 import type { AgentStore } from '../canvas/agent/store.js'
-import { parseEnvelope } from '../canvas/agent/contracts.js'
+import { parseControlReceipt, parseEnvelope } from '../canvas/agent/contracts.js'
 import { isActiveAgentRun, type AgentRunStatus } from '../canvas/agent/types.js'
-import { AgentEvidence } from './agent-evidence.js'
+import { AgentAnswer, toolAnchor } from './agent-answer.js'
+import { AgentEvidence, AgentReceipt } from './agent-evidence.js'
 
 const labels: Record<AgentRunStatus, string> = {
   queued: '等待执行',
@@ -25,6 +26,11 @@ const toolLabels = {
 function displayData(value: unknown): string {
   const text = JSON.stringify(value, null, 2) ?? '无返回内容'
   return text.length > 12000 ? `${text.slice(0, 12000)}\n…显示已截断` : text
+}
+
+function ReceiptView({ output }: { output: unknown }) {
+  const receipt = parseControlReceipt(output)
+  return receipt ? <AgentReceipt receipt={receipt} /> : <pre>{displayData(output)}</pre>
 }
 
 export function AgentPanel({
@@ -70,20 +76,32 @@ export function AgentPanel({
               </span>
             </div>
             {run.toolCalls.map((call) => (
-              <details className="next-agent-tool" key={call.id}>
+              <details
+                className="next-agent-tool"
+                key={call.id}
+                id={call.evidenceId ? toolAnchor(run.id, call.evidenceId) : undefined}
+              >
                 <summary>
                   {call.evidenceId ? `${call.evidenceId} · ` : ''}
                   {call.name} · {toolLabels[call.status]}
                 </summary>
                 <strong>输入</strong>
                 <pre>{displayData(call.arguments)}</pre>
-                {call.output !== undefined && (
-                  <AgentEvidence envelope={parseEnvelope(call.output)} raw={call.output} />
+                {call.output !== undefined && call.kind === 'control' ? (
+                  <ReceiptView output={call.output} />
+                ) : (
+                  call.output !== undefined && (
+                    <AgentEvidence
+                      envelope={parseEnvelope(call.output)}
+                      raw={call.output}
+                      runId={run.id}
+                    />
+                  )
                 )}
                 {call.error && <p className="next-agent-error">{call.error}</p>}
               </details>
             ))}
-            {run.reply && <p className="is-assistant">{run.reply}</p>}
+            <AgentAnswer run={run} />
             {run.error && <p className="next-agent-error">{run.error}</p>}
             <div className="next-agent-run-meta">
               <span>模型调用 {run.modelCallCount ?? run.modelCalls.length} 次</span>

@@ -1,4 +1,9 @@
-import type { AgentEnvelope, AgentNextAction } from '../canvas/agent/contracts.js'
+import { factAnchor } from './agent-answer.js'
+import type {
+  AgentControlReceipt,
+  AgentEnvelope,
+  AgentNextAction,
+} from '../canvas/agent/contracts.js'
 
 function displayData(value: unknown): string {
   const text = JSON.stringify(value, null, 2) ?? '无返回内容'
@@ -31,8 +36,30 @@ function NextActions({ items }: { items: readonly AgentNextAction[] }) {
   )
 }
 
+export function AgentReceipt({ receipt }: { receipt: AgentControlReceipt }) {
+  if (receipt.status === 'accepted') {
+    return <p className="next-agent-coverage">运行时已接受。</p>
+  }
+  return (
+    <div className="next-agent-evidence">
+      <p className="next-agent-error">
+        {receipt.error?.message}（{receipt.error?.code}）
+      </p>
+      <NextActions items={receipt.error?.next ?? []} />
+    </div>
+  )
+}
+
 /** Renders a tool result envelope; unparsed (legacy) outputs fall back to the raw JSON. */
-export function AgentEvidence({ envelope, raw }: { envelope: AgentEnvelope | null; raw: unknown }) {
+export function AgentEvidence({
+  envelope,
+  raw,
+  runId,
+}: {
+  envelope: AgentEnvelope | null
+  raw: unknown
+  runId: string
+}) {
   if (!envelope) {
     return (
       <>
@@ -84,7 +111,7 @@ export function AgentEvidence({ envelope, raw }: { envelope: AgentEnvelope | nul
       <strong>证据</strong>
       <ul className="next-agent-facts">
         {result.evidence.map((fact) => (
-          <li key={fact.id} id={`agent-fact-${fact.id}`} data-scope={fact.scope}>
+          <li key={fact.id} id={factAnchor(runId, fact.id)} data-scope={fact.scope}>
             <code>{fact.id}</code> {fact.statement}：{formatValue(fact.value)}
           </li>
         ))}
