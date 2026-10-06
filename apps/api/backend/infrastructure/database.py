@@ -43,7 +43,8 @@ def create_async_database_engine(settings: DatabaseSettings | None = None) -> As
         max_overflow=settings.max_overflow,
         pool_timeout=settings.pool_timeout_s,
         pool_pre_ping=True,
-        connect_args={"connect_timeout": settings.connect_timeout_s},
+        connect_args={"connect_timeout": settings.connect_timeout_s,
+                      "options": f"-c statement_timeout={int(settings.statement_timeout_ms)}"},
     )
 
 

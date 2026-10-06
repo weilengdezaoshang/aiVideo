@@ -3,7 +3,9 @@
 import asyncio
 import hashlib
 import json
+import os
 import re
+import signal
 import shutil
 import wave
 from pathlib import Path
@@ -44,14 +46,16 @@ def source_path(data: Path, url: str):
 
 
 class Exports:
-    def __init__(self, data):
+    def __init__(self, data, *, durable=False, source_resolver=None, work_root=None):
         self.data = data
-        self.root = data / "exports"
+        self.root = work_root or data / "exports"
+        self.durable = durable
+        self.resolve_source = source_resolver or (lambda url: source_path(self.data, url))
         self.root.mkdir(parents=True, exist_ok=True)
         self.jobs = {}
         self.tasks = {}
         self.slot = asyncio.Semaphore(1)
-        for path in self.root.glob("*/job.json"):
+        for path in (() if durable else self.root.glob("*/job.json")):
             job = read_json(path, None)
             if isinstance(job, dict) and job.get("id"):
                 self.jobs[job["id"]] = job
@@ -61,7 +65,8 @@ class Exports:
 
     def save(self, job):
         job["updatedAt"] = now()
-        write_json(self.root / job["id"] / "job.json", job)
+        if not self.durable:
+            write_json(self.root / job["id"] / "job.json", job)
 
     def submit(self, ident, doc_id, raw):
         try:
@@ -110,14 +115,31 @@ class Exports:
 
     async def command(self, args):
         proc = await asyncio.create_subprocess_exec(
-            *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            start_new_session=os.name == "posix",
         )
         try:
             out, err = await asyncio.wait_for(proc.communicate(), timeout=1800)
         except BaseException:
             if proc.returncode is None:
-                proc.kill()
-            await proc.wait()
+                try:
+                    if os.name == "posix":
+                        os.killpg(proc.pid, signal.SIGTERM)
+                    else:
+                        proc.terminate()
+                except ProcessLookupError:
+                    pass
+                try:
+                    await asyncio.wait_for(proc.communicate(), timeout=10)
+                except TimeoutError:
+                    try:
+                        if os.name == "posix":
+                            os.killpg(proc.pid, signal.SIGKILL)
+                        else:
+                            proc.kill()
+                    except ProcessLookupError:
+                        pass
+                    await proc.communicate()
             raise
         if proc.returncode:
             raise ValueError("视频渲染失败，请检查素材格式和实际时长")
@@ -125,6 +147,7 @@ class Exports:
 
     async def render(self, job, binary):
         directory = self.root / job["id"]
+        directory.mkdir(parents=True, exist_ok=True)
         scratch = directory / "work"
         try:
             async with self.slot:
@@ -134,7 +157,7 @@ class Exports:
                 tl = job["timeline"]
                 parts = []
                 for i, clip in enumerate(tl["clips"]):
-                    src = source_path(self.data, clip["source"]["url"])
+                    src = self.resolve_source(clip["source"]["url"])
                     local = scratch / f"input-{i}{src.suffix}"
                     # A worker thread copy cannot be force-stopped; wait for it before cleanup on cancel.
                     copy = asyncio.create_task(asyncio.to_thread(shutil.copyfile, src, local))
@@ -238,7 +261,7 @@ class Exports:
                 audio_filters = []
                 audio_labels = ["[0:a:0]"]
                 for index, audio in enumerate(tl.get("audioClips", []), 1):
-                    source = source_path(self.data, audio["source"]["url"])
+                    source = self.resolve_source(audio["source"]["url"])
                     local = scratch / f"audio-{index}.wav"
                     copying = asyncio.create_task(asyncio.to_thread(shutil.copyfile, source, local))
                     try:

@@ -1,6 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { RecognitionOperation } from '../apps/web/canvas/flows/recognition-operation.js'
+import {
+  RecognitionOperation,
+  createCanvasRecognition,
+} from '../apps/web/canvas/flows/recognition-operation.js'
 
 test('取消后即使响应迟到也不解析或应用，并只发送一次取消', async () => {
   const original = globalThis.fetch
@@ -74,5 +77,77 @@ test('只接受匹配的操作结果，完成后取消不会影响已提交任�
     await assert.rejects(invalid.detect('source'), /不完整/)
   } finally {
     globalThis.fetch = original
+  }
+})
+
+test('空选择、多选、切换工具和 Escape 同步取消识别，迟到结果不重开蒙版', async () => {
+  const { createCanvasView } = await import('../apps/web/canvas/core/canvas-view.js')
+  const { createDocStore } = await import('../apps/web/canvas/state/doc-store.js')
+  const original = globalThis.fetch
+  for (const leave of ['empty', 'other', 'multiple', 'pan', 'escape'] as const) {
+    const store = createDocStore({
+      id: 'recognition-view',
+      name: '',
+      order: ['source', 'other'],
+      objects: {
+        source: { id: 'source', kind: 'image', x: 0, y: 0, width: 100, height: 100 },
+        other: { id: 'other', kind: 'image', x: 200, y: 0, width: 100, height: 100 },
+      },
+    })
+    const view = createCanvasView({ store })
+    view.select(['source'])
+    view.activateTool('recognizing')
+    let resolve!: (response: Response) => void
+    let cancels = 0
+    globalThis.fetch = async (_input, init) => {
+      if (init?.method === 'DELETE') {
+        cancels++
+        return Response.json({})
+      }
+      return new Promise<Response>((done) => {
+        resolve = done
+      })
+    }
+    try {
+      const raw = store.doc.objects.source
+      const operation = createCanvasRecognition(
+        view,
+        'source',
+        () => store.doc.objects.source === raw,
+      )
+      const pending = operation.detect('source')
+      const rejected = assert.rejects(pending, { name: 'AbortError' })
+      if (leave === 'empty') {
+        view.select([])
+      } else if (leave === 'other') {
+        view.select(['other'])
+      } else if (leave === 'multiple') {
+        view.select(['source', 'other'])
+      } else if (leave === 'pan') {
+        view.activateTool('pan')
+      } else {
+        view.dispatchInput({
+          type: 'key-down',
+          key: 'Escape',
+          code: 'Escape',
+          modifiers: {
+            shift: false,
+            alt: false,
+            ctrl: false,
+            meta: false,
+            space: false,
+          },
+        })
+      }
+      assert.equal(operation.signal.aborted, true, leave)
+      assert.equal(cancels, 1, leave)
+      const tool = view.getSnapshot().requestedTool
+      resolve(Response.json({ operationId: operation.id, urls: { original: '/late.png' } }))
+      await rejected
+      assert.equal(view.getSnapshot().requestedTool, tool)
+    } finally {
+      view.destroy()
+      globalThis.fetch = original
+    }
   }
 })

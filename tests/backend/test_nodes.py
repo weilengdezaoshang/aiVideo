@@ -1,6 +1,6 @@
 from uuid import uuid4
 from fastapi.testclient import TestClient
-from backend.app import create_app
+from backend.evaluation.sandbox import create_sandbox_app as create_app
 from backend.capabilities import generation_capabilities
 from backend.config import Config
 from tests.backend.test_api import finish

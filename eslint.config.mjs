@@ -34,9 +34,26 @@ export default tseslint.config(
     languageOptions: {
       globals: {
         ...globals.browser,
-        // Konva 以 UMD 全局引入(apps/web/vendor/konva)
-        Konva: 'readonly',
       },
+    },
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['konva', 'konva/*', 'react-konva'],
+              message: 'Konva 只能由 canvas/renderer-konva 渲染适配器导入。',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/web/canvas/renderer-konva/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': 'off',
     },
   },
 )

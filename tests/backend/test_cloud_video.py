@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from backend.app import create_app
+from backend.evaluation.sandbox import create_sandbox_app as create_app
 
 VIDEO_CONFIG = dict(
     provider="cloud",

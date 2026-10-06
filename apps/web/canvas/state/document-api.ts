@@ -48,6 +48,14 @@ export function clearLocalDraft(docId: string): void {
   }
 }
 
+/** An acknowledgement may clear only the draft it saved, never a newer edit. */
+export function clearLocalDraftIfMatches(docId: string, snapshot: CanvasDocData): void {
+  const draft = loadLocalDraft(docId)
+  if (draft && draftMatchesDocument(draft, snapshot)) {
+    clearLocalDraft(docId)
+  }
+}
+
 /** 草稿与服务端文档的内容是否一致(忽略 revision/updatedAt 等元字段)。 */
 export function draftMatchesDocument(draft: CanvasDocData, doc: CanvasDocData): boolean {
   const content = (d: CanvasDocData) =>
@@ -57,6 +65,7 @@ export function draftMatchesDocument(draft: CanvasDocData, doc: CanvasDocData): 
       order: d.order,
       groups: d.groups,
       chat: d.chat,
+      generations: d.generations ?? {},
       storyboard: d.storyboard ?? null,
       timeline: d.timeline ?? null,
     })
@@ -134,7 +143,10 @@ export async function openDocument(): Promise<CanvasDocData> {
     try {
       const { document } = await api<{ document: CanvasDocData }>(`/api/documents/${remembered}`)
       return document
-    } catch {
+    } catch (error) {
+      if (!(error instanceof Error) || (error as ErrorWithStatus).status !== 404) {
+        throw error
+      }
       // 记录的文档已不存在(如 data 清理):走后面的取最近/新建
     }
   }

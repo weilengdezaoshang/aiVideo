@@ -1,6 +1,6 @@
 import type { CanvasObj } from './commands.js'
 
-type SizedNode = CanvasObj & { canvasSizeVersion?: 1 }
+type SizedNode = CanvasObj
 
 export type MediaKind = 'image' | 'video'
 export type Reference = { assetId: string; ext: string; name: string; sourceNodeId?: string }
@@ -84,10 +84,38 @@ export function createNode(
   }
 }
 
+/** Normalize only an untouched legacy frame. Never resize a custom placement on completion. */
+export function initializeGenerationFrame(
+  obj: CanvasObj,
+  size: { width: number; height: number },
+  kind: MediaKind,
+): void {
+  if (obj.canvasSizeVersion === 2) {
+    return
+  }
+  const defaultWidth = kind === 'video' ? 480 : 320
+  const defaultHeight = kind === 'video' ? 270 : 320
+  if (
+    obj.width === defaultWidth &&
+    obj.height === defaultHeight &&
+    size.width > 0 &&
+    size.height > 0
+  ) {
+    const scale = defaultWidth / Math.max(size.width, size.height)
+    obj.width = size.width * scale
+    obj.height = size.height * scale
+  }
+  obj.canvasSizeVersion = 2
+}
+
 export function isMediaNode(
   obj: CanvasObj | undefined,
 ): obj is CanvasObj & { kind: MediaKind; nodeDraft: NodeDraft } {
   return !!obj && (obj.kind === 'image' || obj.kind === 'video') && !!obj.nodeDraft
+}
+
+export function isEmptyMedia(obj: CanvasObj): boolean {
+  return (obj.kind === 'image' || obj.kind === 'video') && !obj.src && !obj.assetId
 }
 
 export function hasOutput(obj: CanvasObj): boolean {

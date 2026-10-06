@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from backend.app import create_app
+from backend.evaluation.sandbox import create_sandbox_app as create_app
 
 
 def test_typescript_requires_build_and_uses_original_module_url(tmp_path):

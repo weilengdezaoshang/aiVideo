@@ -180,6 +180,9 @@ test('events 层:未知 jobId 丢弃、clientRef 对齐、重连触发对账', a
   const fetchCalls: string[] = []
   const fetchImpl = async (url: string) => {
     fetchCalls.push(url)
+    if (url === '/api/jobs/job-x') {
+      return Response.json({}, { status: 404 })
+    }
     return {
       json: async () => ({
         jobs: [

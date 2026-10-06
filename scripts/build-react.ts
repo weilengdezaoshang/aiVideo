@@ -1,4 +1,5 @@
 import { build, context, type BuildOptions } from 'esbuild'
+import { writeFile } from 'node:fs/promises'
 
 const watching = process.argv.includes('--watch')
 const options: BuildOptions = {
@@ -6,12 +7,14 @@ const options: BuildOptions = {
     { in: 'apps/web/workspace/app.tsx', out: 'workspace/app' },
     { in: 'apps/web/landing/main.tsx', out: 'landing/app' },
     { in: 'apps/web/evaluation/app.tsx', out: 'evaluation/app' },
+    { in: 'apps/web/canvas-next/app.tsx', out: 'canvas-next/app' },
   ],
   bundle: true,
   format: 'esm',
   minify: !watching,
   sourcemap: true,
-  outdir: '.web-build',
+  outdir: process.env.BUNDLE_OUTDIR || '.web-build',
+  metafile: Boolean(process.env.BUNDLE_METAFILE),
   logLevel: 'info',
 }
 if (watching) {
@@ -24,5 +27,8 @@ if (watching) {
   process.once('SIGINT', () => void stop())
   process.once('SIGTERM', () => void stop())
 } else {
-  await build(options)
+  const result = await build(options)
+  if (process.env.BUNDLE_METAFILE && result.metafile) {
+    await writeFile(process.env.BUNDLE_METAFILE, JSON.stringify(result.metafile, null, 2))
+  }
 }

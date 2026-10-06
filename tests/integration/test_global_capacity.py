@@ -63,6 +63,7 @@ def clean_db():
 
 def accept_many(n: int) -> list[uuid.UUID]:
     from backend.services.acceptance import accept_generation
+    from backend.providers.policy import ProviderPolicy
 
     workspace_id = uuid.uuid4()
 
@@ -74,6 +75,7 @@ def accept_many(n: int) -> list[uuid.UUID]:
                 request_id=f"cap-{i}",
                 request_hash=f"hash-{i}",
                 params={"prompt": f"p{i}"},
+                policy=ProviderPolicy(workspace_capacity=n),
             )
         )
         return result["jobId"]

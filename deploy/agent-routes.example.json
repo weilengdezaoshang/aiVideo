@@ -1,0 +1,18 @@
+[
+  {
+    "id": "deepseek",
+    "provider": "deepseek",
+    "model": "REPLACE_WITH_DEPLOYED_MODEL",
+    "label": "DeepSeek",
+    "baseUrl": "https://api.deepseek.com/v1",
+    "credentialRef": "deepseek"
+  },
+  {
+    "id": "bailian",
+    "provider": "bailian",
+    "model": "REPLACE_WITH_DEPLOYED_MODEL",
+    "label": "百炼",
+    "baseUrl": "https://REPLACE_WITH_WORKSPACE_ENDPOINT/compatible-mode/v1",
+    "credentialRef": "bailian"
+  }
+]

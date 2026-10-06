@@ -4,7 +4,8 @@ import pytest
 from PIL import Image
 from fastapi.testclient import TestClient
 
-from backend.app import create_app, ROOT
+from backend.paths import ROOT
+from backend.evaluation.sandbox import create_sandbox_app as create_app
 from backend.config import ENV
 
 
@@ -27,6 +28,8 @@ def root(tmp_path):
 
 @pytest.fixture
 def client(root):
+    # Historical HTTP compatibility fixture, not the deployable application.
+    # The canonical backend.app boundary is covered by entrypoint + PG integration tests.
     with TestClient(create_app(root)) as client:
         yield client
 

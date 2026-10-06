@@ -170,6 +170,8 @@ def classify_exception(exc: BaseException) -> tuple[ErrorCode, Recovery]:
         return exc.code, exc.recovery
     if isinstance(exc, TimeoutError):
         return ErrorCode.UPSTREAM_TIMEOUT, Recovery.RETRY
+    if isinstance(exc, httpx.TimeoutException):
+        return ErrorCode.UPSTREAM_TIMEOUT, Recovery.RETRY
     if isinstance(exc, httpx.HTTPStatusError):
         status = exc.response.status_code
         if status in (401, 403):

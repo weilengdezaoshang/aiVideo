@@ -6,7 +6,6 @@
 //   图生图(技术方案 v0.1 §4.4):genParams 可携带 referenceAssetIds/referenceWeight,
 //   服务端为四个方向任务共享同一张参考图。
 
-import type { createCanvasEngine } from '../engine/stage.js'
 import type { CanvasObj } from '../state/commands.js'
 import { cmdAddObjects, cmdRemoveObjects } from '../state/commands.js'
 import { findFreePosition } from '../state/placement.js'
@@ -26,7 +25,10 @@ export type GroupDocStore = {
   mutateTransient(mutator: (doc: GroupDocStore['doc']) => unknown): unknown
 }
 
-type Engine = ReturnType<typeof createCanvasEngine>
+type Engine = {
+  getCam(): { x: number; y: number; scale: number }
+  stage: { width(): number; height(): number }
+}
 
 /** 组卡消息钩子(chat.js 提供实现) */
 export type GroupChatHooks = {

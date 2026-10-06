@@ -9,6 +9,7 @@ import {
 import { submitGeneration, cancelPlaceholder } from '../apps/web/canvas/flows/generate.js'
 import { createDocStore } from '../apps/web/canvas/state/doc-store.js'
 import { cmdAddObjects } from '../apps/web/canvas/state/commands.js'
+import { selectCanvasObject } from '../apps/web/canvas/state/generation-entity.js'
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- 测试对生成参数与文档结构使用宽类型 */
 
@@ -144,7 +145,7 @@ test('提交成功:占位入 undo 栈 + jobId 回填 + batchCount 强制 1', asy
   const objId = result.objId!
   assert.equal(createdId, objId, '提交请求前即可定位新占位卡')
   assert.equal(store.doc.objects[objId].kind, 'placeholder')
-  assert.equal(store.doc.objects[objId].gen?.jobId, 'job-77')
+  assert.equal(store.doc.generations?.[result.generationId!]?.jobId, 'job-77')
 
   const sent = JSON.parse(String(calls[0].init.body))
   assert.equal(sent.batchCount, 1, '画布提交强制单张')
@@ -164,12 +165,12 @@ test('提交失败(4xx):占位转错误卡并携带原因', async () => {
     fetchImpl: impl,
   })
   assert.equal(result.ok, false)
-  const obj = store.doc.objects[result.objId!]
+  const obj = selectCanvasObject(store.doc, result.objId!)!
   assert.equal(obj.kind, 'error')
   assert.equal(obj.errorDetail, '提示词不能为空')
 })
 
-test('网络异常:占位转错误卡', async () => {
+test('网络异常:保留待确认占位，不允许误当失败重提', async () => {
   const store = createDocStore({ id: 'd', name: 't', objects: {}, order: [] })
   const impl = (async () => {
     throw new Error('fetch failed')
@@ -180,7 +181,7 @@ test('网络异常:占位转错误卡', async () => {
     fetchImpl: impl,
   })
   assert.equal(result.ok, false)
-  assert.equal(store.doc.objects[result.objId!].kind, 'error')
+  assert.equal(selectCanvasObject(store.doc, result.objId!)?.kind, 'placeholder')
 })
 
 test('取消占位:DELETE 任务 + 占位移除(可撤销)', async () => {
@@ -234,7 +235,7 @@ test('重试:错误卡原位转占位,按谱系参数重发并回填 jobId', asy
   )
   assert.equal(result.ok, true)
   assert.equal((result as any).jobId, 'job-retry')
-  const obj = store.doc.objects['err-1'] as any
+  const obj = selectCanvasObject(store.doc, 'err-1') as any
   assert.equal(obj.kind, 'placeholder')
   assert.equal(obj.gen?.jobId, 'job-retry')
   assert.equal(obj.x, 50, '原位转占位')
@@ -289,13 +290,13 @@ test('重试再次失败:回到错误卡并更新原因', async () => {
       },
     ]),
   )
-  const { impl } = fakeFetch([{ status: 500, body: { error: '后端超时' } }])
+  const { impl } = fakeFetch([{ status: 422, body: { error: '参数不合法' } }])
   await import('../apps/web/canvas/flows/generate.js').then((m) =>
     m.retryError({ docStore: store, objId: 'err-3', fetchImpl: impl }),
   )
-  const obj = store.doc.objects['err-3'] as any
+  const obj = selectCanvasObject(store.doc, 'err-3') as any
   assert.equal(obj.kind, 'error')
-  assert.equal(obj.errorDetail, '后端超时')
+  assert.equal(obj.errorDetail, '参数不合法')
 })
 
 test('重试非错误卡/缺谱系:拒绝', async () => {

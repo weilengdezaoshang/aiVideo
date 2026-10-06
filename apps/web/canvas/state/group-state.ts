@@ -123,6 +123,7 @@ function clearPendingConfirm(obj: CanvasObj): void {
 export function sweepLostGroupSlots(
   doc: { objects: Record<string, CanvasObj> },
   serverJobs: JobLike[],
+  confirmedMissing?: ReadonlySet<string>,
 ): { changedObjIds: string[] } {
   const known = new Set(serverJobs.map((j) => j.id))
   const changedObjIds: string[] = []
@@ -130,7 +131,7 @@ export function sweepLostGroupSlots(
     if (obj.kind !== 'placeholder' || !obj.groupId || !obj.gen?.jobId) {
       continue
     }
-    if (known.has(obj.gen.jobId)) {
+    if (known.has(obj.gen.jobId) || (confirmedMissing && !confirmedMissing.has(obj.gen.jobId))) {
       continue
     }
     obj.kind = 'error'

@@ -17,8 +17,7 @@ class ComfyProvider(Provider):
 
     async def json(self, path, method="GET", **kwargs):
         response = await self.client.request(method, self.base + path, timeout=10, **kwargs)
-        if not response.is_success:
-            raise ValueError(f"ComfyUI {path}: HTTP {response.status_code}")
+        response.raise_for_status()
         return response.json()
 
     async def status(self):

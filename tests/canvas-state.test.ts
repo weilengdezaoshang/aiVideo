@@ -154,9 +154,8 @@ test('初始文档被浅拷贝,外部改动不泄漏进 store', () => {
 
 /* ---------- AutoSaver(依赖注入) ---------- */
 
-test('autoSaver:防抖后全量 POST;unload 走 beacon;串行化排队', async () => {
-  const saved: { url: string; body: any }[] = []
-  const beacons: { url: string; body: any }[] = []
+test('autoSaver:防抖后全量 POST;unload 走 keepalive;串行化排队', async () => {
+  const saved: { url: string; body: ReturnType<typeof emptyDoc>; keepalive?: boolean }[] = []
   const statuses: string[] = []
   // 门控:gate() 后的下一个请求挂起,直到 release() 放行
   let gated = false
@@ -174,20 +173,18 @@ test('autoSaver:防抖后全量 POST;unload 走 beacon;串行化排队', async (
     if (gated && !init.keepalive) {
       await new Promise<void>((r) => waiting.push(r))
     }
-    saved.push({ url, body: JSON.parse(String(init.body)) })
+    saved.push({
+      url,
+      body: JSON.parse(String(init.body)) as ReturnType<typeof emptyDoc>,
+      keepalive: init.keepalive,
+    })
     return new Response('{}', { status: 200 })
   }) as typeof fetch
-  const beaconImpl = (url: string, blob: Blob) => {
-    blob.text().then((t) => beacons.push({ url, body: JSON.parse(t) }))
-    return true
-  }
-
   const doc = emptyDoc()
   const saver = createAutoSaver({
     docId: doc.id,
     getDoc: () => doc,
     fetchImpl,
-    beaconImpl,
     onStatus: (s: string) => statuses.push(s),
     debounceMs: 10,
   })
@@ -217,7 +214,8 @@ test('autoSaver:防抖后全量 POST;unload 走 beacon;串行化排队', async (
   doc.objects.d = obj('d')
   saver.flushOnUnload()
   await new Promise((r) => setTimeout(r, 10))
-  assert.equal(beacons.length, 1)
-  assert.ok(beacons[0].body.objects.d)
+  assert.equal(saved.length, 4)
+  assert.equal(saved[3].keepalive, true)
+  assert.ok(saved[3].body.objects.d)
   assert.ok(statuses.includes('saving') && statuses.includes('saved'))
 })

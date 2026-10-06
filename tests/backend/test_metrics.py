@@ -44,18 +44,14 @@ def test_collect_outbox_and_job_gauges_from_database():
     import uuid
     from datetime import datetime, timedelta, timezone
 
-    from sqlalchemy import create_engine
-
     from backend.infrastructure.database import DatabaseSettings
     from backend.infrastructure.uow import AsyncUnitOfWork
 
-    TEST_DB_URL = "postgresql+psycopg://aivideo:aivideo-test@127.0.0.1:55433/aivideo_test"
+    import os
 
-    engine = create_engine(TEST_DB_URL)
-    with engine.begin() as conn:
-        for table in ("outbox", "generation_requests", "jobs"):
-            conn.exec_driver_sql(f"DELETE FROM {table}")
-    engine.dispose()
+    TEST_DB_URL = os.environ.get("AIVERO_METRICS_TEST_DB")
+    if not TEST_DB_URL:
+        pytest.skip("Set AIVERO_METRICS_TEST_DB to an isolated test database")
 
     async def seed():
         async with AsyncUnitOfWork(DatabaseSettings(url=TEST_DB_URL)) as uow:

@@ -9,7 +9,7 @@ import time
 
 import httpx
 
-from backend.app import ROOT
+from backend.paths import ROOT
 from backend.config import ENV
 
 
@@ -24,7 +24,7 @@ def test_live_http_and_sse(root):
     env["TEST_APP_ROOT"] = str(root)
     env["TEST_LISTENER_FD"] = str(listener.fileno())
     code = (
-        "import os,uvicorn; from pathlib import Path; from backend.app import create_app; "
+        "import os,uvicorn; from pathlib import Path; from backend.evaluation.sandbox import create_sandbox_app as create_app; "
         'uvicorn.run(create_app(Path(os.environ["TEST_APP_ROOT"])), '
         'fd=int(os.environ["TEST_LISTENER_FD"]), log_level="error")'
     )

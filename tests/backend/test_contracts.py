@@ -9,7 +9,7 @@ from PIL import Image
 
 from backend.common import read_json, write_json
 from backend.config import Config, load_config, patch_config, public_config
-from backend.jobs import Jobs
+from backend.evaluation.sandbox_jobs import Jobs
 from backend.models import GenParams, parse_image, parse_params
 from backend.planning import directions, rule_plan
 from backend.providers.base import Generated, Provider
@@ -17,7 +17,7 @@ from backend.providers.comfyui import ComfyProvider
 from backend.providers.cloud import CloudProvider
 from backend.providers.workflows import image_workflow, ltx_workflow, wan_workflow
 from backend.storage import History, Documents, apply_mask
-from backend.traces import Traces, classify
+from backend.traces import Traces
 
 CASES = json.loads((Path(__file__).parent / "fixtures/comfy-workflows.json").read_text())
 
@@ -307,6 +307,7 @@ def test_cancel_running_job_attempts_upstream_cancel(root):
 
 def test_cloud_edit_and_error_redaction(png):
     from backend.models import InitImage
+    from backend.providers.policy import ProviderFailure
 
     async def scenario():
         config = Config(
@@ -326,9 +327,9 @@ def test_cloud_edit_and_error_redaction(png):
             url, payload = provider.request(p, 5, InitImage(png, "png"), None)
             assert payload["model"] == "qwen-image-edit-plus"
             assert payload["input"]["messages"][0]["content"][0]["image"].startswith("data:")
-            with pytest.raises(ValueError) as error:
+            with pytest.raises(ProviderFailure) as error:
                 await provider.generate(p, 5, lambda *_: None)
             assert "private-key" not in str(error.value)
-            assert classify(str(error.value)) == "auth"
+            assert error.value.code.value == "UPSTREAM_AUTH"
 
     asyncio.run(scenario())

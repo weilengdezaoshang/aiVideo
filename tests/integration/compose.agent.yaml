@@ -1,0 +1,23 @@
+# Isolated, disposable infrastructure: docker compose -p aivideo-agent-test -f tests/integration/compose.agent.yaml up -d
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: agent_test
+      POSTGRES_PASSWORD: agent_test
+      POSTGRES_DB: agent_test
+    ports: ['127.0.0.1:55446:5432']
+    tmpfs: [/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U agent_test']
+      interval: 1s
+      retries: 30
+  redis:
+    image: redis:7-alpine
+    ports: ['127.0.0.1:6386:6379']
+  rabbitmq:
+    image: rabbitmq:3.13-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: agent_test
+      RABBITMQ_DEFAULT_PASS: agent_test
+    ports: ['127.0.0.1:5676:5672']

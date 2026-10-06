@@ -14,6 +14,8 @@ import asyncio
 import threading
 
 import httpx
+from redis.asyncio import Redis
+import os
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
 from backend.infrastructure.database import (
@@ -36,6 +38,8 @@ class AsyncRuntime:
         self._engine: AsyncEngine | None = None
         self._session_factory: async_sessionmaker | None = None
         self._http: httpx.AsyncClient | None = None
+        self._artifact_http: httpx.AsyncClient | None = None
+        self._redis: Redis | None = None
         self._closed = False
         self._thread.start()
         if not self._ready.wait(timeout=5):
@@ -67,8 +71,25 @@ class AsyncRuntime:
         if self._closed:
             raise RuntimeError("异步运行时已关闭")
         if self._http is None:
-            self._http = httpx.AsyncClient(follow_redirects=True)
+            from backend.providers.policy import ProviderPolicy
+            self._http = httpx.AsyncClient(
+                follow_redirects=False, trust_env=False, timeout=ProviderPolicy().http_timeout(30),
+                limits=httpx.Limits(max_connections=20, max_keepalive_connections=10))
         return self._http
+
+    def artifact_http(self) -> httpx.AsyncClient:
+        self._assert_loop_thread()
+        if self._artifact_http is None:
+            from backend.infrastructure.public_http import create_public_client
+            self._artifact_http = create_public_client()
+        return self._artifact_http
+
+    def redis(self) -> Redis:
+        self._assert_loop_thread()
+        if self._redis is None:
+            self._redis = Redis.from_url(os.environ["AIVERO_REDIS_URL"],
+                                         socket_connect_timeout=2, socket_timeout=2)
+        return self._redis
 
     def session_factory(self) -> async_sessionmaker:
         """进程内共享异步引擎与会话工厂;Session 每事务创建,不跨并发任务共享(§三.3)。"""
@@ -81,6 +102,12 @@ class AsyncRuntime:
         return self._session_factory
 
     async def aclose(self) -> None:
+        if self._artifact_http is not None:
+            await self._artifact_http.aclose()
+            self._artifact_http = None
+        if self._redis is not None:
+            await self._redis.aclose()
+            self._redis = None
         if self._http is not None:
             await self._http.aclose()
             self._http = None

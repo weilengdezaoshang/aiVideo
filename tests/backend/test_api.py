@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from backend.app import create_app
+from backend.evaluation.sandbox import create_sandbox_app as create_app
 from backend.common import write_json
 
 
@@ -29,7 +29,7 @@ def test_pages_and_errors(client):
         "/workspace/",
         "/canvas",
         "/canvas/",
-        "/canvas/app.js",
+        "/canvas-next/app.js",
     ]:
         assert client.get(path).status_code == 200, path
     for removed in ["/legacy", "/legacy/", "/index.html", "/app.js", "/style.css"]:
@@ -264,10 +264,11 @@ def test_cutout_session_requires_manual_confirmation(root, png):
 
 def test_node_styles_are_served_and_frontend_revalidates(client):
     page = client.get('/canvas/')
-    assert 'node-panel.css?v=2' in page.text
-    style = client.get('/canvas/node-panel.css?v=2')
+    assert '/canvas-next/canvas-next.css' in page.text
+    assert '/canvas-next/app.js' in page.text
+    style = client.get('/canvas-next/canvas-next.css')
     assert style.status_code == 200
-    assert '.node-panel' in style.text and 'position: fixed' in style.text
+    assert '.next-shell' in style.text and '.next-canvas' in style.text
     assert style.headers['cache-control'] == 'no-cache'
-    assert client.get('/canvas/canvas.css').headers['cache-control'] == 'no-cache'
+    assert client.get('/canvas-next/app.js').headers['cache-control'] == 'no-cache'
     assert page.headers['cache-control'] == 'no-cache'

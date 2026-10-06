@@ -328,6 +328,7 @@ class OutboxRepository:
         claimed_at = datetime.now(timezone.utc)
         for row in rows:
             row.status = "publishing"
+            row.claim_token = uuid.uuid4().hex
             # 领取时钟,reclaim_stale_publishing 按此判断滞留,而不是原来的到期时间。
             row.next_attempt_at = claimed_at
         await self._session.flush()
@@ -336,6 +337,7 @@ class OutboxRepository:
     async def mark_publishing(self, event: Outbox) -> None:
         """标记发布中(由 claim_and_mark_publishing 批量使用;测试/修复工具亦可单独调用)。"""
         event.status = "publishing"
+        event.claim_token = uuid.uuid4().hex
         event.next_attempt_at = datetime.now(timezone.utc)
         await self._session.flush()
 
@@ -348,7 +350,8 @@ class OutboxRepository:
     async def mark_failed(self, event: Outbox, *, backoff_s: int = 5) -> None:
         """发布失败(含无路由/ Broker 不可用):保持 pending 并退避。"""
         event.attempts += 1
-        event.status = "pending"
+        from backend.providers.policy import ProviderPolicy
+        event.status = "failed" if event.attempts >= ProviderPolicy().outbox_max_attempts else "pending"
         event.next_attempt_at = datetime.now(timezone.utc) + timedelta(seconds=backoff_s)
         await self._session.flush()
 

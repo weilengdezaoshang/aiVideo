@@ -5,6 +5,7 @@
 
 import { groupCardState } from '../state/group-state.js'
 import type { DocStore, ChatMessage } from '../state/doc-store.js'
+import type { CanvasObj } from '../state/commands.js'
 
 function localId(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
@@ -60,10 +61,12 @@ export function createChat({
   docStore,
   container,
   actions = {},
+  resolveObject = (id) => docStore.doc.objects[id],
 }: {
   docStore: DocStore
   container: HTMLElement
   actions?: ChatActions
+  resolveObject?: (id: string) => CanvasObj | undefined
 }): Chat {
   const doc = () => docStore.doc
   if (!Array.isArray(doc().chat)) {
@@ -168,7 +171,9 @@ export function createChat({
 
   /** 组卡实时状态:从画布对象推导(placeholder/image/error)。 */
   function groupLiveState(entry: ChatMessage) {
-    const slots = (entry.slotObjIds || []).map((id) => doc().objects[id]).filter((o) => Boolean(o))
+    const slots = (entry.slotObjIds || [])
+      .map(resolveObject)
+      .filter((object): object is CanvasObj => Boolean(object))
     const pending = slots.filter((o) => o.kind === 'placeholder')
     let state = { key: 'running', label: pending[0]?.gen?.message || '生成中…' }
     if (pending.some((o) => o.pendingConfirm)) {
@@ -202,7 +207,7 @@ export function createChat({
     ;(entry.slotObjIds || []).forEach((objId, index) => {
       const cell = el('div', 'group-cell')
       cell.append(el('span', 'cell-slot', String(index + 1)))
-      const obj = doc().objects[objId]
+      const obj = resolveObject(objId)
       if (!obj) {
         cell.append(el('span', 'cell-state', '已移除'))
       } else if (obj.kind === 'image' || obj.kind === 'video') {

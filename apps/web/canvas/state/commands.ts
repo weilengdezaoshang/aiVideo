@@ -22,6 +22,8 @@ export type CanvasObj = {
   height: number
   /** 顺时针旋转角度,默认 0 */
   rotation?: number
+  /** Initial media framing migrated once; later user transforms remain authoritative. */
+  canvasSizeVersion?: 1 | 2
   nodeDraft?: NodeDraft
   nodeRun?: NodeRun
   textCard?: boolean
@@ -40,6 +42,16 @@ export type CanvasObj = {
   lineage?: { fromId: string; params: object }
   /** 生成中占位的任务关联;jobId 在 POST 响应前可为空(事件回填) */
   gen?: { jobId?: string; progress?: number; message?: string }
+  /** 生成任务的稳定关联；进度与文案存放在 GenerationRuntimeStore。 */
+  generationRef?: { operationId: string; jobId?: string }
+  /** 可持久化的生成输入，用于显式重试与谱系检查。 */
+  generationSpec?: {
+    mode: 'text-to-image' | 'image-to-image'
+    params: Record<string, unknown>
+    sourceObjectId?: string
+  }
+  /** 生成实体引用；placement 的布局独立于任务与产物状态。 */
+  generationId?: string
   /** 四方向组 id(PRD §5) */
   groupId?: string
   /** 组内槽位 0..3(横排顺序固定) */
@@ -98,6 +110,15 @@ export function cmdBatch(commands: CanvasCommand[]): BatchCommand {
   return { type: 'batch', commands }
 }
 
+export function cmdGenerateNode(spec: {
+  transactionId: string
+  objectId: string
+  generationId: string
+  initialPlacement: CanvasObj
+}): GenerateNodeCommand {
+  return { type: 'generateNode', ...spec, initialPlacement: structuredClone(spec.initialPlacement) }
+}
+
 export type AddObjectsCommand = { type: 'addObjects'; objects: CanvasObj[] }
 export type RemoveObjectsCommand = {
   type: 'removeObjects'
@@ -114,6 +135,13 @@ export type UpdateObjectCommand = {
   prevPatch: Record<string, unknown>
 }
 export type BatchCommand = { type: 'batch'; commands: CanvasCommand[] }
+export type GenerateNodeCommand = {
+  type: 'generateNode'
+  transactionId: string
+  objectId: string
+  generationId: string
+  initialPlacement: CanvasObj
+}
 export type SetTimelineCommand = { type: 'setTimeline'; before?: Timeline; after?: Timeline }
 export type SetStoryboardCommand = {
   type: 'setStoryboard'
@@ -127,6 +155,7 @@ export type CanvasCommand =
   | RemoveObjectsCommand
   | MoveObjectsCommand
   | UpdateObjectCommand
+  | GenerateNodeCommand
   | BatchCommand
 
 /** 可就地应用命令的最小文档形状 */
@@ -169,6 +198,13 @@ export function applyCommand(doc: CommandDoc, cmd: CanvasCommand): void {
         }
       }
       break
+    case 'generateNode': {
+      doc.objects[cmd.objectId] = structuredClone(cmd.initialPlacement)
+      if (!doc.order.includes(cmd.objectId)) {
+        doc.order.push(cmd.objectId)
+      }
+      break
+    }
     case 'removeObjects':
       for (const entry of cmd.entries) {
         delete doc.objects[entry.object.id]
@@ -213,6 +249,9 @@ export function invertCommand(cmd: CanvasCommand): CanvasCommand {
       return cmdMoveObjects(cmd.moves.map((m) => ({ id: m.id, from: m.to, to: m.from })))
     case 'updateObject':
       return cmdUpdateObject(cmd.id, cmd.prevPatch, cmd.patch)
+    case 'generateNode': {
+      return cmdRemoveObjects([{ object: structuredClone(cmd.initialPlacement), orderIndex: -1 }])
+    }
     case 'batch':
       return cmdBatch([...cmd.commands].reverse().map((child) => invertCommand(child)))
   }

@@ -101,11 +101,17 @@ class Documents:
             revision=current["revision"] + 1,
             updatedAt=now(),
         )
-        for key, kind, maximum in [("groups", dict, 200), ("chat", list, 500)]:
+        for key, kind, maximum in [
+            ("groups", dict, 200),
+            ("chat", list, 500),
+            ("generations", dict, 5000),
+        ]:
             if key in raw:
                 if not isinstance(raw[key], kind) or len(raw[key]) > maximum:
                     raise ValueError(f"文档 {key} 格式错误或超出限制")
                 doc[key] = raw[key]
+        if "generations" not in raw and "generations" in current:
+            doc["generations"] = current["generations"]
         if "storyboard" in raw:
             if raw["storyboard"] is not None:
                 doc["storyboard"] = validate_storyboard(raw["storyboard"])

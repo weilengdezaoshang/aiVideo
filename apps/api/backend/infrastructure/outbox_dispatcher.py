@@ -54,7 +54,8 @@ class OutboxDispatcher:
         except Exception:
             # 连接或拓扑失败:整批退避(§五.2 broker 不可用时事件保持 pending)
             failed_ids.extend(r["id"] for r in rows if r["id"] not in published_ids)
-        asyncio.run(self._settle(published_ids, failed_ids, backoff_s))
+        asyncio.run(self._settle(published_ids, failed_ids, backoff_s,
+                                {r["id"]: r["claim_token"] for r in rows}))
         result["published"] = len(published_ids)
         result["failed"] = len(failed_ids)
         return result
@@ -72,6 +73,7 @@ class OutboxDispatcher:
             return [
                 dict(
                     id=str(r.id),
+                    claim_token=r.claim_token,
                     event_type=r.event_type,
                     schema_version=r.schema_version,
                     aggregate_type=r.aggregate_type,
@@ -82,19 +84,27 @@ class OutboxDispatcher:
                 for r in rows
             ]
 
-    async def _settle(self, published_ids, failed_ids, backoff_s: int):
+    async def _settle(self, published_ids, failed_ids, backoff_s: int, tokens=None):
         from backend.infrastructure.uow import AsyncUnitOfWork
 
         async with AsyncUnitOfWork(self._settings) as uow:
             for eid in published_ids:
-                row = await uow.outbox.get(eid)
-                if row is not None and row.status == "publishing":
+                row = await self._locked_event(uow, eid)
+                if row is not None and row.status == "publishing" and tokens and row.claim_token == tokens.get(eid):
                     await uow.outbox.mark_published(row)
             for eid in failed_ids:
-                row = await uow.outbox.get(eid)
-                if row is not None and row.status == "publishing":
+                row = await self._locked_event(uow, eid)
+                if row is not None and row.status == "publishing" and tokens and row.claim_token == tokens.get(eid):
                     await uow.outbox.mark_failed(row, backoff_s=backoff_s)
             await uow.commit()
+
+    async def _locked_event(self, uow, eid):
+        import uuid
+        from sqlalchemy import select
+        from backend.infrastructure.orm import Outbox
+
+        return (await uow.session.execute(select(Outbox).where(
+            Outbox.id == uuid.UUID(str(eid))).with_for_update())).scalar_one_or_none()
 
     async def _reclaim(self, older_than_s: int) -> int:
         from backend.infrastructure.uow import AsyncUnitOfWork

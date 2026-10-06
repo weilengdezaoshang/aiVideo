@@ -71,7 +71,8 @@ def load_run(run_dir: Path) -> tuple[dict, dict | None]:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    from backend.app import create_app, ROOT as APP_ROOT
+    from backend.config import Config, load_config
+    from backend.evaluation.sandbox import create_sandbox_app
 
     entries = read_jsonl(Path(args.set))
     if args.only:
@@ -83,9 +84,11 @@ def cmd_run(args: argparse.Namespace) -> int:
     run_dir = Path(args.out) / (args.run_id or time.strftime("%Y%m%d-%H%M%S"))
     (run_dir / "artifacts").mkdir(parents=True, exist_ok=True)
 
-    previous_provider = os.environ.get("SWARMUI_PROVIDER")
-    os.environ["SWARMUI_PROVIDER"] = args.provider
-    app = create_app(APP_ROOT, data_dir=run_dir / "data")
+    # Mock runs never inherit the real repository provider or credentials.
+    config = Config(provider="mock") if args.provider == "mock" else load_config(run_dir).model_copy(
+        update={"provider": args.provider}
+    )
+    app = create_sandbox_app(run_dir, data_dir=run_dir / "data", config=config)
     run = dict(
         runId=run_dir.name,
         createdAt=now_iso(),
@@ -93,55 +96,49 @@ def cmd_run(args: argparse.Namespace) -> int:
         providerRequested=args.provider,
         entries=[],
     )
-    try:
-        with TestClient(app) as client:
-            config = client.get("/api/config").json()["config"]
-            run["provider"] = config["provider"]
-            run["model"] = config.get("cloudModel") or ""
-            models = client.get("/api/models").json().get("models", [])
-            default_model = models[0]["id"] if models else ""
-            for entry in entries:
-                record = dict(
-                    id=entry["id"],
-                    bucket=entry["bucket"],
-                    prompt=entry["prompt"],
-                    params=entry["params"],
-                    status="pending",
-                )
-                run["entries"].append(record)
-                started = time.monotonic()
-                response = client.post(
-                    "/api/generate",
-                    json={**entry["params"], "prompt": entry["prompt"], "model": default_model},
-                )
-                if response.status_code != 202:
-                    record.update(status="submit_failed", error=response.json().get("error", ""))
-                    continue
-                job_id = response.json()["jobId"]
-                record["jobId"] = job_id
-                deadline = time.monotonic() + JOB_TIMEOUT_SEC
-                while time.monotonic() < deadline:
-                    job = client.get(f"/api/jobs/{job_id}").json()["job"]
-                    if job["status"] in {"completed", "failed"}:
-                        break
-                    time.sleep(0.05)
-                record["elapsedMs"] = int((time.monotonic() - started) * 1000)
-                if job["status"] != "completed" or not job.get("images"):
-                    record.update(status=job["status"], error=job.get("error", ""))
-                    continue
-                image = job["images"][0]
-                artifact = run_dir / "artifacts" / f"{entry['id']}.{image['file'].rsplit('.', 1)[-1]}"
-                artifact.write_bytes(client.get(image["url"]).content)
-                record.update(
-                    status="completed",
-                    artifact=str(artifact.relative_to(run_dir)),
-                    seed=image["params"].get("seed"),
-                )
-    finally:
-        if previous_provider is None:
-            os.environ.pop("SWARMUI_PROVIDER", None)
-        else:
-            os.environ["SWARMUI_PROVIDER"] = previous_provider
+    with TestClient(app) as client:
+        config = client.get("/api/config").json()["config"]
+        run["provider"] = config["provider"]
+        run["model"] = config.get("cloudModel") or ""
+        models = client.get("/api/models").json().get("models", [])
+        default_model = models[0]["id"] if models else ""
+        for entry in entries:
+            record = dict(
+                id=entry["id"],
+                bucket=entry["bucket"],
+                prompt=entry["prompt"],
+                params=entry["params"],
+                status="pending",
+            )
+            run["entries"].append(record)
+            started = time.monotonic()
+            response = client.post(
+                "/api/generate",
+                json={**entry["params"], "prompt": entry["prompt"], "model": default_model},
+            )
+            if response.status_code != 202:
+                record.update(status="submit_failed", error=response.json().get("error", ""))
+                continue
+            job_id = response.json()["jobId"]
+            record["jobId"] = job_id
+            deadline = time.monotonic() + JOB_TIMEOUT_SEC
+            while time.monotonic() < deadline:
+                job = client.get(f"/api/jobs/{job_id}").json()["job"]
+                if job["status"] in {"completed", "failed"}:
+                    break
+                time.sleep(0.05)
+            record["elapsedMs"] = int((time.monotonic() - started) * 1000)
+            if job["status"] != "completed" or not job.get("images"):
+                record.update(status=job["status"], error=job.get("error", ""))
+                continue
+            image = job["images"][0]
+            artifact = run_dir / "artifacts" / f"{entry['id']}.{image['file'].rsplit('.', 1)[-1]}"
+            artifact.write_bytes(client.get(image["url"]).content)
+            record.update(
+                status="completed",
+                artifact=str(artifact.relative_to(run_dir)),
+                seed=image["params"].get("seed"),
+            )
 
     (run_dir / "run.json").write_text(
         json.dumps(run, ensure_ascii=False, indent=2), encoding="utf-8"

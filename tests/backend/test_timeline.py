@@ -40,6 +40,46 @@ def test_document_timeline_roundtrip_and_old_client_compatibility(tmp_path):
     assert "timeline" not in removed
 
 
+def test_document_generation_entities_roundtrip(tmp_path):
+    docs = Documents(tmp_path)
+    doc = docs.create("生成实体")
+    generations = {
+        "generation-1": {
+            "id": "generation-1",
+            "operationId": "operation-1",
+            "spec": {"mode": "text-to-image", "params": {"prompt": "猫"}},
+            "status": "completed",
+            "result": {
+                "assetId": "asset-1",
+                "src": "/images/cat.png",
+                "ext": "png",
+                "kind": "image",
+            },
+            "version": 2,
+        }
+    }
+    payload = {
+        "name": doc["name"],
+        "objects": {
+            "placement-1": {
+                "id": "placement-1",
+                "kind": "placeholder",
+                "generationId": "generation-1",
+            }
+        },
+        "order": ["placement-1"],
+        "generations": generations,
+        "baseRevision": 1,
+    }
+    saved = docs.save(doc["id"], payload)
+    assert saved["generations"] == generations
+    assert Documents(tmp_path).get(doc["id"])["generations"] == generations
+    legacy_saved = docs.save(
+        doc["id"], {"name": doc["name"], "objects": payload["objects"], "order": payload["order"]}
+    )
+    assert legacy_saved["generations"] == generations
+
+
 def test_timeline_canvas_position_roundtrip(tmp_path):
     raw = timeline()
     raw["canvas"] = {"x": -120.5, "y": 800}

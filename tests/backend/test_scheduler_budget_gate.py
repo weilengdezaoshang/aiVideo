@@ -21,7 +21,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.app import create_app
+from backend.evaluation.sandbox import create_sandbox_app as create_app
 from backend.config import Config
 from backend.evaluation.datasets import DatasetStore
 from backend.evaluation.budgets import (

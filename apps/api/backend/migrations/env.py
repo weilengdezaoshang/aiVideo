@@ -11,6 +11,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from backend.infrastructure.orm import Base
+from backend.agent import orm as agent_orm  # noqa: F401 — register Agent tables in the shared metadata
 
 config = context.config
 if config.config_file_name is not None:

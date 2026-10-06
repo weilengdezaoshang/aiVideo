@@ -1,0 +1,12 @@
+{
+  "image": {
+    "provider": "mock",
+    "cloudModel": "mock-test",
+    "configVersion": "mock-v1"
+  },
+  "video": {
+    "provider": "mock",
+    "videoModel": "mock-video",
+    "configVersion": "mock-v1"
+  }
+}

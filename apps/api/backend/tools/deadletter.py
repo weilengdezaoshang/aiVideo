@@ -73,11 +73,20 @@ def requeue(
     event_id = uuid_mod.UUID(str(event_id))
 
     async def requeue_one() -> dict:
+        from backend.infrastructure.orm import AuditEvent, Job, Outbox
         async with AsyncUnitOfWork(settings) as uow:
-            event = await uow.outbox.get(event_id)
+            event = await uow.session.get(Outbox, event_id, with_for_update=True)
             if event is None or event.status != "failed":
                 return {"requeued": False, "reason": "not-dead"}
-            job = await uow.jobs.get(uuid_mod.UUID(event.aggregate_id))
+            job = await uow.session.get(Job, uuid_mod.UUID(event.aggregate_id), with_for_update=True)
+            if job is None:
+                return {"requeued": False, "reason": "job-missing"}
+            def audit(row):
+                if job.provider_snapshot:
+                    uow.session.add(AuditEvent(workspace_id=job.workspace_id, actor=operator,
+                        action=row["action"], target=str(event_id), details={**row, "reason": reason}))
+                else:
+                    _audit(audit_path, operator, reason, row)
             if job is not None and job.status in {"completed", "failed", "unknown"}:
                 row = {
                     "action": "requeue-denied",
@@ -85,18 +94,20 @@ def requeue(
                     "jobId": event.aggregate_id,
                     "jobStatus": job.status,
                 }
-                _audit(audit_path, operator, reason, row)
+                audit(row)
                 return {"requeued": False, "reason": "job-terminal"}
             event.status = "pending"
             event.attempts = 0
-            await uow.commit()
+            event.next_attempt_at = datetime.now(timezone.utc)
+            event.claim_token = None
             row = {
                 "action": "requeue",
                 "eventId": str(event_id),
                 "jobId": event.aggregate_id,
                 "eventType": event.event_type,
             }
-            _audit(audit_path, operator, reason, row)
+            audit(row)
+            await uow.commit()
             return {"requeued": True, "jobId": event.aggregate_id}
 
     return asyncio.run(requeue_one())

@@ -12,14 +12,18 @@
 import socket
 import time
 
-from kombu import Exchange, Queue
+from kombu import Exchange, Queue, binding
 
 JOBS_EXCHANGE = Exchange("aivideo.jobs", type="topic", durable=True)
 DLX_EXCHANGE = Exchange("aivideo.dlx", type="topic", durable=True)
 GENERATION_QUEUE = Queue(
     "aivideo.jobs.generation",
     exchange=JOBS_EXCHANGE,
-    routing_key="job.*",
+    bindings=[binding(JOBS_EXCHANGE, routing_key="job.created"),
+              binding(JOBS_EXCHANGE, routing_key="job.poll_due"),
+              # Compatibility for the pre-cutover pipeline only. Durable notifications
+              # use job.changed on their own queue, never this legacy consumer.
+              binding(JOBS_EXCHANGE, routing_key="job.updated")],
     durable=True,
     queue_arguments={"x-queue-type": "quorum", "x-dead-letter-exchange": "aivideo.dlx"},
 )
@@ -30,11 +34,23 @@ DEAD_QUEUE = Queue(
     durable=True,
     queue_arguments={"x-queue-type": "quorum"},
 )
+PHASE_QUEUE = Queue(
+    "aivideo.phase.events", exchange=JOBS_EXCHANGE, routing_key="execution.due", durable=True,
+    queue_arguments={"x-queue-type": "quorum", "x-dead-letter-exchange": "aivideo.dlx"},
+)
+NOTIFICATION_QUEUE = Queue(
+    "aivideo.notifications", exchange=JOBS_EXCHANGE, routing_key="job.changed", durable=True,
+    queue_arguments={"x-queue-type": "quorum", "x-dead-letter-exchange": "aivideo.dlx"},
+)
+AGENT_PHASE_QUEUE = Queue(
+    "aivideo.agent.events", exchange=JOBS_EXCHANGE, routing_key="agent.due", durable=True,
+    queue_arguments={"x-queue-type": "quorum", "x-dead-letter-exchange": "aivideo.dlx"},
+)
 
 
 def declare_topology(connection) -> None:
     with connection.channel() as channel:
-        for entity in (JOBS_EXCHANGE, DLX_EXCHANGE, GENERATION_QUEUE, DEAD_QUEUE):
+        for entity in (JOBS_EXCHANGE, DLX_EXCHANGE, GENERATION_QUEUE, DEAD_QUEUE, PHASE_QUEUE, NOTIFICATION_QUEUE, AGENT_PHASE_QUEUE):
             entity(channel).declare()
 
 

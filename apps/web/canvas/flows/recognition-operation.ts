@@ -1,3 +1,5 @@
+import type { CanvasView } from '../core/canvas-view.js'
+
 /** A request owns its result only while its source identity and session still match. */
 export class RecognitionOperation {
   readonly id = crypto.randomUUID()
@@ -5,7 +7,18 @@ export class RecognitionOperation {
   private pending = false
   private finished = false
 
-  constructor(private readonly matchesSource: () => boolean) {}
+  private unsubscribe?: () => void
+
+  constructor(
+    private readonly matchesSource: () => boolean,
+    subscribe?: (check: () => void) => () => void,
+  ) {
+    this.unsubscribe = subscribe?.(() => {
+      if (!this.current()) {
+        this.cancel()
+      }
+    })
+  }
 
   get signal(): AbortSignal {
     return this.controller.signal
@@ -17,6 +30,7 @@ export class RecognitionOperation {
 
   assertCurrent(): void {
     if (!this.current()) {
+      this.cancel()
       throw new DOMException('识别已取消', 'AbortError')
     }
   }
@@ -50,6 +64,7 @@ export class RecognitionOperation {
       return
     }
     this.finished = true
+    this.unsubscribe?.()
     this.controller.abort()
     if (this.pending) {
       void fetch(`/api/cutout/operations/${this.id}`, { method: 'DELETE', keepalive: true }).catch(
@@ -59,7 +74,25 @@ export class RecognitionOperation {
   }
 
   complete(): void {
+    this.unsubscribe?.()
     this.pending = false
     this.finished = true
   }
+}
+
+/** Observe the view synchronously: React effects may run after a late network callback. */
+export function createCanvasRecognition(
+  view: Pick<CanvasView, 'getSnapshot' | 'subscribe'>,
+  sourceId: string,
+  matchesSource: () => boolean,
+): RecognitionOperation {
+  return new RecognitionOperation(() => {
+    const snapshot = view.getSnapshot()
+    return (
+      snapshot.requestedTool === 'recognizing' &&
+      snapshot.selection.length === 1 &&
+      snapshot.selection[0] === sourceId &&
+      matchesSource()
+    )
+  }, view.subscribe)
 }

@@ -1400,7 +1400,7 @@ def create_sandbox_app(sandbox: Path, config: Config, transport=None):
 
     transport 是评测的外部调用边界:live 注入预算网关+录制,回放注入严格匹配。
     """
-    from ..app import create_app
+    from .sandbox import create_sandbox_app as create_app
 
     return create_app(sandbox, data_dir=sandbox / "data", config=config, transport=transport)
 

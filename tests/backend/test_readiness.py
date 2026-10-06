@@ -7,7 +7,7 @@
 
 from fastapi.testclient import TestClient
 
-from backend.app import create_app
+from backend.evaluation.sandbox import create_sandbox_app as create_app
 
 
 def test_health_endpoint_stays_liveness_only(root):

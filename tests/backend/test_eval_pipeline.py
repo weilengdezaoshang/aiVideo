@@ -3,7 +3,7 @@
 import importlib.util
 import json
 
-from backend.app import ROOT
+from backend.paths import ROOT
 
 
 def load_eval_module():

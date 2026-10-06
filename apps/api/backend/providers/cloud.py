@@ -6,6 +6,7 @@ import base64
 import httpx
 
 from .base import Generated, Provider
+from .policy import Operation, ProviderFailure, classify_failure
 
 
 def resolve_model(config, reference=False):
@@ -95,11 +96,18 @@ class CloudProvider(Provider):
         return self.vendor_base(VIDEO_SYNTHESIS_PATH), body
 
     async def video_task(self, task_id, key):
-        response = await self.client.get(
-            self.vendor_base(f"/tasks/{task_id}"),
-            headers={"Authorization": f"Bearer {key}"},
-            timeout=30,
-        )
+        try:
+            response = await self.client.get(
+                self.vendor_base(f"/tasks/{task_id}"),
+                headers={"Authorization": f"Bearer {key}"},
+                timeout=30,
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            failure = classify_failure(exc, Operation.POLL)
+            failure.message = f"查询视频任务失败:{failure.message}"
+            failure.args = (failure.message,)
+            raise failure from exc
         try:
             payload = response.json()
         except ValueError:
@@ -134,6 +142,7 @@ class CloudProvider(Provider):
                     headers={"Authorization": f"Bearer {key}", "X-DashScope-Async": "enable"},
                     timeout=30,
                 )
+                response.raise_for_status()
                 try:
                     payload = response.json()
                 except ValueError:
@@ -243,6 +252,7 @@ class CloudProvider(Provider):
         self, params, seed, progress, image=None, mask=None, external=None, external_task_id=None
     ):
         key = self.config.imageApiKey
+        operation = Operation.SUBMIT
         try:
             if params.kind == "video":
                 return await self.generate_video(
@@ -258,6 +268,7 @@ class CloudProvider(Provider):
                 headers={"Authorization": f"Bearer {key}"},
                 timeout=self.config.imageTimeoutMin * 60,
             )
+            response.raise_for_status()
             payload = response.json()
             if not response.is_success or payload.get("code"):
                 detail = (
@@ -281,6 +292,7 @@ class CloudProvider(Provider):
                 data = base64.b64decode(item["b64_json"], validate=True)
                 ext = "png"
             elif item.get("url"):
+                operation = Operation.DOWNLOAD
                 progress(0.75, "下载图像")
                 download = await self.client.get(item["url"], timeout=60)
                 download.raise_for_status()
@@ -292,6 +304,10 @@ class CloudProvider(Provider):
             if not data:
                 raise ValueError("云端返回空图像")
             return Generated(data, ext)
+        except ProviderFailure:
+            raise
+        except (httpx.HTTPError, TimeoutError) as exc:
+            raise classify_failure(exc, operation) from exc
         except Exception as exc:
             message = str(exc)
             redact = key or self.video_key()

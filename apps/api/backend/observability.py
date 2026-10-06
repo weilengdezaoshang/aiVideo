@@ -33,6 +33,10 @@ def get_request_id() -> str:
 
 
 def redact_text(text: str) -> str:
+    text = re.sub(r"(?i)(authorization\s*[=:]\s*)(?:bearer|basic)\s+[^\s,;]+",
+                  lambda match: match.group(1) + _REDACTED, text)
+    text = re.sub(r"(https?|postgresql(?:\+psycopg)?|amqps?|redis)://[^\s'\"]+",
+                  lambda match: match.group(1) + "://[REDACTED]", text)
     return _SENSITIVE_PAIR_RE.sub(lambda m: f"{m.group(1)}{m.group(2)}{_REDACTED}", text)
 
 
@@ -62,6 +66,9 @@ class JsonFormatter(logging.Formatter):
         }
         if record.exc_info:
             payload["stack"] = redact_text(self.formatException(record.exc_info))
+        for key in ("jobId", "executionEpoch", "phase", "elapsedMs", "method", "path", "status", "durationMs"):
+            if hasattr(record, key):
+                payload[key] = getattr(record, key)
         return json.dumps(payload, ensure_ascii=False)
 
 

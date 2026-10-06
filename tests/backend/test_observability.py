@@ -8,7 +8,7 @@ import logging
 import httpx
 from fastapi.testclient import TestClient
 
-from backend.app import create_app
+from backend.evaluation.sandbox import create_sandbox_app as create_app
 from backend.observability import (
     JsonFormatter,
     get_request_id,
@@ -94,6 +94,9 @@ def test_redaction_masks_sensitive_keys_and_pairs():
     text = redact_text("请求 imageApiKey=sk-secret 失败;Authorization: Bearer abc; 次数=3")
     assert "sk-secret" not in text and "Bearer abc" not in text
     assert "次数=3" in text
+    assert "abc" not in text
+    assert "signed-value" not in redact_text("HTTP GET https://cdn.test/file?signature=signed-value")
+    assert "db-secret" not in redact_text("postgresql+psycopg://user:db-secret@localhost/db")
 
 
 def test_request_id_contextvar_is_isolated_across_tasks():

@@ -1,3 +1,6 @@
+import { installSessionFetch } from '../shared/session-fetch.js'
+installSessionFetch()
+
 import { StrictMode, useCallback, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Sidebar, type WorkspaceTab } from '../ui/Sidebar.js'

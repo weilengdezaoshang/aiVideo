@@ -10,7 +10,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.app import create_app
+from backend.evaluation.sandbox import create_sandbox_app as create_app
 from backend.errors import (
     DataCorruptedError,
     ErrorCode,
@@ -20,7 +20,7 @@ from backend.errors import (
     classify_exception,
     status_contract,
 )
-from backend.jobs import Jobs
+from backend.evaluation.sandbox_jobs import Jobs
 from backend.models import GenParams
 from backend.providers.base import Provider
 from backend.storage import History

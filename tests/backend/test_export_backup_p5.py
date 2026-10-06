@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from backend.app import create_app
+from backend.evaluation.sandbox import create_sandbox_app as create_app
 from backend.config import Config
 from backend.evaluation.backup import create_backup, restore_backup
 from backend.evaluation.export import csv_safe, export_bundle, export_csv, export_run, verify_bundle

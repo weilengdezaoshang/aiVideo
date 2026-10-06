@@ -36,6 +36,54 @@ class Workspace(Base):
     )
 
 
+class WorkspaceMember(Base):
+    __tablename__ = "workspace_members"
+    workspace_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("workspaces.id"), primary_key=True)
+    principal_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    role: Mapped[str] = mapped_column(String(16), default="member")
+
+
+class BrowserSession(Base):
+    __tablename__ = "browser_sessions"
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    principal_id: Mapped[str] = mapped_column(String(64), index=True)
+    csrf_hash: Mapped[str] = mapped_column(String(64))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class AuditEvent(Base):
+    __tablename__ = "audit_events"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=_uuid)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("workspaces.id"))
+    actor: Mapped[str] = mapped_column(String(200))
+    action: Mapped[str] = mapped_column(String(64))
+    target: Mapped[str] = mapped_column(String(128))
+    details: Mapped[dict] = mapped_column(JSONVariant, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class MediaAlias(Base):
+    __tablename__ = "media_aliases"
+    workspace_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("workspaces.id"), primary_key=True)
+    path: Mapped[str] = mapped_column(String(255), primary_key=True)
+    asset_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("assets.id"))
+
+
+class DocumentRequest(Base):
+    __tablename__ = "document_requests"
+    workspace_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("workspaces.id"), primary_key=True)
+    request_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    request_hash: Mapped[str] = mapped_column(String(64))
+    document_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("documents.id"))
+
+
+class RequestTombstone(Base):
+    __tablename__ = "request_tombstones"
+    workspace_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("workspaces.id"), primary_key=True)
+    request_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Document(Base):
     __tablename__ = "documents"
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=_uuid)
@@ -81,6 +129,7 @@ class Job(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=_uuid)
     workspace_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("workspaces.id"))
     document_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("jobs.id"), nullable=True, index=True)
     generation_request_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     kind: Mapped[str] = mapped_column(String(16))
     status: Mapped[str] = mapped_column(String(16), default="queued")
@@ -94,9 +143,21 @@ class Job(Base):
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
     state_version: Mapped[int] = mapped_column(Integer, default=0)
     execution_epoch: Mapped[int] = mapped_column(Integer, default=0)
+    phase: Mapped[str] = mapped_column(String(32), default="prepare", server_default="prepare")
+    lease_owner: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dispatched_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reconcile_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    queue_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    execution_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    download_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancel_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    phase_failures: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    provider_snapshot: Mapped[dict] = mapped_column(JSONVariant, default=dict, server_default="{}")
+    phase_payload: Mapped[dict] = mapped_column(JSONVariant, default=dict, server_default="{}")
     next_poll_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # 模型执行名额(§八.2):与 Worker 执行槽位不同;领取/释放按 job 自身为所有者。
-    slot_scope: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    slot_scope: Mapped[str | None] = mapped_column(String(128), nullable=True)
     slot_acquired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -108,6 +169,7 @@ class Job(Base):
     __table_args__ = (
         Index("ix_jobs_workspace_status_created", "workspace_id", "status", "created_at"),
         Index("ix_jobs_status_next_poll", "status", "next_poll_at"),
+        Index("ix_jobs_recovery_lease", "status", "lease_until"),
     )
 
 
@@ -138,6 +200,7 @@ class Asset(Base):
     bytes: Mapped[int] = mapped_column(Integer, default=0)
     sha256: Mapped[str] = mapped_column(String(64), default="")
     storage_key: Mapped[str] = mapped_column(String(255))
+    details: Mapped[dict] = mapped_column(JSONVariant, default=dict, server_default="{}")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -172,6 +235,7 @@ class Outbox(Base):
     payload: Mapped[dict] = mapped_column(JSONVariant, default=dict)
     status: Mapped[str] = mapped_column(String(16), default="pending")
     attempts: Mapped[int] = mapped_column(Integer, default=0)
+    claim_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
     next_attempt_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

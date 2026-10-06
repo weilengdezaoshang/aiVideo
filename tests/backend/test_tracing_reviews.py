@@ -8,7 +8,7 @@ import httpx
 import pytest
 from PIL import Image
 
-from backend.app import create_app
+from backend.evaluation.sandbox import create_sandbox_app as create_app
 from backend.config import Config
 from backend.evaluation.outbox import Outbox
 from backend.evaluation.reviews import (
@@ -17,7 +17,7 @@ from backend.evaluation.reviews import (
     publish_case_draft,
 )
 from backend.evaluation.tracing import TraceRecorder
-from backend.jobs import Jobs
+from backend.evaluation.sandbox_jobs import Jobs
 from backend.traces import Traces
 
 from eval_helpers import make_case

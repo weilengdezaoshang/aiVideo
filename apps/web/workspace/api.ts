@@ -1,5 +1,6 @@
 import {
   createNode,
+  initializeGenerationFrame,
   outputSize,
   type Capabilities,
   type MediaKind,
@@ -146,6 +147,7 @@ export class CreationIntent {
   ) {
     if (kind && draft) {
       this.node = createNode(kind, { x: 80, y: 80 }, truncateLabel(draft.prompt))
+      initializeGenerationFrame(this.node, outputSize(draft), kind)
       this.node.nodeDraft = structuredClone(draft)
       this.node.nodeRun = {
         requestId: this.requestId,

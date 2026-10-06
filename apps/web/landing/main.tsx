@@ -1,3 +1,6 @@
+import { installSessionFetch } from '../shared/session-fetch.js'
+installSessionFetch()
+
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { LandingPage } from './LandingPage.js'

@@ -25,6 +25,13 @@ export type JobLike = {
   slot?: number
   directionTitle?: string
   clientRef?: string
+  requestId?: string
+  documentId?: string
+  stateVersion?: number
+  progressSeq?: number
+  code?: string | null
+  recovery?: string | null
+  retryAfter?: number | null
 }
 
 /** job 事件计算出的占位变更描述 */
@@ -137,12 +144,13 @@ export function reconcile(
   doc: { objects: Record<string, CanvasObj> },
   serverJobs: JobLike[],
   resolveImage?: ResolveImage,
+  confirmedMissing?: ReadonlySet<string>,
 ): { changedIds: string[]; lostIds: string[] } {
   const byJobId = new Map(serverJobs.map((j) => [j.id, j]))
   const changedIds: string[] = []
   const lostIds: string[] = []
   for (const obj of Object.values(doc.objects)) {
-    if (obj.kind !== 'placeholder' || !obj.gen?.jobId) {
+    if (obj.generationId || obj.kind !== 'placeholder' || !obj.gen?.jobId) {
       continue
     }
     if (obj.groupId) {
@@ -153,6 +161,9 @@ export function reconcile(
     const jobId = obj.gen.jobId
     const job = byJobId.get(jobId)
     if (!job) {
+      if (confirmedMissing && !confirmedMissing.has(jobId)) {
+        continue
+      }
       obj.kind = 'error'
       obj.errorDetail = '任务丢失:服务已重启,该任务未能找回'
       delete obj.gen

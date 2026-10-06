@@ -1,30 +1,6 @@
-services:
-  # FastAPI 主后端；运行时数据通过独立卷持久化。
-  app:
-    build: .
-    volumes:
-      - app_data:/app/data
-    ports:
-      - '7801:7801'
-    environment:
-      SWARMUI_PORT: '7801'
-      SWARMUI_HOST: '0.0.0.0'
-      SWARMUI_PROVIDER: ${SWARMUI_PROVIDER:-mock}
-      SWARMUI_COMFY_URL: ${SWARMUI_COMFY_URL:-http://comfyui:8188}
-      CUTOUT_MODEL: ${CUTOUT_MODEL:-birefnet-portrait}
-
-  # 真实出图后端:docker compose --profile comfy up -d 后,
-  # 用 SWARMUI_PROVIDER=comfyui SWARMUI_COMFY_URL=http://comfyui:8188 启动 app
-  comfyui:
-    image: yanwk/comfyui-boot:latest
-    profiles: ['comfy']
-    ports:
-      - '8188:8188'
-    volumes:
-      - comfy_models:/root/ComfyUI/models
-      - comfy_output:/root/ComfyUI/output
-
-volumes:
-  app_data:
-  comfy_models:
-  comfy_output:
+# One application architecture for development and deployment.
+# Required configuration is documented in .env.production.example.
+include:
+  - path:
+      - compose.execution.yaml
+      - compose.production.yaml

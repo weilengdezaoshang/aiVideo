@@ -72,7 +72,7 @@ export async function applySubjectToShots(
   if (
     signal.aborted ||
     JSON.stringify(store.doc.storyboard) !== boardSnapshot ||
-    store.doc.objects[subject.id] !== subject ||
+    !store.doc.objects[subject.id] ||
     subject.src !== subjectSnapshot.src ||
     subject.assetId !== subjectSnapshot.assetId ||
     subject.ext !== subjectSnapshot.ext

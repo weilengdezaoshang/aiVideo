@@ -12,12 +12,12 @@
 import os
 
 from celery import Celery
-from celery.signals import worker_process_init, worker_process_shutdown, worker_shutdown
+from celery.signals import worker_process_init, worker_process_shutdown, worker_shutdown, after_setup_logger
 
 celery_app = Celery(
     "aivideo",
     broker=os.environ.get("AIVERO_BROKER_URL", "memory://"),
-    include=["backend.workers.tasks"],
+    include=["backend.workers.tasks", "backend.workers.durable", "backend.workers.agent"],
 )
 # 数据库 URL 在 app 构造时固化进 conf,随 app 状态进入池子进程;
 # 任务从 conf 读取,不依赖子进程的环境变量继承(测试/部署语义一致,§三.1)。
@@ -52,6 +52,13 @@ celery_app.conf.update(
         },
     },
 )
+
+
+@after_setup_logger.connect
+def _structured_worker_logs(**kwargs):
+    if os.environ.get("SWARMUI_LOG_FORMAT") == "json":
+        from backend.observability import setup_logging
+        setup_logging(os.environ.get("LOG_LEVEL", "INFO"), "json")
 
 
 @worker_process_init.connect

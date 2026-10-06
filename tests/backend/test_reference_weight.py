@@ -7,7 +7,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.app import create_app
+from backend.evaluation.sandbox import create_sandbox_app as create_app
 from backend.models import REFERENCE_WEIGHT_DENOISE, parse_params, with_reference_weight
 
 

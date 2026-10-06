@@ -5,14 +5,13 @@ import type { Timeline } from './timeline.js'
 // - SSE/生成事件 → mutateTransient() 直接变更,绝不进栈;
 // 订阅者拿到的总是同一 doc 引用(浅可变),监听 type 区分来源。
 
+import { type CanvasCommand, type CanvasObj } from './commands.js'
 import {
-  applyCommand,
-  canCoalesce,
-  coalesceInto,
-  invertCommand,
-  type CanvasCommand,
-  type CanvasObj,
-} from './commands.js'
+  migrateGenerationEntities,
+  type GenerationEntity,
+  type GenerationPatch,
+} from './generation-entity.js'
+import { createHistoryManager, type HistoryChange } from './history-manager.js'
 
 /** 服务端规划回填的单方向元数据 */
 export type GroupDirectionMeta = {
@@ -76,13 +75,10 @@ export type CanvasDocData = {
   revision?: number
   groups?: Record<string, GroupMeta>
   chat?: ChatMessage[]
+  generations?: Record<string, GenerationEntity>
 }
 
-export type DocStoreEvent = { type: 'command' | 'transient'; doc: CanvasDocData }
-
-/** 同一交互的命令合并窗口(毫秒):窗口内同组对象的移动并成一步 undo */
-const COALESCE_WINDOW_MS = 600
-const UNDO_LIMIT = 100
+export type DocStoreEvent = { type: 'command' | 'persistent' | 'transient'; doc: CanvasDocData }
 
 export type DocStore = {
   doc: CanvasDocData
@@ -93,6 +89,14 @@ export type DocStore = {
   apply(cmd: CanvasCommand, options?: { coalesce?: boolean }): void
   undo(): boolean
   redo(): boolean
+  putGeneration(entity: GenerationEntity): void
+  patchGeneration(
+    generationId: string,
+    operationId: string,
+    patch: GenerationPatch,
+    version: number,
+  ): boolean
+  subscribeHistory(fn: (change: HistoryChange) => void): () => boolean
   /** 瞬态变更(SSE 落位/进度/错误):不进 undo 栈;返回值用于通知 payload */
   mutateTransient<T>(mutator: (doc: CanvasDocData) => T): T
 }
@@ -103,11 +107,10 @@ export function createDocStore(initialDoc: CanvasDocData): DocStore {
     ...initialDoc,
     objects: { ...initialDoc.objects },
     order: [...initialDoc.order],
+    generations: { ...(initialDoc.generations || {}) },
   }
+  migrateGenerationEntities(doc)
   const listeners = new Set<(evt: DocStoreEvent) => void>()
-  const undoStack: CanvasCommand[] = []
-  const redoStack: CanvasCommand[] = []
-  let lastAppliedAt = 0
 
   function notify(type: DocStoreEvent['type']) {
     for (const fn of listeners) {
@@ -115,53 +118,43 @@ export function createDocStore(initialDoc: CanvasDocData): DocStore {
     }
   }
 
+  const history = createHistoryManager(doc, { onDocumentChange: () => notify('command') })
+
   return {
     doc,
     subscribe(fn) {
       listeners.add(fn)
       return () => listeners.delete(fn)
     },
-    canUndo: () => undoStack.length > 0,
-    canRedo: () => redoStack.length > 0,
+    canUndo: history.canUndo,
+    canRedo: history.canRedo,
+    subscribeHistory: history.subscribe,
 
     apply(cmd, { coalesce = true } = {}) {
-      applyCommand(doc, cmd)
-      redoStack.length = 0
-      const now = Date.now()
-      const prev = undoStack[undoStack.length - 1]
-      if (coalesce && prev && now - lastAppliedAt < COALESCE_WINDOW_MS && canCoalesce(prev, cmd)) {
-        coalesceInto(prev, cmd)
-      } else {
-        undoStack.push(cmd)
-        if (undoStack.length > UNDO_LIMIT) {
-          undoStack.shift()
-        }
-      }
-      lastAppliedAt = now
-      notify('command')
+      history.apply(cmd, { coalesce })
     },
 
     undo() {
-      const cmd = undoStack.pop()
-      if (!cmd) {
-        return false
-      }
-      applyCommand(doc, invertCommand(cmd))
-      redoStack.push(cmd)
-      lastAppliedAt = 0
-      notify('command')
-      return true
+      return history.undo()
     },
 
     redo() {
-      const cmd = redoStack.pop()
-      if (!cmd) {
+      return history.redo()
+    },
+
+    putGeneration(entity) {
+      doc.generations ||= {}
+      doc.generations[entity.id] = structuredClone(entity)
+      notify('persistent')
+    },
+
+    patchGeneration(generationId, operationId, patch, version) {
+      const entity = doc.generations?.[generationId]
+      if (!entity || entity.operationId !== operationId || version <= entity.version) {
         return false
       }
-      applyCommand(doc, cmd)
-      undoStack.push(cmd)
-      lastAppliedAt = 0
-      notify('command')
+      Object.assign(entity, structuredClone(patch), { version })
+      notify('persistent')
       return true
     },
 

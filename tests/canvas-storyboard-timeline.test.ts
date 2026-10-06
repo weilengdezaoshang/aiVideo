@@ -111,7 +111,10 @@ test('执行轮次装配校验素材缺失与视频时长不足', async () => {
     appendRunStoryboard(store, 'run-x', [shotA.id], async () => 90),
     /缺少已生成素材/,
   )
-  a.src = '/assets/short.mp4'
+  store.mutateTransient((document) => {
+    document.objects[a.id].kind = 'video'
+    document.objects[a.id].src = '/assets/short.mp4'
+  })
   await assert.rejects(
     appendRunStoryboard(store, 'run-x', [shotA.id], async () => 30),
     /视频不足/,

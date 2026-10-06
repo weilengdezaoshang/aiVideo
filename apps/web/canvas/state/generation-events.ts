@@ -5,6 +5,7 @@
 
 import {
   applyTransition,
+  DISCONNECTED_MESSAGE,
   imageRecordToAsset,
   jobEventToTransition,
   markDisconnected,
@@ -15,6 +16,8 @@ import {
 } from './generation-reducer.js'
 import { applyGroupJobs, sweepLostGroupSlots } from './group-state.js'
 import type { CanvasDocData } from './doc-store.js'
+import type { GenerationCoordinator } from './generation-coordinator.js'
+import { latestJob } from './job-version.js'
 
 export type GenerationEventSource = {
   addEventListener(type: string, listener: (event: { data: string }) => void): void
@@ -27,6 +30,7 @@ export type GenerationEventsOptions = {
   docStore: {
     mutateTransient: (fn: (doc: CanvasDocData) => unknown) => unknown
   }
+  coordinator?: GenerationCoordinator
   onConnectionChange?: (connected: boolean) => void
   onReconciled?: (result: { changed: number; lost: number }) => void
   onGroupPublished?: (groupId: string) => void
@@ -43,6 +47,7 @@ export type GenerationEventsHandle = {
 export function connectGenerationEvents(options: GenerationEventsOptions): GenerationEventsHandle {
   const {
     docStore,
+    coordinator,
     onConnectionChange = () => {},
     onReconciled = () => {},
     onGroupPublished = () => {},
@@ -55,6 +60,9 @@ export function connectGenerationEvents(options: GenerationEventsOptions): Gener
 
   /** groupId → (jobId → 最新任务);重连对账时以服务端列表校准 */
   const groupBuffer = new Map<string, Map<string, JobLike>>()
+  const versions = new Map<string, JobLike>()
+  let polling: ReturnType<typeof setTimeout> | undefined
+  let reconciling = false
 
   function bufferGroupJob(job: JobLike) {
     if (!job.groupId) {
@@ -80,9 +88,15 @@ export function connectGenerationEvents(options: GenerationEventsOptions): Gener
   }
 
   function handleJobEvent(job: JobLike) {
+    if (latestJob(versions, job) !== job) {
+      return
+    }
     if (job.groupId) {
       bufferGroupJob(job)
       applyGroupFromBuffer(job.groupId)
+      return
+    }
+    if (coordinator?.acceptJob(job)) {
       return
     }
     docStore.mutateTransient((doc) => {
@@ -111,10 +125,86 @@ export function connectGenerationEvents(options: GenerationEventsOptions): Gener
 
   /** 拉取服务端任务列表对账(页面加载 / 重连后) */
   async function reconcileNow() {
+    if (closed || reconciling) {
+      return
+    }
+    reconciling = true
     try {
       const res = await fetchImpl('/api/jobs?all=1&limit=100')
+      if (res.ok === false || closed) {
+        return
+      }
       const body = (await res.json()) as { jobs?: JobLike[] }
-      const jobs = body.jobs || []
+      if (closed) {
+        return
+      }
+      const jobs = (body.jobs || []).map((job) => latestJob(versions, job))
+      const present = new Set(jobs.map((job) => job.id))
+      const known = new Set<string>()
+      docStore.mutateTransient((doc) => {
+        for (const object of Object.values(doc.objects)) {
+          const jobId = object.gen?.jobId || object.nodeRun?.jobId
+          if (jobId && !jobId.startsWith('local-')) {
+            known.add(jobId)
+          }
+        }
+        return false
+      })
+      const missing = new Set<string>()
+      const queries: (() => Promise<void>)[] = []
+      for (const entry of coordinator?.runtime.values() || []) {
+        if (['completed', 'failed', 'cancelled'].includes(entry.status)) {
+          continue
+        }
+        if (entry.jobId) {
+          known.add(entry.jobId)
+        } else if (entry.status !== 'submitting') {
+          queries.push(async () => {
+            if (!closed) {
+              await coordinator?.recover(entry.generationId)
+            }
+          })
+        }
+      }
+      for (const jobId of known) {
+        if (present.has(jobId)) {
+          continue
+        }
+        queries.push(async () => {
+          try {
+            const response = await fetchImpl(`/api/jobs/${encodeURIComponent(jobId)}`)
+            if (response.status === 404) {
+              missing.add(jobId)
+              return
+            }
+            if (!response.ok || closed) {
+              return
+            }
+            const result = (await response.json()) as { job?: JobLike }
+            if (result.job?.id === jobId) {
+              jobs.push(latestJob(versions, result.job))
+            }
+          } catch {
+            /* A truncated list or failed lookup never proves a job was lost. */
+          }
+        })
+      }
+      // Bound the fan-out when an old document contains many jobs outside the recent list.
+      await Promise.all(
+        Array.from({ length: Math.min(4, queries.length) }, async () => {
+          for (let query = queries.shift(); query && !closed; query = queries.shift()) {
+            await query()
+          }
+        }),
+      )
+      if (closed) {
+        return
+      }
+      for (const job of jobs) {
+        if (!job.groupId) {
+          coordinator?.acceptJob(job)
+        }
+      }
       // 组任务缓冲以服务端为准重建(重启/换页后本地缓冲为空)
       groupBuffer.clear()
       for (const job of jobs) {
@@ -127,9 +217,10 @@ export function connectGenerationEvents(options: GenerationEventsOptions): Gener
           doc,
           jobs.filter((j) => !j.groupId),
           resolveImage,
+          missing,
         )
         // 已终结且被服务端裁剪的组任务先兜底转错误卡,再整组应用现存任务
-        const swept = sweepLostGroupSlots(doc, jobs)
+        const swept = sweepLostGroupSlots(doc, jobs, missing)
         const group = applyGroupJobs(doc, jobs, resolveImage)
         return {
           changedIds: [...single.changedIds, ...swept.changedObjIds, ...group.changedObjIds],
@@ -143,33 +234,70 @@ export function connectGenerationEvents(options: GenerationEventsOptions): Gener
       }
     } catch {
       // 对账失败不打断:下次重连再试
+    } finally {
+      reconciling = false
+      scheduleFallback()
     }
   }
 
   let es: GenerationEventSource | null = null
   let closed = false
+  let connected = false
+
+  function scheduleFallback() {
+    const pending = coordinator?.runtime
+      .values()
+      .some((entry) => !['completed', 'failed', 'cancelled'].includes(entry.status))
+    if (closed || (connected && !pending) || polling !== undefined) {
+      return
+    }
+    polling = setTimeout(
+      () => {
+        polling = undefined
+        void reconcileNow().finally(scheduleFallback)
+      },
+      4000 + Math.random() * 2000,
+    )
+  }
 
   function connect() {
     es = eventSourceFactory('/api/events')
     es.addEventListener('open', () => {
+      if (closed) {
+        return
+      }
+      connected = true
+      clearTimeout(polling)
+      polling = undefined
       onConnectionChange(true)
       // 重连成功即对账(S15 → S14)
       void reconcileNow()
     })
     es.addEventListener('snapshot', (e) => {
+      if (closed) {
+        return
+      }
+      connected = true
       onConnectionChange(true)
       try {
         const data = JSON.parse(e.data) as { jobs?: JobLike[] }
-        const jobs = data.jobs || []
+        const jobs = (data.jobs || []).map((job) => latestJob(versions, job))
+        for (const job of jobs) {
+          if (!job.groupId) {
+            coordinator?.acceptJob(job)
+          }
+        }
         docStore.mutateTransient((doc) => {
           reconcile(
             doc,
             jobs.filter((j) => !j.groupId),
             resolveImage,
+            new Set(),
           )
-          sweepLostGroupSlots(doc, jobs)
+          sweepLostGroupSlots(doc, jobs, new Set())
           applyGroupJobs(doc, jobs, resolveImage)
         })
+        void reconcileNow()
         // 首包也校准组缓冲(不触发发布回调:发布走 reconcileNow 的全量路径)
         for (const job of jobs) {
           if (job.groupId) {
@@ -181,6 +309,9 @@ export function connectGenerationEvents(options: GenerationEventsOptions): Gener
       }
     })
     es.addEventListener('job', (e) => {
+      if (closed) {
+        return
+      }
       try {
         handleJobEvent(JSON.parse(e.data) as JobLike)
       } catch {
@@ -188,19 +319,36 @@ export function connectGenerationEvents(options: GenerationEventsOptions): Gener
       }
     })
     es.addEventListener('error', () => {
+      if (closed) {
+        return
+      }
+      connected = false
+      scheduleFallback()
       // EventSource 自动重连;服务端 retry: 3000
       onConnectionChange(false)
       // 生成中的占位统一切到"连接中断,正在查询"(A05):不编造进度、不自动重提
       docStore.mutateTransient((doc) => markDisconnected(doc))
+      for (const entry of coordinator?.runtime.values() || []) {
+        if (entry.status === 'queued' || entry.status === 'running') {
+          coordinator?.runtime.patch(entry.operationId, {
+            status: 'disconnected',
+            progress: undefined,
+            message: DISCONNECTED_MESSAGE,
+          })
+        }
+      }
     })
   }
 
   connect()
+  const unsubscribeRuntime = coordinator?.runtime.subscribe(scheduleFallback)
 
   return {
     reconcileNow,
     close() {
       closed = true
+      unsubscribeRuntime?.()
+      clearTimeout(polling)
       es?.close()
     },
     get isConnected() {

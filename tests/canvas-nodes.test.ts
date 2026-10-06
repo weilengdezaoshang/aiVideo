@@ -5,6 +5,7 @@ import {
   applyNodeJob,
   migrateNodes,
   outputSize,
+  isEmptyMedia,
 } from '../apps/web/canvas/state/node-model.js'
 import type { NodeJob } from '../apps/web/canvas/state/node-model.js'
 
@@ -168,8 +169,7 @@ test('撤销提交会取消原请求，重做只查询状态，迟到结果不�
   }
 })
 
-test('生成面板只适用于空图片和视频，结果即使保留草稿也不显示', async () => {
-  const { isEmptyMedia } = await import('../apps/web/canvas/engine/node-appearance.js')
+test('生成面板只适用于空图片和视频，结果即使保留草稿也不显示', () => {
   for (const kind of ['image', 'video'] as const) {
     const node = createNode(kind, { x: 0, y: 0 }, kind)
     assert.equal(isEmptyMedia(node), true)
