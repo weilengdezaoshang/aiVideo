@@ -1,16 +1,173 @@
 // 独立产品原型的外壳适配。复用同一套演练状态，不连接产品服务。
-const baseHub=hub,baseRender=render,baseAction=actionClick;
-let controlsOpen=false,pendingDestination=null,exampleDoc=null,productStarted=false;
-const nextButton=document.createElement('button');nextButton.className='demo-next';nextButton.hidden=true;nextButton.textContent='查看本次模拟结果';nextButton.onclick=()=>{document.getElementById('outcome').value='success';respond();};document.body.append(nextButton);
-document.getElementById('toast').textContent='交互原型 · 所有生成状态均为本机模拟。';
-function publishRoute(page){window.parent.postMessage({type:'product-route',page},'*');}
-function routeName(){return model.page==='home'?'workspace':model.page==='list'?'canvas':'editor';}
-hub=function(){if(model.page!=='home'){return baseHub();}return `<div class="appbar"><b class="workspace-brand">AI 视觉创作</b><span class="grow"></span><small>工作台</small><span class="workspace-hint">本机示例空间</span></div><div class="shell-body"><nav class="rail" aria-label="工作台模块"><button data-act="home" class="active">工作台</button><button data-act="list">画布</button><button data-act="legacy">图片</button><button data-act="video-entry">视频</button><span class="rail-note">文档与素材<br>在画布中继续</span></nav><main class="hub"><h1>今天，想创作什么？</h1><p class="work-lead">从一张画布开始，把想法变成可比较、可调整、可继续的视觉素材。</p><section class="workspace-feature"><div><h2>让创意在同一处展开</h2><p>生成四个方向，选择一张继续抠图，或添加已有素材、画板与文字。每张画布保留自己的内容与对话。</p><button class="primary" data-act="list">进入我的画布</button></div><div class="feature-map" aria-hidden="true"><span></span><span></span><span></span><span></span></div></section><div class="workspace-section-title"><h2>最近的画布</h2><button data-act="list">查看全部</button></div>${model.docs.length?`<div class="doc-grid">${model.docs.slice(-3).reverse().map(d=>`<button class="doc-card" data-open="${d.id}"><span class="doc-cover">${d.groups.length} 个创意组</span><b>${esc(d.name)}</b><p class="muted">${d.save==='error'?'有修改待保存':'示例文档已保存'}</p></button>`).join('')}</div>`:'<p class="recent-empty">还没有创作记录。进入“我的画布”新建一张，或从介绍页打开示例画布体验完整流程。</p>'}<div class="workspace-section-title"><h2>更多素材入口</h2><span class="muted">首版范围</span></div><div class="work-modules"><section class="work-module"><h3>图片创作</h3><p>新的四方向图片在画布中体验。已有图片入口的能力与迁移安排单独保留。</p><button data-act="list">去画布生成图片</button></section><section class="work-module"><h3>视频素材</h3><p>先衔接已有文生视频入口，再把素材导入画布预览。图生视频与分镜暂不开放。</p><button data-act="video-entry">查看视频入口说明</button></section></div></main></div>${sheet()}`;};
-render=function(){baseRender();app.dataset.page=model.page;document.getElementById('respond').disabled?nextButton.hidden=true:nextButton.hidden=model.page!=='editor'||controlsOpen;nextButton.textContent=doc()?.groups.some(g=>g.status==='unknown')||doc()?.mask?.status.startsWith('unknown')?'查看后续模拟查询结果':'查看本次模拟结果';document.querySelector('.review-controls').hidden=!controlsOpen;window.parent.postMessage({type:'product-control-state',open:controlsOpen,pending:!document.getElementById('respond').disabled},'*');if(productStarted&&!pendingDestination){publishRoute(routeName());}};
-function go(page){productStarted=true;if(model.page==='editor'&&doc()?.save==='error'&&['intro','workspace','canvas'].includes(page)){pendingDestination=page;dialog='leave';render();return;}if(page==='intro'){storeDraft();pendingDestination=null;publishRoute('intro');return;}if(page==='workspace'){model.page='home';}else if(page==='canvas'){model.page='list';}else if(page==='editor'){if(!doc()){model.page='list';}else {model.page='editor';}}else if(page==='example'){if(exampleDoc&&model.docs.some(d=>d.id===exampleDoc)){openDoc(exampleDoc);return;}const d={id:id('doc'),name:'咖啡店视觉探索 · 示例',groups:[],objects:[],messages:[{role:'user',text:'午后的咖啡店，安静、有自然光。'}],mask:null,agent:null,save:'saved'};const g={id:id('group'),prompt:'咖啡店的四种视觉方向',status:'success',x:90,y:65,items:['正面构图','逆光侧影','空间全景','局部细节'].map((name,slot)=>({id:id('image'),slot,name,kind:'image',status:'success'}))};d.groups.push(g);model.docs.push(d);exampleDoc=d.id;model.current=d.id;model.page='editor';selected=null;reference=null;draft='';mode='image';}else {publishRoute('intro');return;}pendingDestination=null;render();}
-actionClick=function(e){const b=e.target.closest('[data-act]');if(b?.dataset.act==='save-leave'&&pendingDestination){const target=pendingDestination;doc().save='saved';dialog=null;pendingDestination=null;persist();go(target);return;}if(b?.dataset.act==='close'){pendingDestination=null;}baseAction(e);};
-window.addEventListener('message',e=>{if(e.source!==window.parent){return;}if(e.data?.type==='product-navigate'){go(e.data.page);}if(e.data?.type==='product-controls'){controlsOpen=!controlsOpen;render();}});
-window.addEventListener('resize',()=>{if(doc()&&model.page==='editor'){renderTools(doc());}});
+const baseHub = hub,
+  baseRender = render,
+  baseAction = actionClick
+let controlsOpen = false,
+  pendingDestination = null,
+  exampleDoc = null,
+  productStarted = false
+const nextButton = document.createElement('button')
+nextButton.className = 'demo-next'
+nextButton.hidden = true
+nextButton.textContent = '查看本次模拟结果'
+nextButton.onclick = () => {
+  document.getElementById('outcome').value = 'success'
+  respond()
+}
+document.body.append(nextButton)
+document.getElementById('toast').textContent = '交互原型 · 所有生成状态均为本机模拟。'
+function publishRoute(page) {
+  window.parent.postMessage({ type: 'product-route', page }, '*')
+}
+function routeName() {
+  return model.page === 'home' ? 'workspace' : model.page === 'list' ? 'canvas' : 'editor'
+}
+hub = function () {
+  if (model.page !== 'home') {
+    return baseHub()
+  }
+  return `<div class="appbar"><b class="workspace-brand">AI 视觉创作</b><span class="grow"></span><small>工作台</small><span class="workspace-hint">本机示例空间</span></div><div class="shell-body"><nav class="rail" aria-label="工作台模块"><button data-act="home" class="active">工作台</button><button data-act="list">画布</button><button data-act="legacy">图片</button><button data-act="video-entry">视频</button><span class="rail-note">文档与素材<br>在画布中继续</span></nav><main class="hub"><h1>今天，想创作什么？</h1><p class="work-lead">从一张画布开始，把想法变成可比较、可调整、可继续的视觉素材。</p><section class="workspace-feature"><div><h2>让创意在同一处展开</h2><p>生成四个方向，选择一张继续抠图，或添加已有素材、画板与文字。每张画布保留自己的内容与对话。</p><button class="primary" data-act="list">进入我的画布</button></div><div class="feature-map" aria-hidden="true"><span></span><span></span><span></span><span></span></div></section><div class="workspace-section-title"><h2>最近的画布</h2><button data-act="list">查看全部</button></div>${
+    model.docs.length
+      ? `<div class="doc-grid">${model.docs
+          .slice(-3)
+          .reverse()
+          .map(
+            (d) =>
+              `<button class="doc-card" data-open="${d.id}"><span class="doc-cover">${d.groups.length} 个创意组</span><b>${esc(d.name)}</b><p class="muted">${d.save === 'error' ? '有修改待保存' : '示例文档已保存'}</p></button>`,
+          )
+          .join('')}</div>`
+      : '<p class="recent-empty">还没有创作记录。进入“我的画布”新建一张，或从介绍页打开示例画布体验完整流程。</p>'
+  }<div class="workspace-section-title"><h2>更多素材入口</h2><span class="muted">首版范围</span></div><div class="work-modules"><section class="work-module"><h3>图片创作</h3><p>新的四方向图片在画布中体验。已有图片入口的能力与迁移安排单独保留。</p><button data-act="list">去画布生成图片</button></section><section class="work-module"><h3>视频素材</h3><p>先衔接已有文生视频入口，再把素材导入画布预览。图生视频与分镜暂不开放。</p><button data-act="video-entry">查看视频入口说明</button></section></div></main></div>${sheet()}`
+}
+render = function () {
+  baseRender()
+  app.dataset.page = model.page
+  document.getElementById('respond').disabled
+    ? (nextButton.hidden = true)
+    : (nextButton.hidden = model.page !== 'editor' || controlsOpen)
+  nextButton.textContent =
+    doc()?.groups.some((g) => g.status === 'unknown') || doc()?.mask?.status.startsWith('unknown')
+      ? '查看后续模拟查询结果'
+      : '查看本次模拟结果'
+  document.querySelector('.review-controls').hidden = !controlsOpen
+  window.parent.postMessage(
+    {
+      type: 'product-control-state',
+      open: controlsOpen,
+      pending: !document.getElementById('respond').disabled,
+    },
+    '*',
+  )
+  if (productStarted && !pendingDestination) {
+    publishRoute(routeName())
+  }
+}
+function go(page) {
+  productStarted = true
+  if (
+    model.page === 'editor' &&
+    doc()?.save === 'error' &&
+    ['intro', 'workspace', 'canvas'].includes(page)
+  ) {
+    pendingDestination = page
+    dialog = 'leave'
+    render()
+    return
+  }
+  if (page === 'intro') {
+    storeDraft()
+    pendingDestination = null
+    publishRoute('intro')
+    return
+  }
+  if (page === 'workspace') {
+    model.page = 'home'
+  } else if (page === 'canvas') {
+    model.page = 'list'
+  } else if (page === 'editor') {
+    if (!doc()) {
+      model.page = 'list'
+    } else {
+      model.page = 'editor'
+    }
+  } else if (page === 'example') {
+    if (exampleDoc && model.docs.some((d) => d.id === exampleDoc)) {
+      openDoc(exampleDoc)
+      return
+    }
+    const d = {
+      id: id('doc'),
+      name: '咖啡店视觉探索 · 示例',
+      groups: [],
+      objects: [],
+      messages: [{ role: 'user', text: '午后的咖啡店，安静、有自然光。' }],
+      mask: null,
+      agent: null,
+      save: 'saved',
+    }
+    const g = {
+      id: id('group'),
+      prompt: '咖啡店的四种视觉方向',
+      status: 'success',
+      x: 90,
+      y: 65,
+      items: ['正面构图', '逆光侧影', '空间全景', '局部细节'].map((name, slot) => ({
+        id: id('image'),
+        slot,
+        name,
+        kind: 'image',
+        status: 'success',
+      })),
+    }
+    d.groups.push(g)
+    model.docs.push(d)
+    exampleDoc = d.id
+    model.current = d.id
+    model.page = 'editor'
+    selected = null
+    reference = null
+    draft = ''
+    mode = 'image'
+  } else {
+    publishRoute('intro')
+    return
+  }
+  pendingDestination = null
+  render()
+}
+actionClick = function (e) {
+  const b = e.target.closest('[data-act]')
+  if (b?.dataset.act === 'save-leave' && pendingDestination) {
+    const target = pendingDestination
+    doc().save = 'saved'
+    dialog = null
+    pendingDestination = null
+    persist()
+    go(target)
+    return
+  }
+  if (b?.dataset.act === 'close') {
+    pendingDestination = null
+  }
+  baseAction(e)
+}
+window.addEventListener('message', (e) => {
+  if (e.source !== window.parent) {
+    return
+  }
+  if (e.data?.type === 'product-navigate') {
+    go(e.data.page)
+  }
+  if (e.data?.type === 'product-controls') {
+    controlsOpen = !controlsOpen
+    render()
+  }
+})
+window.addEventListener('resize', () => {
+  if (doc() && model.page === 'editor') {
+    renderTools(doc())
+  }
+})
 // 初次载入只通知准备完成，介绍页拥有默认入口；保存的数据仍可在工作台查看。
-model.page='home';
-setTimeout(()=>window.parent.postMessage({type:'product-ready'},'*'),0);
+model.page = 'home'
+setTimeout(() => window.parent.postMessage({ type: 'product-ready' }, '*'), 0)
