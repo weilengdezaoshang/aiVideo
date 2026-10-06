@@ -1,0 +1,44 @@
+flowchart TB
+  landing["landing/<br/>LandingPage / modes"]
+  workspace["workspace/<br/>HomePage / Composer / Libraries"]
+  canvas["canvas-next/app.tsx<br/>CanvasNextApp → CanvasShell"]
+  evaluation["evaluation/ 保留代码<br/>统一后端未挂载评测页面"]
+  shell["React Shell / UI<br/>工具栏 / Inspector / 素材侧栏<br/>生成 / 抠图 / 重绘 / 基础编辑<br/>共享 ui/ 与样式"]
+  context["CanvasViewProvider<br/>React Context + useSyncExternalStore<br/>提供 View 生命周期与快照订阅"]
+  render["renderer-konva/<br/>CanvasEditor + Stage<br/>Connection / Content / Selection<br/>Editing：暂态绘制层"]
+  flow["业务 flows + Shell 动作<br/>generate / connect-reference<br/>RecognitionOperation / mask<br/>调用 API；提交文档命令"]
+  core["core/ CanvasView<br/>CanvasInputEvent → LayerController<br/>EventMono：preview → commit<br/>camera / selection / tool / mask"]
+  store["state/ DocStore<br/>objects / order / generations 等<br/>HistoryManager：撤销与重做<br/>selector：派生画布对象"]
+  gen["GenerationCoordinator<br/>实体生命周期 + RuntimeStore<br/>SSE / HTTP 对账 → acceptJob<br/>operationId / jobId / version"]
+  network["网络访问<br/>fetch / typed clients / CSRF wrapper<br/>EventSource + 断线轮询<br/>REST /api/* + SSE /api/events"]
+  save["AutoSaver<br/>1 秒防抖 / localStorage 草稿<br/>文档全量 JSON + baseRevision<br/>409 保留草稿并显示冲突"]
+  oldnode["NodeGeneration<br/>NodeDraft / NodeRun 对账<br/>工作台与新画布尚未统一"]
+  oldagent["Agent / Chat flows<br/>新对话侧栏只存用户文本<br/>无 Agent API 调用"]
+  oldstory["完整分镜编排<br/>Planner / Run 状态流程<br/>新侧栏仅基础编辑"]
+  oldtime["完整时间线工作流<br/>TimelineExport / AudioTracks<br/>新侧栏尚未接通导出"]
+  landing --> workspace
+  workspace --> canvas
+  canvas --> context
+  shell --> context
+  context --> render
+  shell --> flow
+  render -->|"输入事件"| core
+  core -->|"命令"| store
+  store -->|"投影重绘"| render
+  flow --> gen
+  gen --> network
+  save --> network
+  store --> save
+  core -->|"短期快照"| context
+  flow -->|"文档命令"| store
+  classDef ui fill:#edf3ff,stroke:#4778ba,color:#192b3b
+  class landing,workspace,canvas,shell,render ui
+  classDef state fill:#eef5f2,stroke:#408a72,color:#192b3b
+  class context,core,store,gen state
+  classDef service fill:#fff5e7,stroke:#b47a2b,color:#192b3b
+  class flow,network service
+  classDef store fill:#f3effa,stroke:#8871b2,color:#192b3b
+  class save store
+  classDef external fill:#f3f4f5,stroke:#8c949f,color:#192b3b
+  classDef gap fill:#fff2ef,stroke:#bb7065,color:#192b3b
+  class evaluation,oldnode,oldagent,oldstory,oldtime gap

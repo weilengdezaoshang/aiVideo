@@ -1,0 +1,41 @@
+sequenceDiagram
+  autonumber
+  participant UI as 浏览器
+  participant API as 统一 API
+  participant PG as PostgreSQL
+  participant D as Dispatcher
+  participant MQ as RabbitMQ
+  participant B as Bridge
+  participant W as Celery Worker
+  participant P as StagedProvider
+  participant M as 共享媒体卷
+  participant S as Scheduler
+  participant N as Notify / Redis
+  UI->>API: POST /api/generate + 稳定 requestId
+  API->>PG: 同事务写 GenerationRequest + Job + Outbox
+  PG-->>API: COMMIT
+  API-->>UI: 202 {jobId, job}
+  D->>PG: claim Outbox
+  D->>MQ: publish execution.due
+  MQ-->>D: publisher confirm
+  D->>PG: 标记 published
+  MQ->>B: execution.due
+  B->>MQ: 确认派发 execute_phase，再 ACK 原消息
+  MQ->>W: 按 image / video / exports 路由
+  W->>PG: claim lease_owner + execution_epoch
+  loop 每个受期限约束的阶段
+    W->>P: prepare / submit / poll / download
+    P-->>W: 下一阶段、上游句柄或产物
+    W->>PG: 保存阶段、next_poll_at、job.changed Outbox
+    S->>PG: 到期扫描，新增 execution.due Outbox
+    Note over S,MQ: 下次唤醒仍经过 Dispatcher、MQ 和 Bridge
+  end
+  W->>M: 原子产物 + SHA256 receipt
+  W->>PG: 有效 lease 下登记 Asset + completed + Outbox
+  D->>MQ: job.changed
+  MQ->>N: 通知
+  N->>PG: 读取 Job 最新版本
+  N-->>API: 工作区 Redis pubsub 唤醒
+  API->>PG: 回查最新公开投影
+  API-->>UI: SSE job / image
+  Note over UI,API: SSE 断开后前端 GET jobs 对账，不自动重提生成

@@ -1,0 +1,38 @@
+flowchart TB
+  composer["CanvasShell / Composer<br/>提示词 / 参数 / 参考图 / 重绘<br/>flows/generate → submit"]
+  coord["GenerationCoordinator<br/>创建 operationId / generationId<br/>提交 POST /api/generate"]
+  api["FastAPI 生成与任务 API<br/>202 {jobId, job}<br/>clientRef 回接节点"]
+  placement["placement + HistoryManager<br/>objects[objectId].generationId<br/>位置 / 尺寸 / 撤销 / 重做<br/>Undo 移除；Redo 恢复同一位置"]
+  entity["GenerationEntity<br/>generations[generationId]<br/>spec / jobId / status / result<br/>operationId + version 拒绝迟到写入"]
+  runtime["GenerationRuntimeStore<br/>运行索引 / progress / message<br/>短期状态；不进入撤销栈<br/>变化触发 transient 通知"]
+  view["selectCanvasDocument<br/>placement + entity → 显示对象<br/>React / Konva 重绘<br/>当前 selector 未注入 runtime"]
+  save["AutoSaver<br/>监听 command / persistent<br/>1 秒防抖 → 写本机草稿<br/>POST document + baseRevision"]
+  events["SSE + HTTP 对账<br/>snapshot / job → latestJob<br/>stateVersion + progressSeq<br/>断线 4–6 秒轮询；不自动重提"]
+  history["撤销与迟到结果<br/>迟到完成只更新 entity.result<br/>已撤销的 placement 不会复活<br/>Redo 展示已有结果，不再生成"]
+  docs["文档保存结果<br/>成功：更新 revision / 清草稿<br/>409：保留草稿 / 报冲突<br/>草稿恢复 UI 当前尚未接通"]
+  other["工作台另一路径<br/>CreationIntent / NodeDraft/Run<br/>documentId + requestId + clientRef<br/>进入新画布后对账尚未统一"]
+  composer --> coord
+  coord --> api
+  coord -->|"实体持久状态"| entity
+  composer -->|"通过 coordinator 创建"| placement
+  api -->|"受理后绑定 jobId"| runtime
+  placement --> view
+  entity --> view
+  entity --> save
+  events -->|"合并运行进度"| runtime
+  events -->|"acceptJob"| entity
+  view --> history
+  save --> docs
+  api -->|"SSE / GET jobs"| events
+  placement -->|"command 通知"| save
+  classDef ui fill:#edf3ff,stroke:#4778ba,color:#192b3b
+  class composer,view ui
+  classDef state fill:#eef5f2,stroke:#408a72,color:#192b3b
+  class coord,placement,entity,runtime,history state
+  classDef service fill:#fff5e7,stroke:#b47a2b,color:#192b3b
+  class api,events service
+  classDef store fill:#f3effa,stroke:#8871b2,color:#192b3b
+  class save,docs store
+  classDef external fill:#f3f4f5,stroke:#8c949f,color:#192b3b
+  classDef gap fill:#fff2ef,stroke:#bb7065,color:#192b3b
+  class other gap

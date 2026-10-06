@@ -1,0 +1,36 @@
+flowchart TB
+  source["apps/web · TypeScript<br/>landing / workspace / canvas / eval"]
+  build["tsc + esbuild<br/>npm run build:web"]
+  bundle[".web-build/<br/>按历史 .js URL 提供构建文件"]
+  dev["npm run dev -- --env-file …<br/>scripts/backend.py<br/>tsc / esbuild 监听<br/>Uvicorn --reload"]
+  local["宿主 API 热重载<br/>backend.app:create_app<br/>与容器 API 共用数据库架构<br/>不创建内存 FIFO / JSON 存储<br/>仍需 OIDC 与工作区授权"]
+  localdisk["显式依赖与配置<br/>可访问的数据库 / Redis<br/>固定路由 / OIDC / 共享媒体<br/>需独立运行 daemon 和 Worker"]
+  gateway["Caddy 网关<br/>HTTP 80 / HTTPS 443<br/>反代 api:7801 / SSE flush<br/>外部 OIDC 提供身份"]
+  api["API 容器<br/>python -m backend<br/>FastAPI / 静态资源 / OIDC<br/>仅挂载固定路由配置"]
+  daemons["四个 daemon 容器<br/>dispatcher / scheduler<br/>bridge / notify<br/>独立进程，不启动 Celery beat"]
+  workers["三个 Celery Worker 容器<br/>image 并发 2 / video 并发 1<br/>exports 并发 1<br/>生成 Worker 挂载 Provider secret"]
+  infra["数据库与消息基础设施<br/>PostgreSQL 16 / RabbitMQ 3.13<br/>Redis 7：AOF / noeviction<br/>migrate：Alembic upgrade head"]
+  volume["共享 media 卷 /app/data<br/>API / Workers / scheduler 共用<br/>媒体文件 / receipt / 模型权重<br/>数据库等另有各自持久卷"]
+  image["Docker 运行镜像<br/>Python 3.11 + FFmpeg + 非 root UID 10001；无 Node 业务运行时"]
+  source --> build
+  build --> bundle
+  bundle --> api
+  dev --> local
+  local --> localdisk
+  gateway --> api
+  daemons --> infra
+  workers --> infra
+  workers --> volume
+  api --> infra
+  api --> volume
+  infra -->|"MQ 派发"| workers
+  classDef ui fill:#edf3ff,stroke:#4778ba,color:#192b3b
+  class source ui
+  classDef state fill:#eef5f2,stroke:#408a72,color:#192b3b
+  classDef service fill:#fff5e7,stroke:#b47a2b,color:#192b3b
+  class build,dev,local,api,daemons,workers service
+  classDef store fill:#f3effa,stroke:#8871b2,color:#192b3b
+  class bundle,localdisk,infra,volume store
+  classDef external fill:#f3f4f5,stroke:#8c949f,color:#192b3b
+  class gateway,image external
+  classDef gap fill:#fff2ef,stroke:#bb7065,color:#192b3b

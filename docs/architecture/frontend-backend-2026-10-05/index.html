@@ -1,0 +1,916 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>aiVideo 前后端架构图</title><style>
+:root{color-scheme:light;--ink:#1e2d3b;--muted:#637587;--line:#dce3e8;--accent:#2d61a2}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:30px}body{margin:0;background:#f3f5f6;color:var(--ink);font:15px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}aside{position:fixed;inset:0 auto 0 0;width:224px;background:#142838;padding:28px 20px;color:#dce8ef;overflow:auto}aside strong{font-size:22px;letter-spacing:.03em}aside p{font-size:12px;color:#9bafbd;margin:5px 0 32px}aside a{display:block;color:#c7d5df;padding:11px 8px;margin:3px 0;border-radius:6px;font-size:13px}aside a:hover{background:#233e51;text-decoration:none}main{margin-left:224px;padding:38px 36px 70px;max-width:1630px}header{padding:16px 6px 22px}header small{font-size:12px;letter-spacing:.09em;color:#64788b}h1{font-size:34px;line-height:1.3;margin:12px 0}header p{max-width:940px;color:var(--muted);font-size:16px}.pills{display:flex;gap:8px;flex-wrap:wrap}.pills span{padding:4px 10px;border:1px solid #ccd9e3;border-radius:5px;font-size:12px;color:#4c6680}.notice{border-left:3px solid #b5833f;padding:12px 17px;background:#fff8ec;margin-top:20px;font-size:13px}section{margin:18px 0 26px;padding:28px;background:white;border:1px solid var(--line);border-radius:12px;box-shadow:0 2px 6px #122b3c04}h2{font-size:23px;line-height:1.4;margin:0 0 10px}.num{font-size:14px;color:#7b8ea0;margin-right:9px}section>p{color:var(--muted);margin:8px 0 20px}.diagram{overflow-x:auto;border:1px solid #e1e6e9;border-radius:10px;background:#fcfcfa}.diagram svg{display:block;width:100%;min-width:900px;height:auto}.figure-tools{display:flex;gap:18px;font-size:12px;margin:8px 0 20px}.notes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 28px}.notes p{font-size:14px;margin:0;padding:8px 0}.notes strong{display:block;color:#334f67;font-size:13px;margin-bottom:4px}.sources{font-size:12px;color:#7d8a97;margin-top:16px;overflow-wrap:anywhere}code{font:12px/1.6 ui-monospace,SFMono-Regular,monospace;padding:2px 4px;background:#f0f3f6;border-radius:3px}details{margin-top:14px;border-top:1px solid #edf0f2;padding-top:10px;font-size:12px}summary{cursor:pointer;color:#57718a}pre{padding:16px;background:#f3f5f7;overflow:auto;font:12px/1.6 ui-monospace,monospace}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:12px 13px;text-align:left;border-bottom:1px solid #e2e7eb;vertical-align:top}th{color:#496075;background:#f2f5f8}td:first-child{min-width:120px;font-weight:600}.table-wrap{overflow:auto}.end{color:#7d8c99;font-size:12px;margin:28px 5px}.legend{display:flex;flex-wrap:wrap;gap:18px;font-size:12px;margin:12px 0}.legend span:before{content:"";width:10px;height:10px;border-radius:2px;background:var(--c);display:inline-block;margin-right:6px}a:focus-visible,summary:focus-visible{outline:3px solid #6da0da;outline-offset:3px}@media(max-width:1000px){aside{position:relative;width:auto;padding:18px}aside p{margin:4px 0 12px}aside nav{display:flex;overflow:auto}aside a{white-space:nowrap;padding:8px 12px}main{margin:0;padding:18px 14px}section{padding:20px}h1{font-size:28px}}@media(max-width:650px){.notes{grid-template-columns:1fr}section{padding:16px}h2{font-size:20px}}@media print{aside,.figure-tools,details{display:none}main{margin:0;padding:0;max-width:none}body{background:white}section{break-before:page;border:0;padding:0;box-shadow:none}.diagram svg{min-width:0}h1{font-size:26px}.notice{border:1px solid #ddd}a{color:inherit}.notes{grid-template-columns:1fr 1fr}.diagram{overflow:visible}}
+</style><aside><strong>FRAYUNE</strong><p>aiVideo · 当前源码架构<br>2026-10-05 · 9868f59 + 工作区改动</p><nav><a href="#01-overview">01　系统全景</a><a href="#02-frontend">02　前端模块分层</a><a href="#03-state">03　前端生成与保存</a><a href="#05-production">04　统一后端</a><a href="#06-sequence">05　生成跨层时序</a><a href="#07-data">06　数据实体与存储</a><a href="#08-deployment">07　构建与部署</a><a href="#contracts">08　接口与迁移边界</a><a href="#sources">09　源码索引与范围</a></nav></aside><main><header><small>CODEBASE ARCHITECTURE</small><h1>aiVideo 前后端架构图</h1><p>当前项目已统一到 PostgreSQL / RabbitMQ / Redis / Celery 后端。图解覆盖前端编辑状态、数据库受理、阶段执行、产物恢复和部署关系。</p><div class="pills"><span>React + TypeScript</span><span>react-konva</span><span>FastAPI + Python</span><span>统一数据库执行架构</span><span>7 张详细图</span></div><div class="notice"><strong>当前状态：</strong>已移除本地 JSON/FIFO 应用模式；开发与部署使用同一后端。旧实现仅保留为隔离评测与历史契约沙箱。Agent、分镜编排、评测 HTTP 等外围能力尚未迁入当前入口。</div><div class="legend"><span style="--c:#4778ba">界面与交互</span><span style="--c:#408a72">状态与核心逻辑</span><span style="--c:#b47a2b">应用服务与任务</span><span style="--c:#8871b2">存储与基础设施</span><span style="--c:#bb7065">未接入 / 待迁移</span></div></header>
+<section id="01-overview"><h2><span class="num">01</span>系统全景：前后端统一使用持久化执行架构</h2><p>所有应用入口共用 PostgreSQL / RabbitMQ / Redis / Celery。开发热重载与容器部署只改变进程启动方式，不切换队列或存储实现。</p><div class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 890" role="img" aria-labelledby="title desc">
+<title id="title">系统全景：前后端统一使用持久化执行架构</title><desc id="desc">所有应用入口共用 PostgreSQL / RabbitMQ / Redis / Celery。开发热重载与容器部署只改变进程启动方式，不切换队列或存储实现。</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 Z" fill="#778494"/></marker></defs>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}.title{font-size:17px;font-weight:650;fill:#192b3b}.body{font-size:13px;fill:#526376}.edge{font-size:12px;fill:#57687a;paint-order:stroke;stroke:#fcfcfa;stroke-width:7px;stroke-linejoin:round}.group{font-size:13px;font-weight:650;fill:#687787}</style>
+<rect width="1200" height="890" fill="#fcfcfa" rx="14"/>
+<path d="M360,80.0 L400.0,80.0 L400.0,80.0 L440,80.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M760,80.0 L800.0,80.0 L800.0,80.0 L840,80.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M600.0,125 L600.0,180.0 L600.0,180.0 L600.0,235" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M360,285.0 L400.0,285.0 L400.0,285.0 L440,285.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1000,125 L1000,185 L710,185 L710,235" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="850" y="178" class="edge" text-anchor="middle">REST / SSE</text>
+<path d="M760,285.0 L800.0,285.0 L800.0,285.0 L840,285.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M440,298 L390,298 L390,412 L200,412 L200,445" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1000,335 L1000,392 L600,392 L600,445" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M760,500.0 L800.0,500.0 L800.0,500.0 L840,500.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1000.0,555 L1000.0,620.0 L1000.0,620.0 L1000.0,685" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M925,555 L925,620 L600,620 L600,685" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M440,500.0 L400.0,500.0 L400.0,500.0 L360,500.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="398" y="486" class="edge" text-anchor="middle">job.changed</text>
+<rect x="40" y="35" width="320" height="90" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="56" y="63" class="title">落地页 /</text>
+<text x="56" y="86" class="body">React · 模式展示</text>
+<text x="56" y="106" class="body">导航进入工作台</text>
+<rect x="440" y="35" width="320" height="90" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="456" y="63" class="title">工作台 /workspace</text>
+<text x="456" y="86" class="body">Composer / 画布 / 素材</text>
+<text x="456" y="106" class="body">CreationIntent → 文档与生成</text>
+<rect x="840" y="35" width="320" height="90" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="856" y="63" class="title">画布 /canvas</text>
+<text x="856" y="86" class="body">canvas-next · React Shell</text>
+<text x="856" y="106" class="body">CanvasView + react-konva</text>
+<rect x="40" y="235" width="320" height="100" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="56" y="263" class="title">HTTPS / OIDC / 会话</text>
+<text x="56" y="286" class="body">Caddy / workspace membership</text>
+<text x="56" y="306" class="body">同源写请求 CSRF</text>
+<rect x="440" y="235" width="320" height="100" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="456" y="263" class="title">唯一应用工厂</text>
+<text x="456" y="286" class="body">backend.app:create_app</text>
+<text x="456" y="306" class="body">FastAPI REST / 静态文件 / SSE</text>
+<rect x="840" y="235" width="320" height="100" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="856" y="263" class="title">PostgreSQL</text>
+<text x="856" y="286" class="body">Job / Document / Asset / Outbox</text>
+<text x="856" y="306" class="body">所有业务状态的权威来源</text>
+<rect x="40" y="445" width="320" height="110" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="56" y="473" class="title">SSE 通知与恢复</text>
+<text x="56" y="496" class="body">notify → Redis 工作区唤醒</text>
+<text x="56" y="516" class="body">API 回查 PG 的公开状态</text>
+<text x="56" y="536" class="body">浏览器断线后 HTTP 对账</text>
+<rect x="440" y="445" width="320" height="110" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="456" y="473" class="title">可靠派发与调度</text>
+<text x="456" y="496" class="body">dispatcher → RabbitMQ → bridge</text>
+<text x="456" y="516" class="body">scheduler：到期 / 租约 / 恢复</text>
+<text x="456" y="536" class="body">execution.due / job.changed</text>
+<rect x="840" y="445" width="320" height="110" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="856" y="473" class="title">Celery Workers</text>
+<text x="856" y="496" class="body">image / video / exports 队列</text>
+<text x="856" y="516" class="body">阶段执行 / 心跳 / epoch</text>
+<text x="856" y="536" class="body">Provider 快照固定计费路由</text>
+<rect x="40" y="685" width="320" height="120" rx="9" fill="#fff2ef" stroke="#bb7065" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="56" y="713" class="title">隔离历史评测夹具</text>
+<text x="56" y="736" class="body">evaluation/sandbox.py</text>
+<text x="56" y="756" class="body">必须显式传入独立目录</text>
+<text x="56" y="776" class="body">非应用启动模式；不读仓库 data</text>
+<text x="56" y="796" class="body">Agent / 分镜 / 评测 HTTP 未迁入</text>
+<rect x="440" y="685" width="320" height="120" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="456" y="713" class="title">共享媒体卷 / Redis</text>
+<text x="456" y="736" class="body">文件 + SHA256 receipt</text>
+<text x="456" y="756" class="body">Redis：通知 / 限流 / 熔断</text>
+<text x="456" y="776" class="body">API 内 rembg；导出用 FFmpeg</text>
+<rect x="840" y="685" width="320" height="120" rx="9" fill="#f3f4f5" stroke="#8c949f" stroke-width="1.2"/>
+<text x="856" y="713" class="title">StagedProvider</text>
+<text x="856" y="736" class="body">Mock / Cloud / ComfyUI</text>
+<text x="856" y="756" class="body">prepare / submit / poll / cancel</text>
+<text x="856" y="776" class="body">外部生成只由 Worker 发起</text>
+</svg></div><div class="figure-tools"><a href="diagrams/01-overview.svg" target="_blank">打开 SVG 大图 ↗</a><a href="diagrams/01-overview.svg" download>下载 SVG</a><a href="diagrams/01-overview.mmd" download>下载 Mermaid 源码</a></div><div class="notes"><p><strong>单一业务运行架构</strong>backend.app 与 backend.production 导入同一工厂。npm dev/start、python -m backend 和默认 Compose 均使用数据库 API，AIVERO_API_MODE 已退役。</p><p><strong>开发依旧可以热重载</strong>--reload 只影响源码监听；仍需要数据库、Redis、独立 Worker、共享媒体、OIDC 与 HTTPS 配置。缺配置会失败，不回退 JSON 或 Mock 应用。</p><p><strong>历史代码的保留范围</strong>旧 HTTP/FIFO 仅被隔离评测、性能夹具与兼容测试显式导入，无法用默认无参数工厂启动，禁止操作仓库 data。已有数据需离线导入。</p><p><strong>当前功能边界</strong>Agent、完整分镜编排、评测 HTTP 页面尚未迁入统一入口；新画布中的部分工作流也未接通。统一入口不代表这些外围能力已经迁移完成。</p></div><div class="sources">源码依据：<code>apps/api/backend/app.py:1</code> · <code>apps/api/backend/__main__.py:13</code> · <code>apps/api/backend/production.py:89</code> · <code>apps/api/backend/evaluation/sandbox.py:112</code> · <code>docker-compose.yml:1</code></div><details><summary>查看可编辑 Mermaid 图源</summary><pre>flowchart TB
+  landing[&quot;落地页 /&lt;br/&gt;React · 模式展示&lt;br/&gt;导航进入工作台&quot;]
+  workspace[&quot;工作台 /workspace&lt;br/&gt;Composer / 画布 / 素材&lt;br/&gt;CreationIntent → 文档与生成&quot;]
+  canvas[&quot;画布 /canvas&lt;br/&gt;canvas-next · React Shell&lt;br/&gt;CanvasView + react-konva&quot;]
+  auth[&quot;HTTPS / OIDC / 会话&lt;br/&gt;Caddy / workspace membership&lt;br/&gt;同源写请求 CSRF&quot;]
+  api[&quot;唯一应用工厂&lt;br/&gt;backend.app:create_app&lt;br/&gt;FastAPI REST / 静态文件 / SSE&quot;]
+  pg[&quot;PostgreSQL&lt;br/&gt;Job / Document / Asset / Outbox&lt;br/&gt;所有业务状态的权威来源&quot;]
+  notify[&quot;SSE 通知与恢复&lt;br/&gt;notify → Redis 工作区唤醒&lt;br/&gt;API 回查 PG 的公开状态&lt;br/&gt;浏览器断线后 HTTP 对账&quot;]
+  queue[&quot;可靠派发与调度&lt;br/&gt;dispatcher → RabbitMQ → bridge&lt;br/&gt;scheduler：到期 / 租约 / 恢复&lt;br/&gt;execution.due / job.changed&quot;]
+  workers[&quot;Celery Workers&lt;br/&gt;image / video / exports 队列&lt;br/&gt;阶段执行 / 心跳 / epoch&lt;br/&gt;Provider 快照固定计费路由&quot;]
+  legacy[&quot;隔离历史评测夹具&lt;br/&gt;evaluation/sandbox.py&lt;br/&gt;必须显式传入独立目录&lt;br/&gt;非应用启动模式；不读仓库 data&lt;br/&gt;Agent / 分镜 / 评测 HTTP 未迁入&quot;]
+  media[&quot;共享媒体卷 / Redis&lt;br/&gt;文件 + SHA256 receipt&lt;br/&gt;Redis：通知 / 限流 / 熔断&lt;br/&gt;API 内 rembg；导出用 FFmpeg&quot;]
+  model[&quot;StagedProvider&lt;br/&gt;Mock / Cloud / ComfyUI&lt;br/&gt;prepare / submit / poll / cancel&lt;br/&gt;外部生成只由 Worker 发起&quot;]
+  landing --&gt; workspace
+  workspace --&gt; canvas
+  workspace --&gt; api
+  auth --&gt; api
+  canvas --&gt;|&quot;REST / SSE&quot;| api
+  api --&gt; pg
+  api --&gt; notify
+  pg --&gt; queue
+  queue --&gt; workers
+  workers --&gt; model
+  workers --&gt; media
+  queue --&gt;|&quot;job.changed&quot;| notify
+  classDef ui fill:#edf3ff,stroke:#4778ba,color:#192b3b
+  class landing,workspace,canvas ui
+  classDef state fill:#eef5f2,stroke:#408a72,color:#192b3b
+  classDef service fill:#fff5e7,stroke:#b47a2b,color:#192b3b
+  class auth,api,notify,queue,workers service
+  classDef store fill:#f3effa,stroke:#8871b2,color:#192b3b
+  class pg,media store
+  classDef external fill:#f3f4f5,stroke:#8c949f,color:#192b3b
+  class model external
+  classDef gap fill:#fff2ef,stroke:#bb7065,color:#192b3b
+  class legacy gap
+</pre></details></section>
+<section id="02-frontend"><h2><span class="num">02</span>前端模块分层：入口、交互核心、文档与网络</h2><p>当前画布以 canvas-next/app.tsx 为组合入口。React 管工具和面板，CanvasView 管交互与短期快照，DocStore 管持久文档，React-Konva 只承接渲染和输入适配。</p><div class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1000" role="img" aria-labelledby="title desc">
+<title id="title">前端模块分层：入口、交互核心、文档与网络</title><desc id="desc">当前画布以 canvas-next/app.tsx 为组合入口。React 管工具和面板，CanvasView 管交互与短期快照，DocStore 管持久文档，React-Konva 只承接渲染和输入适配。</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 Z" fill="#778494"/></marker></defs>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}.title{font-size:17px;font-weight:650;fill:#192b3b}.body{font-size:13px;fill:#526376}.edge{font-size:12px;fill:#57687a;paint-order:stroke;stroke:#fcfcfa;stroke-width:7px;stroke-linejoin:round}.group{font-size:13px;font-weight:650;fill:#687787}</style>
+<rect width="1200" height="1000" fill="#fcfcfa" rx="14"/>
+<rect x="20" y="20" width="1160" height="150" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="38" y="44" class="group">当前入口与保留页面代码</text>
+<rect x="20" y="210" width="1160" height="580" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="38" y="234" class="group">当前画布已接入的模块</text>
+<rect x="20" y="820" width="1160" height="155" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="38" y="844" class="group">保留模块 · 当前 CanvasShell 未装配</text>
+<path d="M280,102.5 L295.0,102.5 L295.0,102.5 L310,102.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M570,102.5 L585.0,102.5 L585.0,102.5 L600,102.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M735.0,140 L735.0,197.5 L600.0,197.5 L600.0,255" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M370,310.0 L400.0,310.0 L400.0,310.0 L430,310.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M770,310.0 L800.0,310.0 L800.0,310.0 L830,310.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M207.5,365 L207.5,405.0 L207.5,405.0 L207.5,445" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M992,365 L992,406 L600,406 L600,445" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="792" y="397" class="edge" text-anchor="middle">输入事件</text>
+<path d="M770,500.0 L800.0,500.0 L800.0,500.0 L830,500.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="800" y="485" class="edge" text-anchor="middle">命令</text>
+<path d="M1110,445 L1110,365" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="1115" y="399" class="edge" text-anchor="middle">投影重绘</text>
+<path d="M207.5,555 L207.5,597.5 L207.5,597.5 L207.5,640" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M370,695.0 L400.0,695.0 L400.0,695.0 L430,695.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M830,695.0 L800.0,695.0 L800.0,695.0 L770,695.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M992.5,555 L992.5,597.5 L992.5,597.5 L992.5,640" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M735,445 L735,365" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="724" y="395" class="edge" text-anchor="middle">短期快照</text>
+<path d="M206,555 L206,590 L992,590 L992,555" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="595" y="582" class="edge" text-anchor="middle">文档命令</text>
+<rect x="40" y="65" width="240" height="75" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="56" y="93" class="title">landing/</text>
+<text x="56" y="116" class="body">LandingPage / modes</text>
+<rect x="310" y="65" width="260" height="75" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="326" y="93" class="title">workspace/</text>
+<text x="326" y="116" class="body">HomePage / Composer / Libraries</text>
+<rect x="600" y="65" width="270" height="75" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="616" y="93" class="title">canvas-next/app.tsx</text>
+<text x="616" y="116" class="body">CanvasNextApp → CanvasShell</text>
+<rect x="900" y="65" width="260" height="75" rx="9" fill="#fff2ef" stroke="#bb7065" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="916" y="93" class="title">evaluation/ 保留代码</text>
+<text x="916" y="116" class="body">统一后端未挂载评测页面</text>
+<rect x="45" y="255" width="325" height="110" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="61" y="283" class="title">React Shell / UI</text>
+<text x="61" y="306" class="body">工具栏 / Inspector / 素材侧栏</text>
+<text x="61" y="326" class="body">生成 / 抠图 / 重绘 / 基础编辑</text>
+<text x="61" y="346" class="body">共享 ui/ 与样式</text>
+<rect x="430" y="255" width="340" height="110" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="446" y="283" class="title">CanvasViewProvider</text>
+<text x="446" y="306" class="body">React Context + useSyncExternalStore</text>
+<text x="446" y="326" class="body">提供 View 生命周期与快照订阅</text>
+<rect x="830" y="255" width="325" height="110" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="846" y="283" class="title">renderer-konva/</text>
+<text x="846" y="306" class="body">CanvasEditor + Stage</text>
+<text x="846" y="326" class="body">Connection / Content / Selection</text>
+<text x="846" y="346" class="body">Editing：暂态绘制层</text>
+<rect x="45" y="445" width="325" height="110" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="61" y="473" class="title">业务 flows + Shell 动作</text>
+<text x="61" y="496" class="body">generate / connect-reference</text>
+<text x="61" y="516" class="body">RecognitionOperation / mask</text>
+<text x="61" y="536" class="body">调用 API；提交文档命令</text>
+<rect x="430" y="445" width="340" height="110" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="446" y="473" class="title">core/ CanvasView</text>
+<text x="446" y="496" class="body">CanvasInputEvent → LayerController</text>
+<text x="446" y="516" class="body">EventMono：preview → commit</text>
+<text x="446" y="536" class="body">camera / selection / tool / mask</text>
+<rect x="830" y="445" width="325" height="110" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="846" y="473" class="title">state/ DocStore</text>
+<text x="846" y="496" class="body">objects / order / generations 等</text>
+<text x="846" y="516" class="body">HistoryManager：撤销与重做</text>
+<text x="846" y="536" class="body">selector：派生画布对象</text>
+<rect x="45" y="640" width="325" height="110" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="61" y="668" class="title">GenerationCoordinator</text>
+<text x="61" y="691" class="body">实体生命周期 + RuntimeStore</text>
+<text x="61" y="711" class="body">SSE / HTTP 对账 → acceptJob</text>
+<text x="61" y="731" class="body">operationId / jobId / version</text>
+<rect x="430" y="640" width="340" height="110" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="446" y="668" class="title">网络访问</text>
+<text x="446" y="691" class="body">fetch / typed clients / CSRF wrapper</text>
+<text x="446" y="711" class="body">EventSource + 断线轮询</text>
+<text x="446" y="731" class="body">REST /api/* + SSE /api/events</text>
+<rect x="830" y="640" width="325" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="846" y="668" class="title">AutoSaver</text>
+<text x="846" y="691" class="body">1 秒防抖 / localStorage 草稿</text>
+<text x="846" y="711" class="body">文档全量 JSON + baseRevision</text>
+<text x="846" y="731" class="body">409 保留草稿并显示冲突</text>
+<rect x="45" y="860" width="250" height="85" rx="9" fill="#fff2ef" stroke="#bb7065" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="61" y="888" class="title">NodeGeneration</text>
+<text x="61" y="911" class="body">NodeDraft / NodeRun 对账</text>
+<text x="61" y="931" class="body">工作台与新画布尚未统一</text>
+<rect x="325" y="860" width="250" height="85" rx="9" fill="#fff2ef" stroke="#bb7065" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="341" y="888" class="title">Agent / Chat flows</text>
+<text x="341" y="911" class="body">新对话侧栏只存用户文本</text>
+<text x="341" y="931" class="body">无 Agent API 调用</text>
+<rect x="605" y="860" width="250" height="85" rx="9" fill="#fff2ef" stroke="#bb7065" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="621" y="888" class="title">完整分镜编排</text>
+<text x="621" y="911" class="body">Planner / Run 状态流程</text>
+<text x="621" y="931" class="body">新侧栏仅基础编辑</text>
+<rect x="885" y="860" width="270" height="85" rx="9" fill="#fff2ef" stroke="#bb7065" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="901" y="888" class="title">完整时间线工作流</text>
+<text x="901" y="911" class="body">TimelineExport / AudioTracks</text>
+<text x="901" y="931" class="body">新侧栏尚未接通导出</text>
+</svg></div><div class="figure-tools"><a href="diagrams/02-frontend.svg" target="_blank">打开 SVG 大图 ↗</a><a href="diagrams/02-frontend.svg" download>下载 SVG</a><a href="diagrams/02-frontend.mmd" download>下载 Mermaid 源码</a></div><div class="notes"><p><strong>交互与绘制分离</strong>Konva 输入先变成显式 CanvasInputEvent。交互层产生预览或命令；拖动中更新短期快照，提交时才进入文档历史，避免每次鼠标移动都成为撤销项。</p><p><strong>三类状态</strong>DocStore 保存文档；CanvasViewSnapshot 保存相机、选中、工具和笔画；GenerationRuntimeStore 保存请求与进度。它们的生命周期和保存策略不同。</p><p><strong>网络栈现状</strong>普通页面用 fetch 与类型化封装，landing/workspace/canvas-next 安装同源写请求 CSRF 包装。TanStack Query 主要用于独立评测页；不是全站统一 Query 或 Axios 层。评测源码仍保留，但应用入口不提供 /evals 或评测 API。</p><p><strong>当前接线缺口</strong>NodeGeneration、Agent、完整分镜及时间线导出模块保留在 canvas/flows，但当前入口没有装配；不能将其全部视为新版界面已实现能力。</p></div><div class="sources">源码依据：<code>apps/web/canvas-next/app.tsx:37</code> · <code>apps/web/canvas/react/canvas-view-context.tsx:25</code> · <code>apps/web/canvas/core/canvas-view.ts:87</code> · <code>apps/web/canvas/core/layers.ts:291</code> · <code>apps/web/canvas/renderer-konva/canvas-editor.tsx:37</code> · <code>apps/web/shared/session-fetch.ts:2</code></div><details><summary>查看可编辑 Mermaid 图源</summary><pre>flowchart TB
+  landing[&quot;landing/&lt;br/&gt;LandingPage / modes&quot;]
+  workspace[&quot;workspace/&lt;br/&gt;HomePage / Composer / Libraries&quot;]
+  canvas[&quot;canvas-next/app.tsx&lt;br/&gt;CanvasNextApp → CanvasShell&quot;]
+  evaluation[&quot;evaluation/ 保留代码&lt;br/&gt;统一后端未挂载评测页面&quot;]
+  shell[&quot;React Shell / UI&lt;br/&gt;工具栏 / Inspector / 素材侧栏&lt;br/&gt;生成 / 抠图 / 重绘 / 基础编辑&lt;br/&gt;共享 ui/ 与样式&quot;]
+  context[&quot;CanvasViewProvider&lt;br/&gt;React Context + useSyncExternalStore&lt;br/&gt;提供 View 生命周期与快照订阅&quot;]
+  render[&quot;renderer-konva/&lt;br/&gt;CanvasEditor + Stage&lt;br/&gt;Connection / Content / Selection&lt;br/&gt;Editing：暂态绘制层&quot;]
+  flow[&quot;业务 flows + Shell 动作&lt;br/&gt;generate / connect-reference&lt;br/&gt;RecognitionOperation / mask&lt;br/&gt;调用 API；提交文档命令&quot;]
+  core[&quot;core/ CanvasView&lt;br/&gt;CanvasInputEvent → LayerController&lt;br/&gt;EventMono：preview → commit&lt;br/&gt;camera / selection / tool / mask&quot;]
+  store[&quot;state/ DocStore&lt;br/&gt;objects / order / generations 等&lt;br/&gt;HistoryManager：撤销与重做&lt;br/&gt;selector：派生画布对象&quot;]
+  gen[&quot;GenerationCoordinator&lt;br/&gt;实体生命周期 + RuntimeStore&lt;br/&gt;SSE / HTTP 对账 → acceptJob&lt;br/&gt;operationId / jobId / version&quot;]
+  network[&quot;网络访问&lt;br/&gt;fetch / typed clients / CSRF wrapper&lt;br/&gt;EventSource + 断线轮询&lt;br/&gt;REST /api/* + SSE /api/events&quot;]
+  save[&quot;AutoSaver&lt;br/&gt;1 秒防抖 / localStorage 草稿&lt;br/&gt;文档全量 JSON + baseRevision&lt;br/&gt;409 保留草稿并显示冲突&quot;]
+  oldnode[&quot;NodeGeneration&lt;br/&gt;NodeDraft / NodeRun 对账&lt;br/&gt;工作台与新画布尚未统一&quot;]
+  oldagent[&quot;Agent / Chat flows&lt;br/&gt;新对话侧栏只存用户文本&lt;br/&gt;无 Agent API 调用&quot;]
+  oldstory[&quot;完整分镜编排&lt;br/&gt;Planner / Run 状态流程&lt;br/&gt;新侧栏仅基础编辑&quot;]
+  oldtime[&quot;完整时间线工作流&lt;br/&gt;TimelineExport / AudioTracks&lt;br/&gt;新侧栏尚未接通导出&quot;]
+  landing --&gt; workspace
+  workspace --&gt; canvas
+  canvas --&gt; context
+  shell --&gt; context
+  context --&gt; render
+  shell --&gt; flow
+  render --&gt;|&quot;输入事件&quot;| core
+  core --&gt;|&quot;命令&quot;| store
+  store --&gt;|&quot;投影重绘&quot;| render
+  flow --&gt; gen
+  gen --&gt; network
+  save --&gt; network
+  store --&gt; save
+  core --&gt;|&quot;短期快照&quot;| context
+  flow --&gt;|&quot;文档命令&quot;| store
+  classDef ui fill:#edf3ff,stroke:#4778ba,color:#192b3b
+  class landing,workspace,canvas,shell,render ui
+  classDef state fill:#eef5f2,stroke:#408a72,color:#192b3b
+  class context,core,store,gen state
+  classDef service fill:#fff5e7,stroke:#b47a2b,color:#192b3b
+  class flow,network service
+  classDef store fill:#f3effa,stroke:#8871b2,color:#192b3b
+  class save store
+  classDef external fill:#f3f4f5,stroke:#8c949f,color:#192b3b
+  classDef gap fill:#fff2ef,stroke:#bb7065,color:#192b3b
+  class evaluation,oldnode,oldagent,oldstory,oldtime gap
+</pre></details></section>
+<section id="03-state"><h2><span class="num">03</span>前端状态流：生成实体、画布位置与保存分离</h2><p>生成实体保留任务身份和结果，placement 决定它是否出现在画布上。SSE 或轮询只合并状态；自动保存只响应需要持久化的文档变更。</p><div class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 870" role="img" aria-labelledby="title desc">
+<title id="title">前端状态流：生成实体、画布位置与保存分离</title><desc id="desc">生成实体保留任务身份和结果，placement 决定它是否出现在画布上。SSE 或轮询只合并状态；自动保存只响应需要持久化的文档变更。</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 Z" fill="#778494"/></marker></defs>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}.title{font-size:17px;font-weight:650;fill:#192b3b}.body{font-size:13px;fill:#526376}.edge{font-size:12px;fill:#57687a;paint-order:stroke;stroke:#fcfcfa;stroke-width:7px;stroke-linejoin:round}.group{font-size:13px;font-weight:650;fill:#687787}</style>
+<rect width="1200" height="870" fill="#fcfcfa" rx="14"/>
+<path d="M360,82.5 L400.0,82.5 L400.0,82.5 L440,82.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M770,82.5 L810.0,82.5 L810.0,82.5 L850,82.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M605.0,130 L605.0,190.0 L605.0,190.0 L605.0,250" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="605" y="188" class="edge" text-anchor="middle">实体持久状态</text>
+<path d="M200.0,130 L200.0,190.0 L200.0,190.0 L200.0,250" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="200" y="188" class="edge" text-anchor="middle">通过 coordinator 创建</text>
+<path d="M1005.0,130 L1005.0,190.0 L1005.0,190.0 L1005.0,250" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="1005" y="188" class="edge" text-anchor="middle">受理后绑定 jobId</text>
+<path d="M200.0,365 L200.0,420.0 L200.0,420.0 L200.0,475" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M480,365 L480,413 L200,413 L200,475" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M605.0,365 L605.0,420.0 L605.0,420.0 L605.0,475" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1005,475 L1005,365" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="1090" y="413" class="edge" text-anchor="middle">合并运行进度</text>
+<path d="M850,505 L805,505 L805,415 L705,415 L705,365" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="790" y="408" class="edge" text-anchor="middle">acceptJob</text>
+<path d="M200.0,585 L200.0,637.5 L200.0,637.5 L200.0,690" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M605.0,585 L605.0,637.5 L605.0,637.5 L605.0,690" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1160,82 L1180,82 L1180,530 L1160,530" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="1110" y="442" class="edge" text-anchor="middle">SSE / GET jobs</text>
+<path d="M330,365 L330,445 L470,445 L470,475" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="385" y="438" class="edge" text-anchor="middle">command 通知</text>
+<rect x="40" y="35" width="320" height="95" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="56" y="63" class="title">CanvasShell / Composer</text>
+<text x="56" y="86" class="body">提示词 / 参数 / 参考图 / 重绘</text>
+<text x="56" y="106" class="body">flows/generate → submit</text>
+<rect x="440" y="35" width="330" height="95" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="456" y="63" class="title">GenerationCoordinator</text>
+<text x="456" y="86" class="body">创建 operationId / generationId</text>
+<text x="456" y="106" class="body">提交 POST /api/generate</text>
+<rect x="850" y="35" width="310" height="95" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="866" y="63" class="title">FastAPI 生成与任务 API</text>
+<text x="866" y="86" class="body">202 {jobId, job}</text>
+<text x="866" y="106" class="body">clientRef 回接节点</text>
+<rect x="40" y="250" width="320" height="115" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="56" y="278" class="title">placement + HistoryManager</text>
+<text x="56" y="301" class="body">objects[objectId].generationId</text>
+<text x="56" y="321" class="body">位置 / 尺寸 / 撤销 / 重做</text>
+<text x="56" y="341" class="body">Undo 移除；Redo 恢复同一位置</text>
+<rect x="440" y="250" width="330" height="115" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="456" y="278" class="title">GenerationEntity</text>
+<text x="456" y="301" class="body">generations[generationId]</text>
+<text x="456" y="321" class="body">spec / jobId / status / result</text>
+<text x="456" y="341" class="body">operationId + version 拒绝迟到写入</text>
+<rect x="850" y="250" width="310" height="115" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="866" y="278" class="title">GenerationRuntimeStore</text>
+<text x="866" y="301" class="body">运行索引 / progress / message</text>
+<text x="866" y="321" class="body">短期状态；不进入撤销栈</text>
+<text x="866" y="341" class="body">变化触发 transient 通知</text>
+<rect x="40" y="475" width="320" height="110" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="56" y="503" class="title">selectCanvasDocument</text>
+<text x="56" y="526" class="body">placement + entity → 显示对象</text>
+<text x="56" y="546" class="body">React / Konva 重绘</text>
+<text x="56" y="566" class="body">当前 selector 未注入 runtime</text>
+<rect x="440" y="475" width="330" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="456" y="503" class="title">AutoSaver</text>
+<text x="456" y="526" class="body">监听 command / persistent</text>
+<text x="456" y="546" class="body">1 秒防抖 → 写本机草稿</text>
+<text x="456" y="566" class="body">POST document + baseRevision</text>
+<rect x="850" y="475" width="310" height="110" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="866" y="503" class="title">SSE + HTTP 对账</text>
+<text x="866" y="526" class="body">snapshot / job → latestJob</text>
+<text x="866" y="546" class="body">stateVersion + progressSeq</text>
+<text x="866" y="566" class="body">断线 4–6 秒轮询；不自动重提</text>
+<rect x="40" y="690" width="320" height="110" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="56" y="718" class="title">撤销与迟到结果</text>
+<text x="56" y="741" class="body">迟到完成只更新 entity.result</text>
+<text x="56" y="761" class="body">已撤销的 placement 不会复活</text>
+<text x="56" y="781" class="body">Redo 展示已有结果，不再生成</text>
+<rect x="440" y="690" width="330" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="456" y="718" class="title">文档保存结果</text>
+<text x="456" y="741" class="body">成功：更新 revision / 清草稿</text>
+<text x="456" y="761" class="body">409：保留草稿 / 报冲突</text>
+<text x="456" y="781" class="body">草稿恢复 UI 当前尚未接通</text>
+<rect x="850" y="690" width="310" height="110" rx="9" fill="#fff2ef" stroke="#bb7065" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="866" y="718" class="title">工作台另一路径</text>
+<text x="866" y="741" class="body">CreationIntent / NodeDraft/Run</text>
+<text x="866" y="761" class="body">documentId + requestId + clientRef</text>
+<text x="866" y="781" class="body">进入新画布后对账尚未统一</text>
+</svg></div><div class="figure-tools"><a href="diagrams/03-state.svg" target="_blank">打开 SVG 大图 ↗</a><a href="diagrams/03-state.svg" download>下载 SVG</a><a href="diagrams/03-state.mmd" download>下载 Mermaid 源码</a></div><div class="notes"><p><strong>为什么撤销不会重复计费</strong>用户历史记录 placement 命令，生成结果更新不进入撤销栈。撤销不自动取消上游任务；只有显式 cancel 才调用删除任务 API。</p><p><strong>两种版本不能混用</strong>实体 operationId/version 用于前端操作归属与补丁次序；Job 的 stateVersion/progressSeq 用于 HTTP、SSE 和快照的状态合并。</p><p><strong>幂等接线的现状</strong>CanvasCoordinator 当前只带 clientRef，不带稳定 requestId/documentId。后端可受理，但 clientRef 本身不是幂等键。工作台 CreationIntent 才沿用稳定请求 ID。</p><p><strong>保存恢复的范围</strong>AutoSaver 已有草稿与冲突保护；resolveDraftOnOpen 和重复标签页保护模块尚未被新入口装配。进度 RuntimeStore 也尚未作为参数传入当前 selector。</p></div><div class="sources">源码依据：<code>apps/web/canvas/state/generation-coordinator.ts:91</code> · <code>apps/web/canvas/state/generation-entity.ts:153</code> · <code>apps/web/canvas/state/generation-events.ts:48</code> · <code>apps/web/canvas/state/autosave.ts:37</code> · <code>apps/web/canvas-next/app.tsx:122</code> · <code>apps/web/workspace/api.ts:136</code></div><details><summary>查看可编辑 Mermaid 图源</summary><pre>flowchart TB
+  composer[&quot;CanvasShell / Composer&lt;br/&gt;提示词 / 参数 / 参考图 / 重绘&lt;br/&gt;flows/generate → submit&quot;]
+  coord[&quot;GenerationCoordinator&lt;br/&gt;创建 operationId / generationId&lt;br/&gt;提交 POST /api/generate&quot;]
+  api[&quot;FastAPI 生成与任务 API&lt;br/&gt;202 {jobId, job}&lt;br/&gt;clientRef 回接节点&quot;]
+  placement[&quot;placement + HistoryManager&lt;br/&gt;objects[objectId].generationId&lt;br/&gt;位置 / 尺寸 / 撤销 / 重做&lt;br/&gt;Undo 移除；Redo 恢复同一位置&quot;]
+  entity[&quot;GenerationEntity&lt;br/&gt;generations[generationId]&lt;br/&gt;spec / jobId / status / result&lt;br/&gt;operationId + version 拒绝迟到写入&quot;]
+  runtime[&quot;GenerationRuntimeStore&lt;br/&gt;运行索引 / progress / message&lt;br/&gt;短期状态；不进入撤销栈&lt;br/&gt;变化触发 transient 通知&quot;]
+  view[&quot;selectCanvasDocument&lt;br/&gt;placement + entity → 显示对象&lt;br/&gt;React / Konva 重绘&lt;br/&gt;当前 selector 未注入 runtime&quot;]
+  save[&quot;AutoSaver&lt;br/&gt;监听 command / persistent&lt;br/&gt;1 秒防抖 → 写本机草稿&lt;br/&gt;POST document + baseRevision&quot;]
+  events[&quot;SSE + HTTP 对账&lt;br/&gt;snapshot / job → latestJob&lt;br/&gt;stateVersion + progressSeq&lt;br/&gt;断线 4–6 秒轮询；不自动重提&quot;]
+  history[&quot;撤销与迟到结果&lt;br/&gt;迟到完成只更新 entity.result&lt;br/&gt;已撤销的 placement 不会复活&lt;br/&gt;Redo 展示已有结果，不再生成&quot;]
+  docs[&quot;文档保存结果&lt;br/&gt;成功：更新 revision / 清草稿&lt;br/&gt;409：保留草稿 / 报冲突&lt;br/&gt;草稿恢复 UI 当前尚未接通&quot;]
+  other[&quot;工作台另一路径&lt;br/&gt;CreationIntent / NodeDraft/Run&lt;br/&gt;documentId + requestId + clientRef&lt;br/&gt;进入新画布后对账尚未统一&quot;]
+  composer --&gt; coord
+  coord --&gt; api
+  coord --&gt;|&quot;实体持久状态&quot;| entity
+  composer --&gt;|&quot;通过 coordinator 创建&quot;| placement
+  api --&gt;|&quot;受理后绑定 jobId&quot;| runtime
+  placement --&gt; view
+  entity --&gt; view
+  entity --&gt; save
+  events --&gt;|&quot;合并运行进度&quot;| runtime
+  events --&gt;|&quot;acceptJob&quot;| entity
+  view --&gt; history
+  save --&gt; docs
+  api --&gt;|&quot;SSE / GET jobs&quot;| events
+  placement --&gt;|&quot;command 通知&quot;| save
+  classDef ui fill:#edf3ff,stroke:#4778ba,color:#192b3b
+  class composer,view ui
+  classDef state fill:#eef5f2,stroke:#408a72,color:#192b3b
+  class coord,placement,entity,runtime,history state
+  classDef service fill:#fff5e7,stroke:#b47a2b,color:#192b3b
+  class api,events service
+  classDef store fill:#f3effa,stroke:#8871b2,color:#192b3b
+  class save,docs store
+  classDef external fill:#f3f4f5,stroke:#8c949f,color:#192b3b
+  classDef gap fill:#fff2ef,stroke:#bb7065,color:#192b3b
+  class other gap
+</pre></details></section>
+<section id="05-production"><h2><span class="num">04</span>统一后端：事务受理、阶段执行与通知闭环</h2><p>PostgreSQL 保存任务和执行所有权；RabbitMQ 传递至少一次消息；Celery 每次执行一个阶段；Redis 协調通知、限流和熔断。API 受理不直接调用付费生成。</p><div class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1090" role="img" aria-labelledby="title desc">
+<title id="title">统一后端：事务受理、阶段执行与通知闭环</title><desc id="desc">PostgreSQL 保存任务和执行所有权；RabbitMQ 传递至少一次消息；Celery 每次执行一个阶段；Redis 协調通知、限流和熔断。API 受理不直接调用付费生成。</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 Z" fill="#778494"/></marker></defs>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}.title{font-size:17px;font-weight:650;fill:#192b3b}.body{font-size:13px;fill:#526376}.edge{font-size:12px;fill:#57687a;paint-order:stroke;stroke:#fcfcfa;stroke-width:7px;stroke-linejoin:round}.group{font-size:13px;font-weight:650;fill:#687787}</style>
+<rect width="1200" height="1090" fill="#fcfcfa" rx="14"/>
+<rect x="20" y="20" width="1160" height="300" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="38" y="44" class="group">HTTP 与应用服务</text>
+<rect x="20" y="355" width="1160" height="290" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="38" y="379" class="group">可靠消息与独立后台进程</text>
+<rect x="20" y="680" width="1160" height="370" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="38" y="704" class="group">执行与产物</text>
+<path d="M340,112.5 L380.0,112.5 L380.0,112.5 L420,112.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M750,112.5 L795.0,112.5 L795.0,112.5 L840,112.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M190.0,160 L190.0,185.0 L190.0,185.0 L190.0,210" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M650,210 L650,186 L1000,186 L1000,160" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M840,250 L797,250 L797,335 L190,335 L190,290" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="595" y="327" class="edge" text-anchor="middle">通知唤醒</text>
+<path d="M1160,100 L1186,100 L1186,344 L190,344 L190,400" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="1060" y="333" class="edge" text-anchor="middle">领取 Outbox</text>
+<path d="M340,447.5 L380.0,447.5 L380.0,447.5 L420,447.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M750,447.5 L795.0,447.5 L795.0,447.5 L840,447.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="797" y="440" class="edge" text-anchor="middle">job.changed</text>
+<path d="M1000.0,400 L1000.0,345.0 L1000.0,345.0 L1000.0,290" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M490,495 L490,524 L190,524 L190,550" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="334" y="515" class="edge" text-anchor="middle">execution.due</text>
+<path d="M340,582.5 L380.0,582.5 L380.0,582.5 L420,582.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M670,495 L670,524 L1000,524 L1000,550" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="840" y="517" class="edge" text-anchor="middle">拒绝 / 超限</text>
+<path d="M585,615 L585,667 L190,667 L190,725" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M340,782.5 L380.0,782.5 L380.0,782.5 L420,782.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M750,782.5 L795.0,782.5 L795.0,782.5 L840,782.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M480,840 L480,878 L190,878 L190,925" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M585.0,840 L585.0,882.5 L585.0,882.5 L585.0,925" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1000,925 L1000,840" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="1040" y="883" class="edge" text-anchor="middle">写入成片</text>
+<path d="M750,780 L780,780 L780,118 L840,118" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M735,840 L800,840 L800,966 L840,966" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M750,805 L813,805 L813,270 L840,270" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<rect x="40" y="65" width="300" height="95" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="56" y="93" class="title">production.create_app</text>
+<text x="56" y="116" class="body">REST / 同源静态资源 / SSE</text>
+<text x="56" y="136" class="body">OIDC + session + CSRF</text>
+<rect x="420" y="65" width="330" height="95" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="436" y="93" class="title">受理与文档服务</text>
+<text x="436" y="116" class="body">accept_generation / Documents</text>
+<text x="436" y="136" class="body">幂等 / 容量 / revision / 引用</text>
+<rect x="840" y="65" width="320" height="95" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="856" y="93" class="title">PostgreSQL / UoW</text>
+<text x="856" y="116" class="body">Job / Attempt / Outbox / Asset</text>
+<text x="856" y="136" class="body">事务提交后才返回 202</text>
+<rect x="40" y="210" width="300" height="80" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="56" y="238" class="title">SSE 公开投影</text>
+<text x="56" y="261" class="body">先订阅后 snapshot；周期回查 PG</text>
+<text x="56" y="281" class="body">按工作区与 stateVersion 输出</text>
+<rect x="420" y="210" width="330" height="80" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="436" y="238" class="title">scheduler</text>
+<text x="436" y="261" class="body">扫描 next_poll_at / 过期 lease</text>
+<text x="436" y="281" class="body">固定期限裁决 / receipt 恢复</text>
+<rect x="840" y="210" width="320" height="80" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="856" y="238" class="title">Redis</text>
+<text x="856" y="261" class="body">工作区 pubsub / 操作取消</text>
+<text x="856" y="281" class="body">操作级限流 / 熔断 / 凭据暂停</text>
+<rect x="40" y="400" width="300" height="95" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="56" y="428" class="title">dispatcher</text>
+<text x="56" y="451" class="body">领取 Outbox / SKIP LOCKED</text>
+<text x="56" y="471" class="body">publisher confirm / claim_token</text>
+<rect x="420" y="400" width="330" height="95" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="436" y="428" class="title">RabbitMQ 事件拓扑</text>
+<text x="436" y="451" class="body">execution.due → phase.events</text>
+<text x="436" y="471" class="body">job.changed → notifications</text>
+<rect x="840" y="400" width="320" height="95" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="856" y="428" class="title">notify</text>
+<text x="856" y="451" class="body">读取 PG 最新 Job 版本</text>
+<text x="856" y="471" class="body">发布工作区 Redis 唤醒</text>
+<rect x="40" y="550" width="300" height="65" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="56" y="578" class="title">bridge</text>
+<text x="56" y="601" class="body">确认发出 Celery task 后 ACK</text>
+<rect x="420" y="550" width="330" height="65" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="436" y="578" class="title">Celery 三类任务队列</text>
+<text x="436" y="601" class="body">generation.image / video / exports</text>
+<rect x="840" y="550" width="320" height="65" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="856" y="578" class="title">失败投递 / 死信</text>
+<text x="856" y="601" class="body">有限重投 / aivideo.dead / 审计恢复</text>
+<rect x="40" y="725" width="300" height="115" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="56" y="753" class="title">Worker AsyncRuntime</text>
+<text x="56" y="776" class="body">每个 prefork 进程独立事件循环</text>
+<text x="56" y="796" class="body">复用 HTTPX / DB / Redis 客户端</text>
+<text x="56" y="816" class="body">心跳与租约独立维护</text>
+<rect x="420" y="725" width="330" height="115" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="436" y="753" class="title">ExecutionStore + Runner</text>
+<text x="436" y="776" class="body">claim → owner / epoch / lease</text>
+<text x="436" y="796" class="body">prepare → submit → poll → download</text>
+<text x="436" y="816" class="body">generation_runner / export_runner</text>
+<rect x="840" y="725" width="320" height="115" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="856" y="753" class="title">产物协议 / 共享卷</text>
+<text x="856" y="776" class="body">generated / jobId / epoch</text>
+<text x="856" y="796" class="body">原子文件 + SHA256 receipt</text>
+<text x="856" y="816" class="body">校验后登记 Asset / completed</text>
+<rect x="40" y="925" width="300" height="85" rx="9" fill="#f3f4f5" stroke="#8c949f" stroke-width="1.2"/>
+<text x="56" y="953" class="title">StagedProvider</text>
+<text x="56" y="976" class="body">Mock / Cloud / ComfyUI</text>
+<text x="56" y="996" class="body">prepare / submit / poll / cancel</text>
+<rect x="420" y="925" width="330" height="85" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="436" y="953" class="title">unknown 与恢复</text>
+<text x="436" y="976" class="body">未知提交不自动重提 / 保留名额</text>
+<text x="436" y="996" class="body">只查原句柄；必要时人工确认</text>
+<rect x="840" y="925" width="320" height="85" rx="9" fill="#f3f4f5" stroke="#8c949f" stroke-width="1.2"/>
+<text x="856" y="953" class="title">FFmpeg 导出</text>
+<text x="856" y="976" class="body">exports 队列独立执行</text>
+<text x="856" y="996" class="body">取消 / 超时回收子进程组</text>
+</svg></div><div class="figure-tools"><a href="diagrams/05-production.svg" target="_blank">打开 SVG 大图 ↗</a><a href="diagrams/05-production.svg" download>下载 SVG</a><a href="diagrams/05-production.mmd" download>下载 Mermaid 源码</a></div><div class="notes"><p><strong>四个 daemon 各司其职</strong>dispatcher 保证数据库事件送达 MQ；bridge 转成 Celery 执行任务；scheduler 扫描到期任务并恢复租约；notify 将状态变更转成 Redis 唤醒。Compose 不运行 Celery beat。</p><p><strong>消息可重复，提交不可盲重试</strong>至少一次消息由数据库 claim、lease_owner、execution_epoch 和期限检查吸收重复。Attempt 记录提交尝试；不能确定上游是否收单时转 unknown，不自动重新付费生成。</p><p><strong>模型并发与 Worker 并发分开</strong>PG 模型槽位代表实际上游任务并发；轮询等待不占 Celery 执行槽。Redis 负责速率和熔断；PostgreSQL 才是任务状态依据，Celery 未使用结果后端。</p><p><strong>资源恢复与事件恢复</strong>文件先原子落盘并写 receipt，再登记资产；崩溃后可恢复已有产物。SSE 依赖 PG 快照和周期对账，Redis 是唤醒信号，不是事件历史或 Last-Event-ID 重放日志。</p><p><strong>抠图仍在 API</strong>当前 API 的 rembg 识别仍是 API 进程内单推理线程，Redis 传递跨实例取消标记；只有时间线导出进入 exports Worker。识别结果不持久化为蒙版资产。</p></div><div class="sources">源码依据：<code>apps/api/backend/production.py:307</code> · <code>apps/api/backend/services/acceptance.py:18</code> · <code>apps/api/backend/services/execution.py:45</code> · <code>apps/api/backend/workers/daemon.py:36</code> · <code>apps/api/backend/workers/daemon.py:63</code> · <code>apps/api/backend/workers/daemon.py:150</code> · <code>apps/api/backend/infrastructure/outbox_dispatcher.py:23</code> · <code>apps/api/backend/services/generation_runner.py:31</code></div><details><summary>查看可编辑 Mermaid 图源</summary><pre>flowchart TB
+  api[&quot;production.create_app&lt;br/&gt;REST / 同源静态资源 / SSE&lt;br/&gt;OIDC + session + CSRF&quot;]
+  accept[&quot;受理与文档服务&lt;br/&gt;accept_generation / Documents&lt;br/&gt;幂等 / 容量 / revision / 引用&quot;]
+  pg[&quot;PostgreSQL / UoW&lt;br/&gt;Job / Attempt / Outbox / Asset&lt;br/&gt;事务提交后才返回 202&quot;]
+  sse[&quot;SSE 公开投影&lt;br/&gt;先订阅后 snapshot；周期回查 PG&lt;br/&gt;按工作区与 stateVersion 输出&quot;]
+  scheduler[&quot;scheduler&lt;br/&gt;扫描 next_poll_at / 过期 lease&lt;br/&gt;固定期限裁决 / receipt 恢复&quot;]
+  redis[&quot;Redis&lt;br/&gt;工作区 pubsub / 操作取消&lt;br/&gt;操作级限流 / 熔断 / 凭据暂停&quot;]
+  dispatcher[&quot;dispatcher&lt;br/&gt;领取 Outbox / SKIP LOCKED&lt;br/&gt;publisher confirm / claim_token&quot;]
+  rabbit[&quot;RabbitMQ 事件拓扑&lt;br/&gt;execution.due → phase.events&lt;br/&gt;job.changed → notifications&quot;]
+  notify[&quot;notify&lt;br/&gt;读取 PG 最新 Job 版本&lt;br/&gt;发布工作区 Redis 唤醒&quot;]
+  bridge[&quot;bridge&lt;br/&gt;确认发出 Celery task 后 ACK&quot;]
+  queues[&quot;Celery 三类任务队列&lt;br/&gt;generation.image / video / exports&quot;]
+  dlq[&quot;失败投递 / 死信&lt;br/&gt;有限重投 / aivideo.dead / 审计恢复&quot;]
+  runtime[&quot;Worker AsyncRuntime&lt;br/&gt;每个 prefork 进程独立事件循环&lt;br/&gt;复用 HTTPX / DB / Redis 客户端&lt;br/&gt;心跳与租约独立维护&quot;]
+  execution[&quot;ExecutionStore + Runner&lt;br/&gt;claim → owner / epoch / lease&lt;br/&gt;prepare → submit → poll → download&lt;br/&gt;generation_runner / export_runner&quot;]
+  artifacts[&quot;产物协议 / 共享卷&lt;br/&gt;generated / jobId / epoch&lt;br/&gt;原子文件 + SHA256 receipt&lt;br/&gt;校验后登记 Asset / completed&quot;]
+  staged[&quot;StagedProvider&lt;br/&gt;Mock / Cloud / ComfyUI&lt;br/&gt;prepare / submit / poll / cancel&quot;]
+  recovery[&quot;unknown 与恢复&lt;br/&gt;未知提交不自动重提 / 保留名额&lt;br/&gt;只查原句柄；必要时人工确认&quot;]
+  ffmpeg[&quot;FFmpeg 导出&lt;br/&gt;exports 队列独立执行&lt;br/&gt;取消 / 超时回收子进程组&quot;]
+  api --&gt; accept
+  accept --&gt; pg
+  api --&gt; sse
+  scheduler --&gt; pg
+  redis --&gt;|&quot;通知唤醒&quot;| sse
+  pg --&gt;|&quot;领取 Outbox&quot;| dispatcher
+  dispatcher --&gt; rabbit
+  rabbit --&gt;|&quot;job.changed&quot;| notify
+  notify --&gt; redis
+  rabbit --&gt;|&quot;execution.due&quot;| bridge
+  bridge --&gt; queues
+  rabbit --&gt;|&quot;拒绝 / 超限&quot;| dlq
+  queues --&gt; runtime
+  runtime --&gt; execution
+  execution --&gt; artifacts
+  execution --&gt; staged
+  execution --&gt; recovery
+  ffmpeg --&gt;|&quot;写入成片&quot;| artifacts
+  execution --&gt; pg
+  execution --&gt; ffmpeg
+  execution -.-&gt; redis
+  classDef ui fill:#edf3ff,stroke:#4778ba,color:#192b3b
+  class api ui
+  classDef state fill:#eef5f2,stroke:#408a72,color:#192b3b
+  class execution,recovery state
+  classDef service fill:#fff5e7,stroke:#b47a2b,color:#192b3b
+  class accept,sse,scheduler,dispatcher,notify,bridge,queues,runtime service
+  classDef store fill:#f3effa,stroke:#8871b2,color:#192b3b
+  class pg,redis,rabbit,dlq,artifacts store
+  classDef external fill:#f3f4f5,stroke:#8c949f,color:#192b3b
+  class staged,ffmpeg external
+  classDef gap fill:#fff2ef,stroke:#bb7065,color:#192b3b
+</pre></details></section>
+<section id="06-sequence"><h2><span class="num">05</span>一次生成请求的跨层时序</h2><p>以下展示统一后端的主路径。任务状态与派发事件同事务落库，执行分成可恢复的阶段，最终经通知唤醒与数据库投影回到浏览器。</p><div class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1150" role="img"><title>一次生成请求的跨层时序</title><defs><marker id="seq-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#668099"/></marker></defs><rect width="1200" height="1150" fill="#fcfcfa"/><style>text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;fill:#283f51}</style>
+<line x1="85.71428571428571" x2="85.71428571428571" y1="78" y2="1120" stroke="#cfdae2" stroke-dasharray="5 5"/>
+<rect x="10.0" y="20" width="151.42857142857142" height="56" rx="7" fill="#edf3fa" stroke="#88a1b9"/><text x="85.71428571428571" y="54" text-anchor="middle" font-size="14" font-weight="600">浏览器</text>
+<line x1="257.1428571428571" x2="257.1428571428571" y1="78" y2="1120" stroke="#cfdae2" stroke-dasharray="5 5"/>
+<rect x="181.4285714285714" y="20" width="151.42857142857142" height="56" rx="7" fill="#edf3fa" stroke="#88a1b9"/><text x="257.1428571428571" y="54" text-anchor="middle" font-size="14" font-weight="600">统一 API</text>
+<line x1="428.57142857142856" x2="428.57142857142856" y1="78" y2="1120" stroke="#cfdae2" stroke-dasharray="5 5"/>
+<rect x="352.85714285714283" y="20" width="151.42857142857142" height="56" rx="7" fill="#edf3fa" stroke="#88a1b9"/><text x="428.57142857142856" y="54" text-anchor="middle" font-size="14" font-weight="600">PostgreSQL</text>
+<line x1="600.0" x2="600.0" y1="78" y2="1120" stroke="#cfdae2" stroke-dasharray="5 5"/>
+<rect x="524.2857142857143" y="20" width="151.42857142857142" height="56" rx="7" fill="#edf3fa" stroke="#88a1b9"/><text x="600.0" y="54" text-anchor="middle" font-size="14" font-weight="600">Dispatcher / MQ</text>
+<line x1="771.4285714285713" x2="771.4285714285713" y1="78" y2="1120" stroke="#cfdae2" stroke-dasharray="5 5"/>
+<rect x="695.7142857142857" y="20" width="151.42857142857142" height="56" rx="7" fill="#edf3fa" stroke="#88a1b9"/><text x="771.4285714285713" y="54" text-anchor="middle" font-size="14" font-weight="600">Bridge / Worker</text>
+<line x1="942.8571428571428" x2="942.8571428571428" y1="78" y2="1120" stroke="#cfdae2" stroke-dasharray="5 5"/>
+<rect x="867.1428571428571" y="20" width="151.42857142857142" height="56" rx="7" fill="#edf3fa" stroke="#88a1b9"/><text x="942.8571428571428" y="54" text-anchor="middle" font-size="14" font-weight="600">Provider / 媒体卷</text>
+<line x1="1114.2857142857142" x2="1114.2857142857142" y1="78" y2="1120" stroke="#cfdae2" stroke-dasharray="5 5"/>
+<rect x="1038.5714285714284" y="20" width="151.42857142857142" height="56" rx="7" fill="#edf3fa" stroke="#88a1b9"/><text x="1114.2857142857142" y="54" text-anchor="middle" font-size="14" font-weight="600">Notify / Redis</text>
+<line x1="85.71428571428571" y1="125" x2="257.1428571428571" y2="125" stroke="#668099" stroke-width="1.5" marker-end="url(#seq-arrow)"/>
+<text x="171.42857142857142" y="113" text-anchor="middle" font-size="12" style="paint-order:stroke;stroke:#fcfcfa;stroke-width:6px;stroke-linejoin:round">01 POST generate</text>
+<line x1="257.1428571428571" y1="185" x2="428.57142857142856" y2="185" stroke="#668099" stroke-width="1.5" marker-end="url(#seq-arrow)"/>
+<text x="342.85714285714283" y="173" text-anchor="middle" font-size="12" style="paint-order:stroke;stroke:#fcfcfa;stroke-width:6px;stroke-linejoin:round">02 幂等 / Job / Outbox 同事务</text>
+<line x1="257.1428571428571" y1="245" x2="85.71428571428571" y2="245" stroke="#668099" stroke-width="1.5" marker-end="url(#seq-arrow)" stroke-dasharray="6 4"/>
+<text x="171.42857142857142" y="233" text-anchor="middle" font-size="12" style="paint-order:stroke;stroke:#fcfcfa;stroke-width:6px;stroke-linejoin:round">03 COMMIT 后 202 {jobId, job}</text>
+<line x1="428.57142857142856" y1="305" x2="600.0" y2="305" stroke="#668099" stroke-width="1.5" marker-end="url(#seq-arrow)"/>
+<text x="514.2857142857142" y="293" text-anchor="middle" font-size="12" style="paint-order:stroke;stroke:#fcfcfa;stroke-width:6px;stroke-linejoin:round">04 领取 execution.due Outbox</text>
+<line x1="600.0" y1="365" x2="771.4285714285713" y2="365" stroke="#668099" stroke-width="1.5" marker-end="url(#seq-arrow)"/>
+<text x="685.7142857142857" y="353" text-anchor="middle" font-size="12" style="paint-order:stroke;stroke:#fcfcfa;stroke-width:6px;stroke-linejoin:round">05 确认派发，再 ACK</text>
+<line x1="771.4285714285713" y1="425" x2="428.57142857142856" y2="425" stroke="#668099" stroke-width="1.5" marker-end="url(#seq-arrow)"/>
+<text x="600.0" y="413" text-anchor="middle" font-size="12" style="paint-order:stroke;stroke:#fcfcfa;stroke-width:6px;stroke-linejoin:round">06 claim：owner + epoch + lease</text>
+<line x1="771.4285714285713" y1="485" x2="942.8571428571428" y2="485" stroke="#668099" stroke-width="1.5" marker-end="url(#seq-arrow)"/>
+<text x="857.1428571428571" y="473" text-anchor="middle" font-size="12" style="paint-order:stroke;stroke:#fcfcfa;stroke-width:6px;stroke-linejoin:round">07 执行 prepare / submit</text>
+<line x1="942.8571428571428" y1="545" x2="771.4285714285713" y2="545" stroke="#668099" stroke-width="1.5" marker-end="url(#seq-arrow)" stroke-dasharray="6 4"/>
+<text x="857.1428571428571" y="533" text-anchor="middle" font-size="12" style="paint-order:stroke;stroke:#fcfcfa;stroke-width:6px;stroke-linejoin:round">08 上游句柄 / 阶段结果</text>
+<line x1="771.4285714285713" y1="605" x2="428.57142857142856" y2="605" stroke="#668099" stroke-width="1.5" marker-end="url(#seq-arrow)"/>
+<text x="600.0" y="593" text-anchor="middle" font-size="12" style="paint-order:stroke;stroke:#fcfcfa;stroke-width:6px;stroke-linejoin:round">09 阶段 + next_poll_at + Outbox</text>
+<line x1="428.57142857142856" y1="665" x2="771.4285714285713" y2="665" stroke="#668099" stroke-width="1.5" marker-end="url(#seq-arrow)"/>
+<text x="600.0" y="653" text-anchor="middle" font-size="12" style="paint-order:stroke;stroke:#fcfcfa;stroke-width:6px;stroke-linejoin:round">10 scheduler → Outbox → MQ 唤醒下一阶段</text>
+<line x1="771.4285714285713" y1="725" x2="942.8571428571428" y2="725" stroke="#668099" stroke-width="1.5" marker-end="url(#seq-arrow)"/>
+<text x="857.1428571428571" y="713" text-anchor="middle" font-size="12" style="paint-order:stroke;stroke:#fcfcfa;stroke-width:6px;stroke-linejoin:round">11 poll / download；写原子产物与 receipt</text>
+<line x1="771.4285714285713" y1="785" x2="428.57142857142856" y2="785" stroke="#668099" stroke-width="1.5" marker-end="url(#seq-arrow)"/>
+<text x="600.0" y="773" text-anchor="middle" font-size="12" style="paint-order:stroke;stroke:#fcfcfa;stroke-width:6px;stroke-linejoin:round">12 有效 lease 下：Asset + completed + Outbox</text>
+<line x1="428.57142857142856" y1="845" x2="600.0" y2="845" stroke="#668099" stroke-width="1.5" marker-end="url(#seq-arrow)"/>
+<text x="514.2857142857142" y="833" text-anchor="middle" font-size="12" style="paint-order:stroke;stroke:#fcfcfa;stroke-width:6px;stroke-linejoin:round">13 派发 job.changed</text>
+<line x1="600.0" y1="905" x2="1114.2857142857142" y2="905" stroke="#668099" stroke-width="1.5" marker-end="url(#seq-arrow)"/>
+<text x="857.1428571428571" y="893" text-anchor="middle" font-size="12" style="paint-order:stroke;stroke:#fcfcfa;stroke-width:6px;stroke-linejoin:round">14 消费通知 / 最新版本</text>
+<line x1="1114.2857142857142" y1="965" x2="257.1428571428571" y2="965" stroke="#668099" stroke-width="1.5" marker-end="url(#seq-arrow)" stroke-dasharray="6 4"/>
+<text x="685.7142857142857" y="953" text-anchor="middle" font-size="12" style="paint-order:stroke;stroke:#fcfcfa;stroke-width:6px;stroke-linejoin:round">15 工作区 pubsub 唤醒</text>
+<line x1="257.1428571428571" y1="1025" x2="428.57142857142856" y2="1025" stroke="#668099" stroke-width="1.5" marker-end="url(#seq-arrow)"/>
+<text x="342.85714285714283" y="1013" text-anchor="middle" font-size="12" style="paint-order:stroke;stroke:#fcfcfa;stroke-width:6px;stroke-linejoin:round">16 回查公开投影</text>
+<line x1="257.1428571428571" y1="1085" x2="85.71428571428571" y2="1085" stroke="#668099" stroke-width="1.5" marker-end="url(#seq-arrow)" stroke-dasharray="6 4"/>
+<text x="171.42857142857142" y="1073" text-anchor="middle" font-size="12" style="paint-order:stroke;stroke:#fcfcfa;stroke-width:6px;stroke-linejoin:round">17 SSE job / image；浏览器合并状态</text>
+</svg></div><div class="figure-tools"><a href="diagrams/06-sequence.svg" target="_blank">打开 SVG 大图 ↗</a><a href="diagrams/06-sequence.svg" download>下载 SVG</a><a href="diagrams/06-sequence.mmd" download>下载 Mermaid 源码</a></div><div class="notes"><p><strong>202 的含义</strong>请求已被可靠受理，尚未生成完成。结果通过 Job.images、历史与 SSE 异步返回；不能把 202 当成媒体已生成。</p><p><strong>图中的合并泳道</strong>SVG 将 Dispatcher/MQ、Bridge/Worker 和 Provider/媒体卷合并以便阅读；Mermaid 源码保留更细的独立参与者，模块边界见上一图。</p><p><strong>同步与异步 Provider</strong>有些图像调用同步返回产物；云视频与 ComfyUI 常经历上游句柄轮询。图中阶段是协议概览，不代表所有适配器都经过完全相同的分支。</p><p><strong>失败和取消</strong>有句柄就对账原任务；缺句柄且提交不确定时保留 unknown。取消标记不代表上游确认停止；已有完整 receipt 可恢复登记，避免重新生成。</p></div><div class="sources">源码依据：<code>apps/api/backend/production.py:296</code> · <code>apps/api/backend/services/acceptance.py:36</code> · <code>apps/api/backend/services/generation_runner.py:31</code> · <code>apps/api/backend/services/execution.py:154</code> · <code>apps/api/backend/infrastructure/artifacts.py:16</code> · <code>apps/api/backend/production.py:754</code></div><details><summary>查看可编辑 Mermaid 图源</summary><pre>sequenceDiagram
+  autonumber
+  participant UI as 浏览器
+  participant API as 统一 API
+  participant PG as PostgreSQL
+  participant D as Dispatcher
+  participant MQ as RabbitMQ
+  participant B as Bridge
+  participant W as Celery Worker
+  participant P as StagedProvider
+  participant M as 共享媒体卷
+  participant S as Scheduler
+  participant N as Notify / Redis
+  UI-&gt;&gt;API: POST /api/generate + 稳定 requestId
+  API-&gt;&gt;PG: 同事务写 GenerationRequest + Job + Outbox
+  PG--&gt;&gt;API: COMMIT
+  API--&gt;&gt;UI: 202 {jobId, job}
+  D-&gt;&gt;PG: claim Outbox
+  D-&gt;&gt;MQ: publish execution.due
+  MQ--&gt;&gt;D: publisher confirm
+  D-&gt;&gt;PG: 标记 published
+  MQ-&gt;&gt;B: execution.due
+  B-&gt;&gt;MQ: 确认派发 execute_phase，再 ACK 原消息
+  MQ-&gt;&gt;W: 按 image / video / exports 路由
+  W-&gt;&gt;PG: claim lease_owner + execution_epoch
+  loop 每个受期限约束的阶段
+    W-&gt;&gt;P: prepare / submit / poll / download
+    P--&gt;&gt;W: 下一阶段、上游句柄或产物
+    W-&gt;&gt;PG: 保存阶段、next_poll_at、job.changed Outbox
+    S-&gt;&gt;PG: 到期扫描，新增 execution.due Outbox
+    Note over S,MQ: 下次唤醒仍经过 Dispatcher、MQ 和 Bridge
+  end
+  W-&gt;&gt;M: 原子产物 + SHA256 receipt
+  W-&gt;&gt;PG: 有效 lease 下登记 Asset + completed + Outbox
+  D-&gt;&gt;MQ: job.changed
+  MQ-&gt;&gt;N: 通知
+  N-&gt;&gt;PG: 读取 Job 最新版本
+  N--&gt;&gt;API: 工作区 Redis pubsub 唤醒
+  API-&gt;&gt;PG: 回查最新公开投影
+  API--&gt;&gt;UI: SSE job / image
+  Note over UI,API: SSE 断开后前端 GET jobs 对账，不自动重提生成
+</pre></details></section>
+<section id="07-data"><h2><span class="num">06</span>数据实体与存储：关系表、画布 JSONB、媒体文件</h2><p>本图描述当前应用数据库。实线表示主要外键关联，虚线表示逻辑或多态引用。画布内容在 Document.data JSONB 中，图像和视频字节放在共享文件卷。</p><div class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 890" role="img" aria-labelledby="title desc">
+<title id="title">数据实体与存储：关系表、画布 JSONB、媒体文件</title><desc id="desc">本图描述当前应用数据库。实线表示主要外键关联，虚线表示逻辑或多态引用。画布内容在 Document.data JSONB 中，图像和视频字节放在共享文件卷。</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 Z" fill="#778494"/></marker></defs>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}.title{font-size:17px;font-weight:650;fill:#192b3b}.body{font-size:13px;fill:#526376}.edge{font-size:12px;fill:#57687a;paint-order:stroke;stroke:#fcfcfa;stroke-width:7px;stroke-linejoin:round}.group{font-size:13px;font-weight:650;fill:#687787}</style>
+<rect width="1200" height="890" fill="#fcfcfa" rx="14"/>
+<path d="M170,140 L170,162 L460,162 L460,140" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="315" y="155" class="edge" text-anchor="middle">principal_id</text>
+<path d="M620,90.0 L605.0,90.0 L605.0,90.0 L590,90.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="605" y="80" class="edge" text-anchor="middle">1:N</text>
+<path d="M880,90.0 L895.0,90.0 L895.0,90.0 L910,90.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="895" y="80" class="edge" text-anchor="middle">1:N</text>
+<path d="M680,140 L680,185 L170,185 L170,245" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="428" y="178" class="edge" text-anchor="middle">workspace_id 外键</text>
+<path d="M750.0,140 L750.0,192.5 L750.0,192.5 L750.0,245" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M620,307.5 L605.0,307.5 L605.0,307.5 L590,307.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="605" y="302" class="edge" text-anchor="middle">1:N</text>
+<path d="M880,307.5 L895.0,307.5 L895.0,307.5 L910,307.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="895" y="302" class="edge" text-anchor="middle">1:N</text>
+<path d="M750,370 L750,413 L170,413 L170,370" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="450" y="401" class="edge" text-anchor="middle">document_id</text>
+<path d="M170.0,370 L170.0,422.5 L170.0,422.5 L170.0,475" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M620,530.0 L605.0,530.0 L605.0,530.0 L590,530.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="605" y="523" class="edge" text-anchor="middle">1:N</text>
+<path d="M700,585 L700,646 L460,646 L460,700" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="562" y="639" class="edge" text-anchor="middle">1:N</text>
+<path d="M750.0,585 L750.0,642.5 L890.0,642.5 L890.0,700" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="828" y="640" class="edge" text-anchor="middle">storage_key</text>
+<path d="M835,370 L835,418 L1035,418 L1035,475" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="1035" y="414" class="edge" text-anchor="middle">aggregate_id</text>
+<path d="M380,475 L380,437 L105,437 L105,370" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="241" y="430" class="edge" text-anchor="middle">owner 逻辑引用</text>
+<rect x="40" y="40" width="260" height="100" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="56" y="68" class="title">BrowserSession</text>
+<text x="56" y="91" class="body">token_hash / principal_id</text>
+<text x="56" y="111" class="body">csrf_hash / expires_at</text>
+<rect x="330" y="40" width="260" height="100" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="346" y="68" class="title">WorkspaceMember</text>
+<text x="346" y="91" class="body">workspace_id + principal_id</text>
+<text x="346" y="111" class="body">复合主键 / role</text>
+<rect x="620" y="40" width="260" height="100" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="636" y="68" class="title">Workspace</text>
+<text x="636" y="91" class="body">workspace_id：租户边界</text>
+<text x="636" y="111" class="body">任务 / 文档 / 资产按空间隔离</text>
+<rect x="910" y="40" width="250" height="100" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="926" y="68" class="title">AuditEvent / Tombstone</text>
+<text x="926" y="91" class="body">操作审计 / 请求取消墓碑</text>
+<text x="926" y="111" class="body">均有 workspace_id</text>
+<rect x="40" y="245" width="260" height="125" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="56" y="273" class="title">Document</text>
+<text x="56" y="296" class="body">id / workspace_id / revision</text>
+<text x="56" y="316" class="body">data JSONB：objects / order</text>
+<text x="56" y="336" class="body">groups / chat / generations</text>
+<text x="56" y="356" class="body">storyboard / timeline</text>
+<rect x="330" y="245" width="260" height="125" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="346" y="273" class="title">GenerationRequest</text>
+<text x="346" y="296" class="body">workspace_id + request_id</text>
+<text x="346" y="316" class="body">request_hash / job_id FK</text>
+<text x="346" y="336" class="body">请求重放 → 同一受理结果</text>
+<rect x="620" y="245" width="260" height="125" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="636" y="273" class="title">Job</text>
+<text x="636" y="296" class="body">status / phase / state_version</text>
+<text x="636" y="316" class="body">epoch / lease_owner / lease_until</text>
+<text x="636" y="336" class="body">provider_snapshot / params</text>
+<text x="636" y="356" class="body">document_id：逻辑引用</text>
+<rect x="910" y="245" width="250" height="125" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="926" y="273" class="title">Attempt</text>
+<text x="926" y="296" class="body">job_id FK</text>
+<text x="926" y="316" class="body">一次上游提交尝试</text>
+<text x="926" y="336" class="body">提交身份 / 错误 / 结果</text>
+<rect x="40" y="475" width="260" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="56" y="503" class="title">DocumentRequest</text>
+<text x="56" y="526" class="body">document_id FK</text>
+<text x="56" y="546" class="body">工作区内创建幂等记录</text>
+<text x="56" y="566" class="body">文档保存采用 revision CAS</text>
+<rect x="330" y="475" width="260" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="346" y="503" class="title">AssetReference</text>
+<text x="346" y="526" class="body">asset_id FK</text>
+<text x="346" y="546" class="body">owner_type + owner_id</text>
+<text x="346" y="566" class="body">多态拥有者引用 / 删除保护</text>
+<rect x="620" y="475" width="260" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="636" y="503" class="title">Asset</text>
+<text x="636" y="526" class="body">workspace_id / storage_key</text>
+<text x="636" y="546" class="body">sha256 / details / 类型</text>
+<text x="636" y="566" class="body">数据库只存元数据</text>
+<rect x="910" y="475" width="250" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="926" y="503" class="title">Outbox</text>
+<text x="926" y="526" class="body">aggregate_type / aggregate_id</text>
+<text x="926" y="546" class="body">event_type / payload / status</text>
+<text x="926" y="566" class="body">claim_token / 发布重试</text>
+<rect x="330" y="700" width="260" height="105" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="346" y="728" class="title">MediaAlias</text>
+<text x="346" y="751" class="body">asset_id FK / workspace_id</text>
+<text x="346" y="771" class="body">旧媒体路径 → 已授权资产</text>
+<text x="346" y="791" class="body">保留迁移后的 URL 兼容</text>
+<rect x="620" y="700" width="540" height="105" rx="9" fill="#f3f4f5" stroke="#8c949f" stroke-width="1.2"/>
+<text x="636" y="728" class="title">共享媒体卷</text>
+<text x="636" y="751" class="body">generated/{jobId}/{epoch}/original.ext + receipt.json</text>
+<text x="636" y="771" class="body">uploads / exports 等受管媒体；不把字节存进 PG</text>
+</svg></div><div class="figure-tools"><a href="diagrams/07-data.svg" target="_blank">打开 SVG 大图 ↗</a><a href="diagrams/07-data.svg" download>下载 SVG</a><a href="diagrams/07-data.mmd" download>下载 Mermaid 源码</a></div><div class="notes"><p><strong>外键与逻辑关系</strong>没有独立 User 表；Session 与 Member 通过 principal_id 逻辑关联。Job.document_id 不是外键；Outbox.aggregate_id 与 AssetReference.owner_* 也是逻辑关系。Mermaid ER 图只画真实外键。</p><p><strong>批次与尝试</strong>Job.parent_id 支持父子批次聚合；Attempt 专门记录上游提交尝试，不是每次轮询都新建。GenerationRequest 负责受理幂等，DocumentRequest 负责文档创建幂等。</p><p><strong>旧数据导入</strong>旧 documents/*.json、assets/*、jobs.json、history.json 属历史数据格式，只用于离线导入和隔离兼容回归。应用启动不会自动读取它们或恢复旧 FIFO。</p><p><strong>一致性边界</strong>revision 防止覆盖他人的文档；资产引用随文档事务更新。文件与数据库不是单一事务，因此需要不可变产物和 receipt 补偿恢复。当前迁移链到 0008。</p></div><div class="sources">源码依据：<code>apps/api/backend/infrastructure/orm.py:30</code> · <code>apps/api/backend/infrastructure/orm.py:87</code> · <code>apps/api/backend/infrastructure/orm.py:125</code> · <code>apps/api/backend/infrastructure/orm.py:192</code> · <code>apps/api/backend/infrastructure/orm.py:226</code> · <code>apps/api/backend/services/documents.py:86</code> · <code>apps/api/backend/infrastructure/artifacts.py:16</code></div><details><summary>查看可编辑 Mermaid 图源</summary><pre>erDiagram
+  WORKSPACES ||--o{ WORKSPACE_MEMBERS : authorizes
+  WORKSPACES ||--o{ DOCUMENTS : contains
+  WORKSPACES ||--o{ GENERATION_REQUESTS : scopes
+  WORKSPACES ||--o{ JOBS : contains
+  WORKSPACES ||--o{ ASSETS : owns
+  WORKSPACES ||--o{ DOCUMENT_REQUESTS : scopes
+  WORKSPACES ||--o{ REQUEST_TOMBSTONES : scopes
+  WORKSPACES ||--o{ AUDIT_EVENTS : records
+  WORKSPACES ||--o{ MEDIA_ALIASES : scopes
+  DOCUMENTS ||--o{ DOCUMENT_REQUESTS : idempotency
+  JOBS ||--o{ GENERATION_REQUESTS : accepted_as
+  JOBS o|--o{ JOBS : batch_parent
+  JOBS ||--o{ ATTEMPTS : submission_attempts
+  ASSETS ||--o{ ASSET_REFERENCES : protects
+  ASSETS ||--o{ MEDIA_ALIASES : alias_to
+  BROWSER_SESSIONS {
+    string token_hash PK
+    string principal_id
+    string csrf_hash
+    datetime expires_at
+  }
+  DOCUMENTS {
+    uuid id PK
+    uuid workspace_id FK
+    int revision
+    jsonb data
+  }
+  JOBS {
+    uuid id PK
+    uuid workspace_id FK
+    uuid document_id
+    uuid parent_id FK
+    string status
+    string phase
+    int state_version
+    int execution_epoch
+    string lease_owner
+    datetime lease_until
+    jsonb provider_snapshot
+  }
+  OUTBOX {
+    uuid id PK
+    string aggregate_type
+    string aggregate_id
+    string event_type
+    jsonb payload
+    string status
+    string claim_token
+  }
+  ASSETS {
+    uuid id PK
+    uuid workspace_id FK
+    string storage_key
+    string sha256
+    jsonb details
+  }
+</pre></details></section>
+<section id="08-deployment"><h2><span class="num">07</span>构建与部署：同一后端的热重载与容器启动方式</h2><p>Node 构建前端、Python 运行 API。默认 Compose 与 compose.dev.yaml 解析为同一套 13 服务；宿主热重载也使用同一数据库应用工厂。</p><div class="diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1010" role="img" aria-labelledby="title desc">
+<title id="title">构建与部署：同一后端的热重载与容器启动方式</title><desc id="desc">Node 构建前端、Python 运行 API。默认 Compose 与 compose.dev.yaml 解析为同一套 13 服务；宿主热重载也使用同一数据库应用工厂。</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 Z" fill="#778494"/></marker></defs>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}.title{font-size:17px;font-weight:650;fill:#192b3b}.body{font-size:13px;fill:#526376}.edge{font-size:12px;fill:#57687a;paint-order:stroke;stroke:#fcfcfa;stroke-width:7px;stroke-linejoin:round}.group{font-size:13px;font-weight:650;fill:#687787}</style>
+<rect width="1200" height="1010" fill="#fcfcfa" rx="14"/>
+<rect x="20" y="20" width="1160" height="155" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="38" y="44" class="group">构建阶段 · npm workspaces / Node</text>
+<rect x="20" y="215" width="350" height="730" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="38" y="239" class="group">源码开发 · 相同的数据库 API</text>
+<rect x="405" y="215" width="775" height="730" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="423" y="239" class="group">统一 Compose 单机拓扑</text>
+<path d="M355,102.5 L392.5,102.5 L392.5,102.5 L430,102.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M760,102.5 L800.0,102.5 L800.0,102.5 L840,102.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1000.0,140 L1000.0,202.5 L987.5,202.5 L987.5,265" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M195.0,375 L195.0,417.5 L195.0,417.5 L195.0,460" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M195.0,580 L195.0,627.5 L195.0,627.5 L195.0,675" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M750,320.0 L790.0,320.0 L790.0,320.0 L830,320.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M592.5,580 L592.5,627.5 L592.5,627.5 L592.5,675" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M940,580 L940,626 L630,626 L630,675" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M987.5,580 L987.5,627.5 L987.5,627.5 L987.5,675" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M830,340 L788,340 L788,625 L565,625 L565,675" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1145,340 L1164,340 L1164,628 L1060,628 L1060,675" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M748,738 L787,738 L787,520 L830,520" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="776" y="628" class="edge" text-anchor="middle">MQ 派发</text>
+<rect x="40" y="65" width="315" height="75" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="56" y="93" class="title">apps/web · TypeScript</text>
+<text x="56" y="116" class="body">landing / workspace / canvas / eval</text>
+<rect x="430" y="65" width="330" height="75" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="446" y="93" class="title">tsc + esbuild</text>
+<text x="446" y="116" class="body">npm run build:web</text>
+<rect x="840" y="65" width="320" height="75" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="856" y="93" class="title">.web-build/</text>
+<text x="856" y="116" class="body">按历史 .js URL 提供构建文件</text>
+<rect x="45" y="265" width="300" height="110" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="61" y="293" class="title">npm run dev -- --env-file …</text>
+<text x="61" y="316" class="body">scripts/backend.py</text>
+<text x="61" y="336" class="body">tsc / esbuild 监听</text>
+<text x="61" y="356" class="body">Uvicorn --reload</text>
+<rect x="45" y="460" width="300" height="120" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="61" y="488" class="title">宿主 API 热重载</text>
+<text x="61" y="511" class="body">backend.app:create_app</text>
+<text x="61" y="531" class="body">与容器 API 共用数据库架构</text>
+<text x="61" y="551" class="body">不创建内存 FIFO / JSON 存储</text>
+<text x="61" y="571" class="body">仍需 OIDC 与工作区授权</text>
+<rect x="45" y="675" width="300" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="61" y="703" class="title">显式依赖与配置</text>
+<text x="61" y="726" class="body">可访问的数据库 / Redis</text>
+<text x="61" y="746" class="body">固定路由 / OIDC / 共享媒体</text>
+<text x="61" y="766" class="body">需独立运行 daemon 和 Worker</text>
+<rect x="435" y="265" width="315" height="110" rx="9" fill="#f3f4f5" stroke="#8c949f" stroke-width="1.2"/>
+<text x="451" y="293" class="title">Caddy 网关</text>
+<text x="451" y="316" class="body">HTTP 80 / HTTPS 443</text>
+<text x="451" y="336" class="body">反代 api:7801 / SSE flush</text>
+<text x="451" y="356" class="body">外部 OIDC 提供身份</text>
+<rect x="830" y="265" width="315" height="110" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="846" y="293" class="title">API 容器</text>
+<text x="846" y="316" class="body">python -m backend</text>
+<text x="846" y="336" class="body">FastAPI / 静态资源 / OIDC</text>
+<text x="846" y="356" class="body">仅挂载固定路由配置</text>
+<rect x="435" y="460" width="315" height="120" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="451" y="488" class="title">四个 daemon 容器</text>
+<text x="451" y="511" class="body">dispatcher / scheduler</text>
+<text x="451" y="531" class="body">bridge / notify</text>
+<text x="451" y="551" class="body">独立进程，不启动 Celery beat</text>
+<rect x="830" y="460" width="315" height="120" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="846" y="488" class="title">三个 Celery Worker 容器</text>
+<text x="846" y="511" class="body">image 并发 2 / video 并发 1</text>
+<text x="846" y="531" class="body">exports 并发 1</text>
+<text x="846" y="551" class="body">生成 Worker 挂载 Provider secret</text>
+<rect x="435" y="675" width="315" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="451" y="703" class="title">数据库与消息基础设施</text>
+<text x="451" y="726" class="body">PostgreSQL 16 / RabbitMQ 3.13</text>
+<text x="451" y="746" class="body">Redis 7：AOF / noeviction</text>
+<text x="451" y="766" class="body">migrate：Alembic upgrade head</text>
+<rect x="830" y="675" width="315" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="846" y="703" class="title">共享 media 卷 /app/data</text>
+<text x="846" y="726" class="body">API / Workers / scheduler 共用</text>
+<text x="846" y="746" class="body">媒体文件 / receipt / 模型权重</text>
+<text x="846" y="766" class="body">数据库等另有各自持久卷</text>
+<rect x="435" y="850" width="710" height="65" rx="9" fill="#f3f4f5" stroke="#8c949f" stroke-width="1.2"/>
+<text x="451" y="878" class="title">Docker 运行镜像</text>
+<text x="451" y="901" class="body">Python 3.11 + FFmpeg + 非 root UID 10001；无 Node 业务运行时</text>
+</svg></div><div class="figure-tools"><a href="diagrams/08-deployment.svg" target="_blank">打开 SVG 大图 ↗</a><a href="diagrams/08-deployment.svg" download>下载 SVG</a><a href="diagrams/08-deployment.mmd" download>下载 Mermaid 源码</a></div><div class="notes"><p><strong>生产镜像与开发环境</strong>Docker 第一阶段用 Node 构建前端，第二阶段只有 Python 与运行依赖。npm run dev 只是开发启动桥，同时启动前端编译监听与 Uvicorn 热重载。</p><p><strong>配置和凭据分工</strong>API 从部署路由固定 endpoint、模型与 credentialRef；真实 Provider 密钥只挂到生成 Worker。该图不包含真实配置值，未读取或复制用户凭据。</p><p><strong>扩展边界</strong>当前 Compose 是单机配置：单节点 PG、单节点 RabbitMQ、Redis 和共享文件卷。独立进程不等于多节点高可用，也未使用 S3 或跨主机对象存储。</p><p><strong>统一启动</strong>默认 docker-compose.yml 合并执行栈与 API/HTTPS 配置；compose.dev.yaml 仅保留为同一配置的兼容文件名。旧 bailian 单进程启动脚本已移除。</p></div><div class="sources">源码依据：<code>scripts/build-react.ts:6</code> · <code>scripts/backend.py:14</code> · <code>tsconfig.web.json:1</code> · <code>Dockerfile:1</code> · <code>compose.execution.yaml:1</code> · <code>compose.production.yaml:1</code> · <code>deploy/Caddyfile:1</code> · <code>docs/runbooks/production-cutover.md:1</code> · <code>compose.dev.yaml:1</code> · <code>apps/api/backend/__main__.py:13</code></div><details><summary>查看可编辑 Mermaid 图源</summary><pre>flowchart TB
+  source[&quot;apps/web · TypeScript&lt;br/&gt;landing / workspace / canvas / eval&quot;]
+  build[&quot;tsc + esbuild&lt;br/&gt;npm run build:web&quot;]
+  bundle[&quot;.web-build/&lt;br/&gt;按历史 .js URL 提供构建文件&quot;]
+  dev[&quot;npm run dev -- --env-file …&lt;br/&gt;scripts/backend.py&lt;br/&gt;tsc / esbuild 监听&lt;br/&gt;Uvicorn --reload&quot;]
+  local[&quot;宿主 API 热重载&lt;br/&gt;backend.app:create_app&lt;br/&gt;与容器 API 共用数据库架构&lt;br/&gt;不创建内存 FIFO / JSON 存储&lt;br/&gt;仍需 OIDC 与工作区授权&quot;]
+  localdisk[&quot;显式依赖与配置&lt;br/&gt;可访问的数据库 / Redis&lt;br/&gt;固定路由 / OIDC / 共享媒体&lt;br/&gt;需独立运行 daemon 和 Worker&quot;]
+  gateway[&quot;Caddy 网关&lt;br/&gt;HTTP 80 / HTTPS 443&lt;br/&gt;反代 api:7801 / SSE flush&lt;br/&gt;外部 OIDC 提供身份&quot;]
+  api[&quot;API 容器&lt;br/&gt;python -m backend&lt;br/&gt;FastAPI / 静态资源 / OIDC&lt;br/&gt;仅挂载固定路由配置&quot;]
+  daemons[&quot;四个 daemon 容器&lt;br/&gt;dispatcher / scheduler&lt;br/&gt;bridge / notify&lt;br/&gt;独立进程，不启动 Celery beat&quot;]
+  workers[&quot;三个 Celery Worker 容器&lt;br/&gt;image 并发 2 / video 并发 1&lt;br/&gt;exports 并发 1&lt;br/&gt;生成 Worker 挂载 Provider secret&quot;]
+  infra[&quot;数据库与消息基础设施&lt;br/&gt;PostgreSQL 16 / RabbitMQ 3.13&lt;br/&gt;Redis 7：AOF / noeviction&lt;br/&gt;migrate：Alembic upgrade head&quot;]
+  volume[&quot;共享 media 卷 /app/data&lt;br/&gt;API / Workers / scheduler 共用&lt;br/&gt;媒体文件 / receipt / 模型权重&lt;br/&gt;数据库等另有各自持久卷&quot;]
+  image[&quot;Docker 运行镜像&lt;br/&gt;Python 3.11 + FFmpeg + 非 root UID 10001；无 Node 业务运行时&quot;]
+  source --&gt; build
+  build --&gt; bundle
+  bundle --&gt; api
+  dev --&gt; local
+  local --&gt; localdisk
+  gateway --&gt; api
+  daemons --&gt; infra
+  workers --&gt; infra
+  workers --&gt; volume
+  api --&gt; infra
+  api --&gt; volume
+  infra --&gt;|&quot;MQ 派发&quot;| workers
+  classDef ui fill:#edf3ff,stroke:#4778ba,color:#192b3b
+  class source ui
+  classDef state fill:#eef5f2,stroke:#408a72,color:#192b3b
+  classDef service fill:#fff5e7,stroke:#b47a2b,color:#192b3b
+  class build,dev,local,api,daemons,workers service
+  classDef store fill:#f3effa,stroke:#8871b2,color:#192b3b
+  class bundle,localdisk,infra,volume store
+  classDef external fill:#f3f4f5,stroke:#8c949f,color:#192b3b
+  class gateway,image external
+  classDef gap fill:#fff2ef,stroke:#bb7065,color:#192b3b
+</pre></details></section>
+<section id="contracts"><h2>08 当前接口与迁移边界</h2><p>应用只有数据库执行架构。下表明确当前已提供的 API，以及历史功能和请求兼容边界。</p><div class="table-wrap"><table><thead><tr><th>能力 / 路径</th><th>统一后端</th><th>迁移与调用说明</th></tr></thead><tbody><tr><td>生成 /api/generate；/api/generate/group</td><td>Job + GenerationRequest + Outbox 事务；requestId → Idempotency-Key → 服务端 UUID 回退。缺稳定 ID 时仅 clientRef 不幂等。</td><td>CanvasCoordinator 当前仅带 clientRef；工作台 CreationIntent 带稳定 requestId。clientRef 本身不提供重放幂等。</td></tr><tr><td>受理响应</td><td>单次生成同样返回 202 {jobId, job}；批量/组图可拆父子 Job。</td><td>202 表示持久受理，结果异步返回。</td></tr><tr><td>任务 /api/jobs；/{id}；/{id}/reconcile</td><td>按 workspace 查询 PG；阶段租约、epoch、固定期限、unknown 对账；不借对账重新提交。</td><td>撤销画布 placement 不等于取消生成。</td></tr><tr><td>请求 /api/generation-requests/{requestId}</td><td>空间作用域 GenerationRequest + RequestTombstone；处理取消先于受理。</td><td>取消先于受理通过 tombstone 处理。</td></tr><tr><td>事件 /api/events</td><td>Redis 工作区唤醒 + PG 公开投影 + 周期回查；不依赖 Redis 恢复历史。</td><td>无 Redis 历史事件重放；通过数据库快照与轮询恢复。</td></tr><tr><td>文档 /api/documents；/{id}；/{id}/rename</td><td>Document JSONB + revision CAS；与素材引用事务更新。</td><td>旧 JSON 文档需离线导入。</td></tr><tr><td>素材 /api/assets；/{id}；metadata；poster</td><td>Asset 表 + 共享文件；授权 /api/assets/{id}/content；旧媒体别名兼容。</td><td>生成媒体与上传素材由权限和引用关系保护。</td></tr><tr><td>历史 /api/history；/api/images/{id}；star</td><td>PG Asset 查询与 hidden/star 状态；删除历史不直接抹除可能被引用的字节。</td><td>不再从根 data/history.json 提供应用历史。</td></tr><tr><td>抠图 /api/cutout/detect/{id}；operations/{id}；apply/{id}</td><td>同样单线程 rembg；detect 返回临时 data URL；Redis 取消标记；apply 创建 Asset。</td><td>旧沙箱 detect 的蒙版 Asset 行为仅用于历史契约回归。</td></tr><tr><td>导出 /api/exports；/{id}；/{id}/download</td><td>durable export Job → exports Worker → FFmpeg → 同一产物登记协议。新版画布入口尚未装配导出 flow。</td><td>新版画布尚未装配完整导出 flow。</td></tr><tr><td>Agent /api/agent/sessions；prepare</td><td>未迁入当前入口；新版对话侧栏当前也没有调用此 API。</td><td>仅在隔离历史沙箱保留旧协议，不是应用部署选项。</td></tr><tr><td>分镜 /api/storyboards/jobs；runs；plan</td><td>缺少这些路由；Document 可以保存 storyboard 字段，不等于已有编排服务。</td><td>文档保留 storyboard 字段，不代表完整编排已接入。</td></tr><tr><td>评测 /api/evals/v1/*</td><td>未挂载评测 router，也没有 /evals 页面入口。此评测任务不使用生产 Celery 生成队列。</td><td>离线评测 CLI 保留；评测页面和 HTTP API 尚未迁移。</td></tr><tr><td>配置 /api/runtime；models；generation-capabilities；config</td><td>固定部署路由，settingsEnabled=false；config GET/POST/test 返回 403。</td><td>旧 config.json / SWARMUI_PROVIDER 应用设置入口退役。</td></tr><tr><td>身份 /auth/*；会话与工作区</td><td>OIDC + PKCE / 服务端 session / WorkspaceMember / 同源 CSRF；未自动给登录用户工作区权限。</td><td>开发与部署采用相同身份边界。</td></tr><tr><td>观测 /api/metrics；/internal/metrics</td><td>Token 保护的 /internal/metrics，PG 聚合指标；Compose 提供告警规则，未声称已配完整追踪平台。</td><td>完整故障矩阵与监控接收方仍需部署验收。</td></tr></tbody></table></div></section>
+<section id="sources"><h2>09 源码索引与范围</h2><p>基于统一入口后的当前工作区。沙箱测试与应用集成测试分开表述，不以旧契约测试替代 PostgreSQL API 验证。</p><div class="table-wrap"><table><thead><tr><th>边界</th><th>主要源码入口</th><th>阅读重点</th></tr></thead><tbody><tr><td>唯一启动入口</td><td>apps/api/backend/app.py:1；apps/api/backend/__main__.py:13</td><td>热重载与常规启动使用相同数据库 API，无模式分支。</td></tr><tr><td>前端组合根</td><td>apps/web/canvas-next/app.tsx:37；:96；:132</td><td>打开文档、React Shell、自动保存和 SSE 装配。</td></tr><tr><td>交互与渲染</td><td>apps/web/canvas/core/canvas-view.ts:87；canvas/core/layers.ts:291；canvas/renderer-konva/canvas-editor.tsx:37</td><td>输入归一化 → 层控制器 → preview/command → React-Konva。</td></tr><tr><td>文档与历史</td><td>apps/web/canvas/state/doc-store.ts:105；history-manager.ts:27；autosave.ts:37</td><td>文档所有权、命令栈、persistent/transient 通知、revision。</td></tr><tr><td>生成实体与对账</td><td>apps/web/canvas/state/generation-coordinator.ts:91；generation-entity.ts:153；generation-events.ts:48</td><td>entity/placement 分离、运行态与版本过滤。</td></tr><tr><td>工作台与会话</td><td>apps/web/workspace/api.ts:136；apps/web/shared/session-fetch.ts:2</td><td>CreationIntent 的稳定幂等键、同源 CSRF 包装。</td></tr><tr><td>生成适配器</td><td>apps/api/backend/providers/base.py:10；cloud.py:125；comfyui.py:45；staged.py:35</td><td>一体化 generate 与生产 prepare/submit/poll/cancel 分阶段接口。</td></tr><tr><td>统一 API / 授权</td><td>apps/api/backend/production.py:89；services/identity.py:42</td><td>OIDC、session、空间授权、生产路由和响应投影。</td></tr><tr><td>统一事务与状态机</td><td>apps/api/backend/services/acceptance.py:18；services/execution.py:45；services/generation_runner.py:31</td><td>幂等、容量、lease/epoch、unknown、恢复与模型并发槽位。</td></tr><tr><td>消息与执行进程</td><td>apps/api/backend/workers/daemon.py:36；:63；:150；workers/durable.py:31；infrastructure/outbox_dispatcher.py:23</td><td>scheduler、bridge、notify、阶段执行、发布确认。</td></tr><tr><td>统一模型与媒体</td><td>apps/api/backend/infrastructure/orm.py:30；artifacts.py:16；services/documents.py:86</td><td>真实 FK/逻辑边、JSONB、receipt、资产引用。</td></tr><tr><td>评测边界</td><td>apps/api/backend/evaluation/api.py:66；scheduler.py:32；runner.py:225</td><td>独立离线评测模块；HTTP 页面/路由未挂载到当前应用。</td></tr><tr><td>构建与部署</td><td>scripts/build-react.ts:6；Dockerfile:1；compose.execution.yaml:1；compose.production.yaml:1</td><td>Node 构建产物、Python 运行镜像、共享卷与进程拓扑。</td></tr><tr><td>状态证据</td><td>docs/architecture/durable-execution-status.md:1；docs/runbooks/production-cutover.md:1</td><td>实施中与剩余验收边界；较早 target-architecture/gap-matrix 不作为最新实现依据。</td></tr><tr><td>历史兼容沙箱</td><td>apps/api/backend/evaluation/sandbox.py:112；sandbox_jobs.py:1</td><td>只有显式隔离评测和历史测试调用，不属于应用入口。</td></tr></tbody></table></div></section>
+<p class="end">统一入口后的架构说明。页面与 SVG 可离线查看；未调用真实生成模型或读取真实凭据。<br>图源与说明：<a href="ANALYSIS_REPORT.md">ANALYSIS_REPORT.md</a></p></main></html>

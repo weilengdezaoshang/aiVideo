@@ -1,7 +1,7 @@
 # 开发约定
 
 本仓库(aiVideo)是独立 npm workspaces monorepo（apps/api、apps/web）:SwarmUI 风格的 AI 生成应用。Python 3.11+ + FastAPI 后端,
-TypeScript 前端(工作台与落地页为 React + TSX,画布为原生 HTML/CSS + TypeScript,前端已无 .js 业务代码),Provider 抽象支持 Mock 与 ComfyUI 后端。
+TypeScript 前端(工作台、落地页与画布为 React + TSX，画布使用 react-konva)。应用统一使用 PostgreSQL / RabbitMQ / Redis / Celery，Provider 支持 Mock、Cloud 与 ComfyUI。
 
 ## 前端语言规范
 
@@ -12,7 +12,8 @@ TypeScript 前端(工作台与落地页为 React + TSX,画布为原生 HTML/CSS 
 
 ## 常用命令
 
-- `npm run dev` — 启动开发服务(默认 http://127.0.0.1:7801,Uvicorn 热重载)
+- `npm run dev -- --env-file /absolute/path/to/dev.env` — 启动同一数据库 API 的 Uvicorn 热重载；需显式基础设施、OIDC、路由与共享媒体配置
+- `npm run stack:up` — 启动统一 Compose 应用栈；先填写 `.env.production.example` 对应配置
 - `npm run verify` — typecheck + eslint + 测试,提交前必跑(pre-commit 会自动执行 typecheck)
 - `npm run format` / `npm run lint:fix` — 格式化 / lint 自动修复
 - `LOG_LEVEL=debug npm run dev` — 开启请求级访问日志
@@ -31,20 +32,26 @@ TypeScript 前端(工作台与落地页为 React + TSX,画布为原生 HTML/CSS 
 ## 架构速览
 
 ```
-apps/api/backend/app.py                  # FastAPI 入口:REST + SSE + 静态资源 + 生命周期
-apps/api/backend/jobs.py                  # FIFO 任务队列:调度、进度、取消、事件
-apps/api/backend/providers/              # Provider 抽象 + Mock / 云端 / ComfyUI 实现
-apps/api/backend/storage.py               # 文档、素材与历史的磁盘持久化
-apps/web/                             # 前端(HTML/CSS + TypeScript;工作台/落地页为 React + TSX,画布为原生 DOM + Konva TS)
+apps/api/backend/app.py                  # 唯一应用工厂，委托数据库 API
+apps/api/backend/production.py           # REST + SSE + OIDC + PG 应用服务
+apps/api/backend/services/               # 事务受理、文档、阶段执行与恢复
+apps/api/backend/workers/                # Celery Worker + 四类独立 daemon
+apps/api/backend/infrastructure/         # PostgreSQL/Outbox/RabbitMQ/Redis/产物收据
+apps/api/backend/providers/              # Mock / Cloud / ComfyUI 分阶段适配
+apps/api/backend/evaluation/sandbox.py   # 显式隔离的历史契约与离线评测夹具
+apps/web/                               # React + TypeScript + react-konva
 ```
 
-新增生成后端:实现 `apps/api/backend/providers/base.py` 的 `Provider` 接口,在 `apps/api/backend/app.py` 的 `build_provider` 注册,
-队列 / API / 前端无需改动。切换后端改 `config.json` 或环境变量
-(`SWARMUI_PROVIDER` / `SWARMUI_COMFY_URL` / `SWARMUI_PORT`)。
-隔离测试实例必须用 `SWARMUI_CONFIG` 指向独立配置文件(配合 `SWARMUI_DATA_DIR`),
-否则会读取仓库根 `config.json` 并可能使用其中真实密钥产生计划外调用。
+所有应用启动方式使用同一 PostgreSQL/Celery 架构；`--reload` 只控制代码监听，不切换业务模式。
+`backend.production:create_app` 是同一工厂的兼容导入，`AIVERO_API_MODE` 已移除。
+新增生成后端接入 `providers/staged.py` 的阶段协议；模型与 endpoint 在部署路由固定，真实凭据由 Worker
+通过 credentialRef 解析。应用不读取根 `config.json` 或 `SWARMUI_PROVIDER` 选择运行后端。
 
-Python 后端使用 `.venv`，依赖见 `requirements-dev.txt`；`npm run verify` 同时运行前后端检查。单进程 JSON 存储，不开启多 worker。现有 API/SSE 和 data 格式变更必须有兼容测试。
+Python 后端使用 `.venv`，依赖见 `requirements-dev.txt`；`npm run verify` 同时运行前后端检查。
+涉及当前 HTTP/存储契约变更还应执行 `tests/integration/test_production_api.py`，显式配置独立
+`AIVERO_DURABLE_TEST_DB` / `AIVERO_DURABLE_TEST_REDIS`，先执行迁移；不可连接生产数据或使用真实付费凭据。
+历史 JSON/FIFO 仅供 `evaluation/sandbox.py` 与 `sandbox_jobs.py` 回归使用，必须显式传入独立目录，
+不得作为应用入口或替代当前数据库集成测试。旧数据由离线导入工具处理，禁止启动时自动改写。
 
 ## 抠图与前端构建
 

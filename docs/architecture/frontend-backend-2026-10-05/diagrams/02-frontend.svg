@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1000" role="img" aria-labelledby="title desc">
+<title id="title">前端模块分层：入口、交互核心、文档与网络</title><desc id="desc">当前画布以 canvas-next/app.tsx 为组合入口。React 管工具和面板，CanvasView 管交互与短期快照，DocStore 管持久文档，React-Konva 只承接渲染和输入适配。</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 Z" fill="#778494"/></marker></defs>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}.title{font-size:17px;font-weight:650;fill:#192b3b}.body{font-size:13px;fill:#526376}.edge{font-size:12px;fill:#57687a;paint-order:stroke;stroke:#fcfcfa;stroke-width:7px;stroke-linejoin:round}.group{font-size:13px;font-weight:650;fill:#687787}</style>
+<rect width="1200" height="1000" fill="#fcfcfa" rx="14"/>
+<rect x="20" y="20" width="1160" height="150" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="38" y="44" class="group">当前入口与保留页面代码</text>
+<rect x="20" y="210" width="1160" height="580" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="38" y="234" class="group">当前画布已接入的模块</text>
+<rect x="20" y="820" width="1160" height="155" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="38" y="844" class="group">保留模块 · 当前 CanvasShell 未装配</text>
+<path d="M280,102.5 L295.0,102.5 L295.0,102.5 L310,102.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M570,102.5 L585.0,102.5 L585.0,102.5 L600,102.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M735.0,140 L735.0,197.5 L600.0,197.5 L600.0,255" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M370,310.0 L400.0,310.0 L400.0,310.0 L430,310.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M770,310.0 L800.0,310.0 L800.0,310.0 L830,310.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M207.5,365 L207.5,405.0 L207.5,405.0 L207.5,445" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M992,365 L992,406 L600,406 L600,445" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="792" y="397" class="edge" text-anchor="middle">输入事件</text>
+<path d="M770,500.0 L800.0,500.0 L800.0,500.0 L830,500.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="800" y="485" class="edge" text-anchor="middle">命令</text>
+<path d="M1110,445 L1110,365" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="1115" y="399" class="edge" text-anchor="middle">投影重绘</text>
+<path d="M207.5,555 L207.5,597.5 L207.5,597.5 L207.5,640" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M370,695.0 L400.0,695.0 L400.0,695.0 L430,695.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M830,695.0 L800.0,695.0 L800.0,695.0 L770,695.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M992.5,555 L992.5,597.5 L992.5,597.5 L992.5,640" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M735,445 L735,365" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="724" y="395" class="edge" text-anchor="middle">短期快照</text>
+<path d="M206,555 L206,590 L992,590 L992,555" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="595" y="582" class="edge" text-anchor="middle">文档命令</text>
+<rect x="40" y="65" width="240" height="75" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="56" y="93" class="title">landing/</text>
+<text x="56" y="116" class="body">LandingPage / modes</text>
+<rect x="310" y="65" width="260" height="75" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="326" y="93" class="title">workspace/</text>
+<text x="326" y="116" class="body">HomePage / Composer / Libraries</text>
+<rect x="600" y="65" width="270" height="75" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="616" y="93" class="title">canvas-next/app.tsx</text>
+<text x="616" y="116" class="body">CanvasNextApp → CanvasShell</text>
+<rect x="900" y="65" width="260" height="75" rx="9" fill="#fff2ef" stroke="#bb7065" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="916" y="93" class="title">evaluation/ 保留代码</text>
+<text x="916" y="116" class="body">统一后端未挂载评测页面</text>
+<rect x="45" y="255" width="325" height="110" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="61" y="283" class="title">React Shell / UI</text>
+<text x="61" y="306" class="body">工具栏 / Inspector / 素材侧栏</text>
+<text x="61" y="326" class="body">生成 / 抠图 / 重绘 / 基础编辑</text>
+<text x="61" y="346" class="body">共享 ui/ 与样式</text>
+<rect x="430" y="255" width="340" height="110" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="446" y="283" class="title">CanvasViewProvider</text>
+<text x="446" y="306" class="body">React Context + useSyncExternalStore</text>
+<text x="446" y="326" class="body">提供 View 生命周期与快照订阅</text>
+<rect x="830" y="255" width="325" height="110" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="846" y="283" class="title">renderer-konva/</text>
+<text x="846" y="306" class="body">CanvasEditor + Stage</text>
+<text x="846" y="326" class="body">Connection / Content / Selection</text>
+<text x="846" y="346" class="body">Editing：暂态绘制层</text>
+<rect x="45" y="445" width="325" height="110" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="61" y="473" class="title">业务 flows + Shell 动作</text>
+<text x="61" y="496" class="body">generate / connect-reference</text>
+<text x="61" y="516" class="body">RecognitionOperation / mask</text>
+<text x="61" y="536" class="body">调用 API；提交文档命令</text>
+<rect x="430" y="445" width="340" height="110" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="446" y="473" class="title">core/ CanvasView</text>
+<text x="446" y="496" class="body">CanvasInputEvent → LayerController</text>
+<text x="446" y="516" class="body">EventMono：preview → commit</text>
+<text x="446" y="536" class="body">camera / selection / tool / mask</text>
+<rect x="830" y="445" width="325" height="110" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="846" y="473" class="title">state/ DocStore</text>
+<text x="846" y="496" class="body">objects / order / generations 等</text>
+<text x="846" y="516" class="body">HistoryManager：撤销与重做</text>
+<text x="846" y="536" class="body">selector：派生画布对象</text>
+<rect x="45" y="640" width="325" height="110" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="61" y="668" class="title">GenerationCoordinator</text>
+<text x="61" y="691" class="body">实体生命周期 + RuntimeStore</text>
+<text x="61" y="711" class="body">SSE / HTTP 对账 → acceptJob</text>
+<text x="61" y="731" class="body">operationId / jobId / version</text>
+<rect x="430" y="640" width="340" height="110" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="446" y="668" class="title">网络访问</text>
+<text x="446" y="691" class="body">fetch / typed clients / CSRF wrapper</text>
+<text x="446" y="711" class="body">EventSource + 断线轮询</text>
+<text x="446" y="731" class="body">REST /api/* + SSE /api/events</text>
+<rect x="830" y="640" width="325" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="846" y="668" class="title">AutoSaver</text>
+<text x="846" y="691" class="body">1 秒防抖 / localStorage 草稿</text>
+<text x="846" y="711" class="body">文档全量 JSON + baseRevision</text>
+<text x="846" y="731" class="body">409 保留草稿并显示冲突</text>
+<rect x="45" y="860" width="250" height="85" rx="9" fill="#fff2ef" stroke="#bb7065" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="61" y="888" class="title">NodeGeneration</text>
+<text x="61" y="911" class="body">NodeDraft / NodeRun 对账</text>
+<text x="61" y="931" class="body">工作台与新画布尚未统一</text>
+<rect x="325" y="860" width="250" height="85" rx="9" fill="#fff2ef" stroke="#bb7065" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="341" y="888" class="title">Agent / Chat flows</text>
+<text x="341" y="911" class="body">新对话侧栏只存用户文本</text>
+<text x="341" y="931" class="body">无 Agent API 调用</text>
+<rect x="605" y="860" width="250" height="85" rx="9" fill="#fff2ef" stroke="#bb7065" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="621" y="888" class="title">完整分镜编排</text>
+<text x="621" y="911" class="body">Planner / Run 状态流程</text>
+<text x="621" y="931" class="body">新侧栏仅基础编辑</text>
+<rect x="885" y="860" width="270" height="85" rx="9" fill="#fff2ef" stroke="#bb7065" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="901" y="888" class="title">完整时间线工作流</text>
+<text x="901" y="911" class="body">TimelineExport / AudioTracks</text>
+<text x="901" y="931" class="body">新侧栏尚未接通导出</text>
+</svg>

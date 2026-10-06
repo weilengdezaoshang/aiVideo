@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 870" role="img" aria-labelledby="title desc">
+<title id="title">前端状态流：生成实体、画布位置与保存分离</title><desc id="desc">生成实体保留任务身份和结果，placement 决定它是否出现在画布上。SSE 或轮询只合并状态；自动保存只响应需要持久化的文档变更。</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 Z" fill="#778494"/></marker></defs>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}.title{font-size:17px;font-weight:650;fill:#192b3b}.body{font-size:13px;fill:#526376}.edge{font-size:12px;fill:#57687a;paint-order:stroke;stroke:#fcfcfa;stroke-width:7px;stroke-linejoin:round}.group{font-size:13px;font-weight:650;fill:#687787}</style>
+<rect width="1200" height="870" fill="#fcfcfa" rx="14"/>
+<path d="M360,82.5 L400.0,82.5 L400.0,82.5 L440,82.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M770,82.5 L810.0,82.5 L810.0,82.5 L850,82.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M605.0,130 L605.0,190.0 L605.0,190.0 L605.0,250" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="605" y="188" class="edge" text-anchor="middle">实体持久状态</text>
+<path d="M200.0,130 L200.0,190.0 L200.0,190.0 L200.0,250" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="200" y="188" class="edge" text-anchor="middle">通过 coordinator 创建</text>
+<path d="M1005.0,130 L1005.0,190.0 L1005.0,190.0 L1005.0,250" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="1005" y="188" class="edge" text-anchor="middle">受理后绑定 jobId</text>
+<path d="M200.0,365 L200.0,420.0 L200.0,420.0 L200.0,475" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M480,365 L480,413 L200,413 L200,475" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M605.0,365 L605.0,420.0 L605.0,420.0 L605.0,475" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1005,475 L1005,365" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="1090" y="413" class="edge" text-anchor="middle">合并运行进度</text>
+<path d="M850,505 L805,505 L805,415 L705,415 L705,365" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="790" y="408" class="edge" text-anchor="middle">acceptJob</text>
+<path d="M200.0,585 L200.0,637.5 L200.0,637.5 L200.0,690" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M605.0,585 L605.0,637.5 L605.0,637.5 L605.0,690" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1160,82 L1180,82 L1180,530 L1160,530" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="1110" y="442" class="edge" text-anchor="middle">SSE / GET jobs</text>
+<path d="M330,365 L330,445 L470,445 L470,475" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="385" y="438" class="edge" text-anchor="middle">command 通知</text>
+<rect x="40" y="35" width="320" height="95" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="56" y="63" class="title">CanvasShell / Composer</text>
+<text x="56" y="86" class="body">提示词 / 参数 / 参考图 / 重绘</text>
+<text x="56" y="106" class="body">flows/generate → submit</text>
+<rect x="440" y="35" width="330" height="95" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="456" y="63" class="title">GenerationCoordinator</text>
+<text x="456" y="86" class="body">创建 operationId / generationId</text>
+<text x="456" y="106" class="body">提交 POST /api/generate</text>
+<rect x="850" y="35" width="310" height="95" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="866" y="63" class="title">FastAPI 生成与任务 API</text>
+<text x="866" y="86" class="body">202 {jobId, job}</text>
+<text x="866" y="106" class="body">clientRef 回接节点</text>
+<rect x="40" y="250" width="320" height="115" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="56" y="278" class="title">placement + HistoryManager</text>
+<text x="56" y="301" class="body">objects[objectId].generationId</text>
+<text x="56" y="321" class="body">位置 / 尺寸 / 撤销 / 重做</text>
+<text x="56" y="341" class="body">Undo 移除；Redo 恢复同一位置</text>
+<rect x="440" y="250" width="330" height="115" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="456" y="278" class="title">GenerationEntity</text>
+<text x="456" y="301" class="body">generations[generationId]</text>
+<text x="456" y="321" class="body">spec / jobId / status / result</text>
+<text x="456" y="341" class="body">operationId + version 拒绝迟到写入</text>
+<rect x="850" y="250" width="310" height="115" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="866" y="278" class="title">GenerationRuntimeStore</text>
+<text x="866" y="301" class="body">运行索引 / progress / message</text>
+<text x="866" y="321" class="body">短期状态；不进入撤销栈</text>
+<text x="866" y="341" class="body">变化触发 transient 通知</text>
+<rect x="40" y="475" width="320" height="110" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="56" y="503" class="title">selectCanvasDocument</text>
+<text x="56" y="526" class="body">placement + entity → 显示对象</text>
+<text x="56" y="546" class="body">React / Konva 重绘</text>
+<text x="56" y="566" class="body">当前 selector 未注入 runtime</text>
+<rect x="440" y="475" width="330" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="456" y="503" class="title">AutoSaver</text>
+<text x="456" y="526" class="body">监听 command / persistent</text>
+<text x="456" y="546" class="body">1 秒防抖 → 写本机草稿</text>
+<text x="456" y="566" class="body">POST document + baseRevision</text>
+<rect x="850" y="475" width="310" height="110" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="866" y="503" class="title">SSE + HTTP 对账</text>
+<text x="866" y="526" class="body">snapshot / job → latestJob</text>
+<text x="866" y="546" class="body">stateVersion + progressSeq</text>
+<text x="866" y="566" class="body">断线 4–6 秒轮询；不自动重提</text>
+<rect x="40" y="690" width="320" height="110" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="56" y="718" class="title">撤销与迟到结果</text>
+<text x="56" y="741" class="body">迟到完成只更新 entity.result</text>
+<text x="56" y="761" class="body">已撤销的 placement 不会复活</text>
+<text x="56" y="781" class="body">Redo 展示已有结果，不再生成</text>
+<rect x="440" y="690" width="330" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="456" y="718" class="title">文档保存结果</text>
+<text x="456" y="741" class="body">成功：更新 revision / 清草稿</text>
+<text x="456" y="761" class="body">409：保留草稿 / 报冲突</text>
+<text x="456" y="781" class="body">草稿恢复 UI 当前尚未接通</text>
+<rect x="850" y="690" width="310" height="110" rx="9" fill="#fff2ef" stroke="#bb7065" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="866" y="718" class="title">工作台另一路径</text>
+<text x="866" y="741" class="body">CreationIntent / NodeDraft/Run</text>
+<text x="866" y="761" class="body">documentId + requestId + clientRef</text>
+<text x="866" y="781" class="body">进入新画布后对账尚未统一</text>
+</svg>

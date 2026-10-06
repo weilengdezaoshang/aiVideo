@@ -1,0 +1,2034 @@
+{
+  "intro": "当前项目已统一到 PostgreSQL / RabbitMQ / Redis / Celery 后端。图解覆盖前端编辑状态、数据库受理、阶段执行、产物恢复和部署关系。",
+  "notice": "<strong>当前状态：</strong>已移除本地 JSON/FIFO 应用模式；开发与部署使用同一后端。旧实现仅保留为隔离评测与历史契约沙箱。Agent、分镜编排、评测 HTTP 等外围能力尚未迁入当前入口。",
+  "notice_text": "应用已统一到数据库执行架构。旧实现仅保留为显式隔离评测和历史契约沙箱，不属于运行模式。外围 HTTP 功能与新版画布仍存在未迁移/未接通部分。",
+  "diagrams": [
+    {
+      "id": "01-overview",
+      "nav": "系统全景",
+      "title": "系统全景：前后端统一使用持久化执行架构",
+      "height": 890,
+      "summary": "所有应用入口共用 PostgreSQL / RabbitMQ / Redis / Celery。开发热重载与容器部署只改变进程启动方式，不切换队列或存储实现。",
+      "groups": [],
+      "nodes": [
+        {
+          "id": "landing",
+          "title": "落地页 /",
+          "box": [40, 35, 320, 90],
+          "lines": ["React · 模式展示", "导航进入工作台"],
+          "kind": "ui"
+        },
+        {
+          "id": "workspace",
+          "title": "工作台 /workspace",
+          "box": [440, 35, 320, 90],
+          "lines": ["Composer / 画布 / 素材", "CreationIntent → 文档与生成"],
+          "kind": "ui"
+        },
+        {
+          "id": "canvas",
+          "title": "画布 /canvas",
+          "box": [840, 35, 320, 90],
+          "lines": ["canvas-next · React Shell", "CanvasView + react-konva"],
+          "kind": "ui"
+        },
+        {
+          "id": "auth",
+          "title": "HTTPS / OIDC / 会话",
+          "box": [40, 235, 320, 100],
+          "lines": ["Caddy / workspace membership", "同源写请求 CSRF"],
+          "kind": "service"
+        },
+        {
+          "id": "api",
+          "title": "唯一应用工厂",
+          "box": [440, 235, 320, 100],
+          "lines": ["backend.app:create_app", "FastAPI REST / 静态文件 / SSE"],
+          "kind": "service"
+        },
+        {
+          "id": "pg",
+          "title": "PostgreSQL",
+          "box": [840, 235, 320, 100],
+          "lines": ["Job / Document / Asset / Outbox", "所有业务状态的权威来源"],
+          "kind": "store"
+        },
+        {
+          "id": "notify",
+          "title": "SSE 通知与恢复",
+          "box": [40, 445, 320, 110],
+          "lines": [
+            "notify → Redis 工作区唤醒",
+            "API 回查 PG 的公开状态",
+            "浏览器断线后 HTTP 对账"
+          ],
+          "kind": "service"
+        },
+        {
+          "id": "queue",
+          "title": "可靠派发与调度",
+          "box": [440, 445, 320, 110],
+          "lines": [
+            "dispatcher → RabbitMQ → bridge",
+            "scheduler：到期 / 租约 / 恢复",
+            "execution.due / job.changed"
+          ],
+          "kind": "service"
+        },
+        {
+          "id": "workers",
+          "title": "Celery Workers",
+          "box": [840, 445, 320, 110],
+          "lines": [
+            "image / video / exports 队列",
+            "阶段执行 / 心跳 / epoch",
+            "Provider 快照固定计费路由"
+          ],
+          "kind": "service"
+        },
+        {
+          "id": "legacy",
+          "title": "隔离历史评测夹具",
+          "box": [40, 685, 320, 120],
+          "lines": [
+            "evaluation/sandbox.py",
+            "必须显式传入独立目录",
+            "非应用启动模式；不读仓库 data",
+            "Agent / 分镜 / 评测 HTTP 未迁入"
+          ],
+          "kind": "gap"
+        },
+        {
+          "id": "media",
+          "title": "共享媒体卷 / Redis",
+          "box": [440, 685, 320, 120],
+          "lines": [
+            "文件 + SHA256 receipt",
+            "Redis：通知 / 限流 / 熔断",
+            "API 内 rembg；导出用 FFmpeg"
+          ],
+          "kind": "store"
+        },
+        {
+          "id": "model",
+          "title": "StagedProvider",
+          "box": [840, 685, 320, 120],
+          "lines": [
+            "Mock / Cloud / ComfyUI",
+            "prepare / submit / poll / cancel",
+            "外部生成只由 Worker 发起"
+          ],
+          "kind": "external"
+        }
+      ],
+      "edges": [
+        {
+          "from": "landing",
+          "to": "workspace",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "workspace",
+          "to": "canvas",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "workspace",
+          "to": "api",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "auth",
+          "to": "api",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "canvas",
+          "to": "api",
+          "label": "REST / SSE",
+          "dashed": false,
+          "labelPos": [850, 185],
+          "points": [
+            [1000, 125],
+            [1000, 185],
+            [710, 185],
+            [710, 235]
+          ]
+        },
+        {
+          "from": "api",
+          "to": "pg",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "api",
+          "to": "notify",
+          "label": "",
+          "dashed": false,
+          "points": [
+            [440, 298],
+            [390, 298],
+            [390, 412],
+            [200, 412],
+            [200, 445]
+          ]
+        },
+        {
+          "from": "pg",
+          "to": "queue",
+          "label": "",
+          "dashed": false,
+          "points": [
+            [1000, 335],
+            [1000, 392],
+            [600, 392],
+            [600, 445]
+          ]
+        },
+        {
+          "from": "queue",
+          "to": "workers",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "workers",
+          "to": "model",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "workers",
+          "to": "media",
+          "label": "",
+          "dashed": false,
+          "points": [
+            [925, 555],
+            [925, 620],
+            [600, 620],
+            [600, 685]
+          ]
+        },
+        {
+          "from": "queue",
+          "to": "notify",
+          "label": "job.changed",
+          "dashed": false,
+          "labelPos": [398, 493]
+        }
+      ],
+      "explanations": [
+        [
+          "单一业务运行架构",
+          "backend.app 与 backend.production 导入同一工厂。npm dev/start、python -m backend 和默认 Compose 均使用数据库 API，AIVERO_API_MODE 已退役。"
+        ],
+        [
+          "开发依旧可以热重载",
+          "--reload 只影响源码监听；仍需要数据库、Redis、独立 Worker、共享媒体、OIDC 与 HTTPS 配置。缺配置会失败，不回退 JSON 或 Mock 应用。"
+        ],
+        [
+          "历史代码的保留范围",
+          "旧 HTTP/FIFO 仅被隔离评测、性能夹具与兼容测试显式导入，无法用默认无参数工厂启动，禁止操作仓库 data。已有数据需离线导入。"
+        ],
+        [
+          "当前功能边界",
+          "Agent、完整分镜编排、评测 HTTP 页面尚未迁入统一入口；新画布中的部分工作流也未接通。统一入口不代表这些外围能力已经迁移完成。"
+        ]
+      ],
+      "sources": [
+        "apps/api/backend/app.py:1",
+        "apps/api/backend/__main__.py:13",
+        "apps/api/backend/production.py:89",
+        "apps/api/backend/evaluation/sandbox.py:112",
+        "docker-compose.yml:1"
+      ]
+    },
+    {
+      "id": "02-frontend",
+      "nav": "前端模块分层",
+      "title": "前端模块分层：入口、交互核心、文档与网络",
+      "height": 1000,
+      "summary": "当前画布以 canvas-next/app.tsx 为组合入口。React 管工具和面板，CanvasView 管交互与短期快照，DocStore 管持久文档，React-Konva 只承接渲染和输入适配。",
+      "groups": [
+        {
+          "label": "当前入口与保留页面代码",
+          "box": [20, 20, 1160, 150]
+        },
+        {
+          "label": "当前画布已接入的模块",
+          "box": [20, 210, 1160, 580]
+        },
+        {
+          "label": "保留模块 · 当前 CanvasShell 未装配",
+          "box": [20, 820, 1160, 155]
+        }
+      ],
+      "nodes": [
+        {
+          "id": "landing",
+          "title": "landing/",
+          "box": [40, 65, 240, 75],
+          "lines": ["LandingPage / modes"],
+          "kind": "ui"
+        },
+        {
+          "id": "workspace",
+          "title": "workspace/",
+          "box": [310, 65, 260, 75],
+          "lines": ["HomePage / Composer / Libraries"],
+          "kind": "ui"
+        },
+        {
+          "id": "canvas",
+          "title": "canvas-next/app.tsx",
+          "box": [600, 65, 270, 75],
+          "lines": ["CanvasNextApp → CanvasShell"],
+          "kind": "ui"
+        },
+        {
+          "id": "evaluation",
+          "title": "evaluation/ 保留代码",
+          "box": [900, 65, 260, 75],
+          "lines": ["统一后端未挂载评测页面"],
+          "kind": "gap"
+        },
+        {
+          "id": "shell",
+          "title": "React Shell / UI",
+          "box": [45, 255, 325, 110],
+          "lines": [
+            "工具栏 / Inspector / 素材侧栏",
+            "生成 / 抠图 / 重绘 / 基础编辑",
+            "共享 ui/ 与样式"
+          ],
+          "kind": "ui"
+        },
+        {
+          "id": "context",
+          "title": "CanvasViewProvider",
+          "box": [430, 255, 340, 110],
+          "lines": ["React Context + useSyncExternalStore", "提供 View 生命周期与快照订阅"],
+          "kind": "state"
+        },
+        {
+          "id": "render",
+          "title": "renderer-konva/",
+          "box": [830, 255, 325, 110],
+          "lines": [
+            "CanvasEditor + Stage",
+            "Connection / Content / Selection",
+            "Editing：暂态绘制层"
+          ],
+          "kind": "ui"
+        },
+        {
+          "id": "flow",
+          "title": "业务 flows + Shell 动作",
+          "box": [45, 445, 325, 110],
+          "lines": [
+            "generate / connect-reference",
+            "RecognitionOperation / mask",
+            "调用 API；提交文档命令"
+          ],
+          "kind": "service"
+        },
+        {
+          "id": "core",
+          "title": "core/ CanvasView",
+          "box": [430, 445, 340, 110],
+          "lines": [
+            "CanvasInputEvent → LayerController",
+            "EventMono：preview → commit",
+            "camera / selection / tool / mask"
+          ],
+          "kind": "state"
+        },
+        {
+          "id": "store",
+          "title": "state/ DocStore",
+          "box": [830, 445, 325, 110],
+          "lines": [
+            "objects / order / generations 等",
+            "HistoryManager：撤销与重做",
+            "selector：派生画布对象"
+          ],
+          "kind": "state"
+        },
+        {
+          "id": "gen",
+          "title": "GenerationCoordinator",
+          "box": [45, 640, 325, 110],
+          "lines": [
+            "实体生命周期 + RuntimeStore",
+            "SSE / HTTP 对账 → acceptJob",
+            "operationId / jobId / version"
+          ],
+          "kind": "state"
+        },
+        {
+          "id": "network",
+          "title": "网络访问",
+          "box": [430, 640, 340, 110],
+          "lines": [
+            "fetch / typed clients / CSRF wrapper",
+            "EventSource + 断线轮询",
+            "REST /api/* + SSE /api/events"
+          ],
+          "kind": "service"
+        },
+        {
+          "id": "save",
+          "title": "AutoSaver",
+          "box": [830, 640, 325, 110],
+          "lines": [
+            "1 秒防抖 / localStorage 草稿",
+            "文档全量 JSON + baseRevision",
+            "409 保留草稿并显示冲突"
+          ],
+          "kind": "store"
+        },
+        {
+          "id": "oldnode",
+          "title": "NodeGeneration",
+          "box": [45, 860, 250, 85],
+          "lines": ["NodeDraft / NodeRun 对账", "工作台与新画布尚未统一"],
+          "kind": "gap"
+        },
+        {
+          "id": "oldagent",
+          "title": "Agent / Chat flows",
+          "box": [325, 860, 250, 85],
+          "lines": ["新对话侧栏只存用户文本", "无 Agent API 调用"],
+          "kind": "gap"
+        },
+        {
+          "id": "oldstory",
+          "title": "完整分镜编排",
+          "box": [605, 860, 250, 85],
+          "lines": ["Planner / Run 状态流程", "新侧栏仅基础编辑"],
+          "kind": "gap"
+        },
+        {
+          "id": "oldtime",
+          "title": "完整时间线工作流",
+          "box": [885, 860, 270, 85],
+          "lines": ["TimelineExport / AudioTracks", "新侧栏尚未接通导出"],
+          "kind": "gap"
+        }
+      ],
+      "edges": [
+        {
+          "from": "landing",
+          "to": "workspace",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "workspace",
+          "to": "canvas",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "canvas",
+          "to": "context",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "shell",
+          "to": "context",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "context",
+          "to": "render",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "shell",
+          "to": "flow",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "render",
+          "to": "core",
+          "label": "输入事件",
+          "dashed": false,
+          "labelPos": [792, 404],
+          "points": [
+            [992, 365],
+            [992, 406],
+            [600, 406],
+            [600, 445]
+          ]
+        },
+        {
+          "from": "core",
+          "to": "store",
+          "label": "命令",
+          "dashed": false,
+          "labelPos": [800, 492]
+        },
+        {
+          "from": "store",
+          "to": "render",
+          "label": "投影重绘",
+          "dashed": false,
+          "labelPos": [1115, 406],
+          "points": [
+            [1110, 445],
+            [1110, 365]
+          ]
+        },
+        {
+          "from": "flow",
+          "to": "gen",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "gen",
+          "to": "network",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "save",
+          "to": "network",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "store",
+          "to": "save",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "core",
+          "to": "context",
+          "label": "短期快照",
+          "dashed": false,
+          "labelPos": [724, 402],
+          "points": [
+            [735, 445],
+            [735, 365]
+          ]
+        },
+        {
+          "from": "flow",
+          "to": "store",
+          "label": "文档命令",
+          "dashed": false,
+          "labelPos": [595, 589],
+          "points": [
+            [206, 555],
+            [206, 590],
+            [992, 590],
+            [992, 555]
+          ]
+        }
+      ],
+      "explanations": [
+        [
+          "交互与绘制分离",
+          "Konva 输入先变成显式 CanvasInputEvent。交互层产生预览或命令；拖动中更新短期快照，提交时才进入文档历史，避免每次鼠标移动都成为撤销项。"
+        ],
+        [
+          "三类状态",
+          "DocStore 保存文档；CanvasViewSnapshot 保存相机、选中、工具和笔画；GenerationRuntimeStore 保存请求与进度。它们的生命周期和保存策略不同。"
+        ],
+        [
+          "网络栈现状",
+          "普通页面用 fetch 与类型化封装，landing/workspace/canvas-next 安装同源写请求 CSRF 包装。TanStack Query 主要用于独立评测页；不是全站统一 Query 或 Axios 层。评测源码仍保留，但应用入口不提供 /evals 或评测 API。"
+        ],
+        [
+          "当前接线缺口",
+          "NodeGeneration、Agent、完整分镜及时间线导出模块保留在 canvas/flows，但当前入口没有装配；不能将其全部视为新版界面已实现能力。"
+        ]
+      ],
+      "sources": [
+        "apps/web/canvas-next/app.tsx:37",
+        "apps/web/canvas/react/canvas-view-context.tsx:25",
+        "apps/web/canvas/core/canvas-view.ts:87",
+        "apps/web/canvas/core/layers.ts:291",
+        "apps/web/canvas/renderer-konva/canvas-editor.tsx:37",
+        "apps/web/shared/session-fetch.ts:2"
+      ]
+    },
+    {
+      "id": "03-state",
+      "nav": "前端生成与保存",
+      "title": "前端状态流：生成实体、画布位置与保存分离",
+      "height": 870,
+      "summary": "生成实体保留任务身份和结果，placement 决定它是否出现在画布上。SSE 或轮询只合并状态；自动保存只响应需要持久化的文档变更。",
+      "nodes": [
+        {
+          "id": "composer",
+          "title": "CanvasShell / Composer",
+          "box": [40, 35, 320, 95],
+          "lines": ["提示词 / 参数 / 参考图 / 重绘", "flows/generate → submit"],
+          "kind": "ui"
+        },
+        {
+          "id": "coord",
+          "title": "GenerationCoordinator",
+          "box": [440, 35, 330, 95],
+          "lines": ["创建 operationId / generationId", "提交 POST /api/generate"],
+          "kind": "state"
+        },
+        {
+          "id": "api",
+          "title": "FastAPI 生成与任务 API",
+          "box": [850, 35, 310, 95],
+          "lines": ["202 {jobId, job}", "clientRef 回接节点"],
+          "kind": "service"
+        },
+        {
+          "id": "placement",
+          "title": "placement + HistoryManager",
+          "box": [40, 250, 320, 115],
+          "lines": [
+            "objects[objectId].generationId",
+            "位置 / 尺寸 / 撤销 / 重做",
+            "Undo 移除；Redo 恢复同一位置"
+          ],
+          "kind": "state"
+        },
+        {
+          "id": "entity",
+          "title": "GenerationEntity",
+          "box": [440, 250, 330, 115],
+          "lines": [
+            "generations[generationId]",
+            "spec / jobId / status / result",
+            "operationId + version 拒绝迟到写入"
+          ],
+          "kind": "state"
+        },
+        {
+          "id": "runtime",
+          "title": "GenerationRuntimeStore",
+          "box": [850, 250, 310, 115],
+          "lines": [
+            "运行索引 / progress / message",
+            "短期状态；不进入撤销栈",
+            "变化触发 transient 通知"
+          ],
+          "kind": "state"
+        },
+        {
+          "id": "view",
+          "title": "selectCanvasDocument",
+          "box": [40, 475, 320, 110],
+          "lines": [
+            "placement + entity → 显示对象",
+            "React / Konva 重绘",
+            "当前 selector 未注入 runtime"
+          ],
+          "kind": "ui"
+        },
+        {
+          "id": "save",
+          "title": "AutoSaver",
+          "box": [440, 475, 330, 110],
+          "lines": [
+            "监听 command / persistent",
+            "1 秒防抖 → 写本机草稿",
+            "POST document + baseRevision"
+          ],
+          "kind": "store"
+        },
+        {
+          "id": "events",
+          "title": "SSE + HTTP 对账",
+          "box": [850, 475, 310, 110],
+          "lines": [
+            "snapshot / job → latestJob",
+            "stateVersion + progressSeq",
+            "断线 4–6 秒轮询；不自动重提"
+          ],
+          "kind": "service"
+        },
+        {
+          "id": "history",
+          "title": "撤销与迟到结果",
+          "box": [40, 690, 320, 110],
+          "lines": [
+            "迟到完成只更新 entity.result",
+            "已撤销的 placement 不会复活",
+            "Redo 展示已有结果，不再生成"
+          ],
+          "kind": "state"
+        },
+        {
+          "id": "docs",
+          "title": "文档保存结果",
+          "box": [440, 690, 330, 110],
+          "lines": [
+            "成功：更新 revision / 清草稿",
+            "409：保留草稿 / 报冲突",
+            "草稿恢复 UI 当前尚未接通"
+          ],
+          "kind": "store"
+        },
+        {
+          "id": "other",
+          "title": "工作台另一路径",
+          "box": [850, 690, 310, 110],
+          "lines": [
+            "CreationIntent / NodeDraft/Run",
+            "documentId + requestId + clientRef",
+            "进入新画布后对账尚未统一"
+          ],
+          "kind": "gap"
+        }
+      ],
+      "edges": [
+        {
+          "from": "composer",
+          "to": "coord",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "coord",
+          "to": "api",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "coord",
+          "to": "entity",
+          "label": "实体持久状态",
+          "dashed": false,
+          "labelPos": [605, 195]
+        },
+        {
+          "from": "composer",
+          "to": "placement",
+          "label": "通过 coordinator 创建",
+          "dashed": false,
+          "labelPos": [200, 195]
+        },
+        {
+          "from": "api",
+          "to": "runtime",
+          "label": "受理后绑定 jobId",
+          "dashed": false,
+          "labelPos": [1005, 195]
+        },
+        {
+          "from": "placement",
+          "to": "view",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "entity",
+          "to": "view",
+          "label": "",
+          "dashed": false,
+          "points": [
+            [480, 365],
+            [480, 413],
+            [200, 413],
+            [200, 475]
+          ]
+        },
+        {
+          "from": "entity",
+          "to": "save",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "events",
+          "to": "runtime",
+          "label": "合并运行进度",
+          "dashed": false,
+          "labelPos": [1090, 420],
+          "points": [
+            [1005, 475],
+            [1005, 365]
+          ]
+        },
+        {
+          "from": "events",
+          "to": "entity",
+          "label": "acceptJob",
+          "dashed": false,
+          "labelPos": [790, 415],
+          "points": [
+            [850, 505],
+            [805, 505],
+            [805, 415],
+            [705, 415],
+            [705, 365]
+          ]
+        },
+        {
+          "from": "view",
+          "to": "history",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "save",
+          "to": "docs",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "api",
+          "to": "events",
+          "label": "SSE / GET jobs",
+          "dashed": false,
+          "labelPos": [1110, 449],
+          "points": [
+            [1160, 82],
+            [1180, 82],
+            [1180, 530],
+            [1160, 530]
+          ]
+        },
+        {
+          "from": "placement",
+          "to": "save",
+          "label": "command 通知",
+          "dashed": false,
+          "labelPos": [385, 445],
+          "points": [
+            [330, 365],
+            [330, 445],
+            [470, 445],
+            [470, 475]
+          ]
+        }
+      ],
+      "explanations": [
+        [
+          "为什么撤销不会重复计费",
+          "用户历史记录 placement 命令，生成结果更新不进入撤销栈。撤销不自动取消上游任务；只有显式 cancel 才调用删除任务 API。"
+        ],
+        [
+          "两种版本不能混用",
+          "实体 operationId/version 用于前端操作归属与补丁次序；Job 的 stateVersion/progressSeq 用于 HTTP、SSE 和快照的状态合并。"
+        ],
+        [
+          "幂等接线的现状",
+          "CanvasCoordinator 当前只带 clientRef，不带稳定 requestId/documentId。后端可受理，但 clientRef 本身不是幂等键。工作台 CreationIntent 才沿用稳定请求 ID。"
+        ],
+        [
+          "保存恢复的范围",
+          "AutoSaver 已有草稿与冲突保护；resolveDraftOnOpen 和重复标签页保护模块尚未被新入口装配。进度 RuntimeStore 也尚未作为参数传入当前 selector。"
+        ]
+      ],
+      "sources": [
+        "apps/web/canvas/state/generation-coordinator.ts:91",
+        "apps/web/canvas/state/generation-entity.ts:153",
+        "apps/web/canvas/state/generation-events.ts:48",
+        "apps/web/canvas/state/autosave.ts:37",
+        "apps/web/canvas-next/app.tsx:122",
+        "apps/web/workspace/api.ts:136"
+      ]
+    },
+    {
+      "id": "05-production",
+      "nav": "统一后端",
+      "title": "统一后端：事务受理、阶段执行与通知闭环",
+      "height": 1090,
+      "summary": "PostgreSQL 保存任务和执行所有权；RabbitMQ 传递至少一次消息；Celery 每次执行一个阶段；Redis 协調通知、限流和熔断。API 受理不直接调用付费生成。",
+      "groups": [
+        {
+          "label": "HTTP 与应用服务",
+          "box": [20, 20, 1160, 300]
+        },
+        {
+          "label": "可靠消息与独立后台进程",
+          "box": [20, 355, 1160, 290]
+        },
+        {
+          "label": "执行与产物",
+          "box": [20, 680, 1160, 370]
+        }
+      ],
+      "nodes": [
+        {
+          "id": "api",
+          "title": "production.create_app",
+          "box": [40, 65, 300, 95],
+          "lines": ["REST / 同源静态资源 / SSE", "OIDC + session + CSRF"],
+          "kind": "ui"
+        },
+        {
+          "id": "accept",
+          "title": "受理与文档服务",
+          "box": [420, 65, 330, 95],
+          "lines": ["accept_generation / Documents", "幂等 / 容量 / revision / 引用"],
+          "kind": "service"
+        },
+        {
+          "id": "pg",
+          "title": "PostgreSQL / UoW",
+          "box": [840, 65, 320, 95],
+          "lines": ["Job / Attempt / Outbox / Asset", "事务提交后才返回 202"],
+          "kind": "store"
+        },
+        {
+          "id": "sse",
+          "title": "SSE 公开投影",
+          "box": [40, 210, 300, 80],
+          "lines": ["先订阅后 snapshot；周期回查 PG", "按工作区与 stateVersion 输出"],
+          "kind": "service"
+        },
+        {
+          "id": "scheduler",
+          "title": "scheduler",
+          "box": [420, 210, 330, 80],
+          "lines": ["扫描 next_poll_at / 过期 lease", "固定期限裁决 / receipt 恢复"],
+          "kind": "service"
+        },
+        {
+          "id": "redis",
+          "title": "Redis",
+          "box": [840, 210, 320, 80],
+          "lines": ["工作区 pubsub / 操作取消", "操作级限流 / 熔断 / 凭据暂停"],
+          "kind": "store"
+        },
+        {
+          "id": "dispatcher",
+          "title": "dispatcher",
+          "box": [40, 400, 300, 95],
+          "lines": ["领取 Outbox / SKIP LOCKED", "publisher confirm / claim_token"],
+          "kind": "service"
+        },
+        {
+          "id": "rabbit",
+          "title": "RabbitMQ 事件拓扑",
+          "box": [420, 400, 330, 95],
+          "lines": ["execution.due → phase.events", "job.changed → notifications"],
+          "kind": "store"
+        },
+        {
+          "id": "notify",
+          "title": "notify",
+          "box": [840, 400, 320, 95],
+          "lines": ["读取 PG 最新 Job 版本", "发布工作区 Redis 唤醒"],
+          "kind": "service"
+        },
+        {
+          "id": "bridge",
+          "title": "bridge",
+          "box": [40, 550, 300, 65],
+          "lines": ["确认发出 Celery task 后 ACK"],
+          "kind": "service"
+        },
+        {
+          "id": "queues",
+          "title": "Celery 三类任务队列",
+          "box": [420, 550, 330, 65],
+          "lines": ["generation.image / video / exports"],
+          "kind": "service"
+        },
+        {
+          "id": "dlq",
+          "title": "失败投递 / 死信",
+          "box": [840, 550, 320, 65],
+          "lines": ["有限重投 / aivideo.dead / 审计恢复"],
+          "kind": "store"
+        },
+        {
+          "id": "runtime",
+          "title": "Worker AsyncRuntime",
+          "box": [40, 725, 300, 115],
+          "lines": [
+            "每个 prefork 进程独立事件循环",
+            "复用 HTTPX / DB / Redis 客户端",
+            "心跳与租约独立维护"
+          ],
+          "kind": "service"
+        },
+        {
+          "id": "execution",
+          "title": "ExecutionStore + Runner",
+          "box": [420, 725, 330, 115],
+          "lines": [
+            "claim → owner / epoch / lease",
+            "prepare → submit → poll → download",
+            "generation_runner / export_runner"
+          ],
+          "kind": "state"
+        },
+        {
+          "id": "artifacts",
+          "title": "产物协议 / 共享卷",
+          "box": [840, 725, 320, 115],
+          "lines": [
+            "generated / jobId / epoch",
+            "原子文件 + SHA256 receipt",
+            "校验后登记 Asset / completed"
+          ],
+          "kind": "store"
+        },
+        {
+          "id": "staged",
+          "title": "StagedProvider",
+          "box": [40, 925, 300, 85],
+          "lines": ["Mock / Cloud / ComfyUI", "prepare / submit / poll / cancel"],
+          "kind": "external"
+        },
+        {
+          "id": "recovery",
+          "title": "unknown 与恢复",
+          "box": [420, 925, 330, 85],
+          "lines": ["未知提交不自动重提 / 保留名额", "只查原句柄；必要时人工确认"],
+          "kind": "state"
+        },
+        {
+          "id": "ffmpeg",
+          "title": "FFmpeg 导出",
+          "box": [840, 925, 320, 85],
+          "lines": ["exports 队列独立执行", "取消 / 超时回收子进程组"],
+          "kind": "external"
+        }
+      ],
+      "edges": [
+        {
+          "from": "api",
+          "to": "accept",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "accept",
+          "to": "pg",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "api",
+          "to": "sse",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "scheduler",
+          "to": "pg",
+          "label": "",
+          "dashed": false,
+          "points": [
+            [650, 210],
+            [650, 186],
+            [1000, 186],
+            [1000, 160]
+          ]
+        },
+        {
+          "from": "redis",
+          "to": "sse",
+          "label": "通知唤醒",
+          "dashed": false,
+          "labelPos": [595, 334],
+          "points": [
+            [840, 250],
+            [797, 250],
+            [797, 335],
+            [190, 335],
+            [190, 290]
+          ]
+        },
+        {
+          "from": "pg",
+          "to": "dispatcher",
+          "label": "领取 Outbox",
+          "dashed": false,
+          "labelPos": [1060, 340],
+          "points": [
+            [1160, 100],
+            [1186, 100],
+            [1186, 344],
+            [190, 344],
+            [190, 400]
+          ]
+        },
+        {
+          "from": "dispatcher",
+          "to": "rabbit",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "rabbit",
+          "to": "notify",
+          "label": "job.changed",
+          "dashed": false,
+          "labelPos": [797, 447]
+        },
+        {
+          "from": "notify",
+          "to": "redis",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "rabbit",
+          "to": "bridge",
+          "label": "execution.due",
+          "dashed": false,
+          "labelPos": [334, 522],
+          "points": [
+            [490, 495],
+            [490, 524],
+            [190, 524],
+            [190, 550]
+          ]
+        },
+        {
+          "from": "bridge",
+          "to": "queues",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "rabbit",
+          "to": "dlq",
+          "label": "拒绝 / 超限",
+          "dashed": false,
+          "labelPos": [840, 524],
+          "points": [
+            [670, 495],
+            [670, 524],
+            [1000, 524],
+            [1000, 550]
+          ]
+        },
+        {
+          "from": "queues",
+          "to": "runtime",
+          "label": "",
+          "dashed": false,
+          "points": [
+            [585, 615],
+            [585, 667],
+            [190, 667],
+            [190, 725]
+          ]
+        },
+        {
+          "from": "runtime",
+          "to": "execution",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "execution",
+          "to": "artifacts",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "execution",
+          "to": "staged",
+          "label": "",
+          "dashed": false,
+          "points": [
+            [480, 840],
+            [480, 878],
+            [190, 878],
+            [190, 925]
+          ]
+        },
+        {
+          "from": "execution",
+          "to": "recovery",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "ffmpeg",
+          "to": "artifacts",
+          "label": "写入成片",
+          "dashed": false,
+          "labelPos": [1040, 890],
+          "points": [
+            [1000, 925],
+            [1000, 840]
+          ]
+        },
+        {
+          "from": "execution",
+          "to": "pg",
+          "label": "",
+          "dashed": false,
+          "points": [
+            [750, 780],
+            [780, 780],
+            [780, 118],
+            [840, 118]
+          ]
+        },
+        {
+          "from": "execution",
+          "to": "ffmpeg",
+          "label": "",
+          "dashed": false,
+          "points": [
+            [735, 840],
+            [800, 840],
+            [800, 966],
+            [840, 966]
+          ]
+        },
+        {
+          "from": "execution",
+          "to": "redis",
+          "label": "",
+          "dashed": true,
+          "points": [
+            [750, 805],
+            [813, 805],
+            [813, 270],
+            [840, 270]
+          ]
+        }
+      ],
+      "explanations": [
+        [
+          "四个 daemon 各司其职",
+          "dispatcher 保证数据库事件送达 MQ；bridge 转成 Celery 执行任务；scheduler 扫描到期任务并恢复租约；notify 将状态变更转成 Redis 唤醒。Compose 不运行 Celery beat。"
+        ],
+        [
+          "消息可重复，提交不可盲重试",
+          "至少一次消息由数据库 claim、lease_owner、execution_epoch 和期限检查吸收重复。Attempt 记录提交尝试；不能确定上游是否收单时转 unknown，不自动重新付费生成。"
+        ],
+        [
+          "模型并发与 Worker 并发分开",
+          "PG 模型槽位代表实际上游任务并发；轮询等待不占 Celery 执行槽。Redis 负责速率和熔断；PostgreSQL 才是任务状态依据，Celery 未使用结果后端。"
+        ],
+        [
+          "资源恢复与事件恢复",
+          "文件先原子落盘并写 receipt，再登记资产；崩溃后可恢复已有产物。SSE 依赖 PG 快照和周期对账，Redis 是唤醒信号，不是事件历史或 Last-Event-ID 重放日志。"
+        ],
+        [
+          "抠图仍在 API",
+          "当前 API 的 rembg 识别仍是 API 进程内单推理线程，Redis 传递跨实例取消标记；只有时间线导出进入 exports Worker。识别结果不持久化为蒙版资产。"
+        ]
+      ],
+      "sources": [
+        "apps/api/backend/production.py:307",
+        "apps/api/backend/services/acceptance.py:18",
+        "apps/api/backend/services/execution.py:45",
+        "apps/api/backend/workers/daemon.py:36",
+        "apps/api/backend/workers/daemon.py:63",
+        "apps/api/backend/workers/daemon.py:150",
+        "apps/api/backend/infrastructure/outbox_dispatcher.py:23",
+        "apps/api/backend/services/generation_runner.py:31"
+      ]
+    },
+    {
+      "id": "06-sequence",
+      "nav": "生成跨层时序",
+      "title": "一次生成请求的跨层时序",
+      "height": 1150,
+      "summary": "以下展示统一后端的主路径。任务状态与派发事件同事务落库，执行分成可恢复的阶段，最终经通知唤醒与数据库投影回到浏览器。",
+      "participants": [
+        ["ui", "浏览器"],
+        ["api", "统一 API"],
+        ["db", "PostgreSQL"],
+        ["mq", "Dispatcher / MQ"],
+        ["worker", "Bridge / Worker"],
+        ["provider", "Provider / 媒体卷"],
+        ["notify", "Notify / Redis"]
+      ],
+      "messages": [
+        ["ui", "api", "POST generate"],
+        ["api", "db", "幂等 / Job / Outbox 同事务"],
+        ["api", "ui", "COMMIT 后 202 {jobId, job}", true],
+        ["db", "mq", "领取 execution.due Outbox"],
+        ["mq", "worker", "确认派发，再 ACK"],
+        ["worker", "db", "claim：owner + epoch + lease"],
+        ["worker", "provider", "执行 prepare / submit"],
+        ["provider", "worker", "上游句柄 / 阶段结果", true],
+        ["worker", "db", "阶段 + next_poll_at + Outbox"],
+        ["db", "worker", "scheduler → Outbox → MQ 唤醒下一阶段"],
+        ["worker", "provider", "poll / download；写原子产物与 receipt"],
+        ["worker", "db", "有效 lease 下：Asset + completed + Outbox"],
+        ["db", "mq", "派发 job.changed"],
+        ["mq", "notify", "消费通知 / 最新版本"],
+        ["notify", "api", "工作区 pubsub 唤醒", true],
+        ["api", "db", "回查公开投影"],
+        ["api", "ui", "SSE job / image；浏览器合并状态", true]
+      ],
+      "mermaid": "sequenceDiagram\n  autonumber\n  participant UI as 浏览器\n  participant API as 统一 API\n  participant PG as PostgreSQL\n  participant D as Dispatcher\n  participant MQ as RabbitMQ\n  participant B as Bridge\n  participant W as Celery Worker\n  participant P as StagedProvider\n  participant M as 共享媒体卷\n  participant S as Scheduler\n  participant N as Notify / Redis\n  UI->>API: POST /api/generate + 稳定 requestId\n  API->>PG: 同事务写 GenerationRequest + Job + Outbox\n  PG-->>API: COMMIT\n  API-->>UI: 202 {jobId, job}\n  D->>PG: claim Outbox\n  D->>MQ: publish execution.due\n  MQ-->>D: publisher confirm\n  D->>PG: 标记 published\n  MQ->>B: execution.due\n  B->>MQ: 确认派发 execute_phase，再 ACK 原消息\n  MQ->>W: 按 image / video / exports 路由\n  W->>PG: claim lease_owner + execution_epoch\n  loop 每个受期限约束的阶段\n    W->>P: prepare / submit / poll / download\n    P-->>W: 下一阶段、上游句柄或产物\n    W->>PG: 保存阶段、next_poll_at、job.changed Outbox\n    S->>PG: 到期扫描，新增 execution.due Outbox\n    Note over S,MQ: 下次唤醒仍经过 Dispatcher、MQ 和 Bridge\n  end\n  W->>M: 原子产物 + SHA256 receipt\n  W->>PG: 有效 lease 下登记 Asset + completed + Outbox\n  D->>MQ: job.changed\n  MQ->>N: 通知\n  N->>PG: 读取 Job 最新版本\n  N-->>API: 工作区 Redis pubsub 唤醒\n  API->>PG: 回查最新公开投影\n  API-->>UI: SSE job / image\n  Note over UI,API: SSE 断开后前端 GET jobs 对账，不自动重提生成",
+      "explanations": [
+        [
+          "202 的含义",
+          "请求已被可靠受理，尚未生成完成。结果通过 Job.images、历史与 SSE 异步返回；不能把 202 当成媒体已生成。"
+        ],
+        [
+          "图中的合并泳道",
+          "SVG 将 Dispatcher/MQ、Bridge/Worker 和 Provider/媒体卷合并以便阅读；Mermaid 源码保留更细的独立参与者，模块边界见上一图。"
+        ],
+        [
+          "同步与异步 Provider",
+          "有些图像调用同步返回产物；云视频与 ComfyUI 常经历上游句柄轮询。图中阶段是协议概览，不代表所有适配器都经过完全相同的分支。"
+        ],
+        [
+          "失败和取消",
+          "有句柄就对账原任务；缺句柄且提交不确定时保留 unknown。取消标记不代表上游确认停止；已有完整 receipt 可恢复登记，避免重新生成。"
+        ]
+      ],
+      "sources": [
+        "apps/api/backend/production.py:296",
+        "apps/api/backend/services/acceptance.py:36",
+        "apps/api/backend/services/generation_runner.py:31",
+        "apps/api/backend/services/execution.py:154",
+        "apps/api/backend/infrastructure/artifacts.py:16",
+        "apps/api/backend/production.py:754"
+      ]
+    },
+    {
+      "id": "07-data",
+      "nav": "数据实体与存储",
+      "title": "数据实体与存储：关系表、画布 JSONB、媒体文件",
+      "height": 890,
+      "summary": "本图描述当前应用数据库。实线表示主要外键关联，虚线表示逻辑或多态引用。画布内容在 Document.data JSONB 中，图像和视频字节放在共享文件卷。",
+      "nodes": [
+        {
+          "id": "session",
+          "title": "BrowserSession",
+          "box": [40, 40, 260, 100],
+          "lines": ["token_hash / principal_id", "csrf_hash / expires_at"],
+          "kind": "store"
+        },
+        {
+          "id": "member",
+          "title": "WorkspaceMember",
+          "box": [330, 40, 260, 100],
+          "lines": ["workspace_id + principal_id", "复合主键 / role"],
+          "kind": "store"
+        },
+        {
+          "id": "workspace",
+          "title": "Workspace",
+          "box": [620, 40, 260, 100],
+          "lines": ["workspace_id：租户边界", "任务 / 文档 / 资产按空间隔离"],
+          "kind": "store"
+        },
+        {
+          "id": "audit",
+          "title": "AuditEvent / Tombstone",
+          "box": [910, 40, 250, 100],
+          "lines": ["操作审计 / 请求取消墓碑", "均有 workspace_id"],
+          "kind": "store"
+        },
+        {
+          "id": "doc",
+          "title": "Document",
+          "box": [40, 245, 260, 125],
+          "lines": [
+            "id / workspace_id / revision",
+            "data JSONB：objects / order",
+            "groups / chat / generations",
+            "storyboard / timeline"
+          ],
+          "kind": "state"
+        },
+        {
+          "id": "request",
+          "title": "GenerationRequest",
+          "box": [330, 245, 260, 125],
+          "lines": [
+            "workspace_id + request_id",
+            "request_hash / job_id FK",
+            "请求重放 → 同一受理结果"
+          ],
+          "kind": "store"
+        },
+        {
+          "id": "job",
+          "title": "Job",
+          "box": [620, 245, 260, 125],
+          "lines": [
+            "status / phase / state_version",
+            "epoch / lease_owner / lease_until",
+            "provider_snapshot / params",
+            "document_id：逻辑引用"
+          ],
+          "kind": "state"
+        },
+        {
+          "id": "attempt",
+          "title": "Attempt",
+          "box": [910, 245, 250, 125],
+          "lines": ["job_id FK", "一次上游提交尝试", "提交身份 / 错误 / 结果"],
+          "kind": "store"
+        },
+        {
+          "id": "docreq",
+          "title": "DocumentRequest",
+          "box": [40, 475, 260, 110],
+          "lines": ["document_id FK", "工作区内创建幂等记录", "文档保存采用 revision CAS"],
+          "kind": "store"
+        },
+        {
+          "id": "assetref",
+          "title": "AssetReference",
+          "box": [330, 475, 260, 110],
+          "lines": ["asset_id FK", "owner_type + owner_id", "多态拥有者引用 / 删除保护"],
+          "kind": "store"
+        },
+        {
+          "id": "asset",
+          "title": "Asset",
+          "box": [620, 475, 260, 110],
+          "lines": ["workspace_id / storage_key", "sha256 / details / 类型", "数据库只存元数据"],
+          "kind": "store"
+        },
+        {
+          "id": "outbox",
+          "title": "Outbox",
+          "box": [910, 475, 250, 110],
+          "lines": [
+            "aggregate_type / aggregate_id",
+            "event_type / payload / status",
+            "claim_token / 发布重试"
+          ],
+          "kind": "store"
+        },
+        {
+          "id": "alias",
+          "title": "MediaAlias",
+          "box": [330, 700, 260, 105],
+          "lines": [
+            "asset_id FK / workspace_id",
+            "旧媒体路径 → 已授权资产",
+            "保留迁移后的 URL 兼容"
+          ],
+          "kind": "store"
+        },
+        {
+          "id": "bytes",
+          "title": "共享媒体卷",
+          "box": [620, 700, 540, 105],
+          "lines": [
+            "generated/{jobId}/{epoch}/original.ext + receipt.json",
+            "uploads / exports 等受管媒体；不把字节存进 PG"
+          ],
+          "kind": "external"
+        }
+      ],
+      "edges": [
+        {
+          "from": "session",
+          "to": "member",
+          "label": "principal_id",
+          "dashed": true,
+          "labelPos": [315, 162],
+          "points": [
+            [170, 140],
+            [170, 162],
+            [460, 162],
+            [460, 140]
+          ]
+        },
+        {
+          "from": "workspace",
+          "to": "member",
+          "label": "1:N",
+          "dashed": false,
+          "labelPos": [605, 87]
+        },
+        {
+          "from": "workspace",
+          "to": "audit",
+          "label": "1:N",
+          "dashed": false,
+          "labelPos": [895, 87]
+        },
+        {
+          "from": "workspace",
+          "to": "doc",
+          "label": "workspace_id 外键",
+          "dashed": false,
+          "labelPos": [428, 185],
+          "points": [
+            [680, 140],
+            [680, 185],
+            [170, 185],
+            [170, 245]
+          ]
+        },
+        {
+          "from": "workspace",
+          "to": "job",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "job",
+          "to": "request",
+          "label": "1:N",
+          "dashed": false,
+          "labelPos": [605, 309]
+        },
+        {
+          "from": "job",
+          "to": "attempt",
+          "label": "1:N",
+          "dashed": false,
+          "labelPos": [895, 309]
+        },
+        {
+          "from": "job",
+          "to": "doc",
+          "label": "document_id",
+          "dashed": true,
+          "labelPos": [450, 408],
+          "points": [
+            [750, 370],
+            [750, 413],
+            [170, 413],
+            [170, 370]
+          ]
+        },
+        {
+          "from": "doc",
+          "to": "docreq",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "asset",
+          "to": "assetref",
+          "label": "1:N",
+          "dashed": false,
+          "labelPos": [605, 530]
+        },
+        {
+          "from": "asset",
+          "to": "alias",
+          "label": "1:N",
+          "dashed": false,
+          "labelPos": [562, 646],
+          "points": [
+            [700, 585],
+            [700, 646],
+            [460, 646],
+            [460, 700]
+          ]
+        },
+        {
+          "from": "asset",
+          "to": "bytes",
+          "label": "storage_key",
+          "dashed": true,
+          "labelPos": [828, 647]
+        },
+        {
+          "from": "job",
+          "to": "outbox",
+          "label": "aggregate_id",
+          "dashed": true,
+          "labelPos": [1035, 421],
+          "points": [
+            [835, 370],
+            [835, 418],
+            [1035, 418],
+            [1035, 475]
+          ]
+        },
+        {
+          "from": "assetref",
+          "to": "doc",
+          "label": "owner 逻辑引用",
+          "dashed": true,
+          "labelPos": [241, 437],
+          "points": [
+            [380, 475],
+            [380, 437],
+            [105, 437],
+            [105, 370]
+          ]
+        }
+      ],
+      "mermaid": "erDiagram\n  WORKSPACES ||--o{ WORKSPACE_MEMBERS : authorizes\n  WORKSPACES ||--o{ DOCUMENTS : contains\n  WORKSPACES ||--o{ GENERATION_REQUESTS : scopes\n  WORKSPACES ||--o{ JOBS : contains\n  WORKSPACES ||--o{ ASSETS : owns\n  WORKSPACES ||--o{ DOCUMENT_REQUESTS : scopes\n  WORKSPACES ||--o{ REQUEST_TOMBSTONES : scopes\n  WORKSPACES ||--o{ AUDIT_EVENTS : records\n  WORKSPACES ||--o{ MEDIA_ALIASES : scopes\n  DOCUMENTS ||--o{ DOCUMENT_REQUESTS : idempotency\n  JOBS ||--o{ GENERATION_REQUESTS : accepted_as\n  JOBS o|--o{ JOBS : batch_parent\n  JOBS ||--o{ ATTEMPTS : submission_attempts\n  ASSETS ||--o{ ASSET_REFERENCES : protects\n  ASSETS ||--o{ MEDIA_ALIASES : alias_to\n  BROWSER_SESSIONS {\n    string token_hash PK\n    string principal_id\n    string csrf_hash\n    datetime expires_at\n  }\n  DOCUMENTS {\n    uuid id PK\n    uuid workspace_id FK\n    int revision\n    jsonb data\n  }\n  JOBS {\n    uuid id PK\n    uuid workspace_id FK\n    uuid document_id\n    uuid parent_id FK\n    string status\n    string phase\n    int state_version\n    int execution_epoch\n    string lease_owner\n    datetime lease_until\n    jsonb provider_snapshot\n  }\n  OUTBOX {\n    uuid id PK\n    string aggregate_type\n    string aggregate_id\n    string event_type\n    jsonb payload\n    string status\n    string claim_token\n  }\n  ASSETS {\n    uuid id PK\n    uuid workspace_id FK\n    string storage_key\n    string sha256\n    jsonb details\n  }",
+      "explanations": [
+        [
+          "外键与逻辑关系",
+          "没有独立 User 表；Session 与 Member 通过 principal_id 逻辑关联。Job.document_id 不是外键；Outbox.aggregate_id 与 AssetReference.owner_* 也是逻辑关系。Mermaid ER 图只画真实外键。"
+        ],
+        [
+          "批次与尝试",
+          "Job.parent_id 支持父子批次聚合；Attempt 专门记录上游提交尝试，不是每次轮询都新建。GenerationRequest 负责受理幂等，DocumentRequest 负责文档创建幂等。"
+        ],
+        [
+          "旧数据导入",
+          "旧 documents/*.json、assets/*、jobs.json、history.json 属历史数据格式，只用于离线导入和隔离兼容回归。应用启动不会自动读取它们或恢复旧 FIFO。"
+        ],
+        [
+          "一致性边界",
+          "revision 防止覆盖他人的文档；资产引用随文档事务更新。文件与数据库不是单一事务，因此需要不可变产物和 receipt 补偿恢复。当前迁移链到 0008。"
+        ]
+      ],
+      "sources": [
+        "apps/api/backend/infrastructure/orm.py:30",
+        "apps/api/backend/infrastructure/orm.py:87",
+        "apps/api/backend/infrastructure/orm.py:125",
+        "apps/api/backend/infrastructure/orm.py:192",
+        "apps/api/backend/infrastructure/orm.py:226",
+        "apps/api/backend/services/documents.py:86",
+        "apps/api/backend/infrastructure/artifacts.py:16"
+      ]
+    },
+    {
+      "id": "08-deployment",
+      "nav": "构建与部署",
+      "title": "构建与部署：同一后端的热重载与容器启动方式",
+      "height": 1010,
+      "summary": "Node 构建前端、Python 运行 API。默认 Compose 与 compose.dev.yaml 解析为同一套 13 服务；宿主热重载也使用同一数据库应用工厂。",
+      "groups": [
+        {
+          "label": "构建阶段 · npm workspaces / Node",
+          "box": [20, 20, 1160, 155]
+        },
+        {
+          "label": "源码开发 · 相同的数据库 API",
+          "box": [20, 215, 350, 730]
+        },
+        {
+          "label": "统一 Compose 单机拓扑",
+          "box": [405, 215, 775, 730]
+        }
+      ],
+      "nodes": [
+        {
+          "id": "source",
+          "title": "apps/web · TypeScript",
+          "box": [40, 65, 315, 75],
+          "lines": ["landing / workspace / canvas / eval"],
+          "kind": "ui"
+        },
+        {
+          "id": "build",
+          "title": "tsc + esbuild",
+          "box": [430, 65, 330, 75],
+          "lines": ["npm run build:web"],
+          "kind": "service"
+        },
+        {
+          "id": "bundle",
+          "title": ".web-build/",
+          "box": [840, 65, 320, 75],
+          "lines": ["按历史 .js URL 提供构建文件"],
+          "kind": "store"
+        },
+        {
+          "id": "dev",
+          "title": "npm run dev -- --env-file …",
+          "box": [45, 265, 300, 110],
+          "lines": ["scripts/backend.py", "tsc / esbuild 监听", "Uvicorn --reload"],
+          "kind": "service"
+        },
+        {
+          "id": "local",
+          "title": "宿主 API 热重载",
+          "box": [45, 460, 300, 120],
+          "lines": [
+            "backend.app:create_app",
+            "与容器 API 共用数据库架构",
+            "不创建内存 FIFO / JSON 存储",
+            "仍需 OIDC 与工作区授权"
+          ],
+          "kind": "service"
+        },
+        {
+          "id": "localdisk",
+          "title": "显式依赖与配置",
+          "box": [45, 675, 300, 110],
+          "lines": [
+            "可访问的数据库 / Redis",
+            "固定路由 / OIDC / 共享媒体",
+            "需独立运行 daemon 和 Worker"
+          ],
+          "kind": "store"
+        },
+        {
+          "id": "gateway",
+          "title": "Caddy 网关",
+          "box": [435, 265, 315, 110],
+          "lines": ["HTTP 80 / HTTPS 443", "反代 api:7801 / SSE flush", "外部 OIDC 提供身份"],
+          "kind": "external"
+        },
+        {
+          "id": "api",
+          "title": "API 容器",
+          "box": [830, 265, 315, 110],
+          "lines": ["python -m backend", "FastAPI / 静态资源 / OIDC", "仅挂载固定路由配置"],
+          "kind": "service"
+        },
+        {
+          "id": "daemons",
+          "title": "四个 daemon 容器",
+          "box": [435, 460, 315, 120],
+          "lines": ["dispatcher / scheduler", "bridge / notify", "独立进程，不启动 Celery beat"],
+          "kind": "service"
+        },
+        {
+          "id": "workers",
+          "title": "三个 Celery Worker 容器",
+          "box": [830, 460, 315, 120],
+          "lines": [
+            "image 并发 2 / video 并发 1",
+            "exports 并发 1",
+            "生成 Worker 挂载 Provider secret"
+          ],
+          "kind": "service"
+        },
+        {
+          "id": "infra",
+          "title": "数据库与消息基础设施",
+          "box": [435, 675, 315, 110],
+          "lines": [
+            "PostgreSQL 16 / RabbitMQ 3.13",
+            "Redis 7：AOF / noeviction",
+            "migrate：Alembic upgrade head"
+          ],
+          "kind": "store"
+        },
+        {
+          "id": "volume",
+          "title": "共享 media 卷 /app/data",
+          "box": [830, 675, 315, 110],
+          "lines": [
+            "API / Workers / scheduler 共用",
+            "媒体文件 / receipt / 模型权重",
+            "数据库等另有各自持久卷"
+          ],
+          "kind": "store"
+        },
+        {
+          "id": "image",
+          "title": "Docker 运行镜像",
+          "box": [435, 850, 710, 65],
+          "lines": ["Python 3.11 + FFmpeg + 非 root UID 10001；无 Node 业务运行时"],
+          "kind": "external"
+        }
+      ],
+      "edges": [
+        {
+          "from": "source",
+          "to": "build",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "build",
+          "to": "bundle",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "bundle",
+          "to": "api",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "dev",
+          "to": "local",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "local",
+          "to": "localdisk",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "gateway",
+          "to": "api",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "daemons",
+          "to": "infra",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "workers",
+          "to": "infra",
+          "label": "",
+          "dashed": false,
+          "points": [
+            [940, 580],
+            [940, 626],
+            [630, 626],
+            [630, 675]
+          ]
+        },
+        {
+          "from": "workers",
+          "to": "volume",
+          "label": "",
+          "dashed": false
+        },
+        {
+          "from": "api",
+          "to": "infra",
+          "label": "",
+          "dashed": false,
+          "points": [
+            [830, 340],
+            [788, 340],
+            [788, 625],
+            [565, 625],
+            [565, 675]
+          ]
+        },
+        {
+          "from": "api",
+          "to": "volume",
+          "label": "",
+          "dashed": false,
+          "points": [
+            [1145, 340],
+            [1164, 340],
+            [1164, 628],
+            [1060, 628],
+            [1060, 675]
+          ]
+        },
+        {
+          "from": "infra",
+          "to": "workers",
+          "label": "MQ 派发",
+          "dashed": false,
+          "labelPos": [776, 635],
+          "points": [
+            [748, 738],
+            [787, 738],
+            [787, 520],
+            [830, 520]
+          ]
+        }
+      ],
+      "explanations": [
+        [
+          "生产镜像与开发环境",
+          "Docker 第一阶段用 Node 构建前端，第二阶段只有 Python 与运行依赖。npm run dev 只是开发启动桥，同时启动前端编译监听与 Uvicorn 热重载。"
+        ],
+        [
+          "配置和凭据分工",
+          "API 从部署路由固定 endpoint、模型与 credentialRef；真实 Provider 密钥只挂到生成 Worker。该图不包含真实配置值，未读取或复制用户凭据。"
+        ],
+        [
+          "扩展边界",
+          "当前 Compose 是单机配置：单节点 PG、单节点 RabbitMQ、Redis 和共享文件卷。独立进程不等于多节点高可用，也未使用 S3 或跨主机对象存储。"
+        ],
+        [
+          "统一启动",
+          "默认 docker-compose.yml 合并执行栈与 API/HTTPS 配置；compose.dev.yaml 仅保留为同一配置的兼容文件名。旧 bailian 单进程启动脚本已移除。"
+        ]
+      ],
+      "sources": [
+        "scripts/build-react.ts:6",
+        "scripts/backend.py:14",
+        "tsconfig.web.json:1",
+        "Dockerfile:1",
+        "compose.execution.yaml:1",
+        "compose.production.yaml:1",
+        "deploy/Caddyfile:1",
+        "docs/runbooks/production-cutover.md:1",
+        "compose.dev.yaml:1",
+        "apps/api/backend/__main__.py:13"
+      ]
+    }
+  ],
+  "tables": [
+    {
+      "id": "contracts",
+      "title": "08 当前接口与迁移边界",
+      "summary": "应用只有数据库执行架构。下表明确当前已提供的 API，以及历史功能和请求兼容边界。",
+      "columns": ["能力 / 路径", "统一后端", "迁移与调用说明"],
+      "rows": [
+        [
+          "生成 /api/generate；/api/generate/group",
+          "Job + GenerationRequest + Outbox 事务；requestId → Idempotency-Key → 服务端 UUID 回退。缺稳定 ID 时仅 clientRef 不幂等。",
+          "CanvasCoordinator 当前仅带 clientRef；工作台 CreationIntent 带稳定 requestId。clientRef 本身不提供重放幂等。"
+        ],
+        [
+          "受理响应",
+          "单次生成同样返回 202 {jobId, job}；批量/组图可拆父子 Job。",
+          "202 表示持久受理，结果异步返回。"
+        ],
+        [
+          "任务 /api/jobs；/{id}；/{id}/reconcile",
+          "按 workspace 查询 PG；阶段租约、epoch、固定期限、unknown 对账；不借对账重新提交。",
+          "撤销画布 placement 不等于取消生成。"
+        ],
+        [
+          "请求 /api/generation-requests/{requestId}",
+          "空间作用域 GenerationRequest + RequestTombstone；处理取消先于受理。",
+          "取消先于受理通过 tombstone 处理。"
+        ],
+        [
+          "事件 /api/events",
+          "Redis 工作区唤醒 + PG 公开投影 + 周期回查；不依赖 Redis 恢复历史。",
+          "无 Redis 历史事件重放；通过数据库快照与轮询恢复。"
+        ],
+        [
+          "文档 /api/documents；/{id}；/{id}/rename",
+          "Document JSONB + revision CAS；与素材引用事务更新。",
+          "旧 JSON 文档需离线导入。"
+        ],
+        [
+          "素材 /api/assets；/{id}；metadata；poster",
+          "Asset 表 + 共享文件；授权 /api/assets/{id}/content；旧媒体别名兼容。",
+          "生成媒体与上传素材由权限和引用关系保护。"
+        ],
+        [
+          "历史 /api/history；/api/images/{id}；star",
+          "PG Asset 查询与 hidden/star 状态；删除历史不直接抹除可能被引用的字节。",
+          "不再从根 data/history.json 提供应用历史。"
+        ],
+        [
+          "抠图 /api/cutout/detect/{id}；operations/{id}；apply/{id}",
+          "同样单线程 rembg；detect 返回临时 data URL；Redis 取消标记；apply 创建 Asset。",
+          "旧沙箱 detect 的蒙版 Asset 行为仅用于历史契约回归。"
+        ],
+        [
+          "导出 /api/exports；/{id}；/{id}/download",
+          "durable export Job → exports Worker → FFmpeg → 同一产物登记协议。新版画布入口尚未装配导出 flow。",
+          "新版画布尚未装配完整导出 flow。"
+        ],
+        [
+          "Agent /api/agent/sessions；prepare",
+          "未迁入当前入口；新版对话侧栏当前也没有调用此 API。",
+          "仅在隔离历史沙箱保留旧协议，不是应用部署选项。"
+        ],
+        [
+          "分镜 /api/storyboards/jobs；runs；plan",
+          "缺少这些路由；Document 可以保存 storyboard 字段，不等于已有编排服务。",
+          "文档保留 storyboard 字段，不代表完整编排已接入。"
+        ],
+        [
+          "评测 /api/evals/v1/*",
+          "未挂载评测 router，也没有 /evals 页面入口。此评测任务不使用生产 Celery 生成队列。",
+          "离线评测 CLI 保留；评测页面和 HTTP API 尚未迁移。"
+        ],
+        [
+          "配置 /api/runtime；models；generation-capabilities；config",
+          "固定部署路由，settingsEnabled=false；config GET/POST/test 返回 403。",
+          "旧 config.json / SWARMUI_PROVIDER 应用设置入口退役。"
+        ],
+        [
+          "身份 /auth/*；会话与工作区",
+          "OIDC + PKCE / 服务端 session / WorkspaceMember / 同源 CSRF；未自动给登录用户工作区权限。",
+          "开发与部署采用相同身份边界。"
+        ],
+        [
+          "观测 /api/metrics；/internal/metrics",
+          "Token 保护的 /internal/metrics，PG 聚合指标；Compose 提供告警规则，未声称已配完整追踪平台。",
+          "完整故障矩阵与监控接收方仍需部署验收。"
+        ]
+      ]
+    },
+    {
+      "id": "sources",
+      "title": "09 源码索引与范围",
+      "summary": "基于统一入口后的当前工作区。沙箱测试与应用集成测试分开表述，不以旧契约测试替代 PostgreSQL API 验证。",
+      "columns": ["边界", "主要源码入口", "阅读重点"],
+      "rows": [
+        [
+          "唯一启动入口",
+          "apps/api/backend/app.py:1；apps/api/backend/__main__.py:13",
+          "热重载与常规启动使用相同数据库 API，无模式分支。"
+        ],
+        [
+          "前端组合根",
+          "apps/web/canvas-next/app.tsx:37；:96；:132",
+          "打开文档、React Shell、自动保存和 SSE 装配。"
+        ],
+        [
+          "交互与渲染",
+          "apps/web/canvas/core/canvas-view.ts:87；canvas/core/layers.ts:291；canvas/renderer-konva/canvas-editor.tsx:37",
+          "输入归一化 → 层控制器 → preview/command → React-Konva。"
+        ],
+        [
+          "文档与历史",
+          "apps/web/canvas/state/doc-store.ts:105；history-manager.ts:27；autosave.ts:37",
+          "文档所有权、命令栈、persistent/transient 通知、revision。"
+        ],
+        [
+          "生成实体与对账",
+          "apps/web/canvas/state/generation-coordinator.ts:91；generation-entity.ts:153；generation-events.ts:48",
+          "entity/placement 分离、运行态与版本过滤。"
+        ],
+        [
+          "工作台与会话",
+          "apps/web/workspace/api.ts:136；apps/web/shared/session-fetch.ts:2",
+          "CreationIntent 的稳定幂等键、同源 CSRF 包装。"
+        ],
+        [
+          "生成适配器",
+          "apps/api/backend/providers/base.py:10；cloud.py:125；comfyui.py:45；staged.py:35",
+          "一体化 generate 与生产 prepare/submit/poll/cancel 分阶段接口。"
+        ],
+        [
+          "统一 API / 授权",
+          "apps/api/backend/production.py:89；services/identity.py:42",
+          "OIDC、session、空间授权、生产路由和响应投影。"
+        ],
+        [
+          "统一事务与状态机",
+          "apps/api/backend/services/acceptance.py:18；services/execution.py:45；services/generation_runner.py:31",
+          "幂等、容量、lease/epoch、unknown、恢复与模型并发槽位。"
+        ],
+        [
+          "消息与执行进程",
+          "apps/api/backend/workers/daemon.py:36；:63；:150；workers/durable.py:31；infrastructure/outbox_dispatcher.py:23",
+          "scheduler、bridge、notify、阶段执行、发布确认。"
+        ],
+        [
+          "统一模型与媒体",
+          "apps/api/backend/infrastructure/orm.py:30；artifacts.py:16；services/documents.py:86",
+          "真实 FK/逻辑边、JSONB、receipt、资产引用。"
+        ],
+        [
+          "评测边界",
+          "apps/api/backend/evaluation/api.py:66；scheduler.py:32；runner.py:225",
+          "独立离线评测模块；HTTP 页面/路由未挂载到当前应用。"
+        ],
+        [
+          "构建与部署",
+          "scripts/build-react.ts:6；Dockerfile:1；compose.execution.yaml:1；compose.production.yaml:1",
+          "Node 构建产物、Python 运行镜像、共享卷与进程拓扑。"
+        ],
+        [
+          "状态证据",
+          "docs/architecture/durable-execution-status.md:1；docs/runbooks/production-cutover.md:1",
+          "实施中与剩余验收边界；较早 target-architecture/gap-matrix 不作为最新实现依据。"
+        ],
+        [
+          "历史兼容沙箱",
+          "apps/api/backend/evaluation/sandbox.py:112；sandbox_jobs.py:1",
+          "只有显式隔离评测和历史测试调用，不属于应用入口。"
+        ]
+      ]
+    }
+  ]
+}

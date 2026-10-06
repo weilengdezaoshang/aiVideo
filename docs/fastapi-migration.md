@@ -1,5 +1,7 @@
 # FastAPI 主后端迁移
 
+> 历史迁移记录：本文描述从 Express 迁至 FastAPI 时的实现与验证，文中的 FIFO/JSON 运行方式和百炼快捷启动命令现已退役。当前统一数据库架构、配置与启动方式以 [README](../README.md) 和[部署手册](runbooks/production-cutover.md)为准。
+
 本次迁移将 Express 主后端替换为 Python 3.11+ / FastAPI，保留现有画布前端与 API 协议，不包含新的图片/视频节点面板。
 
 ## 启动与验证

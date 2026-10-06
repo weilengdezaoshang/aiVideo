@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1010" role="img" aria-labelledby="title desc">
+<title id="title">构建与部署：同一后端的热重载与容器启动方式</title><desc id="desc">Node 构建前端、Python 运行 API。默认 Compose 与 compose.dev.yaml 解析为同一套 13 服务；宿主热重载也使用同一数据库应用工厂。</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 Z" fill="#778494"/></marker></defs>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}.title{font-size:17px;font-weight:650;fill:#192b3b}.body{font-size:13px;fill:#526376}.edge{font-size:12px;fill:#57687a;paint-order:stroke;stroke:#fcfcfa;stroke-width:7px;stroke-linejoin:round}.group{font-size:13px;font-weight:650;fill:#687787}</style>
+<rect width="1200" height="1010" fill="#fcfcfa" rx="14"/>
+<rect x="20" y="20" width="1160" height="155" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="38" y="44" class="group">构建阶段 · npm workspaces / Node</text>
+<rect x="20" y="215" width="350" height="730" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="38" y="239" class="group">源码开发 · 相同的数据库 API</text>
+<rect x="405" y="215" width="775" height="730" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="423" y="239" class="group">统一 Compose 单机拓扑</text>
+<path d="M355,102.5 L392.5,102.5 L392.5,102.5 L430,102.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M760,102.5 L800.0,102.5 L800.0,102.5 L840,102.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1000.0,140 L1000.0,202.5 L987.5,202.5 L987.5,265" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M195.0,375 L195.0,417.5 L195.0,417.5 L195.0,460" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M195.0,580 L195.0,627.5 L195.0,627.5 L195.0,675" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M750,320.0 L790.0,320.0 L790.0,320.0 L830,320.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M592.5,580 L592.5,627.5 L592.5,627.5 L592.5,675" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M940,580 L940,626 L630,626 L630,675" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M987.5,580 L987.5,627.5 L987.5,627.5 L987.5,675" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M830,340 L788,340 L788,625 L565,625 L565,675" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1145,340 L1164,340 L1164,628 L1060,628 L1060,675" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M748,738 L787,738 L787,520 L830,520" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="776" y="628" class="edge" text-anchor="middle">MQ 派发</text>
+<rect x="40" y="65" width="315" height="75" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="56" y="93" class="title">apps/web · TypeScript</text>
+<text x="56" y="116" class="body">landing / workspace / canvas / eval</text>
+<rect x="430" y="65" width="330" height="75" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="446" y="93" class="title">tsc + esbuild</text>
+<text x="446" y="116" class="body">npm run build:web</text>
+<rect x="840" y="65" width="320" height="75" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="856" y="93" class="title">.web-build/</text>
+<text x="856" y="116" class="body">按历史 .js URL 提供构建文件</text>
+<rect x="45" y="265" width="300" height="110" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="61" y="293" class="title">npm run dev -- --env-file …</text>
+<text x="61" y="316" class="body">scripts/backend.py</text>
+<text x="61" y="336" class="body">tsc / esbuild 监听</text>
+<text x="61" y="356" class="body">Uvicorn --reload</text>
+<rect x="45" y="460" width="300" height="120" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="61" y="488" class="title">宿主 API 热重载</text>
+<text x="61" y="511" class="body">backend.app:create_app</text>
+<text x="61" y="531" class="body">与容器 API 共用数据库架构</text>
+<text x="61" y="551" class="body">不创建内存 FIFO / JSON 存储</text>
+<text x="61" y="571" class="body">仍需 OIDC 与工作区授权</text>
+<rect x="45" y="675" width="300" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="61" y="703" class="title">显式依赖与配置</text>
+<text x="61" y="726" class="body">可访问的数据库 / Redis</text>
+<text x="61" y="746" class="body">固定路由 / OIDC / 共享媒体</text>
+<text x="61" y="766" class="body">需独立运行 daemon 和 Worker</text>
+<rect x="435" y="265" width="315" height="110" rx="9" fill="#f3f4f5" stroke="#8c949f" stroke-width="1.2"/>
+<text x="451" y="293" class="title">Caddy 网关</text>
+<text x="451" y="316" class="body">HTTP 80 / HTTPS 443</text>
+<text x="451" y="336" class="body">反代 api:7801 / SSE flush</text>
+<text x="451" y="356" class="body">外部 OIDC 提供身份</text>
+<rect x="830" y="265" width="315" height="110" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="846" y="293" class="title">API 容器</text>
+<text x="846" y="316" class="body">python -m backend</text>
+<text x="846" y="336" class="body">FastAPI / 静态资源 / OIDC</text>
+<text x="846" y="356" class="body">仅挂载固定路由配置</text>
+<rect x="435" y="460" width="315" height="120" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="451" y="488" class="title">四个 daemon 容器</text>
+<text x="451" y="511" class="body">dispatcher / scheduler</text>
+<text x="451" y="531" class="body">bridge / notify</text>
+<text x="451" y="551" class="body">独立进程，不启动 Celery beat</text>
+<rect x="830" y="460" width="315" height="120" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="846" y="488" class="title">三个 Celery Worker 容器</text>
+<text x="846" y="511" class="body">image 并发 2 / video 并发 1</text>
+<text x="846" y="531" class="body">exports 并发 1</text>
+<text x="846" y="551" class="body">生成 Worker 挂载 Provider secret</text>
+<rect x="435" y="675" width="315" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="451" y="703" class="title">数据库与消息基础设施</text>
+<text x="451" y="726" class="body">PostgreSQL 16 / RabbitMQ 3.13</text>
+<text x="451" y="746" class="body">Redis 7：AOF / noeviction</text>
+<text x="451" y="766" class="body">migrate：Alembic upgrade head</text>
+<rect x="830" y="675" width="315" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="846" y="703" class="title">共享 media 卷 /app/data</text>
+<text x="846" y="726" class="body">API / Workers / scheduler 共用</text>
+<text x="846" y="746" class="body">媒体文件 / receipt / 模型权重</text>
+<text x="846" y="766" class="body">数据库等另有各自持久卷</text>
+<rect x="435" y="850" width="710" height="65" rx="9" fill="#f3f4f5" stroke="#8c949f" stroke-width="1.2"/>
+<text x="451" y="878" class="title">Docker 运行镜像</text>
+<text x="451" y="901" class="body">Python 3.11 + FFmpeg + 非 root UID 10001；无 Node 业务运行时</text>
+</svg>

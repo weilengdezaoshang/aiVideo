@@ -1,0 +1,57 @@
+erDiagram
+  WORKSPACES ||--o{ WORKSPACE_MEMBERS : authorizes
+  WORKSPACES ||--o{ DOCUMENTS : contains
+  WORKSPACES ||--o{ GENERATION_REQUESTS : scopes
+  WORKSPACES ||--o{ JOBS : contains
+  WORKSPACES ||--o{ ASSETS : owns
+  WORKSPACES ||--o{ DOCUMENT_REQUESTS : scopes
+  WORKSPACES ||--o{ REQUEST_TOMBSTONES : scopes
+  WORKSPACES ||--o{ AUDIT_EVENTS : records
+  WORKSPACES ||--o{ MEDIA_ALIASES : scopes
+  DOCUMENTS ||--o{ DOCUMENT_REQUESTS : idempotency
+  JOBS ||--o{ GENERATION_REQUESTS : accepted_as
+  JOBS o|--o{ JOBS : batch_parent
+  JOBS ||--o{ ATTEMPTS : submission_attempts
+  ASSETS ||--o{ ASSET_REFERENCES : protects
+  ASSETS ||--o{ MEDIA_ALIASES : alias_to
+  BROWSER_SESSIONS {
+    string token_hash PK
+    string principal_id
+    string csrf_hash
+    datetime expires_at
+  }
+  DOCUMENTS {
+    uuid id PK
+    uuid workspace_id FK
+    int revision
+    jsonb data
+  }
+  JOBS {
+    uuid id PK
+    uuid workspace_id FK
+    uuid document_id
+    uuid parent_id FK
+    string status
+    string phase
+    int state_version
+    int execution_epoch
+    string lease_owner
+    datetime lease_until
+    jsonb provider_snapshot
+  }
+  OUTBOX {
+    uuid id PK
+    string aggregate_type
+    string aggregate_id
+    string event_type
+    jsonb payload
+    string status
+    string claim_token
+  }
+  ASSETS {
+    uuid id PK
+    uuid workspace_id FK
+    string storage_key
+    string sha256
+    jsonb details
+  }

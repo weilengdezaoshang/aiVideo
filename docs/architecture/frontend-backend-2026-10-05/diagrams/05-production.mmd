@@ -1,0 +1,51 @@
+flowchart TB
+  api["production.create_app<br/>REST / 同源静态资源 / SSE<br/>OIDC + session + CSRF"]
+  accept["受理与文档服务<br/>accept_generation / Documents<br/>幂等 / 容量 / revision / 引用"]
+  pg["PostgreSQL / UoW<br/>Job / Attempt / Outbox / Asset<br/>事务提交后才返回 202"]
+  sse["SSE 公开投影<br/>先订阅后 snapshot；周期回查 PG<br/>按工作区与 stateVersion 输出"]
+  scheduler["scheduler<br/>扫描 next_poll_at / 过期 lease<br/>固定期限裁决 / receipt 恢复"]
+  redis["Redis<br/>工作区 pubsub / 操作取消<br/>操作级限流 / 熔断 / 凭据暂停"]
+  dispatcher["dispatcher<br/>领取 Outbox / SKIP LOCKED<br/>publisher confirm / claim_token"]
+  rabbit["RabbitMQ 事件拓扑<br/>execution.due → phase.events<br/>job.changed → notifications"]
+  notify["notify<br/>读取 PG 最新 Job 版本<br/>发布工作区 Redis 唤醒"]
+  bridge["bridge<br/>确认发出 Celery task 后 ACK"]
+  queues["Celery 三类任务队列<br/>generation.image / video / exports"]
+  dlq["失败投递 / 死信<br/>有限重投 / aivideo.dead / 审计恢复"]
+  runtime["Worker AsyncRuntime<br/>每个 prefork 进程独立事件循环<br/>复用 HTTPX / DB / Redis 客户端<br/>心跳与租约独立维护"]
+  execution["ExecutionStore + Runner<br/>claim → owner / epoch / lease<br/>prepare → submit → poll → download<br/>generation_runner / export_runner"]
+  artifacts["产物协议 / 共享卷<br/>generated / jobId / epoch<br/>原子文件 + SHA256 receipt<br/>校验后登记 Asset / completed"]
+  staged["StagedProvider<br/>Mock / Cloud / ComfyUI<br/>prepare / submit / poll / cancel"]
+  recovery["unknown 与恢复<br/>未知提交不自动重提 / 保留名额<br/>只查原句柄；必要时人工确认"]
+  ffmpeg["FFmpeg 导出<br/>exports 队列独立执行<br/>取消 / 超时回收子进程组"]
+  api --> accept
+  accept --> pg
+  api --> sse
+  scheduler --> pg
+  redis -->|"通知唤醒"| sse
+  pg -->|"领取 Outbox"| dispatcher
+  dispatcher --> rabbit
+  rabbit -->|"job.changed"| notify
+  notify --> redis
+  rabbit -->|"execution.due"| bridge
+  bridge --> queues
+  rabbit -->|"拒绝 / 超限"| dlq
+  queues --> runtime
+  runtime --> execution
+  execution --> artifacts
+  execution --> staged
+  execution --> recovery
+  ffmpeg -->|"写入成片"| artifacts
+  execution --> pg
+  execution --> ffmpeg
+  execution -.-> redis
+  classDef ui fill:#edf3ff,stroke:#4778ba,color:#192b3b
+  class api ui
+  classDef state fill:#eef5f2,stroke:#408a72,color:#192b3b
+  class execution,recovery state
+  classDef service fill:#fff5e7,stroke:#b47a2b,color:#192b3b
+  class accept,sse,scheduler,dispatcher,notify,bridge,queues,runtime service
+  classDef store fill:#f3effa,stroke:#8871b2,color:#192b3b
+  class pg,redis,rabbit,dlq,artifacts store
+  classDef external fill:#f3f4f5,stroke:#8c949f,color:#192b3b
+  class staged,ffmpeg external
+  classDef gap fill:#fff2ef,stroke:#bb7065,color:#192b3b

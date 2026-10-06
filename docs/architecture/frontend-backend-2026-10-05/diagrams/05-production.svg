@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1090" role="img" aria-labelledby="title desc">
+<title id="title">统一后端：事务受理、阶段执行与通知闭环</title><desc id="desc">PostgreSQL 保存任务和执行所有权；RabbitMQ 传递至少一次消息；Celery 每次执行一个阶段；Redis 协調通知、限流和熔断。API 受理不直接调用付费生成。</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 Z" fill="#778494"/></marker></defs>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}.title{font-size:17px;font-weight:650;fill:#192b3b}.body{font-size:13px;fill:#526376}.edge{font-size:12px;fill:#57687a;paint-order:stroke;stroke:#fcfcfa;stroke-width:7px;stroke-linejoin:round}.group{font-size:13px;font-weight:650;fill:#687787}</style>
+<rect width="1200" height="1090" fill="#fcfcfa" rx="14"/>
+<rect x="20" y="20" width="1160" height="300" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="38" y="44" class="group">HTTP 与应用服务</text>
+<rect x="20" y="355" width="1160" height="290" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="38" y="379" class="group">可靠消息与独立后台进程</text>
+<rect x="20" y="680" width="1160" height="370" rx="12" fill="#f5f6f6" stroke="#dce2e5" stroke-dasharray="6 5"/>
+<text x="38" y="704" class="group">执行与产物</text>
+<path d="M340,112.5 L380.0,112.5 L380.0,112.5 L420,112.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M750,112.5 L795.0,112.5 L795.0,112.5 L840,112.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M190.0,160 L190.0,185.0 L190.0,185.0 L190.0,210" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M650,210 L650,186 L1000,186 L1000,160" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M840,250 L797,250 L797,335 L190,335 L190,290" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="595" y="327" class="edge" text-anchor="middle">通知唤醒</text>
+<path d="M1160,100 L1186,100 L1186,344 L190,344 L190,400" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="1060" y="333" class="edge" text-anchor="middle">领取 Outbox</text>
+<path d="M340,447.5 L380.0,447.5 L380.0,447.5 L420,447.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M750,447.5 L795.0,447.5 L795.0,447.5 L840,447.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="797" y="440" class="edge" text-anchor="middle">job.changed</text>
+<path d="M1000.0,400 L1000.0,345.0 L1000.0,345.0 L1000.0,290" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M490,495 L490,524 L190,524 L190,550" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="334" y="515" class="edge" text-anchor="middle">execution.due</text>
+<path d="M340,582.5 L380.0,582.5 L380.0,582.5 L420,582.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M670,495 L670,524 L1000,524 L1000,550" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="840" y="517" class="edge" text-anchor="middle">拒绝 / 超限</text>
+<path d="M585,615 L585,667 L190,667 L190,725" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M340,782.5 L380.0,782.5 L380.0,782.5 L420,782.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M750,782.5 L795.0,782.5 L795.0,782.5 L840,782.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M480,840 L480,878 L190,878 L190,925" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M585.0,840 L585.0,882.5 L585.0,882.5 L585.0,925" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1000,925 L1000,840" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="1040" y="883" class="edge" text-anchor="middle">写入成片</text>
+<path d="M750,780 L780,780 L780,118 L840,118" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M735,840 L800,840 L800,966 L840,966" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M750,805 L813,805 L813,270 L840,270" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<rect x="40" y="65" width="300" height="95" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="56" y="93" class="title">production.create_app</text>
+<text x="56" y="116" class="body">REST / 同源静态资源 / SSE</text>
+<text x="56" y="136" class="body">OIDC + session + CSRF</text>
+<rect x="420" y="65" width="330" height="95" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="436" y="93" class="title">受理与文档服务</text>
+<text x="436" y="116" class="body">accept_generation / Documents</text>
+<text x="436" y="136" class="body">幂等 / 容量 / revision / 引用</text>
+<rect x="840" y="65" width="320" height="95" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="856" y="93" class="title">PostgreSQL / UoW</text>
+<text x="856" y="116" class="body">Job / Attempt / Outbox / Asset</text>
+<text x="856" y="136" class="body">事务提交后才返回 202</text>
+<rect x="40" y="210" width="300" height="80" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="56" y="238" class="title">SSE 公开投影</text>
+<text x="56" y="261" class="body">先订阅后 snapshot；周期回查 PG</text>
+<text x="56" y="281" class="body">按工作区与 stateVersion 输出</text>
+<rect x="420" y="210" width="330" height="80" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="436" y="238" class="title">scheduler</text>
+<text x="436" y="261" class="body">扫描 next_poll_at / 过期 lease</text>
+<text x="436" y="281" class="body">固定期限裁决 / receipt 恢复</text>
+<rect x="840" y="210" width="320" height="80" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="856" y="238" class="title">Redis</text>
+<text x="856" y="261" class="body">工作区 pubsub / 操作取消</text>
+<text x="856" y="281" class="body">操作级限流 / 熔断 / 凭据暂停</text>
+<rect x="40" y="400" width="300" height="95" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="56" y="428" class="title">dispatcher</text>
+<text x="56" y="451" class="body">领取 Outbox / SKIP LOCKED</text>
+<text x="56" y="471" class="body">publisher confirm / claim_token</text>
+<rect x="420" y="400" width="330" height="95" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="436" y="428" class="title">RabbitMQ 事件拓扑</text>
+<text x="436" y="451" class="body">execution.due → phase.events</text>
+<text x="436" y="471" class="body">job.changed → notifications</text>
+<rect x="840" y="400" width="320" height="95" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="856" y="428" class="title">notify</text>
+<text x="856" y="451" class="body">读取 PG 最新 Job 版本</text>
+<text x="856" y="471" class="body">发布工作区 Redis 唤醒</text>
+<rect x="40" y="550" width="300" height="65" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="56" y="578" class="title">bridge</text>
+<text x="56" y="601" class="body">确认发出 Celery task 后 ACK</text>
+<rect x="420" y="550" width="330" height="65" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="436" y="578" class="title">Celery 三类任务队列</text>
+<text x="436" y="601" class="body">generation.image / video / exports</text>
+<rect x="840" y="550" width="320" height="65" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="856" y="578" class="title">失败投递 / 死信</text>
+<text x="856" y="601" class="body">有限重投 / aivideo.dead / 审计恢复</text>
+<rect x="40" y="725" width="300" height="115" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="56" y="753" class="title">Worker AsyncRuntime</text>
+<text x="56" y="776" class="body">每个 prefork 进程独立事件循环</text>
+<text x="56" y="796" class="body">复用 HTTPX / DB / Redis 客户端</text>
+<text x="56" y="816" class="body">心跳与租约独立维护</text>
+<rect x="420" y="725" width="330" height="115" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="436" y="753" class="title">ExecutionStore + Runner</text>
+<text x="436" y="776" class="body">claim → owner / epoch / lease</text>
+<text x="436" y="796" class="body">prepare → submit → poll → download</text>
+<text x="436" y="816" class="body">generation_runner / export_runner</text>
+<rect x="840" y="725" width="320" height="115" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="856" y="753" class="title">产物协议 / 共享卷</text>
+<text x="856" y="776" class="body">generated / jobId / epoch</text>
+<text x="856" y="796" class="body">原子文件 + SHA256 receipt</text>
+<text x="856" y="816" class="body">校验后登记 Asset / completed</text>
+<rect x="40" y="925" width="300" height="85" rx="9" fill="#f3f4f5" stroke="#8c949f" stroke-width="1.2"/>
+<text x="56" y="953" class="title">StagedProvider</text>
+<text x="56" y="976" class="body">Mock / Cloud / ComfyUI</text>
+<text x="56" y="996" class="body">prepare / submit / poll / cancel</text>
+<rect x="420" y="925" width="330" height="85" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="436" y="953" class="title">unknown 与恢复</text>
+<text x="436" y="976" class="body">未知提交不自动重提 / 保留名额</text>
+<text x="436" y="996" class="body">只查原句柄；必要时人工确认</text>
+<rect x="840" y="925" width="320" height="85" rx="9" fill="#f3f4f5" stroke="#8c949f" stroke-width="1.2"/>
+<text x="856" y="953" class="title">FFmpeg 导出</text>
+<text x="856" y="976" class="body">exports 队列独立执行</text>
+<text x="856" y="996" class="body">取消 / 超时回收子进程组</text>
+</svg>

@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 890" role="img" aria-labelledby="title desc">
+<title id="title">系统全景：前后端统一使用持久化执行架构</title><desc id="desc">所有应用入口共用 PostgreSQL / RabbitMQ / Redis / Celery。开发热重载与容器部署只改变进程启动方式，不切换队列或存储实现。</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 Z" fill="#778494"/></marker></defs>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}.title{font-size:17px;font-weight:650;fill:#192b3b}.body{font-size:13px;fill:#526376}.edge{font-size:12px;fill:#57687a;paint-order:stroke;stroke:#fcfcfa;stroke-width:7px;stroke-linejoin:round}.group{font-size:13px;font-weight:650;fill:#687787}</style>
+<rect width="1200" height="890" fill="#fcfcfa" rx="14"/>
+<path d="M360,80.0 L400.0,80.0 L400.0,80.0 L440,80.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M760,80.0 L800.0,80.0 L800.0,80.0 L840,80.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M600.0,125 L600.0,180.0 L600.0,180.0 L600.0,235" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M360,285.0 L400.0,285.0 L400.0,285.0 L440,285.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1000,125 L1000,185 L710,185 L710,235" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="850" y="178" class="edge" text-anchor="middle">REST / SSE</text>
+<path d="M760,285.0 L800.0,285.0 L800.0,285.0 L840,285.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M440,298 L390,298 L390,412 L200,412 L200,445" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1000,335 L1000,392 L600,392 L600,445" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M760,500.0 L800.0,500.0 L800.0,500.0 L840,500.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M1000.0,555 L1000.0,620.0 L1000.0,620.0 L1000.0,685" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M925,555 L925,620 L600,620 L600,685" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M440,500.0 L400.0,500.0 L400.0,500.0 L360,500.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="398" y="486" class="edge" text-anchor="middle">job.changed</text>
+<rect x="40" y="35" width="320" height="90" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="56" y="63" class="title">落地页 /</text>
+<text x="56" y="86" class="body">React · 模式展示</text>
+<text x="56" y="106" class="body">导航进入工作台</text>
+<rect x="440" y="35" width="320" height="90" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="456" y="63" class="title">工作台 /workspace</text>
+<text x="456" y="86" class="body">Composer / 画布 / 素材</text>
+<text x="456" y="106" class="body">CreationIntent → 文档与生成</text>
+<rect x="840" y="35" width="320" height="90" rx="9" fill="#edf3ff" stroke="#4778ba" stroke-width="1.2"/>
+<text x="856" y="63" class="title">画布 /canvas</text>
+<text x="856" y="86" class="body">canvas-next · React Shell</text>
+<text x="856" y="106" class="body">CanvasView + react-konva</text>
+<rect x="40" y="235" width="320" height="100" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="56" y="263" class="title">HTTPS / OIDC / 会话</text>
+<text x="56" y="286" class="body">Caddy / workspace membership</text>
+<text x="56" y="306" class="body">同源写请求 CSRF</text>
+<rect x="440" y="235" width="320" height="100" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="456" y="263" class="title">唯一应用工厂</text>
+<text x="456" y="286" class="body">backend.app:create_app</text>
+<text x="456" y="306" class="body">FastAPI REST / 静态文件 / SSE</text>
+<rect x="840" y="235" width="320" height="100" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="856" y="263" class="title">PostgreSQL</text>
+<text x="856" y="286" class="body">Job / Document / Asset / Outbox</text>
+<text x="856" y="306" class="body">所有业务状态的权威来源</text>
+<rect x="40" y="445" width="320" height="110" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="56" y="473" class="title">SSE 通知与恢复</text>
+<text x="56" y="496" class="body">notify → Redis 工作区唤醒</text>
+<text x="56" y="516" class="body">API 回查 PG 的公开状态</text>
+<text x="56" y="536" class="body">浏览器断线后 HTTP 对账</text>
+<rect x="440" y="445" width="320" height="110" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="456" y="473" class="title">可靠派发与调度</text>
+<text x="456" y="496" class="body">dispatcher → RabbitMQ → bridge</text>
+<text x="456" y="516" class="body">scheduler：到期 / 租约 / 恢复</text>
+<text x="456" y="536" class="body">execution.due / job.changed</text>
+<rect x="840" y="445" width="320" height="110" rx="9" fill="#fff5e7" stroke="#b47a2b" stroke-width="1.2"/>
+<text x="856" y="473" class="title">Celery Workers</text>
+<text x="856" y="496" class="body">image / video / exports 队列</text>
+<text x="856" y="516" class="body">阶段执行 / 心跳 / epoch</text>
+<text x="856" y="536" class="body">Provider 快照固定计费路由</text>
+<rect x="40" y="685" width="320" height="120" rx="9" fill="#fff2ef" stroke="#bb7065" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="56" y="713" class="title">隔离历史评测夹具</text>
+<text x="56" y="736" class="body">evaluation/sandbox.py</text>
+<text x="56" y="756" class="body">必须显式传入独立目录</text>
+<text x="56" y="776" class="body">非应用启动模式；不读仓库 data</text>
+<text x="56" y="796" class="body">Agent / 分镜 / 评测 HTTP 未迁入</text>
+<rect x="440" y="685" width="320" height="120" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="456" y="713" class="title">共享媒体卷 / Redis</text>
+<text x="456" y="736" class="body">文件 + SHA256 receipt</text>
+<text x="456" y="756" class="body">Redis：通知 / 限流 / 熔断</text>
+<text x="456" y="776" class="body">API 内 rembg；导出用 FFmpeg</text>
+<rect x="840" y="685" width="320" height="120" rx="9" fill="#f3f4f5" stroke="#8c949f" stroke-width="1.2"/>
+<text x="856" y="713" class="title">StagedProvider</text>
+<text x="856" y="736" class="body">Mock / Cloud / ComfyUI</text>
+<text x="856" y="756" class="body">prepare / submit / poll / cancel</text>
+<text x="856" y="776" class="body">外部生成只由 Worker 发起</text>
+</svg>

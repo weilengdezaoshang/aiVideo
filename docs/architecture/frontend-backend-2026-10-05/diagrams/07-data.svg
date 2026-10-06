@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 890" role="img" aria-labelledby="title desc">
+<title id="title">数据实体与存储：关系表、画布 JSONB、媒体文件</title><desc id="desc">本图描述当前应用数据库。实线表示主要外键关联，虚线表示逻辑或多态引用。画布内容在 Document.data JSONB 中，图像和视频字节放在共享文件卷。</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8 Z" fill="#778494"/></marker></defs>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}.title{font-size:17px;font-weight:650;fill:#192b3b}.body{font-size:13px;fill:#526376}.edge{font-size:12px;fill:#57687a;paint-order:stroke;stroke:#fcfcfa;stroke-width:7px;stroke-linejoin:round}.group{font-size:13px;font-weight:650;fill:#687787}</style>
+<rect width="1200" height="890" fill="#fcfcfa" rx="14"/>
+<path d="M170,140 L170,162 L460,162 L460,140" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="315" y="155" class="edge" text-anchor="middle">principal_id</text>
+<path d="M620,90.0 L605.0,90.0 L605.0,90.0 L590,90.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="605" y="80" class="edge" text-anchor="middle">1:N</text>
+<path d="M880,90.0 L895.0,90.0 L895.0,90.0 L910,90.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="895" y="80" class="edge" text-anchor="middle">1:N</text>
+<path d="M680,140 L680,185 L170,185 L170,245" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="428" y="178" class="edge" text-anchor="middle">workspace_id 外键</text>
+<path d="M750.0,140 L750.0,192.5 L750.0,192.5 L750.0,245" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M620,307.5 L605.0,307.5 L605.0,307.5 L590,307.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="605" y="302" class="edge" text-anchor="middle">1:N</text>
+<path d="M880,307.5 L895.0,307.5 L895.0,307.5 L910,307.5" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="895" y="302" class="edge" text-anchor="middle">1:N</text>
+<path d="M750,370 L750,413 L170,413 L170,370" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="450" y="401" class="edge" text-anchor="middle">document_id</text>
+<path d="M170.0,370 L170.0,422.5 L170.0,422.5 L170.0,475" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<path d="M620,530.0 L605.0,530.0 L605.0,530.0 L590,530.0" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="605" y="523" class="edge" text-anchor="middle">1:N</text>
+<path d="M700,585 L700,646 L460,646 L460,700" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)"/>
+<text x="562" y="639" class="edge" text-anchor="middle">1:N</text>
+<path d="M750.0,585 L750.0,642.5 L890.0,642.5 L890.0,700" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="828" y="640" class="edge" text-anchor="middle">storage_key</text>
+<path d="M835,370 L835,418 L1035,418 L1035,475" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="1035" y="414" class="edge" text-anchor="middle">aggregate_id</text>
+<path d="M380,475 L380,437 L105,437 L105,370" fill="none" stroke="#778494" stroke-width="1.7" marker-end="url(#arrow)" stroke-dasharray="6 5"/>
+<text x="241" y="430" class="edge" text-anchor="middle">owner 逻辑引用</text>
+<rect x="40" y="40" width="260" height="100" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="56" y="68" class="title">BrowserSession</text>
+<text x="56" y="91" class="body">token_hash / principal_id</text>
+<text x="56" y="111" class="body">csrf_hash / expires_at</text>
+<rect x="330" y="40" width="260" height="100" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="346" y="68" class="title">WorkspaceMember</text>
+<text x="346" y="91" class="body">workspace_id + principal_id</text>
+<text x="346" y="111" class="body">复合主键 / role</text>
+<rect x="620" y="40" width="260" height="100" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="636" y="68" class="title">Workspace</text>
+<text x="636" y="91" class="body">workspace_id：租户边界</text>
+<text x="636" y="111" class="body">任务 / 文档 / 资产按空间隔离</text>
+<rect x="910" y="40" width="250" height="100" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="926" y="68" class="title">AuditEvent / Tombstone</text>
+<text x="926" y="91" class="body">操作审计 / 请求取消墓碑</text>
+<text x="926" y="111" class="body">均有 workspace_id</text>
+<rect x="40" y="245" width="260" height="125" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="56" y="273" class="title">Document</text>
+<text x="56" y="296" class="body">id / workspace_id / revision</text>
+<text x="56" y="316" class="body">data JSONB：objects / order</text>
+<text x="56" y="336" class="body">groups / chat / generations</text>
+<text x="56" y="356" class="body">storyboard / timeline</text>
+<rect x="330" y="245" width="260" height="125" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="346" y="273" class="title">GenerationRequest</text>
+<text x="346" y="296" class="body">workspace_id + request_id</text>
+<text x="346" y="316" class="body">request_hash / job_id FK</text>
+<text x="346" y="336" class="body">请求重放 → 同一受理结果</text>
+<rect x="620" y="245" width="260" height="125" rx="9" fill="#eef5f2" stroke="#408a72" stroke-width="1.2"/>
+<text x="636" y="273" class="title">Job</text>
+<text x="636" y="296" class="body">status / phase / state_version</text>
+<text x="636" y="316" class="body">epoch / lease_owner / lease_until</text>
+<text x="636" y="336" class="body">provider_snapshot / params</text>
+<text x="636" y="356" class="body">document_id：逻辑引用</text>
+<rect x="910" y="245" width="250" height="125" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="926" y="273" class="title">Attempt</text>
+<text x="926" y="296" class="body">job_id FK</text>
+<text x="926" y="316" class="body">一次上游提交尝试</text>
+<text x="926" y="336" class="body">提交身份 / 错误 / 结果</text>
+<rect x="40" y="475" width="260" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="56" y="503" class="title">DocumentRequest</text>
+<text x="56" y="526" class="body">document_id FK</text>
+<text x="56" y="546" class="body">工作区内创建幂等记录</text>
+<text x="56" y="566" class="body">文档保存采用 revision CAS</text>
+<rect x="330" y="475" width="260" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="346" y="503" class="title">AssetReference</text>
+<text x="346" y="526" class="body">asset_id FK</text>
+<text x="346" y="546" class="body">owner_type + owner_id</text>
+<text x="346" y="566" class="body">多态拥有者引用 / 删除保护</text>
+<rect x="620" y="475" width="260" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="636" y="503" class="title">Asset</text>
+<text x="636" y="526" class="body">workspace_id / storage_key</text>
+<text x="636" y="546" class="body">sha256 / details / 类型</text>
+<text x="636" y="566" class="body">数据库只存元数据</text>
+<rect x="910" y="475" width="250" height="110" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="926" y="503" class="title">Outbox</text>
+<text x="926" y="526" class="body">aggregate_type / aggregate_id</text>
+<text x="926" y="546" class="body">event_type / payload / status</text>
+<text x="926" y="566" class="body">claim_token / 发布重试</text>
+<rect x="330" y="700" width="260" height="105" rx="9" fill="#f3effa" stroke="#8871b2" stroke-width="1.2"/>
+<text x="346" y="728" class="title">MediaAlias</text>
+<text x="346" y="751" class="body">asset_id FK / workspace_id</text>
+<text x="346" y="771" class="body">旧媒体路径 → 已授权资产</text>
+<text x="346" y="791" class="body">保留迁移后的 URL 兼容</text>
+<rect x="620" y="700" width="540" height="105" rx="9" fill="#f3f4f5" stroke="#8c949f" stroke-width="1.2"/>
+<text x="636" y="728" class="title">共享媒体卷</text>
+<text x="636" y="751" class="body">generated/{jobId}/{epoch}/original.ext + receipt.json</text>
+<text x="636" y="771" class="body">uploads / exports 等受管媒体；不把字节存进 PG</text>
+</svg>

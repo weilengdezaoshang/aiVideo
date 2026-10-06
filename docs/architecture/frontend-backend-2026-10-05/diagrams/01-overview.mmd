@@ -1,0 +1,36 @@
+flowchart TB
+  landing["落地页 /<br/>React · 模式展示<br/>导航进入工作台"]
+  workspace["工作台 /workspace<br/>Composer / 画布 / 素材<br/>CreationIntent → 文档与生成"]
+  canvas["画布 /canvas<br/>canvas-next · React Shell<br/>CanvasView + react-konva"]
+  auth["HTTPS / OIDC / 会话<br/>Caddy / workspace membership<br/>同源写请求 CSRF"]
+  api["唯一应用工厂<br/>backend.app:create_app<br/>FastAPI REST / 静态文件 / SSE"]
+  pg["PostgreSQL<br/>Job / Document / Asset / Outbox<br/>所有业务状态的权威来源"]
+  notify["SSE 通知与恢复<br/>notify → Redis 工作区唤醒<br/>API 回查 PG 的公开状态<br/>浏览器断线后 HTTP 对账"]
+  queue["可靠派发与调度<br/>dispatcher → RabbitMQ → bridge<br/>scheduler：到期 / 租约 / 恢复<br/>execution.due / job.changed"]
+  workers["Celery Workers<br/>image / video / exports 队列<br/>阶段执行 / 心跳 / epoch<br/>Provider 快照固定计费路由"]
+  legacy["隔离历史评测夹具<br/>evaluation/sandbox.py<br/>必须显式传入独立目录<br/>非应用启动模式；不读仓库 data<br/>Agent / 分镜 / 评测 HTTP 未迁入"]
+  media["共享媒体卷 / Redis<br/>文件 + SHA256 receipt<br/>Redis：通知 / 限流 / 熔断<br/>API 内 rembg；导出用 FFmpeg"]
+  model["StagedProvider<br/>Mock / Cloud / ComfyUI<br/>prepare / submit / poll / cancel<br/>外部生成只由 Worker 发起"]
+  landing --> workspace
+  workspace --> canvas
+  workspace --> api
+  auth --> api
+  canvas -->|"REST / SSE"| api
+  api --> pg
+  api --> notify
+  pg --> queue
+  queue --> workers
+  workers --> model
+  workers --> media
+  queue -->|"job.changed"| notify
+  classDef ui fill:#edf3ff,stroke:#4778ba,color:#192b3b
+  class landing,workspace,canvas ui
+  classDef state fill:#eef5f2,stroke:#408a72,color:#192b3b
+  classDef service fill:#fff5e7,stroke:#b47a2b,color:#192b3b
+  class auth,api,notify,queue,workers service
+  classDef store fill:#f3effa,stroke:#8871b2,color:#192b3b
+  class pg,media store
+  classDef external fill:#f3f4f5,stroke:#8c949f,color:#192b3b
+  class model external
+  classDef gap fill:#fff2ef,stroke:#bb7065,color:#192b3b
+  class legacy gap

@@ -1,136 +1,142 @@
 <div align="center">
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="apps/web/brand/logo-white.svg">
-  <img src="apps/web/brand/logo.svg" width="72" height="72" alt="帧屿集 FRAYUNE Logo">
-</picture>
+<a href="https://weilengdezaoshang.github.io/aiVideo/">
+  <img src="docs/designs/github-pages-2026-09-22/jimeng-v2/readme-cover.png" width="1200" alt="FRAYUNE 帧屿集：让灵感，成为下一帧。月光下的发光蝠鲼与蓝色海洋，原创 AI 幻想视觉。" />
+</a>
 
 # 帧屿集 FRAYUNE
 
-**AI 视觉创作平台 · 图像与视频生成 · 智能画布 · 一键切换 ComfyUI 真实出图**
+让灵感，成为下一帧。
+
+连接外部云模型的开源 AI 视觉创作平台。统一组织图像生成、画布编辑与视频创作，让灵感成为作品。
+
+[浏览项目主页](https://weilengdezaoshang.github.io/aiVideo/) · [快速开始](#快速开始) · [功能概览](#功能概览) · [开发文档](AGENTS.md)
 
 [![CI](https://github.com/weilengdezaoshang/aiVideo/actions/workflows/ci.yml/badge.svg)](https://github.com/weilengdezaoshang/aiVideo/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6.svg)](https://www.typescriptlang.org/)
 
-文生图 / 图生图 / 图生视频 · 任务队列 · 实时进度 · 画布编辑与素材管理 · 历史持久化
+云模型 API &nbsp; / &nbsp; 统一创作工作台 &nbsp; / &nbsp; React + TypeScript · Python + FastAPI
 
 </div>
 
 ---
 
-品牌资源与使用说明：[帧屿集 FRAYUNE](docs/brand/frayune/README.md)。
+## 从一个想法，到一段作品
 
-## 📸 界面预览
+| 01 / 图像 | 02 / 画布 | 03 / 视频 |
+| --- | --- | --- |
+| **让文字，有了画面。** | **给灵感，展开的空间。** | **让下一帧，动起来。** |
+| 文生图、参考图生图与局部重绘，逐步调整理想画面。 | 编排素材、检查抠图蒙版、保存创作文档。 | 参考图生成视频，单轨时间线整理片段，导出 MP4。 |
 
-百炼 `qwen-image-2.0` 文生图可运行 `npm run bailian` 一键启动，详见[完整配置步骤](docs/百炼生图接入.md)。后续多项目共用 Key 的规划：[统一模型网关方案](docs/统一模型网关方案.md)。
+> 帧屿集通过外部云模型 API 提供生成能力，无需在本地部署图像或视频生成模型。平台负责工作台、任务与素材管理，支持自行部署。具体能力取决于接入的云模型；Mock 仅用于开发演示。项目主页和封面为展示内容，不是在线生成服务。
+
+<details>
+<summary>阅读导航 · 配置、接口与工程说明</summary>
+
+- [快速开始](#快速开始) · [抠图与导出](#抠图与导出) · [源码开发](#源码开发)
+- [云模型接入](docs/百炼生图接入.md) · [模型配置](#模型配置)
+- [API 一览](#api-一览) · [项目结构](#项目结构) · [测试与校验](#测试与校验)
+- [运行架构与兼容范围](#运行架构与兼容范围) · [时间线与 MP4 导出](#时间线与-mp4-导出)
+- [品牌资源](docs/brand/frayune/README.md) · [项目主页维护](website/README.md)
+
+</details>
+
+## 代码与部署状态
+
+新版平台源码已同步到本仓库：`apps/api` 为 Python/FastAPI 服务，`apps/web` 为 React/TypeScript 工作台与画布。云模型通过服务端 Provider 接入，API Key 不写入官网或浏览器静态资源。
+
+[GitHub Pages 官网](https://weilengdezaoshang.github.io/aiVideo/) 仅提供产品介绍。运行创作平台请按下方步骤部署应用并配置云模型；发布源码不代表云 API 服务已经在线部署。
+
+### 创作入口
+
+所有启动方式共用 PostgreSQL / RabbitMQ / Redis / Celery 后端。百炼模型通过固定路由与 Worker 凭据接入，详见[配置步骤](docs/百炼生图接入.md)。后续多项目共用 Key 的规划：[统一模型网关方案](docs/统一模型网关方案.md)。
 
 当前创作入口为 `/workspace` 与 `/canvas`，旧版独立生成面板已下线。
 
-工作台 `/workspace` 使用 React + TypeScript，公共组件位于 `apps/web/ui`；画布继续使用原生 TypeScript。`npm run dev` 会自动构建并监听两部分前端，生产构建运行 `npm run build:web`。组件拆分、素材与验证说明见 [React 创作首页](apps/web/workspace/IMPLEMENTATION.md)。
+工作台 `/workspace` 与画布 `/canvas` 使用 React + TypeScript，画布渲染基于 Konva，公共组件位于 `apps/web/ui`。`npm run dev` 自动构建并监听前端；生产构建运行 `npm run build:web`。组件拆分、素材与验证说明见 [React 创作首页](apps/web/workspace/IMPLEMENTATION.md)。
 
-## ✨ 功能特性
+<a id="功能概览"></a>
 
-- **四种生成模式** —— 文生图、图生图(上传 / 拖入参考图 + 重绘幅度)、局部重绘(画板涂抹蒙版,白 = 重绘区域)、图生视频(参考图作首帧;ComfyUI 真实出片,LTX-Video / Wan 均可,Mock 为演示链路)
-- **完整参数** —— 模型、尺寸预设、步数、CFG、采样器 / 调度器、种子(随机或固定)、批量 1~16
-- **任务队列** —— FIFO 调度,按后端并发能力执行;实时进度条(SSE 推送)、随时取消、失败后一键重试
-- **结果管理** —— 画布预览、素材管理、下载与删除，生成历史继续保存在本机。
+## 功能概览
+
+- **云模型创作** —— 文生图、图生图、局部重绘与图生视频；实际可用模式由接入的服务和模型决定，不同模型的能力不完全相同。
+- **生成参数** —— 选择模型、尺寸与批量数量；其余参数按所选服务能力提供，不要求云模型支持本地采样器、步数或 CFG。
+- **任务执行** —— PostgreSQL 事务受理、RabbitMQ 投递、Celery 分阶段执行；SSE 进度、取消、原任务对账与故障恢复
+- **结果管理** —— 画布预览、素材管理、下载与删除，生成历史保存在服务端数据库。
 - **任务历史** —— 最近任务状态一览(状态点 + 重试入口)
-- **持久化** —— 图片与历史落盘(`data/`),重启不丢;上限 500 条自动裁剪
+- **持久化** —— PostgreSQL 保存文档、任务、历史与资产元数据，共享媒体卷保存图像/视频；产物收据支持故障后恢复
 - **健壮性** —— 参数校验、统一 JSON 错误、队列上限保护、优雅停机、结构化日志
-- **双后端** —— 内置 Mock(零依赖演示)+ ComfyUI(真实出图),Provider 抽象可扩展任意后端
+- **云模型接入** —— 通过 Provider 统一适配外部模型 API；保留 Mock 开发演示和可选 ComfyUI 适配。
 
-## 🚀 快速开始
+<a id="快速开始"></a>
+
+## 快速开始
+
+应用只有一套数据库后端。需要 PostgreSQL、RabbitMQ、Redis、OIDC 身份服务与 HTTPS 入口；开发也使用同一套业务架构。Mock 是生成 Provider，不是免数据库的运行模式。
 
 ```bash
-git clone https://github.com/weilengdezaoshang/aiVideo.git
-cd aiVideo
-npm install
+npm ci
+cp -n .env.production.example .env
+# 在自己的编辑器中填写 .env：身份、域名、数据库密码、固定路由与凭据文件路径。
+# 无付费调用验证可使用 deploy/provider-routes.mock.json 与空的 mock credentials 文件。
+docker compose config --quiet
+npm run stack:up
+```
+
+打开配置的 `AIVERO_PUBLIC_ORIGIN`。登录用户需要通过管理员 CLI 授予工作区成员权限；不会自动创建公开工作区。
+完整配置、授权和旧数据导入见[部署手册](docs/runbooks/production-cutover.md)。只创建 `.env` 或选择 Mock 不会自动配置真实 OIDC。
+
+### 源码开发
+
+```bash
 python3.11 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
-npm run dev
+npm run dev -- --env-file /absolute/path/to/dev.env
 ```
 
-打开 <http://127.0.0.1:7801/workspace>，创建或打开画布进行创作。内置 Mock 后端无需 GPU。
+热重载只改变开发体验，仍使用数据库 API 和独立 Worker。宿主开发需提供可访问的独立数据库/Redis、OIDC、路由和共享媒体目录，详见部署手册；Compose 内部服务默认不向宿主公开端口。
+`npm start` 使用相同入口但不热重载；`backend.production:create_app` 保留为同一工厂的兼容名称。旧 `AIVERO_API_MODE` 开关已移除，不读取根 `config.json` 选择运行方式。
 
-### 本地人像抠图
+### 抠图与导出
 
-运行 `npm run dev`（百炼配置可用 `npm run bailian`）启动 FastAPI，后端内部直接调用 rembg，无需独立识别服务。
-默认模型为 `birefnet-portrait`，首次使用会下载权重，之后离线推理，无需抠图 API Key。
-点击图片的「智能抠图」后自动生成红色主体蒙版，可擦除/恢复；确认后在原图右侧生成透明 PNG。
-人像模型以人物为目标，装饰和手持物品是否保留仍需检查实际选区。
+rembg 直接在 API 的单推理线程运行，无需 7100 服务；首次请求加载 `CUTOUT_MODEL` 对应模型，权重复用但识别结果不缓存。识别蒙版以临时 data URL 返回，确认后生成独立 PNG Asset。取消/超时需等待原生线程完成才释放槽位。
+导出进入独立 `exports` Worker，由 FFmpeg 处理时间线快照并通过统一产物协议保存成片。当前新版画布的完整导出界面还未接通。
 
-需要恢复通用抠图时，运行 `CUTOUT_MODEL=isnet-general-use npm run bailian`。
-`CUTOUT_MODEL` 传给 FastAPI 启动命令，修改后需重启。模型首次请求加载后复用；不缓存图片识别结果。`U2NET_HOME` 可指定模型目录。
+### 模型配置
 
-### Docker
+云模型、Mock、ComfyUI 都在 `provider-routes.json` 固定 endpoint、实际模型和 `configVersion`；云端只保存 `credentialRef`，真实密钥挂载到生成 Worker。应用不再提供开发模式下的网页改密钥入口。
+百炼配置见[云模型接入](docs/百炼生图接入.md)。ComfyUI 需自行部署并在路由指定 `provider=comfyui`、`comfyUrl` 及图片/视频模型；模型能力以当前适配器为准。
 
-```bash
-docker compose up -d app                        # 仅应用
-docker compose --profile comfy up -d            # 应用 + ComfyUI
-```
-
-### 切换 ComfyUI 真实出图
-
-1. 本地启动 [ComfyUI](https://github.com/comfyanonymous/ComfyUI)(默认 `http://127.0.0.1:8188`)并放置 checkpoint 模型;
-2. 修改 `config.json`:
-
-```json
-{ "provider": "comfyui", "comfyUrl": "http://127.0.0.1:8188", "port": 7801 }
-```
-
-3. 重启服务 —— 模型与采样器列表自动从 ComfyUI 读取,生成真实图片。
-
-也可用环境变量覆盖:`SWARMUI_PROVIDER` / `SWARMUI_COMFY_URL` / `SWARMUI_PORT`。
-
-### 图生视频(ComfyUI 真实出片)
-
-视频工作流按模型自动选择:LTX-Video(单 checkpoint,放 `models/checkpoints`)走 LTXV 链路;
-Wan 系模型(放 `models/unet`)走 UNETLoader 链路,同时配置 `wanHighNoiseUnet` + `wanLowNoiseUnet`
-后按 Wan2.2 双模型分段采样。产物为 mp4(SaveVideo),画布内预览播放。
-
-```json
-{
-  "videoModel": "",
-  "videoBackend": "auto",
-  "wanClip": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
-  "wanVae": "wan_2.1_vae.safetensors",
-  "wanHighNoiseUnet": "",
-  "wanLowNoiseUnet": "",
-  "imageTimeoutMin": 20,
-  "videoTimeoutMin": 60
-}
-```
-
-`videoModel` 留空则自动探测(wan 优先于 ltx);`videoBackend` 可强制指定 `ltxv` / `wan`。
-以上键均有对应环境变量:`SWARMUI_VIDEO_MODEL` / `SWARMUI_VIDEO_BACKEND` / `SWARMUI_WAN_CLIP` /
-`SWARMUI_WAN_VAE` / `SWARMUI_WAN_HIGH_NOISE_UNET` / `SWARMUI_WAN_LOW_NOISE_UNET` /
-`SWARMUI_IMAGE_TIMEOUT_MIN` / `SWARMUI_VIDEO_TIMEOUT_MIN`。
-
-## 📡 API 一览
+## API 一览
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/api/health` | 服务与后端状态 |
-| GET | `/api/models` | 模型列表(来自 provider) |
-| GET | `/api/samplers` | 可用采样器与调度器 |
+| GET | `/api/models` | 固定 Provider 路由对应的模型列表 |
+| GET | `/api/samplers` | 兼容前端的采样器与调度器选项 |
 | POST | `/api/generate` | 提交生成任务(202 + jobId);`initImage` 可选 data URL,`maskImage`(PNG,白 = 重绘)为局部重绘蒙版 |
 | GET | `/api/jobs` | 进行中任务;`?all=1` 返回最近任务历史 |
 | GET | `/api/jobs/:id` | 单个任务状态 |
 | DELETE | `/api/jobs/:id` | 取消任务 |
 | GET | `/api/history?limit=100` | 历史记录(新 → 旧) |
 | PUT | `/api/images/:id/star` | 设置 / 取消收藏 |
-| DELETE | `/api/images/:id` | 删除图片与记录 |
+| DELETE | `/api/images/:id` | 从历史索引隐藏图片，保留资产与任务记录 |
 | GET | `/api/events` | SSE 实时事件(snapshot / job / image) |
 
-```bash
-curl -X POST http://127.0.0.1:7801/api/generate \
-  -H 'Content-Type: application/json' \
-  -d '{"prompt":"一只宇航员猫, 霓虹灯","model":"mock-diffusion-xl","steps":20,"batchCount":2}'
+生成请求由已登录的同源浏览器提交，需携带会话 Cookie、CSRF 请求头与稳定的 `requestId`；重试时复用同一个 ID。使用仓库 Mock 路由时，请求体示例：
+
+```json
+{
+  "requestId": "8c833bb9-5821-4bd1-b10b-f9bd7d29adbc",
+  "prompt": "一只宇航员猫，霓虹灯",
+  "model": "mock-test",
+  "batchCount": 2
+}
 ```
 
-## 🏗️ 项目结构
+## 项目结构
 
 本项目使用 npm workspaces，前后端仍属于同一个独立 Git 仓库。统一在仓库根目录执行 `npm run dev`、`npm run verify`；也可使用 `npm run dev --workspace @frayune/api` 和 `npm run build --workspace @frayune/web`。迁移记录见 [monorepo 迁移说明](docs/monorepo-migration.md)。
 
@@ -143,7 +149,8 @@ aiVideo/
 │   └── web/                     # @frayune/web：React + TypeScript
 │       ├── landing/             # 落地页
 │       ├── workspace/           # 创作工作台
-│       ├── canvas/              # 原生 TypeScript 画布
+│       ├── canvas/              # 画布核心、状态与 React/Konva 渲染
+│       ├── canvas-next/         # React 画布应用入口
 │       ├── ui/                  # 前端共享组件
 │       └── shared/              # 前端共享逻辑
 ├── scripts/                     # 开发启动、构建、评测 CLI
@@ -154,31 +161,34 @@ aiVideo/
 ├── package-lock.json            # 全仓库共用 npm 锁文件
 ├── pyproject.toml               # Python 检查配置
 ├── requirements-dev.txt         # Python 开发依赖，使用根目录 .venv
-├── config.json                  # 本地运行配置
-└── docker-compose.yml           # FastAPI 镜像 + 可选 ComfyUI
+├── .env.production.example      # 统一部署配置模板
+├── compose.execution.yaml       # 数据库、消息、调度与 Worker
+├── compose.production.yaml      # API、OIDC 与 HTTPS 网关
+└── docker-compose.yml           # 合并为统一应用栈
 ```
 
-**核心数据流**:
+**核心数据流**：
 
+```text
+浏览器 → FastAPI → PG 事务（Job + Outbox）→ Dispatcher → RabbitMQ → Bridge → Celery Worker
+             ↑                                                        ↓
+             └── SSE ← PG 状态投影 ← Notify / Redis 唤醒 ← 状态与产物登记 ← StagedProvider
 ```
-浏览器 ──POST /api/generate──▶ JobManager ──FIFO 队列──▶ GenerationProvider
-   ▲                                │                      │  Mock / ComfyUI
-   └── SSE 实时渲染 ◀─ job/image 事件 ┘        产物字节 ──▶ Store 落盘 + 历史
-```
 
-新增生成后端实现 `apps/api/backend/providers/base.py` 的 `Provider` 抽象，并在 `apps/api/backend/app.py` 的 `build_provider` 注册。`generate` 通过 `params.kind` 区分图片与视频。
+生成通过 `providers/staged.py` 的 prepare/submit/poll/cancel 阶段执行；产物先写共享媒体卷与 receipt，再登记 Asset。图片、视频和导出使用独立队列。租约/epoch 防止失联 Worker 晚到覆盖状态，unknown 提交不盲目重试。
+历史 FIFO HTTP 实现仅保留于 `evaluation/sandbox.py`，供隔离评测和兼容测试显式调用，不属于可部署应用入口。
 
-## 🧪 测试与校验
+## 测试与校验
 
 ```bash
 npm run verify          # 前端 typecheck / eslint / node:test + 后端 ruff / pytest
-node scripts/e2e-smoke.mjs   # 对运行中的服务执行 14 项端到端检查
+PYTHONPATH=apps/api .venv/bin/python tests/integration/compose_smoke.py # 显式隔离部署冒烟
 npm run format          # prettier 统一格式
 ```
 
 CI 同时安装 Node 与 Python 3.11，运行前端类型检查、ESLint、node:test，以及后端 Ruff、pytest。
 
-## 🗺️ Roadmap / TODO
+## Roadmap / TODO
 
 - [x] 核心流程:提示词 → 队列 → 生成 → 画布结果 → 历史持久化
 - [x] 采样器 / 调度器选择(选项来自后端能力探测)
@@ -198,7 +208,7 @@ CI 同时安装 Node 与 Python 3.11，运行前端类型检查、ESLint、node:
 
 > 欢迎按下面的贡献流程认领任意条目。
 
-## 🤝 参与贡献
+## 参与贡献
 
 1. Fork 并创建特性分支:`git checkout -b feat/your-feature`
 2. 提交前运行 `npm run verify` 确保全绿(pre-commit 钩子会自动执行)
@@ -207,30 +217,24 @@ CI 同时安装 Node 与 Python 3.11，运行前端类型检查、ESLint、node:
 
 详见 [AGENTS.md](AGENTS.md) 中的完整开发约定。
 
-## 📄 License
+## License
 
 [MIT](LICENSE) © 2026 chenGuoFeng
 
 
-## FastAPI 后端迁移
+## 运行架构与兼容范围
 
-主后端已经迁移到 Python，Express 与 sharp 服务端依赖已移除。现有 API 路径、SSE 事件名、`config.json` / `SWARMUI_*` 与 `data/` 格式保持兼容。Python 运行时为 3.11+；Node 仅用于前端校验与辅助脚本。
+`backend.app:create_app` 是唯一应用工厂，`python -m backend`、`npm run dev`、`npm start` 与默认 Compose 均指向它。应用状态使用 PostgreSQL；Node 仅用于构建和开发工具，运行镜像使用 Python 3.11、FFmpeg 和非 root 用户。
 
-- `npm run dev`：FastAPI/Uvicorn 热重载，默认 `127.0.0.1:7801`。
-- `npm start`：编译前端后启动，不启用热重载。
-- `npm run build:web`：将 TypeScript 编译到 `.web-build/`，FastAPI 按原 `.js` URL 提供模块；`npm run dev` 自动编译并监听前端修改。
-- `npm run bailian`：交互式配置百炼并启动 FastAPI；`npm run start:bailian` 使用已有 `.env.bailian.local`。
-- `npm run verify:backend`：Ruff 与 Python 测试。
-- `/docs`、`/openapi.json`：FastAPI 接口目录（生成请求的规范化由 models.py 完成）。
+- `npm run build:web`：TypeScript / React → `.web-build/`，FastAPI 提供静态资源。
+- `npm run stack:up` / `stack:down` / `stack:logs`：统一 Compose 应用栈。
+- `npm run verify`：类型检查、构建、ESLint、前端测试、Ruff 和后端单测。
+- `tests/integration/test_production_api.py`：独立数据库上的当前应用 HTTP/权限/文档/受理/导出契约；运行方式见[集成测试手册](docs/runbooks/integration-testing.md)。
 
-此版本采用单进程队列与 JSON 原子落盘，不要配置多个 Uvicorn worker；数据目录锁会拒绝第二个进程。`SWARMUI_DATA_DIR` 可指定隔离数据目录。重启时原进行中任务标记为中断，不会自动重复发起付费请求。切换后端时，运行中的批次使用原 Provider，后续调度使用新配置。
+旧 JSON 数据不会在启动时自动迁入数据库，必须停写后备份并执行受控导入。原 Agent、分镜编排、评测 HTTP 页面暂不在当前应用入口提供；离线评测 CLI 和历史契约沙箱仍保留。当前入口和存储统一不等于所有外围功能或生产故障验收完成，详见[实施状态](docs/architecture/durable-execution-status.md)。
 
-rembg 已集成到 FastAPI 的单推理线程，不阻塞 API 事件循环；忙时返回 429。取消立即使结果失效，原生推理线程自然结束后才释放槽位。Mock 图片为 PNG，Mock 视频为带 MOCK 标记的动画 WebP。
+画布新增独立的只读 Agent 对话面板，支持 DeepSeek / 百炼、真实图片元信息工具、持久调用记录、停止和刷新恢复。启用需迁移至 `0009` 并配置 Agent 模型路由与 Worker 凭据；默认未配置时不可用。接入及隔离测试步骤见[画布 Agent 手册](docs/runbooks/canvas-agent.md)。
 
-完整数据流、模块边界和异常处理见 [抠图流程](docs/cutout-flow.md)。
+### 时间线与 MP4 导出
 
-详细验证与兼容范围见 [FastAPI 迁移说明](docs/fastapi-migration.md)。
-
-### 开发环境设置入口
-
-生成设置仅在 `SWARMUI_ENV=development` 时开放。`npm run dev`（`--reload`）默认启用该模式；显式设置 `SWARMUI_ENV=production` 时不会被覆盖。普通启动和部署默认关闭设置。工作台与画布根据 `/api/runtime` 显示入口；生产环境拒绝配置读取、保存和连接测试接口（403）。生产密钥由部署环境变量注入，不通过用户设置录入。开发模式不是用户鉴权机制，不应对公网开放。
+时间线数据保存在 Document JSONB；`POST /api/exports` 提交 `{documentId, requestId, timeline}`，返回持久化导出任务。`GET /api/exports/{id}` 查询，`DELETE /api/exports/{id}` 请求取消，`GET /api/exports/{id}/download` 下载成片。FFmpeg 在独立 Worker 内运行，具备进程组回收和产物恢复；新版画布尚未装配完整的 TimelineExport flow。
