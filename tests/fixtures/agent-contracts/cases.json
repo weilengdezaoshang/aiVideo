@@ -1,0 +1,1197 @@
+[
+  {
+    "name": "ok envelope",
+    "model": "Envelope",
+    "valid": true,
+    "value": {
+      "kind": "tool",
+      "tool": "list_canvas_elements",
+      "toolVersion": 2,
+      "callId": "call_7",
+      "stepKey": "s1",
+      "trust": "untrusted_canvas_data",
+      "source": {
+        "documentId": "d1",
+        "revision": 7,
+        "assetIds": ["a1"]
+      },
+      "producedAt": "2026-10-06T09:00:00Z",
+      "evidenceId": "E2",
+      "status": "ok",
+      "result": {
+        "data": {
+          "elements": [
+            {
+              "id": "o1",
+              "kind": "image",
+              "name": "人物",
+              "assetId": "a1",
+              "x": 0,
+              "y": 0,
+              "width": 512,
+              "height": 512
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "id": "E2.f1",
+            "statement": "图片对象共 63 个",
+            "path": "page.total",
+            "value": 63,
+            "scope": "complete"
+          },
+          {
+            "id": "E2.f2",
+            "statement": "本页返回第 1–50 个",
+            "path": "page",
+            "value": [0, 50],
+            "scope": "partial"
+          },
+          {
+            "id": "E2.f3",
+            "statement": "对象 o1 为图片，尺寸 512×512",
+            "path": "elements[0]",
+            "value": [512, 512],
+            "scope": "item"
+          }
+        ],
+        "coverage": {
+          "complete": false,
+          "reason": "仅返回前 50 个，共 63 个",
+          "missing": null
+        },
+        "next": [
+          {
+            "action": "call_tool",
+            "tool": "list_canvas_elements",
+            "arguments": {
+              "kind": "image",
+              "offset": 50
+            },
+            "reason": "还有 13 个图片对象未列出",
+            "priority": "required"
+          }
+        ],
+        "truncated": true,
+        "omitted": {
+          "objectIds": [],
+          "fields": ["src"]
+        },
+        "page": {
+          "offset": 0,
+          "nextOffset": 50,
+          "total": 63
+        }
+      }
+    }
+  },
+  {
+    "name": "error envelope",
+    "model": "Envelope",
+    "valid": true,
+    "value": {
+      "kind": "tool",
+      "tool": "get_canvas_elements",
+      "toolVersion": 2,
+      "callId": "call_7",
+      "stepKey": "s1",
+      "trust": "untrusted_canvas_data",
+      "source": {
+        "documentId": "d1",
+        "revision": 7,
+        "assetIds": ["a1"]
+      },
+      "producedAt": "2026-10-06T09:00:00Z",
+      "evidenceId": "E3",
+      "status": "error",
+      "error": {
+        "code": "OBJECT_OUT_OF_SCOPE",
+        "category": "out_of_scope",
+        "message": "对象不属于本次运行的画布快照",
+        "retryable": true,
+        "details": {
+          "fields": [],
+          "unknownObjectIds": ["o99"],
+          "allowedTools": [],
+          "limit": null
+        },
+        "next": [
+          {
+            "action": "call_tool",
+            "tool": "list_canvas_elements",
+            "arguments": {},
+            "reason": "获取有效对象 ID 后重新查询",
+            "priority": "required"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "duplicate envelope",
+    "model": "Envelope",
+    "valid": true,
+    "value": {
+      "kind": "tool",
+      "tool": "inspect_image",
+      "toolVersion": 2,
+      "callId": "call_7",
+      "stepKey": "s1",
+      "trust": "untrusted_canvas_data",
+      "source": {
+        "documentId": "d1",
+        "revision": 7,
+        "assetIds": ["a1"]
+      },
+      "producedAt": "2026-10-06T09:00:00Z",
+      "evidenceId": "E5",
+      "status": "duplicate",
+      "dedupeOf": "E4",
+      "next": []
+    }
+  },
+  {
+    "name": "control accepted",
+    "model": "ControlReceipt",
+    "valid": true,
+    "value": {
+      "kind": "control",
+      "tool": "submit_plan",
+      "callId": "call_1",
+      "status": "accepted",
+      "effect": {
+        "planVersion": 1,
+        "next": {
+          "stage": "execute",
+          "stepKey": "s1"
+        }
+      },
+      "error": null
+    }
+  },
+  {
+    "name": "control rejected",
+    "model": "ControlReceipt",
+    "valid": true,
+    "value": {
+      "kind": "control",
+      "tool": "finish",
+      "callId": "call_9",
+      "status": "rejected",
+      "effect": null,
+      "error": {
+        "code": "CLAIMS_INVALID",
+        "category": "invalid_arguments",
+        "message": "断言引用无效",
+        "retryable": true,
+        "details": {
+          "fields": [
+            {
+              "path": "claims.0.evidenceRefs.0",
+              "problem": "value"
+            }
+          ],
+          "unknownObjectIds": [],
+          "allowedTools": [],
+          "limit": null
+        },
+        "next": []
+      }
+    }
+  },
+  {
+    "name": "plan",
+    "model": "Plan",
+    "valid": true,
+    "value": {
+      "goal": "列出画布图片及尺寸",
+      "steps": [
+        {
+          "key": "s1",
+          "title": "列出图片",
+          "intent": "列出全部图片对象",
+          "tools": ["list_canvas_elements"],
+          "dependsOn": [],
+          "doneWhen": "已知图片总数且结果未截断"
+        },
+        {
+          "key": "s2",
+          "title": "读取尺寸",
+          "intent": "读取每张图片的原图尺寸",
+          "tools": ["inspect_image"],
+          "dependsOn": ["s1"],
+          "doneWhen": "每张图片都有宽高事实"
+        }
+      ]
+    }
+  },
+  {
+    "name": "finish",
+    "model": "Finish",
+    "valid": true,
+    "value": {
+      "answer": "画布上共有 63 张图片[E2.f1]。",
+      "claims": [
+        {
+          "text": "共有 63 张图片",
+          "evidenceRefs": ["E2.f1"],
+          "scope": "complete"
+        }
+      ]
+    }
+  },
+  {
+    "name": "reflection",
+    "model": "Reflection",
+    "valid": true,
+    "value": {
+      "verdict": "revise_answer",
+      "issues": [
+        {
+          "kind": "ungrounded",
+          "problem": "声称全部图片，但 E4 为错误信封",
+          "stepKey": "s2",
+          "evidenceRefs": ["E4"]
+        }
+      ],
+      "question": null
+    }
+  },
+  {
+    "name": "persona",
+    "model": "PersonaProfile",
+    "valid": true,
+    "value": {
+      "id": "canvas-assistant",
+      "version": 1,
+      "displayName": "画布助手",
+      "identity": "你是画布创作助手，帮助用户查看和理解当前画布。",
+      "voice": ["中文", "简洁", "先结论后依据"],
+      "principles": ["没有证据不下结论", "不确定就先问"],
+      "expression": {
+        "uncertain": "目前无法确认，需要进一步核实。"
+      }
+    }
+  },
+  {
+    "name": "envelope unknown status",
+    "model": "Envelope",
+    "valid": false,
+    "value": {
+      "kind": "tool",
+      "tool": "list_canvas_elements",
+      "toolVersion": 2,
+      "callId": "call_7",
+      "stepKey": "s1",
+      "trust": "untrusted_canvas_data",
+      "source": {
+        "documentId": "d1",
+        "revision": 7,
+        "assetIds": ["a1"]
+      },
+      "producedAt": "2026-10-06T09:00:00Z",
+      "evidenceId": "E2",
+      "status": "partial",
+      "result": {
+        "data": {
+          "elements": [
+            {
+              "id": "o1",
+              "kind": "image",
+              "name": "人物",
+              "assetId": "a1",
+              "x": 0,
+              "y": 0,
+              "width": 512,
+              "height": 512
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "id": "E2.f1",
+            "statement": "图片对象共 63 个",
+            "path": "page.total",
+            "value": 63,
+            "scope": "complete"
+          },
+          {
+            "id": "E2.f2",
+            "statement": "本页返回第 1–50 个",
+            "path": "page",
+            "value": [0, 50],
+            "scope": "partial"
+          },
+          {
+            "id": "E2.f3",
+            "statement": "对象 o1 为图片，尺寸 512×512",
+            "path": "elements[0]",
+            "value": [512, 512],
+            "scope": "item"
+          }
+        ],
+        "coverage": {
+          "complete": false,
+          "reason": "仅返回前 50 个，共 63 个",
+          "missing": null
+        },
+        "next": [
+          {
+            "action": "call_tool",
+            "tool": "list_canvas_elements",
+            "arguments": {
+              "kind": "image",
+              "offset": 50
+            },
+            "reason": "还有 13 个图片对象未列出",
+            "priority": "required"
+          }
+        ],
+        "truncated": true,
+        "omitted": {
+          "objectIds": [],
+          "fields": ["src"]
+        },
+        "page": {
+          "offset": 0,
+          "nextOffset": 50,
+          "total": 63
+        }
+      }
+    }
+  },
+  {
+    "name": "envelope extra field",
+    "model": "Envelope",
+    "valid": false,
+    "value": {
+      "kind": "tool",
+      "tool": "list_canvas_elements",
+      "toolVersion": 2,
+      "callId": "call_7",
+      "stepKey": "s1",
+      "trust": "untrusted_canvas_data",
+      "source": {
+        "documentId": "d1",
+        "revision": 7,
+        "assetIds": ["a1"]
+      },
+      "producedAt": "2026-10-06T09:00:00Z",
+      "evidenceId": "E2",
+      "status": "ok",
+      "result": {
+        "data": {
+          "elements": [
+            {
+              "id": "o1",
+              "kind": "image",
+              "name": "人物",
+              "assetId": "a1",
+              "x": 0,
+              "y": 0,
+              "width": 512,
+              "height": 512
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "id": "E2.f1",
+            "statement": "图片对象共 63 个",
+            "path": "page.total",
+            "value": 63,
+            "scope": "complete"
+          },
+          {
+            "id": "E2.f2",
+            "statement": "本页返回第 1–50 个",
+            "path": "page",
+            "value": [0, 50],
+            "scope": "partial"
+          },
+          {
+            "id": "E2.f3",
+            "statement": "对象 o1 为图片，尺寸 512×512",
+            "path": "elements[0]",
+            "value": [512, 512],
+            "scope": "item"
+          }
+        ],
+        "coverage": {
+          "complete": false,
+          "reason": "仅返回前 50 个，共 63 个",
+          "missing": null
+        },
+        "next": [
+          {
+            "action": "call_tool",
+            "tool": "list_canvas_elements",
+            "arguments": {
+              "kind": "image",
+              "offset": 50
+            },
+            "reason": "还有 13 个图片对象未列出",
+            "priority": "required"
+          }
+        ],
+        "truncated": true,
+        "omitted": {
+          "objectIds": [],
+          "fields": ["src"]
+        },
+        "page": {
+          "offset": 0,
+          "nextOffset": 50,
+          "total": 63
+        }
+      },
+      "secret": "x"
+    }
+  },
+  {
+    "name": "envelope bad evidence id",
+    "model": "Envelope",
+    "valid": false,
+    "value": {
+      "kind": "tool",
+      "tool": "list_canvas_elements",
+      "toolVersion": 2,
+      "callId": "call_7",
+      "stepKey": "s1",
+      "trust": "untrusted_canvas_data",
+      "source": {
+        "documentId": "d1",
+        "revision": 7,
+        "assetIds": ["a1"]
+      },
+      "producedAt": "2026-10-06T09:00:00Z",
+      "evidenceId": "2",
+      "status": "ok",
+      "result": {
+        "data": {
+          "elements": [
+            {
+              "id": "o1",
+              "kind": "image",
+              "name": "人物",
+              "assetId": "a1",
+              "x": 0,
+              "y": 0,
+              "width": 512,
+              "height": 512
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "id": "E2.f1",
+            "statement": "图片对象共 63 个",
+            "path": "page.total",
+            "value": 63,
+            "scope": "complete"
+          },
+          {
+            "id": "E2.f2",
+            "statement": "本页返回第 1–50 个",
+            "path": "page",
+            "value": [0, 50],
+            "scope": "partial"
+          },
+          {
+            "id": "E2.f3",
+            "statement": "对象 o1 为图片，尺寸 512×512",
+            "path": "elements[0]",
+            "value": [512, 512],
+            "scope": "item"
+          }
+        ],
+        "coverage": {
+          "complete": false,
+          "reason": "仅返回前 50 个，共 63 个",
+          "missing": null
+        },
+        "next": [
+          {
+            "action": "call_tool",
+            "tool": "list_canvas_elements",
+            "arguments": {
+              "kind": "image",
+              "offset": 50
+            },
+            "reason": "还有 13 个图片对象未列出",
+            "priority": "required"
+          }
+        ],
+        "truncated": true,
+        "omitted": {
+          "objectIds": [],
+          "fields": ["src"]
+        },
+        "page": {
+          "offset": 0,
+          "nextOffset": 50,
+          "total": 63
+        }
+      }
+    }
+  },
+  {
+    "name": "envelope trust forged",
+    "model": "Envelope",
+    "valid": false,
+    "value": {
+      "kind": "tool",
+      "tool": "list_canvas_elements",
+      "toolVersion": 2,
+      "callId": "call_7",
+      "stepKey": "s1",
+      "trust": "trusted",
+      "source": {
+        "documentId": "d1",
+        "revision": 7,
+        "assetIds": ["a1"]
+      },
+      "producedAt": "2026-10-06T09:00:00Z",
+      "evidenceId": "E2",
+      "status": "ok",
+      "result": {
+        "data": {
+          "elements": [
+            {
+              "id": "o1",
+              "kind": "image",
+              "name": "人物",
+              "assetId": "a1",
+              "x": 0,
+              "y": 0,
+              "width": 512,
+              "height": 512
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "id": "E2.f1",
+            "statement": "图片对象共 63 个",
+            "path": "page.total",
+            "value": 63,
+            "scope": "complete"
+          },
+          {
+            "id": "E2.f2",
+            "statement": "本页返回第 1–50 个",
+            "path": "page",
+            "value": [0, 50],
+            "scope": "partial"
+          },
+          {
+            "id": "E2.f3",
+            "statement": "对象 o1 为图片，尺寸 512×512",
+            "path": "elements[0]",
+            "value": [512, 512],
+            "scope": "item"
+          }
+        ],
+        "coverage": {
+          "complete": false,
+          "reason": "仅返回前 50 个，共 63 个",
+          "missing": null
+        },
+        "next": [
+          {
+            "action": "call_tool",
+            "tool": "list_canvas_elements",
+            "arguments": {
+              "kind": "image",
+              "offset": 50
+            },
+            "reason": "还有 13 个图片对象未列出",
+            "priority": "required"
+          }
+        ],
+        "truncated": true,
+        "omitted": {
+          "objectIds": [],
+          "fields": ["src"]
+        },
+        "page": {
+          "offset": 0,
+          "nextOffset": 50,
+          "total": 63
+        }
+      }
+    }
+  },
+  {
+    "name": "fact bad id",
+    "model": "Envelope",
+    "valid": false,
+    "value": {
+      "kind": "tool",
+      "tool": "list_canvas_elements",
+      "toolVersion": 2,
+      "callId": "call_7",
+      "stepKey": "s1",
+      "trust": "untrusted_canvas_data",
+      "source": {
+        "documentId": "d1",
+        "revision": 7,
+        "assetIds": ["a1"]
+      },
+      "producedAt": "2026-10-06T09:00:00Z",
+      "evidenceId": "E2",
+      "status": "ok",
+      "result": {
+        "data": {
+          "elements": [
+            {
+              "id": "o1",
+              "kind": "image",
+              "name": "人物",
+              "assetId": "a1",
+              "x": 0,
+              "y": 0,
+              "width": 512,
+              "height": 512
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "id": "E2",
+            "statement": "图片对象共 63 个",
+            "path": "page.total",
+            "value": 63,
+            "scope": "complete"
+          },
+          {
+            "id": "E2.f2",
+            "statement": "本页返回第 1–50 个",
+            "path": "page",
+            "value": [0, 50],
+            "scope": "partial"
+          },
+          {
+            "id": "E2.f3",
+            "statement": "对象 o1 为图片，尺寸 512×512",
+            "path": "elements[0]",
+            "value": [512, 512],
+            "scope": "item"
+          }
+        ],
+        "coverage": {
+          "complete": false,
+          "reason": "仅返回前 50 个，共 63 个",
+          "missing": null
+        },
+        "next": [
+          {
+            "action": "call_tool",
+            "tool": "list_canvas_elements",
+            "arguments": {
+              "kind": "image",
+              "offset": 50
+            },
+            "reason": "还有 13 个图片对象未列出",
+            "priority": "required"
+          }
+        ],
+        "truncated": true,
+        "omitted": {
+          "objectIds": [],
+          "fields": ["src"]
+        },
+        "page": {
+          "offset": 0,
+          "nextOffset": 50,
+          "total": 63
+        }
+      }
+    }
+  },
+  {
+    "name": "fact bad scope",
+    "model": "Envelope",
+    "valid": false,
+    "value": {
+      "kind": "tool",
+      "tool": "list_canvas_elements",
+      "toolVersion": 2,
+      "callId": "call_7",
+      "stepKey": "s1",
+      "trust": "untrusted_canvas_data",
+      "source": {
+        "documentId": "d1",
+        "revision": 7,
+        "assetIds": ["a1"]
+      },
+      "producedAt": "2026-10-06T09:00:00Z",
+      "evidenceId": "E2",
+      "status": "ok",
+      "result": {
+        "data": {
+          "elements": [
+            {
+              "id": "o1",
+              "kind": "image",
+              "name": "人物",
+              "assetId": "a1",
+              "x": 0,
+              "y": 0,
+              "width": 512,
+              "height": 512
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "id": "E2.f1",
+            "statement": "图片对象共 63 个",
+            "path": "page.total",
+            "value": 63,
+            "scope": "all"
+          },
+          {
+            "id": "E2.f2",
+            "statement": "本页返回第 1–50 个",
+            "path": "page",
+            "value": [0, 50],
+            "scope": "partial"
+          },
+          {
+            "id": "E2.f3",
+            "statement": "对象 o1 为图片，尺寸 512×512",
+            "path": "elements[0]",
+            "value": [512, 512],
+            "scope": "item"
+          }
+        ],
+        "coverage": {
+          "complete": false,
+          "reason": "仅返回前 50 个，共 63 个",
+          "missing": null
+        },
+        "next": [
+          {
+            "action": "call_tool",
+            "tool": "list_canvas_elements",
+            "arguments": {
+              "kind": "image",
+              "offset": 50
+            },
+            "reason": "还有 13 个图片对象未列出",
+            "priority": "required"
+          }
+        ],
+        "truncated": true,
+        "omitted": {
+          "objectIds": [],
+          "fields": ["src"]
+        },
+        "page": {
+          "offset": 0,
+          "nextOffset": 50,
+          "total": 63
+        }
+      }
+    }
+  },
+  {
+    "name": "too many next",
+    "model": "Envelope",
+    "valid": false,
+    "value": {
+      "kind": "tool",
+      "tool": "list_canvas_elements",
+      "toolVersion": 2,
+      "callId": "call_7",
+      "stepKey": "s1",
+      "trust": "untrusted_canvas_data",
+      "source": {
+        "documentId": "d1",
+        "revision": 7,
+        "assetIds": ["a1"]
+      },
+      "producedAt": "2026-10-06T09:00:00Z",
+      "evidenceId": "E2",
+      "status": "ok",
+      "result": {
+        "data": {
+          "elements": [
+            {
+              "id": "o1",
+              "kind": "image",
+              "name": "人物",
+              "assetId": "a1",
+              "x": 0,
+              "y": 0,
+              "width": 512,
+              "height": 512
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "id": "E2.f1",
+            "statement": "图片对象共 63 个",
+            "path": "page.total",
+            "value": 63,
+            "scope": "complete"
+          },
+          {
+            "id": "E2.f2",
+            "statement": "本页返回第 1–50 个",
+            "path": "page",
+            "value": [0, 50],
+            "scope": "partial"
+          },
+          {
+            "id": "E2.f3",
+            "statement": "对象 o1 为图片，尺寸 512×512",
+            "path": "elements[0]",
+            "value": [512, 512],
+            "scope": "item"
+          }
+        ],
+        "coverage": {
+          "complete": false,
+          "reason": "仅返回前 50 个，共 63 个",
+          "missing": null
+        },
+        "next": [
+          {
+            "action": "call_tool",
+            "tool": "list_canvas_elements",
+            "arguments": {
+              "kind": "image",
+              "offset": 50
+            },
+            "reason": "还有 13 个图片对象未列出",
+            "priority": "required"
+          },
+          {
+            "action": "call_tool",
+            "tool": "list_canvas_elements",
+            "arguments": {
+              "kind": "image",
+              "offset": 50
+            },
+            "reason": "还有 13 个图片对象未列出",
+            "priority": "required"
+          },
+          {
+            "action": "call_tool",
+            "tool": "list_canvas_elements",
+            "arguments": {
+              "kind": "image",
+              "offset": 50
+            },
+            "reason": "还有 13 个图片对象未列出",
+            "priority": "required"
+          },
+          {
+            "action": "call_tool",
+            "tool": "list_canvas_elements",
+            "arguments": {
+              "kind": "image",
+              "offset": 50
+            },
+            "reason": "还有 13 个图片对象未列出",
+            "priority": "required"
+          },
+          {
+            "action": "call_tool",
+            "tool": "list_canvas_elements",
+            "arguments": {
+              "kind": "image",
+              "offset": 50
+            },
+            "reason": "还有 13 个图片对象未列出",
+            "priority": "required"
+          },
+          {
+            "action": "call_tool",
+            "tool": "list_canvas_elements",
+            "arguments": {
+              "kind": "image",
+              "offset": 50
+            },
+            "reason": "还有 13 个图片对象未列出",
+            "priority": "required"
+          }
+        ],
+        "truncated": true,
+        "omitted": {
+          "objectIds": [],
+          "fields": ["src"]
+        },
+        "page": {
+          "offset": 0,
+          "nextOffset": 50,
+          "total": 63
+        }
+      }
+    }
+  },
+  {
+    "name": "error without error body",
+    "model": "Envelope",
+    "valid": false,
+    "value": {
+      "kind": "tool",
+      "tool": "get_canvas_elements",
+      "toolVersion": 2,
+      "callId": "call_7",
+      "stepKey": "s1",
+      "trust": "untrusted_canvas_data",
+      "source": {
+        "documentId": "d1",
+        "revision": 7,
+        "assetIds": ["a1"]
+      },
+      "producedAt": "2026-10-06T09:00:00Z",
+      "evidenceId": "E3",
+      "status": "error"
+    }
+  },
+  {
+    "name": "duplicate without target",
+    "model": "Envelope",
+    "valid": false,
+    "value": {
+      "kind": "tool",
+      "tool": "inspect_image",
+      "toolVersion": 2,
+      "callId": "call_7",
+      "stepKey": "s1",
+      "trust": "untrusted_canvas_data",
+      "source": {
+        "documentId": "d1",
+        "revision": 7,
+        "assetIds": ["a1"]
+      },
+      "producedAt": "2026-10-06T09:00:00Z",
+      "evidenceId": "E5",
+      "status": "duplicate",
+      "next": []
+    }
+  },
+  {
+    "name": "control status invalid",
+    "model": "ControlReceipt",
+    "valid": false,
+    "value": {
+      "kind": "control",
+      "tool": "submit_plan",
+      "callId": "call_1",
+      "status": "ok",
+      "effect": {
+        "planVersion": 1,
+        "next": {
+          "stage": "execute",
+          "stepKey": "s1"
+        }
+      },
+      "error": null
+    }
+  },
+  {
+    "name": "plan without steps",
+    "model": "Plan",
+    "valid": false,
+    "value": {
+      "goal": "列出画布图片及尺寸",
+      "steps": []
+    }
+  },
+  {
+    "name": "plan too many steps",
+    "model": "Plan",
+    "valid": false,
+    "value": {
+      "goal": "列出画布图片及尺寸",
+      "steps": [
+        {
+          "key": "s1",
+          "title": "列出图片",
+          "intent": "列出全部图片对象",
+          "tools": ["list_canvas_elements"],
+          "dependsOn": [],
+          "doneWhen": "已知图片总数且结果未截断"
+        },
+        {
+          "key": "s1",
+          "title": "列出图片",
+          "intent": "列出全部图片对象",
+          "tools": ["list_canvas_elements"],
+          "dependsOn": [],
+          "doneWhen": "已知图片总数且结果未截断"
+        },
+        {
+          "key": "s1",
+          "title": "列出图片",
+          "intent": "列出全部图片对象",
+          "tools": ["list_canvas_elements"],
+          "dependsOn": [],
+          "doneWhen": "已知图片总数且结果未截断"
+        },
+        {
+          "key": "s1",
+          "title": "列出图片",
+          "intent": "列出全部图片对象",
+          "tools": ["list_canvas_elements"],
+          "dependsOn": [],
+          "doneWhen": "已知图片总数且结果未截断"
+        },
+        {
+          "key": "s1",
+          "title": "列出图片",
+          "intent": "列出全部图片对象",
+          "tools": ["list_canvas_elements"],
+          "dependsOn": [],
+          "doneWhen": "已知图片总数且结果未截断"
+        },
+        {
+          "key": "s1",
+          "title": "列出图片",
+          "intent": "列出全部图片对象",
+          "tools": ["list_canvas_elements"],
+          "dependsOn": [],
+          "doneWhen": "已知图片总数且结果未截断"
+        },
+        {
+          "key": "s1",
+          "title": "列出图片",
+          "intent": "列出全部图片对象",
+          "tools": ["list_canvas_elements"],
+          "dependsOn": [],
+          "doneWhen": "已知图片总数且结果未截断"
+        }
+      ]
+    }
+  },
+  {
+    "name": "plan bad step key",
+    "model": "Plan",
+    "valid": false,
+    "value": {
+      "goal": "列出画布图片及尺寸",
+      "steps": [
+        {
+          "key": "S 1",
+          "title": "列出图片",
+          "intent": "列出全部图片对象",
+          "tools": ["list_canvas_elements"],
+          "dependsOn": [],
+          "doneWhen": "已知图片总数且结果未截断"
+        },
+        {
+          "key": "s2",
+          "title": "读取尺寸",
+          "intent": "读取每张图片的原图尺寸",
+          "tools": ["inspect_image"],
+          "dependsOn": ["s1"],
+          "doneWhen": "每张图片都有宽高事实"
+        }
+      ]
+    }
+  },
+  {
+    "name": "finish bad claim scope",
+    "model": "Finish",
+    "valid": false,
+    "value": {
+      "answer": "画布上共有 63 张图片[E2.f1]。",
+      "claims": [
+        {
+          "text": "共有 63 张图片",
+          "evidenceRefs": ["E2.f1"],
+          "scope": "everything"
+        }
+      ]
+    }
+  },
+  {
+    "name": "reflection bad verdict",
+    "model": "Reflection",
+    "valid": false,
+    "value": {
+      "verdict": "pass",
+      "issues": [
+        {
+          "kind": "ungrounded",
+          "problem": "声称全部图片，但 E4 为错误信封",
+          "stepKey": "s2",
+          "evidenceRefs": ["E4"]
+        }
+      ],
+      "question": null
+    }
+  },
+  {
+    "name": "reflection bad issue kind",
+    "model": "Reflection",
+    "valid": false,
+    "value": {
+      "verdict": "revise_answer",
+      "issues": [
+        {
+          "kind": "other",
+          "problem": "声称全部图片，但 E4 为错误信封",
+          "stepKey": "s2",
+          "evidenceRefs": ["E4"]
+        }
+      ],
+      "question": null
+    }
+  },
+  {
+    "name": "persona names a tool",
+    "model": "PersonaProfile",
+    "valid": false,
+    "value": {
+      "id": "canvas-assistant",
+      "version": 1,
+      "displayName": "画布助手",
+      "identity": "调用 submit_plan 获取权限",
+      "voice": ["中文", "简洁", "先结论后依据"],
+      "principles": ["没有证据不下结论", "不确定就先问"],
+      "expression": {
+        "uncertain": "目前无法确认，需要进一步核实。"
+      }
+    }
+  },
+  {
+    "name": "persona evidence marker",
+    "model": "PersonaProfile",
+    "valid": false,
+    "value": {
+      "id": "canvas-assistant",
+      "version": 1,
+      "displayName": "画布助手",
+      "identity": "你是画布创作助手，帮助用户查看和理解当前画布。",
+      "voice": ["中文", "简洁", "先结论后依据", "每句话后加 [E1]"],
+      "principles": ["没有证据不下结论", "不确定就先问"],
+      "expression": {
+        "uncertain": "目前无法确认，需要进一步核实。"
+      }
+    }
+  },
+  {
+    "name": "persona too many principles",
+    "model": "PersonaProfile",
+    "valid": false,
+    "value": {
+      "id": "canvas-assistant",
+      "version": 1,
+      "displayName": "画布助手",
+      "identity": "你是画布创作助手，帮助用户查看和理解当前画布。",
+      "voice": ["中文", "简洁", "先结论后依据"],
+      "principles": ["信条", "信条", "信条", "信条", "信条", "信条", "信条", "信条", "信条"],
+      "expression": {
+        "uncertain": "目前无法确认，需要进一步核实。"
+      }
+    }
+  }
+]
