@@ -515,6 +515,31 @@ a {
   overflow-wrap: anywhere;
   font-size: 11px;
 }
+.next-agent-evidence p {
+  margin: 6px 0;
+}
+.next-agent-coverage {
+  color: #067647;
+}
+.next-agent-coverage.is-partial {
+  color: #b54708;
+}
+.next-agent-facts,
+.next-agent-next {
+  margin: 4px 0 8px;
+  padding-left: 18px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.next-agent-badge {
+  border-radius: 4px;
+  background: #eef2ff;
+  padding: 0 4px;
+  font-size: 11px;
+}
+.next-agent-next [data-priority='required'] .next-agent-badge {
+  background: #fef3c7;
+}
 .next-agent-error {
   color: #b42318;
   overflow-wrap: anywhere;

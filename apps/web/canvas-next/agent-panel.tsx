@@ -1,7 +1,9 @@
 import { useSyncExternalStore } from 'react'
 import type { ChatMessage } from '../canvas/state/doc-store.js'
 import type { AgentStore } from '../canvas/agent/store.js'
+import { parseEnvelope } from '../canvas/agent/contracts.js'
 import { isActiveAgentRun, type AgentRunStatus } from '../canvas/agent/types.js'
+import { AgentEvidence } from './agent-evidence.js'
 
 const labels: Record<AgentRunStatus, string> = {
   queued: '等待执行',
@@ -70,15 +72,13 @@ export function AgentPanel({
             {run.toolCalls.map((call) => (
               <details className="next-agent-tool" key={call.id}>
                 <summary>
+                  {call.evidenceId ? `${call.evidenceId} · ` : ''}
                   {call.name} · {toolLabels[call.status]}
                 </summary>
                 <strong>输入</strong>
                 <pre>{displayData(call.arguments)}</pre>
                 {call.output !== undefined && (
-                  <>
-                    <strong>工具返回</strong>
-                    <pre>{displayData(call.output)}</pre>
-                  </>
+                  <AgentEvidence envelope={parseEnvelope(call.output)} raw={call.output} />
                 )}
                 {call.error && <p className="next-agent-error">{call.error}</p>}
               </details>

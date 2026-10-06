@@ -3,6 +3,7 @@ export type AgentRunStatus =
 
 export type AgentToolCall = {
   id: string
+  evidenceId?: string
   name: string
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'late'
   arguments: Record<string, unknown>
