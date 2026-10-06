@@ -31,10 +31,21 @@ ROUTE = AgentRoute(id="test", label="Test", provider="deepseek", model="test-mod
     baseUrl="https://mock.invalid/v1", credentialRef="not-a-real-credential")
 
 
+def finish_call(text="完成", claims=(), ident="finish"):
+    arguments = {"answer": text, "claims": list(claims)}
+    return {"id": ident, "name": "finish", "arguments": arguments,
+            "raw_arguments": json.dumps(arguments, ensure_ascii=False)}
+
+
+def claim(text, refs, scope="item"):
+    return {"text": text, "evidenceRefs": list(refs), "scope": scope}
+
+
 def answer(text="完成", calls=None, finish=None):
-    calls = calls or []
+    """A scripted model turn. A bare answer is delivered through the finish control tool."""
+    calls = calls or ([] if finish else [finish_call(text)])
     return ModelResponse(None if calls else text, calls, {"total_tokens": 7},
-        finish or ("tool_calls" if calls else "stop"), {"test": "mock"}, "mock-request")
+        finish or "tool_calls" if calls else (finish or "stop"), {"test": "mock"}, "mock-request")
 
 
 def invocation(name="read_canvas", args=None, ident="c1"):
@@ -100,17 +111,19 @@ def test_model_tools_final_receipts_and_frozen_real_metadata(tmp_path):
         try:
             created = await service.create_run(ws, doc, body(), ROUTE)
             ident = uuid.UUID(created["run"]["id"])
-            model = ScriptedModel(answer(calls=[invocation(), invocation("inspect_image", {"assetId": str(asset)}, "c2")]), answer("图片为 32×24。"))
+            model = ScriptedModel(answer(calls=[invocation(), invocation("inspect_image", {"assetId": str(asset)}, "c2")]), answer(calls=[finish_call("图片为 32×24[E2.f1]。", [claim("图片为 32×24", ["E2.f1"])])]))
             # A later edit cannot replace the Run's input snapshot.
             async with factory.begin() as db:
                 row = await db.get(Document, doc)
                 row.data, row.revision = {"objects": {}, "order": []}, 2
             result = await run_to_end(service, ws, ident, model, tmp_path)
             assert result["status"] == "completed" and model.calls == 2
-            assert result["baseRevision"] == 1 and result["toolCallCount"] == 2
+            assert result["baseRevision"] == 1 and result["toolCallCount"] == 3
             observed = result["toolCalls"][1]["output"]["result"]["data"]
             assert (observed["width"], observed["height"]) == (32, 24)
-            assert [c["evidenceId"] for c in result["toolCalls"]] == ["E1", "E2"]
+            assert [c["evidenceId"] for c in result["toolCalls"]] == ["E1", "E2", None]
+            assert [c["kind"] for c in result["toolCalls"]] == ["read", "read", "control"]
+            assert result["claims"]["verification"]["passed"] is True and result["reply"] == "图片为 32×24[E2.f1]。"
             assert [m["role"] for m in model.inputs[1]][-3:] == ["assistant", "tool", "tool"]
             first = json.loads(model.inputs[1][-2]["content"])
             assert first["status"] == "ok" and first["trust"] == "untrusted_canvas_data"
@@ -214,7 +227,8 @@ def test_lost_model_sender_never_retries_but_lost_read_tool_can_resume(tmp_path)
             assert (await service.advance(ident, "replacement", model, media_root=tmp_path))["skipped"]
             assert model.calls == 0
             ident = uuid.UUID((await service.create_run(ws, doc, body(), ROUTE))["run"]["id"])
-            model = ScriptedModel(answer(calls=[invocation()]), answer())
+            model = ScriptedModel(answer(calls=[invocation()]), answer(calls=[finish_call(
+                "画布共 1 个对象[E1.f2]", [claim("对象总数为 1", ["E1.f2"], "complete")])]))
             await service.advance(ident, "worker", model, media_root=tmp_path)
             old = await service._prepare(ident, "dead-tool-worker")
             assert old["kind"] == "tool"
@@ -222,7 +236,7 @@ def test_lost_model_sender_never_retries_but_lost_read_tool_can_resume(tmp_path)
                 (await db.get(AgentRun, ident)).lease_until = now() - timedelta(seconds=1)
             await service.recover_due()
             result = await run_to_end(service, ws, ident, model, tmp_path)
-            assert result["status"] == "completed" and result["toolCallCount"] == 1
+            assert result["status"] == "completed" and result["toolCallCount"] == 2
             assert model.calls == 2
         finally:
             await engine.dispose()
@@ -317,7 +331,8 @@ def test_unknown_tool_is_a_tool_receipt_not_a_model_claim(tmp_path):
         engine, factory, service, ws, doc, _ = await fixture()
         try:
             ident = uuid.UUID((await service.create_run(ws, doc, body(), ROUTE))["run"]["id"])
-            model = ScriptedModel(answer(calls=[invocation("write_canvas")]), answer("当前工具不支持写入"))
+            model = ScriptedModel(answer(calls=[invocation("write_canvas")]), answer(calls=[
+                finish_call("当前工具不支持写入", [claim("不支持写入", ["E1"], "unavailable")])]))
             result = await run_to_end(service, ws, ident, model, tmp_path)
             assert result["toolCalls"][0]["status"] == "failed"
             envelope = result["toolCalls"][0]["output"]

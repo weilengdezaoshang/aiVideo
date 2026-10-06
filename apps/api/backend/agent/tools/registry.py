@@ -60,6 +60,9 @@ class ToolGateway:
     def __init__(self, specs: list[ToolSpec]):
         self.specs = {spec.name: spec for spec in specs}
 
+    def read_tools(self) -> list[str]:
+        return sorted(name for name, spec in self.specs.items() if spec.kind == "read")
+
     def schemas(self) -> list[dict]:
         return [{"type": "function", "function": {"name": spec.name, "description": spec.description,
                   "parameters": spec.input.model_json_schema(by_alias=True)}}
@@ -85,9 +88,12 @@ class ToolGateway:
         meta: dict[str, Any] = dict(tool=name, ordinal=ordinal, call_id=call_id, step_key=step_key,
                                     snapshot=snapshot)
         spec = self.specs.get(name)
+        if spec is not None and spec.kind == "control":
+            return ev.error_envelope(**meta, code="TOOL_NOT_ALLOWED", message="控制工具由运行时处理，不能作为读取工具执行",
+                details=FailureDetails(allowedTools=self.read_tools()))
         if spec is None or spec.handler is None:
             return ev.error_envelope(**meta, code="UNKNOWN_TOOL", message="工具不存在或不在只读工具列表中",
-                details=FailureDetails(allowedTools=sorted(self.specs)))
+                details=FailureDetails(allowedTools=self.read_tools()))
         try:
             parsed = spec.input.model_validate(args)
         except ValidationError as error:

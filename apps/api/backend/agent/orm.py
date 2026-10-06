@@ -47,6 +47,8 @@ class AgentRun(Base):
     dispatched_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     stop_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    claims: Mapped[dict | None] = mapped_column(JSONVariant)
+    counters: Mapped[dict] = mapped_column(JSONVariant, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     __table_args__ = (
@@ -86,6 +88,9 @@ class AgentToolCall(Base):
     name: Mapped[str] = mapped_column(String(100))
     arguments: Mapped[dict] = mapped_column(JSONVariant)
     status: Mapped[str] = mapped_column(String(24), default="pending")
+    kind: Mapped[str] = mapped_column(String(16), default="read")
+    tool_version: Mapped[int | None] = mapped_column(Integer)
+    dedupe_of: Mapped[str | None] = mapped_column(String(32))
     execution_epoch: Mapped[int | None] = mapped_column(Integer)
     output: Mapped[dict | None] = mapped_column(JSONVariant)
     error: Mapped[dict | None] = mapped_column(JSONVariant)

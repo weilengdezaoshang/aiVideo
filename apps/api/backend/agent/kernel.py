@@ -71,8 +71,11 @@ class Kernel:
             "modelCalls": [{"id": str(c.id), "ordinal": c.ordinal, "status": c.status,
                 "usage": c.usage, "error": public_error(c.error), "createdAt": stamp(c.created_at),
                 "finishedAt": stamp(c.finished_at)} for c in models],
+            "claims": run.claims,
             "toolCalls": [{"id": str(c.id), "modelCallId": str(c.model_call_id),
-                "toolCallId": c.tool_call_id, "ordinal": c.ordinal, "evidenceId": ev.evidence_id(c.ordinal), "name": c.name, "arguments": c.arguments,
+                "toolCallId": c.tool_call_id, "ordinal": c.ordinal, "kind": c.kind,
+                "evidenceId": ev.evidence_id(c.ordinal) if c.kind == "read" else None,
+                "dedupeOf": c.dedupe_of, "name": c.name, "arguments": c.arguments,
                 "status": c.status, "output": c.output, "error": public_error(c.error),
                 "createdAt": stamp(c.created_at), "finishedAt": stamp(c.finished_at)} for c in tools]}
 
@@ -109,6 +112,14 @@ class Kernel:
                 AgentToolCall.status.in_(["pending", "running"]))):
             call.status, call.finished_at = "cancelled", now()
         return await self._event(db, session, run, "run.stopped")
+
+    async def _rows(self, db, run, before=None):
+        query = select(AgentToolCall).where(AgentToolCall.run_id == run.id).order_by(AgentToolCall.ordinal)
+        if before is not None:
+            query = query.where(AgentToolCall.ordinal < before)
+        return [{"ordinal": c.ordinal, "name": c.name, "arguments": c.arguments, "status": c.status,
+                 "kind": c.kind, "output": c.output, "dedupe_of": c.dedupe_of}
+                for c in await db.scalars(query)]
 
     async def _prepare(self, run_id, owner):
         from backend.agent.config import AgentRoute
@@ -291,24 +302,34 @@ class Kernel:
                     self._finish(run, status, failure)
                     await self._event(db, session, run, "run." + run.status)
                     return {"status": run.status}
-                outcome = self.loop.after_model(run, result, self.limits())
+                rows = await self._rows(db, run)
+                outcome = self.loop.after_model(run, call, result, self.limits(), rows)
+                if outcome.counters is not None:
+                    run.counters = outcome.counters
+                if outcome.claims is not None:
+                    run.claims = outcome.claims
+                for plan in outcome.plans:
+                    run.tool_call_count += 1
+                    resolved = plan.status != "pending"
+                    db.add(AgentToolCall(run_id=run.id, model_call_id=call.id,
+                        tool_call_id=plan.request["id"], ordinal=run.tool_call_count,
+                        name=plan.request["name"], arguments=plan.request["arguments"], status=plan.status,
+                        kind=plan.kind, tool_version=plan.tool_version, dedupe_of=plan.dedupe_of,
+                        output=plan.output, error=plan.error, finished_at=now() if resolved else None))
                 if outcome.kind == "end":
                     if outcome.reply is not None:
                         run.reply = outcome.reply
                     self._finish(run, outcome.status, outcome.error)
                     await self._event(db, session, run, "run." + run.status)
                     return {"status": run.status}
-                for request in outcome.calls:
-                    run.tool_call_count += 1
-                    db.add(AgentToolCall(run_id=run.id, model_call_id=call.id,
-                        tool_call_id=request["id"], ordinal=run.tool_call_count,
-                        name=request["name"], arguments=request["arguments"], status="pending"))
-                run.phase = "tools"
+                run.phase = "tools" if any(plan.status == "pending" for plan in outcome.plans) else "model"
             else:
                 call = await db.get(AgentToolCall, claim["callId"])
                 # A stale retry must not overwrite a result from a newer owner.
                 if call.execution_epoch != claim["epoch"]:
                     return {"late": True}
+                if valid and isinstance(result, dict) and result.get("kind") == "tool":
+                    result = self.loop.policy.filter_next(result, await self._rows(db, run, call.ordinal))
                 call.output, call.error, call.finished_at = result, failure, now()
                 call.status = ("failed" if failure else "completed") if valid else "late"
                 if not valid:

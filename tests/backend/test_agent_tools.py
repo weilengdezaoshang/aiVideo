@@ -109,7 +109,8 @@ def test_output_limit_and_missing_selection_are_explicit(tmp_path):
                                    project_snapshot(canvas(), []), {}, tmp_path, max_output_bytes=20))
     assert limited["code"] == "TOOL_OUTPUT_LIMIT" and limited["details"]["limit"] == {"maxBytes": 20}
     schemas = tool_schemas()
-    assert len(schemas) == 4
+    assert [item["function"]["name"] for item in schemas] == [
+        "read_canvas", "list_canvas_elements", "get_canvas_elements", "inspect_image", "finish", "read_evidence"]
     assert all(schema["function"]["parameters"]["additionalProperties"] is False for schema in schemas)
 
 
@@ -224,7 +225,9 @@ def test_error_next_steps_guide_recovery_by_code(tmp_path):
     asset = failure(execute_tool("inspect_image", {"assetId": "ghost"}, snapshot, {}, tmp_path))
     assert asset["next"][0]["arguments"] == {"kind": "image"}
     unknown = failure(execute_tool("write_canvas", {}, snapshot, {}, tmp_path))
-    assert unknown["details"]["allowedTools"] == sorted(GATEWAY.specs) and unknown["next"] == []
+    assert unknown["details"]["allowedTools"] == GATEWAY.read_tools() and unknown["next"] == []
+    control = failure(execute_tool("finish", {"answer": "x", "claims": []}, snapshot, {}, tmp_path))
+    assert control["code"] == "TOOL_NOT_ALLOWED" and "finish" not in control["details"]["allowedTools"]
     unbound = failure(execute_tool("inspect_image", {"assetId": "a0"}, snapshot, {}, tmp_path))
     assert unbound["code"] == "ASSET_UNAVAILABLE" and unbound["next"][0]["action"] == "report_blocker"
 

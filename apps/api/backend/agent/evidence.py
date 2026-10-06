@@ -54,6 +54,10 @@ FAILURES: dict[str, FailureSpec] = {
     "TOOL_OUTPUT_LIMIT": FailureSpec("limit", False),
     "TOOL_TIMEOUT": FailureSpec("internal", False),
     "TOOL_FAILED": FailureSpec("internal", False),
+    "FORMAT_ERROR": FailureSpec("invalid_arguments", True),
+    "CLAIMS_INVALID": FailureSpec("invalid_arguments", True),
+    "EVIDENCE_NOT_FOUND": FailureSpec("out_of_scope", True),
+    "REPEATED_FAILURE": FailureSpec("internal", False),
 }
 
 

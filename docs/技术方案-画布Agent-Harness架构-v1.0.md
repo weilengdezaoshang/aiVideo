@@ -273,6 +273,15 @@ ControlReceipt(kind="control", tool, callId, status="accepted" | "rejected", eff
 - H5 证据版本等于冻结版本。
 - H6 有工具调用时至少有一条 claim；未被引用的已完成步骤记一条提示，不阻断。
 
+**检验的实现细节**
+
+- `finish` 必须单独调用，参数不合法或与其他工具混用时返回 `FORMAT_ERROR` / `INVALID_TOOL_ARGUMENTS`，计入格式修复（最多 2 次）；模型直接输出纯文本同样计入，并在下一轮上下文中追加一条提醒，绝不重放上一次文本。
+- 未通过 H1–H4、H6 的 `finish` 得到 `CLAIMS_INVALID` 回执（含失败项说明，以及仍需执行的 `required` 读取建议），最多修订 2 次；第 3 次仍未通过时 Run 以 `limit_reached` / `ANSWER_UNVERIFIED` 结束，草稿保存在 `reply` 但 `claims.verification.passed=false`，且不会进入后续对话的历史。H5 失败按内部错误直接结束。
+- H1 的“两边一致”按证据编号（信封）判断：回答里的每个 `[E#]` / `[E#.f#]` 都要有一条引用同一信封的断言。
+- H4 的数字抽取会忽略“第 N”这样的序号、行内引用标记和千分位逗号，并把全角数字转成半角。
+- 去重按“工具名 + 补全默认值后的规范化参数”判断；重复调用不执行，返回 `duplicate` 信封并携带原证据中尚未执行的建议。熔断按工具计数：同一工具连续失败 2 次后，第 3 次调用被 `CIRCUIT_OPEN` 拒绝，连续失败 3 次时 Run 以 `REPEATED_FAILURE` 失败。
+- 迁移 `0010`：`agent_runs.claims` / `counters`，`agent_tool_calls.kind` / `tool_version` / `dedupe_of`；旧数据没有这些字段时按旧格式投影和回放。
+
 **升级梯度**：回填自纠 → 反思分支 → `limit_reached`（界面显示“未通过检验”）。
 
 ## 10 L7 内核与可观测
