@@ -49,6 +49,7 @@ export type AgentRun = {
   error: string | null
   errorCode?: string | null
   claims?: AgentClaimsPayload | null
+  persona?: { id: string; version: number; displayName: string } | null
   modelId: string
   baseRevision: number
   modelCalls: AgentModelCall[]

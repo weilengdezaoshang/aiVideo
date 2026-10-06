@@ -44,10 +44,11 @@ export function AgentPanel({
 }) {
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const active = state.runs.find(isActiveAgentRun)
+  const persona = [...state.runs].reverse().find((run) => run.persona)?.persona
   return (
     <div className="next-panel-body next-chat-panel next-agent-panel">
       <div className="next-agent-header">
-        <strong>画布助手</strong>
+        <strong>{persona?.displayName ?? '画布助手'}</strong>
         <span>{state.loading ? '正在读取' : state.connected ? '已连接' : '正在重连'}</span>
       </div>
       <p className="next-agent-hint">

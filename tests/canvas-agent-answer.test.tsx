@@ -171,3 +171,22 @@ test('没有检验记录的旧回答不显示徽标，控制回执显示拒绝�
     close()
   }
 })
+
+test('面板标题显示运行冻结的人格名称，旧运行没有人格时保持默认标题', async () => {
+  const named = mount(
+    run({ reply: '好', persona: { id: 'warm', version: 2, displayName: '小帧' } }),
+  )
+  try {
+    await screen.findByText('小帧')
+    assert.equal(screen.queryByText('画布助手'), null)
+  } finally {
+    named.close()
+    cleanup()
+  }
+  const legacy = mount(run({ reply: '好', persona: null }))
+  try {
+    await screen.findByText('画布助手')
+  } finally {
+    legacy.close()
+  }
+})
