@@ -31,7 +31,7 @@ class Page(Contract):
     total: int = Field(ge=0)
 
 
-FactValue = str | int | float | bool | list[int | str]
+FactValue = str | int | float | bool | list[int | float | str]
 
 
 class Fact(Contract):

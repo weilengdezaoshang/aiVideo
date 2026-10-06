@@ -195,7 +195,10 @@ function parseFactValue(value: unknown): FactValue | null {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value
   }
-  if (Array.isArray(value) && value.every((v) => isStr(v) || isInt(v))) {
+  if (
+    Array.isArray(value) &&
+    value.every((v) => isStr(v) || (typeof v === 'number' && Number.isFinite(v)))
+  ) {
     return value as (string | number)[]
   }
   return null

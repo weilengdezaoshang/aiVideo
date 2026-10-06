@@ -15,6 +15,7 @@ from pathlib import Path
 from fastapi import HTTPException
 from sqlalchemy import or_, select
 
+from backend.agent import evidence as ev
 from backend.agent.legacy_loop import LegacyLoop
 from backend.agent.orm import AgentEvent, AgentModelCall, AgentRun, AgentSession, AgentToolCall
 from backend.agent.util import encoded, error, now, public_error, stamp
@@ -71,7 +72,7 @@ class Kernel:
                 "usage": c.usage, "error": public_error(c.error), "createdAt": stamp(c.created_at),
                 "finishedAt": stamp(c.finished_at)} for c in models],
             "toolCalls": [{"id": str(c.id), "modelCallId": str(c.model_call_id),
-                "toolCallId": c.tool_call_id, "name": c.name, "arguments": c.arguments,
+                "toolCallId": c.tool_call_id, "ordinal": c.ordinal, "evidenceId": ev.evidence_id(c.ordinal), "name": c.name, "arguments": c.arguments,
                 "status": c.status, "output": c.output, "error": public_error(c.error),
                 "createdAt": stamp(c.created_at), "finishedAt": stamp(c.finished_at)} for c in tools]}
 
@@ -149,7 +150,8 @@ class Kernel:
             await self._event(db, session, run, "tool.started")
             return {"kind": "tool", "callId": call.id, "epoch": run.execution_epoch,
                 "name": call.name, "arguments": call.arguments, "snapshot": run.snapshot,
-                "assets": run.assets, "route": route}
+                "assets": run.assets, "route": route, "ordinal": call.ordinal,
+                "toolCallId": call.tool_call_id}
 
     def _owned(self, session, run, owner, claim):
         return (not session.closed_at and run.status in ACTIVE and not run.stop_requested_at
@@ -199,9 +201,10 @@ class Kernel:
     async def _invoke_tool(self, run_id, owner, tools, claim, media_root):
         # A timeout cannot kill a native/Pillow thread. Keep the phase occupied
         # until the actual invocation exits, including cancellation of this task.
-        task = asyncio.create_task(asyncio.to_thread(tools.execute_tool, claim["name"], claim["arguments"],
-            claim["snapshot"], claim["assets"], Path(media_root),
-            max_output_bytes=claim["route"].tool_output_max_bytes))
+        task = asyncio.create_task(asyncio.to_thread(tools.execute_envelope, claim["name"],
+            claim["arguments"], claim["snapshot"], claim["assets"], Path(media_root),
+            max_output_bytes=claim["route"].tool_output_max_bytes, ordinal=claim["ordinal"],
+            call_id=claim["toolCallId"]))
 
         async def heartbeat():
             while not task.done():
@@ -244,12 +247,20 @@ class Kernel:
             failure_receipt = {"usage": exc.usage, "raw_response": exc.raw_response,
                 "request_id": exc.request_id}
         except Exception as exc:
-            if claim["kind"] == "tool" and hasattr(exc, "code"):
-                failure = error(exc.code, str(exc))
+            if claim["kind"] == "tool":
+                code = exc.code if hasattr(exc, "code") else (
+                    "TOOL_TIMEOUT" if isinstance(exc, TimeoutError) else "TOOL_FAILED")
+                message = str(exc) if hasattr(exc, "code") else (
+                    "工具执行超时" if code == "TOOL_TIMEOUT" else "工具执行失败")
+                failure = error(code, message)
+                result = ev.error_envelope(tool=claim["name"], ordinal=claim["ordinal"],
+                    call_id=claim["toolCallId"], step_key=None, snapshot=claim["snapshot"],
+                    code=code, message=message)
             else:
-                failure = {"code": "MODEL_RESPONSE_UNKNOWN" if claim["kind"] == "model" else "TOOL_FAILED",
-                    "message": "模型请求结果未知" if claim["kind"] == "model" else "工具执行失败",
-                    "unknown": claim["kind"] == "model"}
+                failure = {"code": "MODEL_RESPONSE_UNKNOWN", "message": "模型请求结果未知", "unknown": True}
+        if claim["kind"] == "tool" and failure is None and isinstance(result, dict) \
+                and result.get("status") == "error":
+            failure = error(result["error"]["code"], result["error"]["message"])
         async with self.factory.begin() as db:
             session, run = await self._lock_run(db, run_id)
             valid = self._owned(session, run, owner, claim)

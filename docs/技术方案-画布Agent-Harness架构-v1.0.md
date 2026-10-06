@@ -207,6 +207,15 @@ OkEnvelope(status="ok", result) | ErrorEnvelope(status="error", error) | Duplica
 ControlReceipt(kind="control", tool, callId, status="accepted" | "rejected", effect | error)   # 不是证据，不能被引用
 ```
 
+### 事实的路径与取值规则
+
+- `path` 以结果对象为根（`data`、`page`、`coverage`、`omitted`），例如 `page.total`、`data.elements[0]`、`data.selectedObjectIds.length`；`.length` 表示列表长度。
+- `value` 的每个元素都必须是 `path` 子树中的叶子值（或长度）。网关只保留通过这条检查的事实，因此事实不可能与数据不一致。
+- `statement` 是固定模板，只含数字和枚举标签；画布文字、对象名称只会出现在 `value` 或 `data` 中。
+- 单个结果最多 20 条对象级事实（scope=item）。
+- 超过输出预算时，列表类工具按比例减少返回的对象：`list_canvas_elements` 的 `page.nextOffset` 指向下一页，`get_canvas_elements` 在 `omitted.objectIds` 中列出未返回的对象，两者都附带 `required` 的续读建议；只有单个对象都放不下时才返回 `TOOL_OUTPUT_LIMIT`。
+- `coverage.complete` 表示这一个结果已包含全部内容：非首页、分页未结束或有未返回对象时为 false。
+
 ### 各工具的证据与建议
 | 工具 | data | evidence（事实） | next（建议） |
 |---|---|---|---|

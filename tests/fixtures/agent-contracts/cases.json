@@ -275,6 +275,93 @@
     }
   },
   {
+    "name": "fact with decimal list value",
+    "model": "Envelope",
+    "valid": true,
+    "value": {
+      "kind": "tool",
+      "tool": "list_canvas_elements",
+      "toolVersion": 2,
+      "callId": "call_7",
+      "stepKey": "s1",
+      "trust": "untrusted_canvas_data",
+      "source": {
+        "documentId": "d1",
+        "revision": 7,
+        "assetIds": ["a1"]
+      },
+      "producedAt": "2026-10-06T09:00:00Z",
+      "evidenceId": "E2",
+      "status": "ok",
+      "result": {
+        "data": {
+          "elements": [
+            {
+              "id": "o1",
+              "kind": "image",
+              "name": "人物",
+              "assetId": "a1",
+              "x": 0,
+              "y": 0,
+              "width": 512,
+              "height": 512
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "id": "E2.f1",
+            "statement": "图片对象共 63 个",
+            "path": "page.total",
+            "value": 63,
+            "scope": "complete"
+          },
+          {
+            "id": "E2.f2",
+            "statement": "本页返回第 1–50 个",
+            "path": "page",
+            "value": [0, 50],
+            "scope": "partial"
+          },
+          {
+            "id": "E2.f3",
+            "statement": "对象 o1 为图片，尺寸 512×512",
+            "path": "data.elements[0]",
+            "value": [10.5, 20, "px"],
+            "scope": "item"
+          }
+        ],
+        "coverage": {
+          "complete": false,
+          "reason": "仅返回前 50 个，共 63 个",
+          "missing": null
+        },
+        "next": [
+          {
+            "action": "call_tool",
+            "tool": "list_canvas_elements",
+            "arguments": {
+              "kind": "image",
+              "offset": 50
+            },
+            "reason": "还有 13 个图片对象未列出",
+            "priority": "required"
+          }
+        ],
+        "truncated": true,
+        "omitted": {
+          "objectIds": [],
+          "fields": ["src"]
+        },
+        "page": {
+          "offset": 0,
+          "nextOffset": 50,
+          "total": 63
+        }
+      }
+    }
+  },
+  {
     "name": "envelope unknown status",
     "model": "Envelope",
     "valid": false,
@@ -1191,6 +1278,97 @@
       "principles": ["信条", "信条", "信条", "信条", "信条", "信条", "信条", "信条", "信条"],
       "expression": {
         "uncertain": "目前无法确认，需要进一步核实。"
+      }
+    }
+  },
+  {
+    "name": "fact with nested object value",
+    "model": "Envelope",
+    "valid": false,
+    "value": {
+      "kind": "tool",
+      "tool": "list_canvas_elements",
+      "toolVersion": 2,
+      "callId": "call_7",
+      "stepKey": "s1",
+      "trust": "untrusted_canvas_data",
+      "source": {
+        "documentId": "d1",
+        "revision": 7,
+        "assetIds": ["a1"]
+      },
+      "producedAt": "2026-10-06T09:00:00Z",
+      "evidenceId": "E2",
+      "status": "ok",
+      "result": {
+        "data": {
+          "elements": [
+            {
+              "id": "o1",
+              "kind": "image",
+              "name": "人物",
+              "assetId": "a1",
+              "x": 0,
+              "y": 0,
+              "width": 512,
+              "height": 512
+            }
+          ]
+        },
+        "evidence": [
+          {
+            "id": "E2.f1",
+            "statement": "图片对象共 63 个",
+            "path": "page.total",
+            "value": 63,
+            "scope": "complete"
+          },
+          {
+            "id": "E2.f2",
+            "statement": "本页返回第 1–50 个",
+            "path": "page",
+            "value": [0, 50],
+            "scope": "partial"
+          },
+          {
+            "id": "E2.f3",
+            "statement": "对象 o1 为图片，尺寸 512×512",
+            "path": "elements[0]",
+            "value": [
+              {
+                "nested": 1
+              }
+            ],
+            "scope": "item"
+          }
+        ],
+        "coverage": {
+          "complete": false,
+          "reason": "仅返回前 50 个，共 63 个",
+          "missing": null
+        },
+        "next": [
+          {
+            "action": "call_tool",
+            "tool": "list_canvas_elements",
+            "arguments": {
+              "kind": "image",
+              "offset": 50
+            },
+            "reason": "还有 13 个图片对象未列出",
+            "priority": "required"
+          }
+        ],
+        "truncated": true,
+        "omitted": {
+          "objectIds": [],
+          "fields": ["src"]
+        },
+        "page": {
+          "offset": 0,
+          "nextOffset": 50,
+          "total": 63
+        }
       }
     }
   }

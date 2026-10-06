@@ -108,10 +108,13 @@ def test_model_tools_final_receipts_and_frozen_real_metadata(tmp_path):
             result = await run_to_end(service, ws, ident, model, tmp_path)
             assert result["status"] == "completed" and model.calls == 2
             assert result["baseRevision"] == 1 and result["toolCallCount"] == 2
-            observed = result["toolCalls"][1]["output"]
+            observed = result["toolCalls"][1]["output"]["result"]["data"]
             assert (observed["width"], observed["height"]) == (32, 24)
+            assert [c["evidenceId"] for c in result["toolCalls"]] == ["E1", "E2"]
             assert [m["role"] for m in model.inputs[1]][-3:] == ["assistant", "tool", "tool"]
-            assert json.loads(model.inputs[1][-2]["content"])["revision"] == 1
+            first = json.loads(model.inputs[1][-2]["content"])
+            assert first["status"] == "ok" and first["trust"] == "untrusted_canvas_data"
+            assert first["source"]["revision"] == 1 and first["result"]["data"]["revision"] == 1
             async with factory() as db:
                 run = await db.get(AgentRun, ident)
                 encoded = json.dumps(run.snapshot)
@@ -317,7 +320,10 @@ def test_unknown_tool_is_a_tool_receipt_not_a_model_claim(tmp_path):
             model = ScriptedModel(answer(calls=[invocation("write_canvas")]), answer("当前工具不支持写入"))
             result = await run_to_end(service, ws, ident, model, tmp_path)
             assert result["toolCalls"][0]["status"] == "failed"
-            assert result["toolCalls"][0]["output"] is None
+            envelope = result["toolCalls"][0]["output"]
+            assert envelope["status"] == "error" and envelope["error"]["code"] == "UNKNOWN_TOOL"
+            assert envelope["error"]["retryable"] is False
+            assert "read_canvas" in envelope["error"]["details"]["allowedTools"]
             assert json.loads(model.inputs[-1][-1]["content"])["error"]["code"] == "UNKNOWN_TOOL"
             async with factory() as db:
                 assert (await db.get(Document, doc)).revision == 1
@@ -335,7 +341,7 @@ def test_stopping_native_tool_waits_for_real_thread_and_never_continues(tmp_path
             tool_schemas = staticmethod(tools.tool_schemas)
 
             @staticmethod
-            def execute_tool(*args, **kwargs):
+            def execute_envelope(*args, **kwargs):
                 started.set()
                 assert release.wait(5)
                 return {"measured": True}
@@ -451,7 +457,7 @@ def test_tool_timeout_keeps_native_thread_and_heartbeat_until_actual_exit(tmp_pa
             tool_schemas = staticmethod(tools.tool_schemas)
 
             @staticmethod
-            def execute_tool(*args, **kwargs):
+            def execute_envelope(*args, **kwargs):
                 started.set()
                 assert release.wait(5)
                 return {"done": True}
