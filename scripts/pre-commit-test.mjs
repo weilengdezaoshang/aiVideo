@@ -5,6 +5,7 @@
 // 不做 ACMR 过滤(删除与新旧路径都参与匹配),正确处理空格与中文文件名。
 
 import { spawnSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -66,11 +67,13 @@ function pythonExe() {
  * 每个套件的执行命令。
  * @param {string} name
  * @param {string[]} stagedFiles
+ * @param {string} cwd 暂存文件所属的工作区根目录
  * @returns {{ cmd: string, args: string[] }[]}
  */
-function suiteCommands(name, stagedFiles) {
+function suiteCommands(name, stagedFiles, cwd) {
   if (name === 'backend') {
-    const pyFiles = stagedFiles.filter((f) => f.endsWith('.py'))
+    // 删除路径仍参与套件选择，但 Ruff 只能检查工作区中存在的源文件。
+    const pyFiles = stagedFiles.filter((f) => f.endsWith('.py') && existsSync(join(cwd, f)))
     const commands = []
     if (pyFiles.length > 0) {
       commands.push({
@@ -92,25 +95,38 @@ function suiteCommands(name, stagedFiles) {
  * @returns {number} 退出码
  */
 function main(argv) {
+  const cwd = process.cwd()
   if (argv[0] === '--print') {
-    const files = readStagedFiles(process.cwd())
+    const files = readStagedFiles(cwd)
     for (const name of pickSuites(files)) {
-      for (const { cmd, args } of suiteCommands(name, files)) {
+      for (const { cmd, args } of suiteCommands(name, files, cwd)) {
         console.log([cmd, ...args].join(' '))
       }
     }
     return 0
   }
-  const files = readStagedFiles(process.cwd())
+  const files = readStagedFiles(cwd)
   const suites = pickSuites(files)
+  // Git hooks export repository-local variables. Tests that create temporary
+  // repositories must not inherit the caller's index, worktree or Git directory.
+  const testEnvironment = { ...process.env }
+  for (const key of Object.keys(testEnvironment)) {
+    if (key.startsWith('GIT_')) {
+      delete testEnvironment[key]
+    }
+  }
   if (suites.length === 0) {
     console.log('pre-commit:暂存变更无需运行测试(纯文档或无匹配路径)')
     return 0
   }
   for (const name of suites) {
-    for (const { cmd, args } of suiteCommands(name, files)) {
+    for (const { cmd, args } of suiteCommands(name, files, cwd)) {
       console.log(`pre-commit:[${name}] ${[cmd, ...args].join(' ')}`)
-      const result = spawnSync(cmd, args, { cwd: ROOT, stdio: 'inherit' })
+      const result = spawnSync(cmd, args, {
+        cwd: ROOT,
+        stdio: 'inherit',
+        env: testEnvironment,
+      })
       if (result.status !== 0) {
         console.error(`pre-commit:套件 ${name} 失败(退出码 ${result.status ?? '信号中断'})`)
         return 1

@@ -143,6 +143,50 @@ test('readStagedFiles:NUL 分隔读取,覆盖删除与中文空格文件名', ()
   }
 })
 
+test('pre-commit --print:删除 Python 文件跳过 Ruff 路径但仍选中后端测试', () => {
+  const repo = mkdtempSync(join(tmpdir(), 'aivideo-hooks-'))
+  try {
+    const git = (...args: string[]) =>
+      spawnSync('git', args, { cwd: repo, encoding: 'utf8' }).status
+    assert.equal(git('init', '-q'), 0)
+    assert.equal(git('config', 'user.email', 'test@example.com'), 0)
+    assert.equal(git('config', 'user.name', 'test'), 0)
+    const backend = join(repo, 'apps', 'api', 'backend')
+    mkdirSync(backend, { recursive: true })
+    writeFileSync(join(backend, 'removed.py'), 'x = 1\n')
+    assert.equal(git('add', '-A'), 0)
+    assert.equal(git('commit', '-qm', 'feat(server): 初始提交.'), 0)
+    rmSync(join(backend, 'removed.py'))
+    assert.equal(git('add', '-A'), 0)
+
+    const printCommands = () => {
+      const result = spawnSync(
+        process.execPath,
+        [join(ROOT, 'scripts', 'pre-commit-test.mjs'), '--print'],
+        {
+          cwd: repo,
+          encoding: 'utf8',
+        },
+      )
+      assert.equal(result.status, 0, result.stderr)
+      return result.stdout
+    }
+    const deletionOnly = printCommands()
+    assert.match(deletionOnly, /-m pytest -q -x tests\/backend/)
+    assert.doesNotMatch(deletionOnly, /ruff|removed\.py/)
+
+    // 只存在于临时工作区的新增文件，确保路径检查使用暂存仓库而非脚本目录。
+    writeFileSync(join(backend, 'new-hook-regression.py'), 'x = 2\n')
+    assert.equal(git('add', '-A'), 0)
+    const mixed = printCommands()
+    assert.match(mixed, /-m ruff check --no-cache apps\/api\/backend\/new-hook-regression\.py/)
+    assert.doesNotMatch(mixed, /removed\.py/)
+    assert.match(mixed, /-m pytest -q -x tests\/backend/)
+  } finally {
+    rmSync(repo, { recursive: true, force: true })
+  }
+})
+
 test('集成:临时仓库中 commit-msg hook 阻断不合规提交并放行合规提交', () => {
   const repo = mkdtempSync(join(tmpdir(), 'aivideo-hooks-'))
   try {
