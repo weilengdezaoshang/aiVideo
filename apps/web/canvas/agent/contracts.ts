@@ -119,6 +119,45 @@ export type AgentPersona = {
   expression: Partial<Record<AgentPersonaExpressionKey, string>>
 }
 
+// Reserved evidence kinds of the generation loop (next round). Schema only:
+// nothing produces them this round, and ApprovalEvidence is Runtime-written only.
+export type AgentUsageRef = { documentId: string; objectId: string }
+export type AgentArtifactEvidence = {
+  kind: 'artifact'
+  artifactId: string
+  sha256: string
+  sourceChain: string[]
+  usageRef: AgentUsageRef
+}
+export type AgentCheckEvidence = {
+  kind: 'check'
+  constraintId: string
+  method: string
+  result: 'pass' | 'fail' | 'inconclusive'
+  observed: JsonRecord
+  crops: string[]
+}
+export type AgentApprovalEvidence = {
+  kind: 'approval'
+  artifactId: string
+  recipe: string
+  quote: Record<string, number>
+  approvedVersion: number
+}
+export type AgentValidationIssue = {
+  check: string
+  code: string
+  detail: string
+  ref: string | null
+}
+export type AgentValidationCheck = { id: string; passed: boolean; issues: AgentValidationIssue[] }
+export type AgentValidationReport = {
+  kind: 'validation'
+  recipe: string
+  passed: boolean
+  checks: AgentValidationCheck[]
+}
+
 const MAX_NEXT = 5
 const isRecord = (value: unknown): value is JsonRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -609,6 +648,135 @@ export function parsePersona(value: unknown): AgentPersona | null {
   }
 }
 
+function parseUsageRef(value: unknown): AgentUsageRef | null {
+  if (!isRecord(value) || !exactKeys(value, ['documentId', 'objectId'])) {
+    return null
+  }
+  return isStr(value.documentId) && isStr(value.objectId)
+    ? { documentId: value.documentId, objectId: value.objectId }
+    : null
+}
+
+const intMap = (value: unknown): value is Record<string, number> =>
+  isRecord(value) && Object.values(value).every(isInt)
+
+export function parseArtifactEvidence(value: unknown): AgentArtifactEvidence | null {
+  if (
+    !isRecord(value) ||
+    !exactKeys(value, ['kind', 'artifactId', 'sha256', 'sourceChain', 'usageRef'])
+  ) {
+    return null
+  }
+  const usageRef = parseUsageRef(value.usageRef)
+  if (value.kind !== 'artifact' || !isStr(value.artifactId)) {
+    return null
+  }
+  if (!isStr(value.sha256) || !/^[0-9a-f]{64}$/.test(value.sha256) || !usageRef) {
+    return null
+  }
+  if (!strList(value.sourceChain)) {
+    return null
+  }
+  return {
+    kind: 'artifact',
+    artifactId: value.artifactId,
+    sha256: value.sha256,
+    sourceChain: value.sourceChain,
+    usageRef,
+  }
+}
+
+export function parseCheckEvidence(value: unknown): AgentCheckEvidence | null {
+  if (
+    !isRecord(value) ||
+    !exactKeys(value, ['kind', 'constraintId', 'method', 'result', 'observed', 'crops'])
+  ) {
+    return null
+  }
+  if (value.kind !== 'check' || !isStr(value.constraintId) || !isStr(value.method)) {
+    return null
+  }
+  if (!oneOf(['pass', 'fail', 'inconclusive'] as const, value.result)) {
+    return null
+  }
+  if (!isRecord(value.observed) || !strList(value.crops)) {
+    return null
+  }
+  return {
+    kind: 'check',
+    constraintId: value.constraintId,
+    method: value.method,
+    result: value.result,
+    observed: value.observed,
+    crops: value.crops,
+  }
+}
+
+export function parseApprovalEvidence(value: unknown): AgentApprovalEvidence | null {
+  if (
+    !isRecord(value) ||
+    !exactKeys(value, ['kind', 'artifactId', 'recipe', 'quote', 'approvedVersion'])
+  ) {
+    return null
+  }
+  if (value.kind !== 'approval' || !isStr(value.artifactId) || !isStr(value.recipe)) {
+    return null
+  }
+  if (!intMap(value.quote)) {
+    return null
+  }
+  if (!isInt(value.approvedVersion) || value.approvedVersion < 1) {
+    return null
+  }
+  return {
+    kind: 'approval',
+    artifactId: value.artifactId,
+    recipe: value.recipe,
+    quote: value.quote,
+    approvedVersion: value.approvedVersion,
+  }
+}
+
+function parseValidationIssue(value: unknown): AgentValidationIssue | null {
+  if (!isRecord(value) || !exactKeys(value, ['check', 'code', 'detail', 'ref'])) {
+    return null
+  }
+  if (!isStr(value.check) || !isStr(value.code) || !isStr(value.detail)) {
+    return null
+  }
+  if (value.ref !== null && !isStr(value.ref)) {
+    return null
+  }
+  return { check: value.check, code: value.code, detail: value.detail, ref: value.ref }
+}
+
+function parseValidationCheck(value: unknown): AgentValidationCheck | null {
+  if (!isRecord(value) || !exactKeys(value, ['id', 'passed', 'issues'])) {
+    return null
+  }
+  const issues = list(value.issues, parseValidationIssue)
+  if (!isStr(value.id) || typeof value.passed !== 'boolean' || !issues) {
+    return null
+  }
+  return { id: value.id, passed: value.passed, issues }
+}
+
+export function parseValidationReport(value: unknown): AgentValidationReport | null {
+  if (!isRecord(value) || !exactKeys(value, ['kind', 'recipe', 'passed', 'checks'])) {
+    return null
+  }
+  const checks = list(value.checks, parseValidationCheck)
+  if (
+    value.kind !== 'validation' ||
+    !isStr(value.recipe) ||
+    typeof value.passed !== 'boolean' ||
+    !checks
+  ) {
+    return null
+  }
+  return { kind: 'validation', recipe: value.recipe, passed: value.passed, checks }
+}
+
 export const CONTRACT_PARSERS = {
   Envelope: parseEnvelope,
   ControlReceipt: parseControlReceipt,
@@ -616,4 +784,8 @@ export const CONTRACT_PARSERS = {
   Finish: parseFinish,
   Reflection: parseReflection,
   PersonaProfile: parsePersona,
+  ArtifactEvidence: parseArtifactEvidence,
+  CheckEvidence: parseCheckEvidence,
+  ApprovalEvidence: parseApprovalEvidence,
+  ValidationReport: parseValidationReport,
 } as const

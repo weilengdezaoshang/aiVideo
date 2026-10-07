@@ -184,6 +184,8 @@ class _Turn:
             return
         if spec.kind == "read":
             return self.read(request)
+        if spec.kind == "effect":
+            return self.effect(request, spec)
         if name == "read_evidence":
             return self.read_evidence(request)
         if not alone:
@@ -236,6 +238,19 @@ class _Turn:
             if row.get("kind") == "read" and isinstance(output, dict) and output.get("evidenceId") == wanted:
                 return self.add(control_plan(request, _receipt(request, accepted=True, effect={"envelope": output})))
         self.reject(request, "EVIDENCE_NOT_FOUND", f"本次运行中不存在证据 {wanted}")
+
+    def effect(self, request: dict, spec) -> None:
+        """A registered effect tool never executes here: the Run parks for user approval."""
+        admission = POLICY.admit_effect(request["name"], request["arguments"])
+        if not isinstance(admission, pol.WaitApproval):  # pragma: no cover - the branch is total
+            return self.reject(request, "POLICY_REFUSED", "该操作当前不允许执行")
+        self.add(ToolPlan(request, "effect", "waiting_approval", None, None, None, spec.version))
+        self.out.run["waiting"] = {"tool": request["name"], "arguments": request["arguments"], "stage": self.stage}
+        self.out.run["stage"] = "waiting"
+        self.add(control_plan(request, _receipt(request, accepted=True,
+            effect={"waiting": "approval", "tool": request["name"]})))
+        self.out.events.append("approval.requested")
+        self.finish("waiting_approval", None)
 
     def index(self) -> dict[str, verifier.EvidenceEntry]:
         return verifier.build_index([row for row in self.work if row.get("kind") == "read"], POLICY.key)
@@ -352,7 +367,7 @@ class _Turn:
         except ValidationError as exc:
             return self.format_error(request, "INVALID_TOOL_ARGUMENTS", "finish 参数无效", ev.failure_from_validation(exc))
         index = self.index()
-        report = verifier.verify_finish(finish, index, self.s.revision)
+        report = verifier.suite_for("answer").run(finish, index, self.s.revision)
         payload = {"answer": finish.answer, "claims": [claim.model_dump(mode="json") for claim in finish.claims],
                    "verification": report.public()}
         self.out.run["claims"] = payload

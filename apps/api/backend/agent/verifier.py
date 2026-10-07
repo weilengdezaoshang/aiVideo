@@ -63,6 +63,34 @@ class Report:
         return {"passed": self.passed, "checks": self.checks()}
 
 
+@dataclass(frozen=True)
+class CheckSuite:
+    """The hard checks of one recipe. ``run`` is pure over the stored evidence."""
+    recipe: str
+    run: Callable[[Finish, dict[str, EvidenceEntry], int], Report]
+
+
+_SUITES: dict[str, CheckSuite] = {}
+
+
+def register(suite: CheckSuite) -> CheckSuite:
+    if suite.recipe in _SUITES:
+        raise ValueError(f"检验套件 {suite.recipe} 已注册")
+    _SUITES[suite.recipe] = suite
+    return suite
+
+
+def suite_for(recipe: str) -> CheckSuite:
+    suite = _SUITES.get(recipe)
+    if suite is None:
+        raise ValueError(f"没有注册配方 {recipe} 的检验套件")
+    return suite
+
+
+def registered_suites() -> tuple[str, ...]:
+    return tuple(_SUITES)
+
+
 def numbers_in(text: str) -> list[float]:
     """Quantities in a claim. Inline refs, ordinals (第 N) and thousands commas are not quantities."""
     cleaned = ANY_REF.sub(" ", text.translate(_FULLWIDTH))
@@ -199,3 +227,7 @@ def required_next_actions(index: dict[str, EvidenceEntry], finish: Finish) -> li
                     seen.add(marker)
                     actions.append(item)
     return actions
+
+
+# The only suite of this round: answers over read-tool evidence (H1-H6).
+register(CheckSuite("answer", verify_finish))

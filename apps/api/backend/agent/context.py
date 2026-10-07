@@ -67,7 +67,10 @@ def build_context(*, persona: PersonaProfile, persona_scope: str, role: Role, sc
                   episodic: list[dict], memory_sources: list[str], intent: str, groups: list[Group],
                   budget_bytes: int, toolset_version: str, working: list[dict] = (),
                   reflective: list[dict] = (), tools: list[dict] = (), stage: str | None = None,
-                  step_id: str | None = None) -> BuiltContext:
+                  step_id: str | None = None, attachments: list[dict] = ()) -> BuiltContext:
+    """``attachments`` is the reserved reflection attachment layer (validation reports of the
+    generation loop). Empty this round; like ``working`` it is never trimmed — dropping an
+    approval or validation protection silently is never acceptable."""
     system = {"role": "system", "content": "\n\n".join([
         f"[规则 v{RULES_VERSION}]\n{RULES}", personas.render(persona, persona_scope),
         f"[角色 {role.id}@v{role.version}]\n{role.text}", "当前上下文：" + encoded(scene)])}
@@ -78,9 +81,9 @@ def build_context(*, persona: PersonaProfile, persona_scope: str, role: Role, sc
     def assemble() -> list[dict]:
         # Working state comes last so the newest instruction is the current state of the Run.
         return [system, *memory, user, *(message for group in observed for message in group.messages),
-                *lessons, *working]
+                *lessons, *working, *attachments]
 
-    if size_of([system, user, *working]) > budget_bytes:
+    if size_of([system, user, *working, *attachments]) > budget_bytes:
         raise ContextLimit()
     while size_of(assemble()) > budget_bytes and memory:
         memory = memory[2:]
@@ -105,6 +108,7 @@ def build_context(*, persona: PersonaProfile, persona_scope: str, role: Role, sc
             {"name": "system", "bytes": size_of([system]), "trimmed": False},
             {"name": "intent", "bytes": size_of([user]), "trimmed": False},
             {"name": "working", "bytes": size_of(list(working)) if working else 0, "trimmed": False},
+            {"name": "attachment", "bytes": size_of(list(attachments)) if attachments else 0, "trimmed": False},
             {"name": "reflection", "bytes": size_of(lessons) if lessons else 0, "trimmed": len(lessons) < len(reflective)},
             {"name": "episodic", "bytes": size_of(memory) if memory else 0, "trimmed": len(memory) < len(episodic)},
             {"name": "observation", "bytes": size_of([m for g in observed for m in g.messages]) if observed else 0,

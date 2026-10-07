@@ -17,6 +17,7 @@ const labels: Record<AgentRunStatus, string> = {
   needs_attention: '需要处理',
   limit_reached: '已达运行上限',
   waiting_input: '等待你的回答',
+  waiting_approval: '等待审批',
 }
 const stageLabels: Record<string, string> = {
   plan: '规划中',
@@ -33,6 +34,7 @@ const toolLabels = {
   failed: '失败',
   cancelled: '已取消',
   late: '迟到结果已归档',
+  waiting_approval: '等待用户审批',
 }
 function displayData(value: unknown): string {
   const text = JSON.stringify(value, null, 2) ?? '无返回内容'
@@ -122,9 +124,17 @@ export function AgentPanel({
             <AgentReflections run={run} />
             {run.waiting && (
               <div className="next-agent-waiting" role="status">
-                <strong>需要你补充信息</strong>
-                <p>{run.waiting.question}</p>
-                <p className="next-agent-hint">直接发送下一条消息即可回答这个问题。</p>
+                <strong>{'question' in run.waiting ? '需要你补充信息' : '操作等待你的审批'}</strong>
+                <p>
+                  {'question' in run.waiting
+                    ? run.waiting.question
+                    : `${run.waiting.tool} ${JSON.stringify(run.waiting.arguments)}`}
+                </p>
+                <p className="next-agent-hint">
+                  {'question' in run.waiting
+                    ? '直接发送下一条消息即可回答这个问题。'
+                    : '该操作尚未执行，审批入口将在生成能力开放后提供。'}
+                </p>
               </div>
             )}
             {run.error && <p className="next-agent-error">{run.error}</p>}

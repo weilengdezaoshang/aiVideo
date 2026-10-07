@@ -43,7 +43,15 @@ class Fail:
     message: str
 
 
-Admission = Run | Duplicate | Reject | Fail
+@dataclass(frozen=True)
+class WaitApproval:
+    """An effect tool: never executed on admission. The Run parks until a user approves."""
+
+    tool: str
+    key: str
+
+
+Admission = Run | Duplicate | Reject | Fail | WaitApproval
 
 
 class Policy:
@@ -85,6 +93,11 @@ class Policy:
         if streak >= CIRCUIT_AFTER:
             return Reject("CIRCUIT_OPEN", f"工具 {name} 已连续失败 {streak} 次，请换一种做法或说明无法完成")
         return Run()
+
+    def admit_effect(self, name: str, arguments: dict) -> Admission:
+        """Decide an effect call. No effect tool ships this round; when one is registered
+        the Run always parks for an explicit user approval instead of executing."""
+        return WaitApproval(name, self.key(name, arguments))
 
     def _done(self, item: dict, executed: set[str]) -> bool:
         return item["action"] == "call_tool" and item["arguments"] is not None \

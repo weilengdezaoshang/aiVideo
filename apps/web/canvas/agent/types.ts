@@ -9,6 +9,7 @@ export type AgentRunStatus =
   | 'needs_attention'
   | 'limit_reached'
   | 'waiting_input'
+  | 'waiting_approval'
 
 export type AgentClaimsPayload = {
   answer: string
@@ -34,7 +35,7 @@ export type AgentToolCall = {
   dedupeOf?: string | null
   stepKey?: string | null
   name: string
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'late'
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'late' | 'waiting_approval'
   arguments: Record<string, unknown>
   output?: unknown
   error?: string | null
@@ -57,7 +58,10 @@ export type AgentStep = {
   retries: number
 }
 export type AgentRunPlan = { goal: string; version: number; current: string | null }
-export type AgentWaiting = { question: string; stage: string }
+/** What a parked Run waits for: a user answer, or approval of one effect tool call. */
+export type AgentWaiting =
+  | { question: string; stage: string }
+  | { tool: string; arguments: Record<string, unknown>; stage: string }
 export type AgentReflectionSource = 'blocker' | 'hard_check' | 'model'
 export type AgentReflectionRecord = {
   id: string

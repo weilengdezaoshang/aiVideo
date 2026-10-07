@@ -1371,5 +1371,133 @@
         }
       }
     }
+  },
+  {
+    "name": "artifact evidence",
+    "model": "ArtifactEvidence",
+    "valid": true,
+    "value": {
+      "kind": "artifact",
+      "artifactId": "art_9",
+      "sha256": "f16d05ec6b29248d2c61adb1e9263f78e4f7bace1b955014a2d17872cfe4064d",
+      "sourceChain": ["o3", "a8"],
+      "usageRef": { "documentId": "d1", "objectId": "o9" }
+    }
+  },
+  {
+    "name": "artifact bad digest",
+    "model": "ArtifactEvidence",
+    "valid": false,
+    "value": {
+      "kind": "artifact",
+      "artifactId": "art_9",
+      "sha256": "not-a-digest",
+      "sourceChain": [],
+      "usageRef": { "documentId": "d1", "objectId": "o9" }
+    }
+  },
+  {
+    "name": "check evidence",
+    "model": "CheckEvidence",
+    "valid": true,
+    "value": {
+      "kind": "check",
+      "constraintId": "mask_coverage",
+      "method": "pixel_compare",
+      "result": "pass",
+      "observed": { "ratio": 0.98 },
+      "crops": ["a12"]
+    }
+  },
+  {
+    "name": "check result invalid",
+    "model": "CheckEvidence",
+    "valid": false,
+    "value": {
+      "kind": "check",
+      "constraintId": "mask_coverage",
+      "method": "pixel_compare",
+      "result": "skipped",
+      "observed": {},
+      "crops": []
+    }
+  },
+  {
+    "name": "approval evidence",
+    "model": "ApprovalEvidence",
+    "valid": true,
+    "value": {
+      "kind": "approval",
+      "artifactId": "art_9",
+      "recipe": "preserve_subject_replace_background",
+      "quote": { "credits": 4 },
+      "approvedVersion": 2
+    }
+  },
+  {
+    "name": "approval zero version",
+    "model": "ApprovalEvidence",
+    "valid": false,
+    "value": {
+      "kind": "approval",
+      "artifactId": "art_9",
+      "recipe": "preserve_subject_replace_background",
+      "quote": { "credits": 4 },
+      "approvedVersion": 0
+    }
+  },
+  {
+    "name": "approval forged by model",
+    "model": "ApprovalEvidence",
+    "valid": false,
+    "value": {
+      "kind": "approval",
+      "artifactId": "art_9",
+      "recipe": "preserve_subject_replace_background",
+      "quote": { "credits": "four" },
+      "approvedVersion": 1
+    }
+  },
+  {
+    "name": "validation report",
+    "model": "ValidationReport",
+    "valid": true,
+    "value": {
+      "kind": "validation",
+      "recipe": "preserve_subject_replace_background",
+      "passed": false,
+      "checks": [
+        { "id": "subject_preserved", "passed": true, "issues": [] },
+        {
+          "id": "style_matches",
+          "passed": false,
+          "issues": [
+            {
+              "check": "style_matches",
+              "code": "STYLE_MISSING",
+              "detail": "未检出田园风格",
+              "ref": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "validation issue without code",
+    "model": "ValidationReport",
+    "valid": false,
+    "value": {
+      "kind": "validation",
+      "recipe": "preserve_subject_replace_background",
+      "passed": true,
+      "checks": [
+        {
+          "id": "subject_preserved",
+          "passed": false,
+          "issues": [{ "check": "subject_preserved", "detail": "主体像素不一致", "ref": "E2.f1" }]
+        }
+      ]
+    }
   }
 ]

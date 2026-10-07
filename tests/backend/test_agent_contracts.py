@@ -24,9 +24,21 @@ def test_fixture_case(case):
 
 
 def test_fixtures_cover_every_contract_family_with_positive_and_negative_cases():
-    for model in ("Envelope", "ControlReceipt", "Plan", "Finish", "Reflection", "PersonaProfile"):
+    for model in ("Envelope", "ControlReceipt", "Plan", "Finish", "Reflection", "PersonaProfile",
+                  "ArtifactEvidence", "CheckEvidence", "ApprovalEvidence", "ValidationReport"):
         verdicts = {case["valid"] for case in FIXTURES if case["model"] == model}
         assert verdicts == {True, False}, model
     statuses = {case["value"].get("status") for case in FIXTURES
                 if case["model"] == "Envelope" and case["valid"]}
     assert statuses == {"ok", "error", "duplicate"}
+
+
+def test_reserved_evidence_kinds_have_no_tool_schema_surface():
+    """Reserved generation contracts are schema-only: no tool exposes them this round."""
+    from backend.agent.tools import GATEWAY
+
+    surface = json.dumps(GATEWAY.schemas(), ensure_ascii=False)
+    for reserved in ("ArtifactEvidence", "ApprovalEvidence", "CheckEvidence", "ValidationReport",
+                     "approval", "preserve_subject"):
+        assert reserved not in surface
+    assert not [name for name, spec in GATEWAY.specs.items() if spec.kind == "effect"]

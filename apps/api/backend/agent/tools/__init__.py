@@ -5,6 +5,10 @@ from backend.agent.tools.errors import ToolError
 from backend.agent.tools.registry import ToolGateway
 
 GATEWAY = ToolGateway([*READ_TOOLS, *CONTROL_TOOLS])
+# Generation effect tools are reserved for a later round: none may ship in the
+# production registry (an effect call would park the Run awaiting approval).
+assert not [spec.name for spec in GATEWAY.specs.values() if spec.kind == "effect"], \
+    "生产工具注册表不得包含 effect 工具"
 tool_schemas = GATEWAY.schemas
 execute_envelope = GATEWAY.execute
 

@@ -121,3 +121,24 @@ def test_a_run_that_asked_the_user_is_remembered_as_a_pending_question():
                             status="waiting_input", waiting={"question": "你指的是哪一张[E1]？"})
     messages, sources = memory.episodic([asked], 7)
     assert sources == ["r9"] and messages[1]["content"] == memory.QUESTION_PREFIX + "你指的是哪一张？"
+
+
+def test_attachment_layer_is_sent_and_manifested_but_never_trimmed():
+    attachment = {"role": "user", "content": json.dumps({"kind": "validation", "recipe": "r", "passed": True})}
+    tight = build(100000, range(2), [turn(1)], intent="你好" + "好" * 300)
+    without = size_of(tight.messages)
+    built = build_context(persona=DEFAULT_PERSONA, persona_scope="full", role=ANALYST, scene={"revision": 1},
+        episodic=[m for index in range(2) for m in pair(index)], memory_sources=["run0", "run1"],
+        intent="你好", groups=[turn(1)], budget_bytes=without + size_of([attachment]) - 1,
+        toolset_version="t@1", attachments=[attachment])
+    assert built.messages[-1] is attachment
+    layer = {item["name"]: item for item in built.manifest["layers"]}
+    assert layer["attachment"]["trimmed"] is False and layer["attachment"]["bytes"] > 0
+    # An attachment that cannot fit with the required layers stops the Run instead of being dropped.
+    fits = build_context(persona=DEFAULT_PERSONA, persona_scope="full", role=ANALYST,
+        scene={"revision": 1}, episodic=[], memory_sources=[], intent="你好", groups=[],
+        budget_bytes=100000, toolset_version="t@1")
+    with pytest.raises(ContextLimit):
+        build_context(persona=DEFAULT_PERSONA, persona_scope="full", role=ANALYST,
+            scene={"revision": 1}, episodic=[], memory_sources=[], intent="你好", groups=[],
+            budget_bytes=size_of(fits.messages), toolset_version="t@1", attachments=[attachment])
