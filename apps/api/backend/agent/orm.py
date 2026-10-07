@@ -49,6 +49,9 @@ class AgentRun(Base):
     stop_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     claims: Mapped[dict | None] = mapped_column(JSONVariant)
     persona: Mapped[dict | None] = mapped_column(JSONVariant)
+    stage: Mapped[str] = mapped_column(String(16), default="plan")
+    plan: Mapped[dict | None] = mapped_column(JSONVariant)
+    waiting: Mapped[dict | None] = mapped_column(JSONVariant)
     counters: Mapped[dict] = mapped_column(JSONVariant, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -61,6 +64,42 @@ class AgentRun(Base):
     )
 
 
+class AgentStep(Base):
+    __tablename__ = "agent_steps"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    run_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("agent_runs.id"), index=True)
+    plan_version: Mapped[int] = mapped_column(Integer)
+    key: Mapped[str] = mapped_column(String(32))
+    ordinal: Mapped[int] = mapped_column(Integer)
+    title: Mapped[str] = mapped_column(String(80))
+    intent: Mapped[str] = mapped_column(Text)
+    allowed_tools: Mapped[list] = mapped_column(JSONVariant, default=list)
+    depends_on: Mapped[list] = mapped_column(JSONVariant, default=list)
+    done_when: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    summary: Mapped[str | None] = mapped_column(Text)
+    evidence_refs: Mapped[list] = mapped_column(JSONVariant, default=list)
+    retries: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (Index("uq_agent_step_key", "run_id", "plan_version", "key", unique=True),)
+
+
+class AgentReflection(Base):
+    __tablename__ = "agent_reflections"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    run_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("agent_runs.id"), index=True)
+    session_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("agent_sessions.id"), index=True)
+    model_call_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("agent_model_calls.id"))
+    round: Mapped[int] = mapped_column(Integer)
+    source: Mapped[str] = mapped_column(String(16))
+    hard_checks: Mapped[dict | None] = mapped_column(JSONVariant)
+    verdict: Mapped[str] = mapped_column(String(16))
+    issues: Mapped[list] = mapped_column(JSONVariant, default=list)
+    question: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class AgentModelCall(Base):
     __tablename__ = "agent_model_calls"
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -70,6 +109,8 @@ class AgentModelCall(Base):
     execution_epoch: Mapped[int] = mapped_column(Integer)
     messages: Mapped[list] = mapped_column(JSONVariant)
     manifest: Mapped[dict | None] = mapped_column(JSONVariant)
+    stage: Mapped[str | None] = mapped_column(String(16))
+    step_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("agent_steps.id"))
     response: Mapped[dict | None] = mapped_column(JSONVariant)
     raw_response: Mapped[dict | None] = mapped_column(JSONVariant)
     usage: Mapped[dict] = mapped_column(JSONVariant, default=dict)
@@ -93,6 +134,7 @@ class AgentToolCall(Base):
     kind: Mapped[str] = mapped_column(String(16), default="read")
     tool_version: Mapped[int | None] = mapped_column(Integer)
     dedupe_of: Mapped[str | None] = mapped_column(String(32))
+    step_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("agent_steps.id"))
     execution_epoch: Mapped[int | None] = mapped_column(Integer)
     output: Mapped[dict | None] = mapped_column(JSONVariant)
     error: Mapped[dict | None] = mapped_column(JSONVariant)

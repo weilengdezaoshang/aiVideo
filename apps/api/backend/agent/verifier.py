@@ -114,7 +114,7 @@ def build_index(rows: list[dict], key_of: Callable[[str, dict], str]) -> dict[st
     return index
 
 
-def _resolve(index: dict[str, EvidenceEntry], ref: str) -> tuple[EvidenceEntry, dict | None] | None:
+def resolve_ref(index: dict[str, EvidenceEntry], ref: str) -> tuple[EvidenceEntry, dict | None] | None:
     match = REF_FORMAT.match(ref)
     if not match:
         return None
@@ -139,7 +139,7 @@ def verify_finish(finish: Finish, index: dict[str, EvidenceEntry], revision: int
     inline = list(dict.fromkeys(INLINE_REF.findall(finish.answer)))
     claim_envelopes = {_envelope_ref(ref) for claim in finish.claims for ref in claim.evidenceRefs}
     for ref in inline:
-        if _resolve(index, ref) is None:
+        if resolve_ref(index, ref) is None:
             report.issues.append(Issue("H1", "UNKNOWN_REF", f"回答引用的 {ref} 不存在于本次运行的证据中", ref=ref))
         elif _envelope_ref(ref) not in claim_envelopes:
             report.issues.append(Issue("H1", "INLINE_REF_WITHOUT_CLAIM", f"回答引用 {ref}，但没有对应的 claim", ref=ref))
@@ -149,7 +149,7 @@ def verify_finish(finish: Finish, index: dict[str, EvidenceEntry], revision: int
         if not refs and claim.scope != "unavailable":
             report.issues.append(Issue("H1", "CLAIM_WITHOUT_EVIDENCE", "断言没有引用任何证据", claim=position))
         for ref in refs:
-            found = _resolve(index, ref)
+            found = resolve_ref(index, ref)
             if found is None:
                 report.issues.append(Issue("H1", "UNKNOWN_REF", f"断言引用的 {ref} 不存在于本次运行的证据中",
                                            claim=position, ref=ref))

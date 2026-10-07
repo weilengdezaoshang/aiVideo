@@ -58,6 +58,9 @@ FAILURES: dict[str, FailureSpec] = {
     "CLAIMS_INVALID": FailureSpec("invalid_arguments", True),
     "EVIDENCE_NOT_FOUND": FailureSpec("out_of_scope", True),
     "REPEATED_FAILURE": FailureSpec("internal", False),
+    "PLAN_INVALID": FailureSpec("invalid_arguments", True),
+    "STEP_UNSUPPORTED": FailureSpec("invalid_arguments", True),
+    "REFLECTION_INVALID": FailureSpec("invalid_arguments", True),
 }
 
 

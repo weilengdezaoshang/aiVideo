@@ -2,7 +2,7 @@
 
 Lock order is Document (admission/deletion only), Session, Run. Network and
 filesystem work never hold a transaction. A sending model call is never replayed.
-The Kernel owns *how* a Run advances safely; a loop policy (see legacy_loop.py)
+The Kernel owns *how* a Run advances safely; a loop policy (see harness_loop.py)
 owns *what* the next model request and the interpretation of its answer are.
 """
 from __future__ import annotations
@@ -11,20 +11,23 @@ import asyncio
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
+import uuid
 
 from fastapi import HTTPException
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 
 from backend.agent import evidence as ev
 from backend.agent.context import ContextLimit
-from backend.agent.legacy_loop import LegacyLoop
-from backend.agent.orm import AgentEvent, AgentModelCall, AgentRun, AgentSession, AgentToolCall
+from backend.agent.harness_loop import HarnessLoop
+from backend.agent.orm import (
+    AgentEvent, AgentModelCall, AgentReflection, AgentRun, AgentSession, AgentStep, AgentToolCall,
+)
 from backend.agent.util import error, now, public_error, stamp
 from backend.infrastructure.orm import Outbox
 
 ACTIVE = ("queued", "running")
-MAX_MODEL_CALLS = 8
-MAX_TOOL_CALLS = 12
+MAX_MODEL_CALLS = 20
+MAX_TOOL_CALLS = 24
 TOOL_TIMEOUT_S = 15
 TOOL_HEARTBEAT_S = 5
 
@@ -40,7 +43,7 @@ class Limits:
 class Kernel:
     def __init__(self, factory, loop=None):
         self.factory = factory
-        self.loop = loop or LegacyLoop()
+        self.loop = loop or HarnessLoop()
 
     def limits(self) -> Limits:
         return Limits(MAX_MODEL_CALLS, MAX_TOOL_CALLS, TOOL_TIMEOUT_S, TOOL_HEARTBEAT_S)
@@ -60,6 +63,16 @@ class Kernel:
             .order_by(AgentModelCall.ordinal)))
         tools = list(await db.scalars(select(AgentToolCall).where(AgentToolCall.run_id == run.id)
             .order_by(AgentToolCall.ordinal)))
+        steps = list(await db.scalars(select(AgentStep).where(AgentStep.run_id == run.id)
+            .order_by(AgentStep.plan_version, AgentStep.ordinal)))
+        reflections = list(await db.scalars(select(AgentReflection).where(AgentReflection.run_id == run.id)
+            .order_by(AgentReflection.created_at, AgentReflection.id)))
+        step_keys = {step.id: step.key for step in steps}
+        numbers, reads = {}, 0
+        for c in tools:
+            if c.kind == "read":
+                reads += 1
+                numbers[c.id] = ev.evidence_id(reads)
         return {"id": str(run.id), "sessionId": str(run.session_id),
             "clientRequestId": run.client_request_id, "status": run.status, "phase": run.phase,
             "message": run.message, "reply": run.reply, "error": public_error(run.error),
@@ -72,12 +85,20 @@ class Kernel:
             "modelCalls": [{"id": str(c.id), "ordinal": c.ordinal, "status": c.status,
                 "usage": c.usage, "error": public_error(c.error), "createdAt": stamp(c.created_at),
                 "finishedAt": stamp(c.finished_at)} for c in models],
-            "claims": run.claims,
+            "claims": run.claims, "stage": run.stage, "plan": run.plan, "waiting": run.waiting,
+            "steps": [{"id": str(step.id), "planVersion": step.plan_version, "key": step.key,
+                "ordinal": step.ordinal, "title": step.title, "intent": step.intent,
+                "tools": step.allowed_tools, "dependsOn": step.depends_on, "doneWhen": step.done_when,
+                "status": step.status, "summary": step.summary, "evidenceRefs": step.evidence_refs,
+                "retries": step.retries} for step in steps],
+            "reflections": [{"id": str(r.id), "round": r.round, "source": r.source, "verdict": r.verdict,
+                "issues": r.issues, "question": r.question, "hardChecks": r.hard_checks,
+                "createdAt": stamp(r.created_at)} for r in reflections],
             "persona": ({key: run.persona[key] for key in ("id", "version", "displayName")}
                 if run.persona else None),
             "toolCalls": [{"id": str(c.id), "modelCallId": str(c.model_call_id),
                 "toolCallId": c.tool_call_id, "ordinal": c.ordinal, "kind": c.kind,
-                "evidenceId": ev.evidence_id(c.ordinal) if c.kind == "read" else None,
+                "evidenceId": numbers.get(c.id), "stepKey": step_keys.get(c.step_id),
                 "dedupeOf": c.dedupe_of, "name": c.name, "arguments": c.arguments,
                 "status": c.status, "output": c.output, "error": public_error(c.error),
                 "createdAt": stamp(c.created_at), "finishedAt": stamp(c.finished_at)} for c in tools]}
@@ -121,7 +142,8 @@ class Kernel:
         if before is not None:
             query = query.where(AgentToolCall.ordinal < before)
         return [{"ordinal": c.ordinal, "name": c.name, "arguments": c.arguments, "status": c.status,
-                 "kind": c.kind, "output": c.output, "dedupe_of": c.dedupe_of}
+                 "kind": c.kind, "output": c.output, "dedupe_of": c.dedupe_of,
+                 "step_id": str(c.step_id) if c.step_id else None}
                 for c in await db.scalars(query)]
 
     async def _prepare(self, run_id, owner):
@@ -142,18 +164,19 @@ class Kernel:
                     await self._event(db, session, run, "run.limit_reached")
                     return None
                 try:
-                    built = await self.loop.context(db, run, route)
+                    built = await self.loop.context(db, run, route, self.limits())
                 except ContextLimit:
                     self._finish(run, "limit_reached", error("CONTEXT_LIMIT", "上下文已超过配置上限"))
                     await self._event(db, session, run, "run.limit_reached")
                     return None
                 run.model_call_count += 1
                 call = AgentModelCall(run_id=run.id, ordinal=run.model_call_count, status="sending",
-                    execution_epoch=run.execution_epoch, messages=built.messages, manifest=built.manifest, usage={})
+                    execution_epoch=run.execution_epoch, messages=built.messages, manifest=built.manifest,
+                    stage=built.stage, step_id=uuid.UUID(built.step_id) if built.step_id else None, usage={})
                 db.add(call)
                 await self._event(db, session, run, "model.started")
                 return {"kind": "model", "callId": call.id, "epoch": run.execution_epoch,
-                    "route": route, "messages": built.messages}
+                    "route": route, "messages": built.messages, "tools": built.tools}
             call = await db.scalar(select(AgentToolCall).where(AgentToolCall.run_id == run.id,
                 AgentToolCall.status == "pending").order_by(AgentToolCall.ordinal).limit(1))
             if call is None:
@@ -162,11 +185,58 @@ class Kernel:
                 await self._event(db, session, run, "tools.completed")
                 return None
             call.status, call.execution_epoch = "running", run.execution_epoch
+            evidence = 1 + sum(1 for row in await self._rows(db, run, call.ordinal) if row["kind"] == "read")
             await self._event(db, session, run, "tool.started")
             return {"kind": "tool", "callId": call.id, "epoch": run.execution_epoch,
                 "name": call.name, "arguments": call.arguments, "snapshot": run.snapshot,
-                "assets": run.assets, "route": route, "ordinal": call.ordinal,
+                "assets": run.assets, "route": route, "evidence": evidence,
                 "toolCallId": call.tool_call_id}
+
+    async def _apply(self, db, session, run, call, outcome):
+        """Record one decided outcome: run fields, steps, tool rows, reflections and stage events."""
+        for key, value in outcome.run.items():
+            setattr(run, key, value)
+        if outcome.reply is not None:
+            run.reply = outcome.reply
+        version = (run.plan or {}).get("version")
+        for op in outcome.steps:
+            if op["op"] == "obsolete":
+                for step in await db.scalars(select(AgentStep).where(AgentStep.run_id == run.id,
+                        AgentStep.status != "obsolete").with_for_update()):
+                    step.status = "obsolete"
+            elif op["op"] == "create":
+                for item in op["steps"]:
+                    db.add(AgentStep(run_id=run.id, plan_version=op["version"], key=item["key"],
+                        ordinal=item["ordinal"], title=item["title"], intent=item["intent"],
+                        allowed_tools=list(item["tools"]), depends_on=list(item["depends_on"]),
+                        done_when=item["done_when"], status=item["status"], evidence_refs=[]))
+                await db.flush()
+            else:
+                step = await db.scalar(select(AgentStep).where(AgentStep.run_id == run.id,
+                    AgentStep.plan_version == version, AgentStep.key == op["key"]).with_for_update())
+                for field, value in op["fields"].items():
+                    setattr(step, field, value)
+                step.updated_at = now()
+        known = {str(step.id) for step in await db.scalars(select(AgentStep).where(AgentStep.run_id == run.id))}
+        for plan in outcome.plans:
+            run.tool_call_count += 1
+            resolved = plan.status != "pending"
+            db.add(AgentToolCall(run_id=run.id, model_call_id=call.id,
+                tool_call_id=plan.request["id"], ordinal=run.tool_call_count,
+                name=plan.request["name"], arguments=plan.request["arguments"], status=plan.status,
+                kind=plan.kind, tool_version=plan.tool_version, dedupe_of=plan.dedupe_of,
+                step_id=uuid.UUID(plan.step_id) if plan.step_id in known else None,
+                output=plan.output, error=plan.error, finished_at=now() if resolved else None))
+        if outcome.reflections:
+            rounds = await db.scalar(select(func.count()).select_from(AgentReflection)
+                .where(AgentReflection.run_id == run.id)) or 0
+            for index, item in enumerate(outcome.reflections, 1):
+                db.add(AgentReflection(run_id=run.id, session_id=run.session_id, model_call_id=call.id,
+                    round=rounds + index, source=item["source"], hard_checks=item["hard_checks"],
+                    verdict=item["verdict"], issues=item["issues"], question=item["question"]))
+            await db.flush()
+        for name in outcome.events:
+            await self._event(db, session, run, name)
 
     def _owned(self, session, run, owner, claim):
         return (not session.closed_at and run.status in ACTIVE and not run.stop_requested_at
@@ -218,7 +288,7 @@ class Kernel:
         # until the actual invocation exits, including cancellation of this task.
         task = asyncio.create_task(asyncio.to_thread(tools.execute_envelope, claim["name"],
             claim["arguments"], claim["snapshot"], claim["assets"], Path(media_root),
-            max_output_bytes=claim["route"].tool_output_max_bytes, ordinal=claim["ordinal"],
+            max_output_bytes=claim["route"].tool_output_max_bytes, ordinal=claim["evidence"],
             call_id=claim["toolCallId"]))
 
         async def heartbeat():
@@ -251,7 +321,8 @@ class Kernel:
         result, failure, failure_receipt = None, None, None
         try:
             if claim["kind"] == "model":
-                result = await self._invoke_model(run_id, claim, model_client, tools.tool_schemas())
+                schemas = claim["tools"] if claim.get("tools") is not None else tools.tool_schemas()
+                result = await self._invoke_model(run_id, claim, model_client, schemas)
             else:
                 result = await self._invoke_tool(run_id, owner, tools, claim, media_root)
         except asyncio.CancelledError:
@@ -268,7 +339,7 @@ class Kernel:
                 message = str(exc) if hasattr(exc, "code") else (
                     "工具执行超时" if code == "TOOL_TIMEOUT" else "工具执行失败")
                 failure = error(code, message)
-                result = ev.error_envelope(tool=claim["name"], ordinal=claim["ordinal"],
+                result = ev.error_envelope(tool=claim["name"], ordinal=claim["evidence"],
                     call_id=claim["toolCallId"], step_key=None, snapshot=claim["snapshot"],
                     code=code, message=message)
             else:
@@ -306,23 +377,9 @@ class Kernel:
                     self._finish(run, status, failure)
                     await self._event(db, session, run, "run." + run.status)
                     return {"status": run.status}
-                rows = await self._rows(db, run)
-                outcome = self.loop.after_model(run, call, result, self.limits(), rows)
-                if outcome.counters is not None:
-                    run.counters = outcome.counters
-                if outcome.claims is not None:
-                    run.claims = outcome.claims
-                for plan in outcome.plans:
-                    run.tool_call_count += 1
-                    resolved = plan.status != "pending"
-                    db.add(AgentToolCall(run_id=run.id, model_call_id=call.id,
-                        tool_call_id=plan.request["id"], ordinal=run.tool_call_count,
-                        name=plan.request["name"], arguments=plan.request["arguments"], status=plan.status,
-                        kind=plan.kind, tool_version=plan.tool_version, dedupe_of=plan.dedupe_of,
-                        output=plan.output, error=plan.error, finished_at=now() if resolved else None))
+                outcome = await self.loop.decide(db, run, call, result, self.limits())
+                await self._apply(db, session, run, call, outcome)
                 if outcome.kind == "end":
-                    if outcome.reply is not None:
-                        run.reply = outcome.reply
                     self._finish(run, outcome.status, outcome.error)
                     await self._event(db, session, run, "run." + run.status)
                     return {"status": run.status}

@@ -98,7 +98,8 @@ def test_compaction_only_touches_envelopes_and_replayed_evidence():
 
 
 def prior(index, reply, revision):
-    return SimpleNamespace(id=f"r{index}", message=f"问题{index}", reply=reply, snapshot={"revision": revision})
+    return SimpleNamespace(id=f"r{index}", message=f"问题{index}", reply=reply, snapshot={"revision": revision},
+                           status="completed", waiting=None)
 
 
 def test_episodic_memory_strips_citations_and_marks_other_versions():
@@ -113,3 +114,10 @@ def test_episodic_memory_strips_citations_and_marks_other_versions():
 def test_strip_citations_leaves_other_brackets_alone():
     assert memory.strip_citations("见[附录] 与 [E2.f1][E3]") == "见[附录] 与"
     assert memory.strip_citations("没有引用") == "没有引用"
+
+
+def test_a_run_that_asked_the_user_is_remembered_as_a_pending_question():
+    asked = SimpleNamespace(id="r9", message="看看图", reply=None, snapshot={"revision": 7},
+                            status="waiting_input", waiting={"question": "你指的是哪一张[E1]？"})
+    messages, sources = memory.episodic([asked], 7)
+    assert sources == ["r9"] and messages[1]["content"] == memory.QUESTION_PREFIX + "你指的是哪一张？"

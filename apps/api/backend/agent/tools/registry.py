@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Iterable, Literal
 
 from pydantic import BaseModel, ValidationError
 
@@ -63,10 +63,12 @@ class ToolGateway:
     def read_tools(self) -> list[str]:
         return sorted(name for name, spec in self.specs.items() if spec.kind == "read")
 
-    def schemas(self) -> list[dict]:
+    def schemas(self, names: "Iterable[str] | None" = None) -> list[dict]:
+        """Function schemas for the given tool names (registry order), or for every tool."""
+        wanted = None if names is None else set(names)
         return [{"type": "function", "function": {"name": spec.name, "description": spec.description,
                   "parameters": spec.input.model_json_schema(by_alias=True)}}
-                for spec in self.specs.values()]
+                for spec in self.specs.values() if wanted is None or spec.name in wanted]
 
     def _checked_next(self, suggestions: list[NextAction]) -> list[NextAction]:
         """Drop suggestions whose ready-made arguments would not pass their own tool's schema."""

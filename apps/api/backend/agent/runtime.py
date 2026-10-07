@@ -9,7 +9,7 @@ import hashlib
 import uuid
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 
 from backend.agent.kernel import ACTIVE, Kernel, Limits
 from backend.agent import memory
@@ -18,8 +18,8 @@ from backend.agent.orm import AgentEvent, AgentRun, AgentSession
 from backend.agent.util import encoded, error, now, public_error, stamp  # noqa: F401
 from backend.infrastructure.orm import Asset, AssetReference, Document
 
-MAX_MODEL_CALLS = 8
-MAX_TOOL_CALLS = 12
+MAX_MODEL_CALLS = 20
+MAX_TOOL_CALLS = 24
 TOOL_TIMEOUT_S = 15
 TOOL_HEARTBEAT_S = 5
 
@@ -122,14 +122,15 @@ class AgentService(Kernel):
                 assets = {str(a.id): {"storage_key": a.storage_key, "sha256": a.sha256,
                     "bytes": a.bytes, "ext": a.ext, "kind": a.kind} for a in rows}
             previous_runs = list(await db.scalars(select(AgentRun).where(AgentRun.session_id == session.id,
-                AgentRun.status == "completed", AgentRun.reply.is_not(None))
+                or_(and_(AgentRun.status == "completed", AgentRun.reply.is_not(None)),
+                    and_(AgentRun.status == "waiting_input", AgentRun.waiting.is_not(None))))
                 .order_by(AgentRun.created_at.desc(), AgentRun.id.desc()).limit(10)))
             history, sources = memory.episodic(list(reversed(previous_runs)), doc.revision)
             run = AgentRun(session_id=session.id, workspace_id=workspace_id,
                 client_request_id=body["clientRequestId"], request_hash=fingerprint, principal=principal,
                 message=body["message"], route=route_snapshot, snapshot=snapshot, assets=assets,
                 history=history, persona=(persona or DEFAULT_PERSONA).model_dump(mode="json"),
-                counters={"memorySources": sources}, status="queued", phase="model", state_version=0, execution_epoch=0,
+                counters={"memorySources": sources}, stage="plan", status="queued", phase="model", state_version=0, execution_epoch=0,
                 model_call_count=0, tool_call_count=0)
             db.add(run)
             await db.flush()

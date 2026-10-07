@@ -110,7 +110,9 @@ def test_output_limit_and_missing_selection_are_explicit(tmp_path):
     assert limited["code"] == "TOOL_OUTPUT_LIMIT" and limited["details"]["limit"] == {"maxBytes": 20}
     schemas = tool_schemas()
     assert [item["function"]["name"] for item in schemas] == [
-        "read_canvas", "list_canvas_elements", "get_canvas_elements", "inspect_image", "finish", "read_evidence"]
+        "read_canvas", "list_canvas_elements", "get_canvas_elements", "inspect_image", "submit_plan",
+        "complete_step", "report_blocker", "ask_user", "finish", "submit_reflection", "read_evidence"]
+    assert [item["function"]["name"] for item in GATEWAY.schemas(["finish", "read_canvas"])] == ["read_canvas", "finish"]
     assert all(schema["function"]["parameters"]["additionalProperties"] is False for schema in schemas)
 
 

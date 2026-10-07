@@ -41,6 +41,31 @@ def claim(text, refs, scope="item"):
     return {"text": text, "evidenceRefs": list(refs), "scope": scope}
 
 
+def plan_step(key="s1", tools=("read_canvas",), deps=(), done="已取得所需证据"):
+    return {"key": key, "title": f"步骤 {key}", "intent": "读取画布", "tools": list(tools),
+            "dependsOn": list(deps), "doneWhen": done}
+
+
+def plan_turn(*steps, goal="了解画布", ident="plan"):
+    return answer(calls=[invocation("submit_plan", {"goal": goal, "steps": list(steps or [plan_step()])}, ident)])
+
+
+def complete_turn(summary, refs, partial=False, ident="done"):
+    return answer(calls=[invocation("complete_step", {"summary": summary, "evidenceRefs": list(refs),
+                                                      "partial": partial}, ident)])
+
+
+def reflect_turn(verdict="accept", issues=(), question=None, ident="reflect"):
+    return answer(calls=[invocation("submit_reflection", {"verdict": verdict, "issues": list(issues),
+                                                          "question": question}, ident)])
+
+
+def happy(text="好"):
+    """A complete scripted Run over the fixture canvas: plan, read, complete, finish, accept."""
+    return [plan_turn(), answer(calls=[invocation()]), complete_turn("画布共有 1 个对象", ["E1.f2"]),
+            answer(calls=[finish_call(text, [claim("对象总数为 1", ["E1.f2"], "complete")])]), reflect_turn()]
+
+
 def answer(text="完成", calls=None, finish=None):
     """A scripted model turn. A bare answer is delivered through the finish control tool."""
     calls = calls or ([] if finish else [finish_call(text)])
@@ -111,21 +136,27 @@ def test_model_tools_final_receipts_and_frozen_real_metadata(tmp_path):
         try:
             created = await service.create_run(ws, doc, body(), ROUTE)
             ident = uuid.UUID(created["run"]["id"])
-            model = ScriptedModel(answer(calls=[invocation(), invocation("inspect_image", {"assetId": str(asset)}, "c2")]), answer(calls=[finish_call("图片为 32×24[E2.f1]。", [claim("图片为 32×24", ["E2.f1"])])]))
+            model = ScriptedModel(
+                plan_turn(plan_step("s1", ("read_canvas", "inspect_image"))),
+                answer(calls=[invocation(), invocation("inspect_image", {"assetId": str(asset)}, "c2")]),
+                complete_turn("图片为 32×24", ["E2.f1"]),
+                answer(calls=[finish_call("图片为 32×24[E2.f1]。", [claim("图片为 32×24", ["E2.f1"])])]),
+                reflect_turn())
             # A later edit cannot replace the Run's input snapshot.
             async with factory.begin() as db:
                 row = await db.get(Document, doc)
                 row.data, row.revision = {"objects": {}, "order": []}, 2
             result = await run_to_end(service, ws, ident, model, tmp_path)
-            assert result["status"] == "completed" and model.calls == 2
-            assert result["baseRevision"] == 1 and result["toolCallCount"] == 3
-            observed = result["toolCalls"][1]["output"]["result"]["data"]
+            assert result["status"] == "completed" and model.calls == 5
+            assert result["baseRevision"] == 1 and result["toolCallCount"] == 6
+            observed = result["toolCalls"][2]["output"]["result"]["data"]
             assert (observed["width"], observed["height"]) == (32, 24)
-            assert [c["evidenceId"] for c in result["toolCalls"]] == ["E1", "E2", None]
-            assert [c["kind"] for c in result["toolCalls"]] == ["read", "read", "control"]
+            assert [c["evidenceId"] for c in result["toolCalls"]] == [None, "E1", "E2", None, None, None]
+            assert [c["kind"] for c in result["toolCalls"]] == ["control", "read", "read", "control", "control", "control"]
+            assert [c["stepKey"] for c in result["toolCalls"]][1:3] == ["s1", "s1"] and result["stage"] == "done"
             assert result["claims"]["verification"]["passed"] is True and result["reply"] == "图片为 32×24[E2.f1]。"
-            assert [m["role"] for m in model.inputs[1]][-3:] == ["assistant", "tool", "tool"]
-            first = json.loads(model.inputs[1][-2]["content"])
+            assert [m["role"] for m in model.inputs[2]][-4:] == ["assistant", "tool", "tool", "user"]
+            first = json.loads(model.inputs[2][-3]["content"])
             assert first["status"] == "ok" and first["trust"] == "untrusted_canvas_data"
             assert first["source"]["revision"] == 1 and first["result"]["data"]["revision"] == 1
             async with factory() as db:
@@ -227,17 +258,17 @@ def test_lost_model_sender_never_retries_but_lost_read_tool_can_resume(tmp_path)
             assert (await service.advance(ident, "replacement", model, media_root=tmp_path))["skipped"]
             assert model.calls == 0
             ident = uuid.UUID((await service.create_run(ws, doc, body(), ROUTE))["run"]["id"])
-            model = ScriptedModel(answer(calls=[invocation()]), answer(calls=[finish_call(
-                "画布共 1 个对象[E1.f2]", [claim("对象总数为 1", ["E1.f2"], "complete")])]))
-            await service.advance(ident, "worker", model, media_root=tmp_path)
+            model = ScriptedModel(*happy("画布共 1 个对象[E1.f2]"))
+            await service.advance(ident, "worker", model, media_root=tmp_path)            # plan accepted
+            await service.advance(ident, "worker-2", model, media_root=tmp_path)          # read call queued
             old = await service._prepare(ident, "dead-tool-worker")
             assert old["kind"] == "tool"
             async with factory.begin() as db:
                 (await db.get(AgentRun, ident)).lease_until = now() - timedelta(seconds=1)
             await service.recover_due()
             result = await run_to_end(service, ws, ident, model, tmp_path)
-            assert result["status"] == "completed" and result["toolCallCount"] == 2
-            assert model.calls == 2
+            assert result["status"] == "completed" and result["toolCallCount"] == 5
+            assert model.calls == 5
         finally:
             await engine.dispose()
     asyncio.run(scenario())
@@ -265,7 +296,10 @@ def test_expired_model_response_before_scanner_does_not_resend(tmp_path):
     asyncio.run(scenario())
 
 
-def test_limits_reject_entire_tool_batch_and_bound_model_loop(tmp_path):
+def test_limits_reject_entire_tool_batch_and_bound_model_loop(tmp_path, monkeypatch):
+    monkeypatch.setattr(runtime_module, "MAX_MODEL_CALLS", 8)
+    monkeypatch.setattr(runtime_module, "MAX_TOOL_CALLS", 12)
+
     async def scenario():
         engine, factory, service, ws, doc, _ = await fixture()
         try:
@@ -331,15 +365,22 @@ def test_unknown_tool_is_a_tool_receipt_not_a_model_claim(tmp_path):
         engine, factory, service, ws, doc, _ = await fixture()
         try:
             ident = uuid.UUID((await service.create_run(ws, doc, body(), ROUTE))["run"]["id"])
-            model = ScriptedModel(answer(calls=[invocation("write_canvas")]), answer(calls=[
-                finish_call("当前工具不支持写入", [claim("不支持写入", ["E1"], "unavailable")])]))
+            model = ScriptedModel(plan_turn(), answer(calls=[invocation("write_canvas")]),
+                answer(calls=[invocation()]), complete_turn("画布共有 1 个对象", ["E2.f2"]),
+                answer(calls=[finish_call("无法写入，画布共 1 个对象", [
+                    claim("当前工具不支持写入", ["E1"], "unavailable"), claim("对象总数为 1", ["E2.f2"], "complete")])]),
+                reflect_turn())
             result = await run_to_end(service, ws, ident, model, tmp_path)
-            assert result["toolCalls"][0]["status"] == "failed"
-            envelope = result["toolCalls"][0]["output"]
+            assert result["status"] == "completed", result
+            unknown = result["toolCalls"][1]
+            assert unknown["name"] == "write_canvas" and unknown["status"] == "failed"
+            envelope = unknown["output"]
             assert envelope["status"] == "error" and envelope["error"]["code"] == "UNKNOWN_TOOL"
             assert envelope["error"]["retryable"] is False
             assert "read_canvas" in envelope["error"]["details"]["allowedTools"]
-            assert json.loads(model.inputs[-1][-1]["content"])["error"]["code"] == "UNKNOWN_TOOL"
+            assert "finish" not in envelope["error"]["details"]["allowedTools"]
+            seen = [json.loads(m["content"]) for m in model.inputs[2] if m["role"] == "tool"]
+            assert seen[-1]["error"]["code"] == "UNKNOWN_TOOL"
             async with factory() as db:
                 assert (await db.get(Document, doc)).revision == 1
         finally:
@@ -408,7 +449,7 @@ def test_history_is_ten_final_pairs_and_context_overflow_does_not_call_model(tmp
             for index in range(11):
                 created = await service.create_run(ws, doc, body(message=f"问题{index}"), ROUTE)
                 ident = uuid.UUID(created["run"]["id"])
-                await run_to_end(service, ws, ident, ScriptedModel(answer(f"回答{index}")), tmp_path)
+                await run_to_end(service, ws, ident, ScriptedModel(*happy(f"回答{index}")), tmp_path)
             created = await service.create_run(ws, doc, body(message="最新问题"), ROUTE)
             ident = uuid.UUID(created["run"]["id"])
             async with factory() as db:
@@ -439,7 +480,7 @@ def test_duplicate_claims_and_snapshot_read_during_model_are_consistent(tmp_path
             async def blocked():
                 ready.set()
                 await release.wait()
-                return answer()
+                return plan_turn()
 
             model = ScriptedModel(blocked)
             task = asyncio.create_task(service.advance(ident, "first", model, media_root=tmp_path))
@@ -453,7 +494,9 @@ def test_duplicate_claims_and_snapshot_read_during_model_are_consistent(tmp_path
             assert snap["runs"][0]["modelCalls"][0]["status"] == "sending"
             release.set()
             await task
-            assert (await service.get_run(ws, ident))["status"] == "completed"
+            planned = await service.get_run(ws, ident)
+            assert planned["status"] == "running" and planned["stage"] == "execute"
+            assert [step["key"] for step in planned["steps"]] == ["s1"] and planned["plan"]["current"] == "s1"
         finally:
             release.set()
             await engine.dispose()

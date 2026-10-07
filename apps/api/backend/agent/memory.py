@@ -6,6 +6,9 @@ import re
 _CITATION = re.compile(r"\s*\[E\d+(?:\.f\d+)?\]")
 
 
+QUESTION_PREFIX = "（上一轮我向你提出了一个问题，等待你的回答）"
+
+
 def strip_citations(text: str) -> str:
     """Evidence ids are only valid inside the Run that produced them."""
     return _CITATION.sub("", text)
@@ -23,7 +26,10 @@ def episodic(previous: list, current_revision: int) -> tuple[list[dict], list[st
     """
     messages: list[dict] = []
     for prior in previous:
-        answer = strip_citations(prior.reply)
+        if prior.status == "waiting_input":
+            answer = QUESTION_PREFIX + strip_citations(prior.waiting["question"])
+        else:
+            answer = strip_citations(prior.reply)
         past = prior.snapshot.get("revision")
         if past != current_revision:
             answer = stale_note(past, current_revision) + answer

@@ -30,6 +30,9 @@ class Group:
 class BuiltContext:
     messages: list[dict]
     manifest: dict = field(default_factory=dict)
+    tools: list[dict] = field(default_factory=list)
+    stage: str | None = None
+    step_id: str | None = None
 
 
 def size_of(messages: list[dict]) -> int:
@@ -62,22 +65,29 @@ def _compact_group(group: Group) -> Group:
 
 def build_context(*, persona: PersonaProfile, persona_scope: str, role: Role, scene: dict,
                   episodic: list[dict], memory_sources: list[str], intent: str, groups: list[Group],
-                  budget_bytes: int, toolset_version: str) -> BuiltContext:
+                  budget_bytes: int, toolset_version: str, working: list[dict] = (),
+                  reflective: list[dict] = (), tools: list[dict] = (), stage: str | None = None,
+                  step_id: str | None = None) -> BuiltContext:
     system = {"role": "system", "content": "\n\n".join([
         f"[规则 v{RULES_VERSION}]\n{RULES}", personas.render(persona, persona_scope),
         f"[角色 {role.id}@v{role.version}]\n{role.text}", "当前上下文：" + encoded(scene)])}
     user = {"role": "user", "content": intent}
     trimmed: list[dict] = []
-    memory, observed = list(episodic), list(groups)
+    memory, observed, lessons = list(episodic), list(groups), list(reflective)
 
     def assemble() -> list[dict]:
-        return [system, *memory, user, *(message for group in observed for message in group.messages)]
+        # Working state comes last so the newest instruction is the current state of the Run.
+        return [system, *memory, user, *(message for group in observed for message in group.messages),
+                *lessons, *working]
 
-    if size_of([system, user]) > budget_bytes:
+    if size_of([system, user, *working]) > budget_bytes:
         raise ContextLimit()
     while size_of(assemble()) > budget_bytes and memory:
         memory = memory[2:]
         trimmed.append({"layer": "episodic", "action": "dropped_oldest_pair"})
+    if size_of(assemble()) > budget_bytes and lessons:
+        lessons = []
+        trimmed.append({"layer": "reflection", "action": "dropped"})
     for position in range(len(observed) - 1):
         if size_of(assemble()) <= budget_bytes:
             break
@@ -90,13 +100,16 @@ def build_context(*, persona: PersonaProfile, persona_scope: str, role: Role, sc
     manifest = {
         "rulesVersion": RULES_VERSION, "personaId": persona.id, "personaVersion": persona.version,
         "roleId": role.id, "roleVersion": role.version, "toolsetVersion": toolset_version,
+        "stage": stage, "stepId": step_id, "tools": [item["function"]["name"] for item in tools],
         "layers": [
             {"name": "system", "bytes": size_of([system]), "trimmed": False},
             {"name": "intent", "bytes": size_of([user]), "trimmed": False},
+            {"name": "working", "bytes": size_of(list(working)) if working else 0, "trimmed": False},
+            {"name": "reflection", "bytes": size_of(lessons) if lessons else 0, "trimmed": len(lessons) < len(reflective)},
             {"name": "episodic", "bytes": size_of(memory) if memory else 0, "trimmed": len(memory) < len(episodic)},
             {"name": "observation", "bytes": size_of([m for g in observed for m in g.messages]) if observed else 0,
              "trimmed": any(item["layer"] == "observation" for item in trimmed)}],
         "trimmed": trimmed, "memorySources": memory_sources[len(memory_sources) - kept:] if kept else [],
         "evidenceIds": [ident for group in observed for ident in group.evidence_ids],
         "budgetBytes": budget_bytes, "totalBytes": size_of(messages)}
-    return BuiltContext(messages, manifest)
+    return BuiltContext(messages, manifest, list(tools), stage, step_id)
