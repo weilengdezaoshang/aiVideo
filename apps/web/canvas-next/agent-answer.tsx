@@ -22,7 +22,8 @@ function knownRefs(run: AgentRun): Set<string> {
   return known
 }
 
-function jump(id: string): void {
+/** Scrolls a citation target into view, opening every collapsed ancestor on the way. */
+export function jumpTo(id: string): void {
   const target = document.getElementById(id)
   if (!target) {
     return
@@ -71,7 +72,7 @@ export function AgentAnswer({ run }: { run: AgentRun }) {
               href={`#${anchor}`}
               onClick={(event) => {
                 event.preventDefault()
-                jump(anchor)
+                jumpTo(anchor)
               }}
             >
               {part.ref}

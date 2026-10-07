@@ -1,7 +1,14 @@
-import type { AgentClaim } from './contracts.js'
+import type { AgentClaim, AgentReflectionIssue, AgentReflectionVerdict } from './contracts.js'
 
 export type AgentRunStatus =
-  'queued' | 'running' | 'completed' | 'stopped' | 'failed' | 'needs_attention' | 'limit_reached'
+  | 'queued'
+  | 'running'
+  | 'completed'
+  | 'stopped'
+  | 'failed'
+  | 'needs_attention'
+  | 'limit_reached'
+  | 'waiting_input'
 
 export type AgentClaimsPayload = {
   answer: string
@@ -25,11 +32,42 @@ export type AgentToolCall = {
   evidenceId?: string | null
   kind?: 'read' | 'control'
   dedupeOf?: string | null
+  stepKey?: string | null
   name: string
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'late'
   arguments: Record<string, unknown>
   output?: unknown
   error?: string | null
+}
+
+export type AgentStepStatus = 'pending' | 'running' | 'completed' | 'blocked' | 'obsolete'
+export type AgentStep = {
+  id: string
+  planVersion: number
+  key: string
+  ordinal: number
+  title: string
+  intent: string
+  tools: string[]
+  dependsOn: string[]
+  doneWhen: string
+  status: AgentStepStatus
+  summary: string | null
+  evidenceRefs: string[]
+  retries: number
+}
+export type AgentRunPlan = { goal: string; version: number; current: string | null }
+export type AgentWaiting = { question: string; stage: string }
+export type AgentReflectionSource = 'blocker' | 'hard_check' | 'model'
+export type AgentReflectionRecord = {
+  id: string
+  round: number
+  source: AgentReflectionSource
+  verdict: AgentReflectionVerdict
+  issues: AgentReflectionIssue[]
+  question: string | null
+  hardChecks: AgentVerification | null
+  createdAt: string
 }
 
 export type AgentModelCall = {
@@ -52,6 +90,11 @@ export type AgentRun = {
   persona?: { id: string; version: number; displayName: string } | null
   modelId: string
   baseRevision: number
+  stage?: string | null
+  plan?: AgentRunPlan | null
+  waiting?: AgentWaiting | null
+  steps?: AgentStep[]
+  reflections?: AgentReflectionRecord[]
   modelCalls: AgentModelCall[]
   toolCalls: AgentToolCall[]
   modelCallCount?: number

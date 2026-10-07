@@ -5,6 +5,8 @@ import { parseControlReceipt, parseEnvelope } from '../canvas/agent/contracts.js
 import { isActiveAgentRun, type AgentRunStatus } from '../canvas/agent/types.js'
 import { AgentAnswer, toolAnchor } from './agent-answer.js'
 import { AgentEvidence, AgentReceipt } from './agent-evidence.js'
+import { AgentPlan } from './agent-plan.js'
+import { AgentReflections } from './agent-reflection.js'
 
 const labels: Record<AgentRunStatus, string> = {
   queued: '等待执行',
@@ -14,6 +16,15 @@ const labels: Record<AgentRunStatus, string> = {
   failed: '执行失败',
   needs_attention: '需要处理',
   limit_reached: '已达运行上限',
+  waiting_input: '等待你的回答',
+}
+const stageLabels: Record<string, string> = {
+  plan: '规划中',
+  execute: '执行步骤',
+  respond: '组织回答',
+  reflect: '复盘中',
+  waiting: '等待输入',
+  done: '已完成',
 }
 const toolLabels = {
   pending: '等待调用',
@@ -71,11 +82,15 @@ export function AgentPanel({
             <p className="is-user">{run.message}</p>
             <div className="next-agent-run-meta">
               <span>{labels[run.status]}</span>
+              {isActiveAgentRun(run) && run.stage && (
+                <span>{stageLabels[run.stage] ?? run.stage}</span>
+              )}
               <span>画布版本 {run.baseRevision}</span>
               <span>
                 {state.models.find((model) => model.id === run.modelId)?.label || run.modelId}
               </span>
             </div>
+            <AgentPlan run={run} />
             {run.toolCalls.map((call) => (
               <details
                 className="next-agent-tool"
@@ -83,6 +98,7 @@ export function AgentPanel({
                 id={call.evidenceId ? toolAnchor(run.id, call.evidenceId) : undefined}
               >
                 <summary>
+                  {call.stepKey ? `${call.stepKey} · ` : ''}
                   {call.evidenceId ? `${call.evidenceId} · ` : ''}
                   {call.name} · {toolLabels[call.status]}
                 </summary>
@@ -103,6 +119,14 @@ export function AgentPanel({
               </details>
             ))}
             <AgentAnswer run={run} />
+            <AgentReflections run={run} />
+            {run.waiting && (
+              <div className="next-agent-waiting" role="status">
+                <strong>需要你补充信息</strong>
+                <p>{run.waiting.question}</p>
+                <p className="next-agent-hint">直接发送下一条消息即可回答这个问题。</p>
+              </div>
+            )}
             {run.error && <p className="next-agent-error">{run.error}</p>}
             <div className="next-agent-run-meta">
               <span>模型调用 {run.modelCallCount ?? run.modelCalls.length} 次</span>
