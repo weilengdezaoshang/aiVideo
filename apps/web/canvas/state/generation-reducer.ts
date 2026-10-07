@@ -11,7 +11,7 @@ export type JobImageRecord = {
   id?: string
   url?: string
   file?: string
-  params?: { kind?: string; width?: number; height?: number }
+  params?: { kind?: string; width?: number; height?: number; seed?: number }
 }
 
 export type JobLike = {
@@ -51,6 +51,8 @@ export type ResolvedImage = {
   height?: number
   hasThumbs: boolean
   imageId?: string
+  /** 受理时固化、服务端实际使用的种子;历史任务可能没有 */
+  seed?: number
 }
 
 export type ResolveImage = (image: JobImageRecord) => ResolvedImage | null
@@ -224,5 +226,9 @@ export function imageRecordToAsset(imageRecord: JobImageRecord | undefined): Res
     height: imageRecord.params?.height,
     hasThumbs: false,
     imageId: imageRecord.id,
+    seed:
+      typeof imageRecord.params?.seed === 'number' && imageRecord.params.seed >= 0
+        ? imageRecord.params.seed
+        : undefined,
   }
 }

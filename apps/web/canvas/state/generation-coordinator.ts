@@ -422,6 +422,7 @@ export function createGenerationCoordinator(
                 ext: resolved.ext,
                 width: resolved.width,
                 height: resolved.height,
+                seed: resolved.seed,
               }
             : entity.result,
         },

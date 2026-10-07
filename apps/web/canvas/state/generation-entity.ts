@@ -18,6 +18,8 @@ export type GenerationResult = {
   width?: number
   height?: number
   hasThumbs?: boolean
+  /** 受理时固化、服务端实际使用的种子(T18 种子锁定) */
+  seed?: number
 }
 
 export type GenerationEntityStatus =

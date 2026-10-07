@@ -11,10 +11,26 @@ import {
   useCanvasViewSnapshot,
 } from '../canvas/react/canvas-view-context.js'
 import { createAutoSaver, type SaveStatus } from '../canvas/state/autosave.js'
-import { cmdAddObjects, cmdUpdateObject } from '../canvas/state/commands.js'
+import { cmdAddObjects, cmdUpdateObject, type CanvasObj } from '../canvas/state/commands.js'
 import { connectReference } from '../canvas/flows/connect-reference.js'
 import { getGenerationCoordinator, submitGeneration } from '../canvas/flows/generate.js'
 import { ensureAsset, objectToDataUrl } from '../canvas/flows/asset-util.js'
+import {
+  addFavorite,
+  isFavorite,
+  loadFavorites,
+  recentPrompts,
+  removeFavorite,
+  type PromptFavorite,
+} from '../canvas/flows/prompt-library.js'
+import {
+  DRAFT_STEPS,
+  draftSize,
+  fullQualityParams,
+  isDraftParams,
+  lockedSeed,
+  seedOf,
+} from '../canvas/flows/draft-mode.js'
 import { connectGenerationEvents } from '../canvas/state/generation-events.js'
 import {
   createCanvasRecognition,
@@ -72,6 +88,12 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
   const [generationKind, setGenerationKind] = useState<MediaKind>('image')
   const [generationDraft, setGenerationDraft] = useState(() => defaultDraft('image'))
   const [generating, setGenerating] = useState(false)
+  const [promptLibraryOpen, setPromptLibraryOpen] = useState(false)
+  const [promptQuery, setPromptQuery] = useState('')
+  const [favorites, setFavorites] = useState(() => loadFavorites(localStorage))
+  const [draftMode, setDraftMode] = useState(false)
+  const [seedLocked, setSeedLocked] = useState(false)
+  const [seedValue, setSeedValue] = useState('')
   const [connected, setConnected] = useState(true)
   const [inpaintRequest, setInpaintRequest] = useState<InpaintRequest | null>(null)
   const [maskSourceId, setMaskSourceId] = useState<string | null>(null)
@@ -465,6 +487,31 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
             >
               复制
             </button>
+            {(() => {
+              const selected = snapshot.selection[0]
+              const target = selected ? view.getDocument().objects[selected] : undefined
+              if (
+                !target?.lineage?.params ||
+                !isDraftParams(target.lineage.params as Record<string, unknown>)
+              ) {
+                return null
+              }
+              return (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setContextMenu(null)
+                    setGenerating(true)
+                    void resubmitFullQuality(store, view, target)
+                      .then((result) => setNotice(result.ok ? '已提交高配重出' : result.error))
+                      .finally(() => setGenerating(false))
+                  }}
+                >
+                  草稿高配重出
+                </button>
+              )
+            })()}
             <button
               type="button"
               role="menuitem"
@@ -486,7 +533,10 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
               return
             }
             setGenerating(true)
-            void submitFromComposer(store, view, prompt.trim(), generationKind, generationDraft)
+            void submitFromComposer(store, view, prompt.trim(), generationKind, generationDraft, {
+              draftMode,
+              seed: lockedSeed(seedLocked, seedValue),
+            })
               .then((result) => {
                 if (result.ok) {
                   setPrompt('')
@@ -519,6 +569,9 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
                 next.model = capabilities?.[kind].models[0]?.id ?? ''
                 setGenerationKind(kind)
                 setGenerationDraft(next)
+                if (kind === 'video') {
+                  setDraftMode(false)
+                }
               }}
             >
               <option value="image">图片</option>
@@ -584,10 +637,90 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
                 ))}
               </select>
             )}
+            <label
+              className="next-composer-check"
+              title={
+                generationKind === 'video'
+                  ? '视频尺寸为固定档位，暂不支持草稿模式'
+                  : '低步数小尺寸先出小样，满意后右键高配重出'
+              }
+            >
+              <input
+                type="checkbox"
+                checked={draftMode && generationKind === 'image'}
+                disabled={generationKind === 'video'}
+                onChange={(event) => setDraftMode(event.target.checked)}
+              />
+              草稿模式
+            </label>
+            <label
+              className="next-composer-check"
+              title="锁定种子可复现构图；开启时会自动取当前选中结果的种子"
+            >
+              <input
+                type="checkbox"
+                checked={seedLocked}
+                onChange={(event) => {
+                  const locked = event.target.checked
+                  if (locked && !seedValue.trim()) {
+                    const seed = selectedSeed(store, snapshot.selection[0])
+                    if (seed !== null) {
+                      setSeedValue(String(seed))
+                    }
+                  }
+                  setSeedLocked(locked)
+                }}
+              />
+              锁定种子
+            </label>
+            {seedLocked && (
+              <input
+                className="next-composer-seed"
+                type="number"
+                aria-label="种子"
+                min={0}
+                step={1}
+                value={seedValue}
+                placeholder="随机"
+                onChange={(event) => setSeedValue(event.target.value)}
+              />
+            )}
           </div>
-          <button type="submit" disabled={!prompt.trim() || generating || !generationDraft.model}>
-            {generating ? '提交中…' : '生成'}
-          </button>
+          <div className="next-composer-actions">
+            <button
+              type="button"
+              className="next-composer-secondary"
+              aria-expanded={promptLibraryOpen}
+              onClick={() => setPromptLibraryOpen((open) => !open)}
+            >
+              提示词库
+            </button>
+            <button
+              type="button"
+              className="next-composer-secondary"
+              disabled={!prompt.trim()}
+              title={isFavorite(favorites, prompt) ? '已在收藏中' : '收藏当前提示词'}
+              onClick={() => setFavorites(addFavorite(localStorage, prompt))}
+            >
+              {isFavorite(favorites, prompt) ? '已收藏' : '收藏'}
+            </button>
+            <button type="submit" disabled={!prompt.trim() || generating || !generationDraft.model}>
+              {generating ? '提交中…' : draftMode ? '生成小样' : '生成'}
+            </button>
+          </div>
+          {promptLibraryOpen && (
+            <PromptLibrary
+              query={promptQuery}
+              onQuery={setPromptQuery}
+              favorites={favorites}
+              recent={recentPrompts(store.doc.generations)}
+              onUse={(text) => {
+                setPrompt(text)
+                setPromptLibraryOpen(false)
+              }}
+              onRemove={(id) => setFavorites(removeFavorite(localStorage, id))}
+            />
+          )}
         </form>
         {inpaintRequest && (
           <form
@@ -1145,6 +1278,7 @@ async function submitFromComposer(
   prompt: string,
   kind: MediaKind,
   draft: ReturnType<typeof defaultDraft>,
+  options: { draftMode: boolean; seed: number },
 ) {
   const selected = view.getSnapshot().selection[0]
   const source = selected ? view.getDocument().objects[selected] : undefined
@@ -1155,16 +1289,16 @@ async function submitFromComposer(
   const anchor = source
     ? { x: source.x + source.width + 40, y: source.y }
     : view.screenToWorld({ x: 180, y: 180 })
-  const size = outputSize(draft)
+  const size = options.draftMode ? draftSize(outputSize(draft)) : outputSize(draft)
   const genParams = {
     prompt,
     negativePrompt: '',
     model: draft.model,
     width: size.width,
     height: size.height,
-    steps: 20,
+    steps: options.draftMode ? DRAFT_STEPS : 20,
     cfgScale: 7,
-    seed: -1,
+    seed: options.seed,
     sampler: 'euler',
     scheduler: 'normal',
     denoise: initImage ? draft.denoise : 1,
@@ -1179,6 +1313,88 @@ async function submitFromComposer(
     initImage,
     lineage: source ? { fromId: source.id, params: genParams } : undefined,
   })
+}
+
+/** 草稿小样满意后的原参数高配重出:同提示词同种子,恢复默认步数与原尺寸。 */
+async function resubmitFullQuality(
+  store: DocStore,
+  view: ReturnType<typeof useCanvasView>,
+  obj: CanvasObj,
+) {
+  const lineage = obj.lineage!
+  const params = fullQualityParams(lineage.params as Record<string, unknown>)
+  const source = lineage.fromId ? view.getDocument().objects[lineage.fromId] : undefined
+  const initImage =
+    source && (source.kind === 'image' || source.kind === 'video')
+      ? { dataUrl: await objectToDataUrl(source) }
+      : undefined
+  return submitGeneration({
+    docStore: store,
+    genParams: params,
+    anchor: { x: obj.x + obj.width + 40, y: obj.y },
+    initImage,
+    lineage: { fromId: lineage.fromId || obj.id, params },
+  })
+}
+
+/** 选中结果实际使用的种子:优先完成实体里固化的种子,退回谱系参数。 */
+function selectedSeed(store: DocStore, objectId: string | undefined): number | null {
+  const obj = objectId ? store.doc.objects[objectId] : undefined
+  const entity = obj?.generationId ? store.doc.generations?.[obj.generationId] : undefined
+  return seedOf(entity?.result) ?? seedOf(obj?.lineage?.params)
+}
+
+function PromptLibrary({
+  query,
+  onQuery,
+  favorites,
+  recent,
+  onUse,
+  onRemove,
+}: {
+  query: string
+  onQuery: (value: string) => void
+  favorites: PromptFavorite[]
+  recent: string[]
+  onUse: (prompt: string) => void
+  onRemove: (id: string) => void
+}) {
+  const keyword = query.trim().toLowerCase()
+  const match = (text: string) => !keyword || text.toLowerCase().includes(keyword)
+  const favoriteTexts = new Set(favorites.map((item) => item.prompt))
+  const favoriteItems = favorites.filter((item) => match(item.prompt))
+  const recentItems = recent.filter((text) => match(text) && !favoriteTexts.has(text))
+  return (
+    <div className="next-prompt-library" aria-label="提示词库">
+      <input
+        aria-label="搜索提示词"
+        value={query}
+        placeholder="搜索收藏与历史…"
+        onChange={(event) => onQuery(event.target.value)}
+      />
+      <strong>收藏</strong>
+      {favoriteItems.length === 0 && <p className="next-panel-empty">暂无收藏</p>}
+      {favoriteItems.map((item) => (
+        <div className="next-prompt-row" key={item.id}>
+          <button type="button" className="next-prompt-use" onClick={() => onUse(item.prompt)}>
+            {item.prompt}
+          </button>
+          <button type="button" onClick={() => onRemove(item.id)}>
+            移除
+          </button>
+        </div>
+      ))}
+      <strong>最近</strong>
+      {recentItems.length === 0 && <p className="next-panel-empty">暂无历史</p>}
+      {recentItems.map((text) => (
+        <div className="next-prompt-row" key={text}>
+          <button type="button" className="next-prompt-use" onClick={() => onUse(text)}>
+            {text}
+          </button>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 async function submitInpaint(
