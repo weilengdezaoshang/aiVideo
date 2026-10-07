@@ -479,3 +479,18 @@ ControlReceipt(kind="control", tool, callId, status="accepted" | "rejected", eff
 - 里程碑 M1（阶段 0–3）：单循环 Agent 已具备证据信封、事实引用和硬检验，可以单独上线。
 - 里程碑 M2（阶段 4–6）：完整七层 harness 上线。
 - 里程碑 M3（阶段 7）：生成链路的接口就绪。
+
+## 16 实施记录（2026-10-07）
+
+| 阶段 | 提交 | 说明 |
+| --- | --- | --- |
+| 0 契约冻结 | `d8fa185` | 前后端共用 fixture 的契约 roundtrip |
+| 1 内核抽离 | `7ab070b` | 持久化执行内核独立于循环策略 |
+| 2 工具层 | `4f36e7e` / `a467657` | 证据信封与事实引用；前端工具证据卡片 |
+| 3 治理层 | `751efa3` / `9f79ad1` | 治理策略与 H1–H6 硬检验；前端检验徽标 |
+| 4 人格与上下文 | `1abaa8f` / `a2e5b78` | 人格层、分层上下文与记忆；前端人格显示 |
+| 5 编排与认知 | `feat(server): 新增画布 Agent 规划执行反思编排.` | orchestrator 纯 reducer、cognition 规划器、migration 0012、删除 LegacyLoop |
+| 6 前端展示 | `feat(web): 画布助手展示计划、反思与证据引用.` | 计划清单、复盘卡片、waiting_input 交互 |
+| 7 接口预留 | `feat(server): 预留画布 Agent 生成证据与审批接口.` | 预留证据 Schema、CheckSuite 注册、WaitApproval/waiting_approval、附件层、runbook |
+
+阶段 6 的手动验收（真实模型路由下的计划/步骤/证据/反思全链路展示与等待输入交互）需按 §15 阶段 6 的清单在部署环境执行。
