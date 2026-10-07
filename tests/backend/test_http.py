@@ -40,7 +40,8 @@ def test_live_http_and_sse(root):
         listener.close()
         base = f"http://127.0.0.1:{port}"
         try:
-            with httpx.Client(base_url=base, timeout=5) as client:
+            # 本地回环直连:系统代理(ClashX 等)会把 127.0.0.1 的探测转发成 502。
+            with httpx.Client(base_url=base, timeout=5, trust_env=False) as client:
                 deadline = time.monotonic() + 10
                 while True:
                     try:
