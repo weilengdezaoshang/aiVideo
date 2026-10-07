@@ -4,6 +4,7 @@ API 层只有在本用例成功返回后才能返回 202(§五.1);
 数据库不可用/持久化失败时异常上抛,不得声称任务已受理(§五.3)。
 """
 
+import hashlib
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -83,6 +84,14 @@ async def accept_generation(
                 raise ValueError("Reference asset is unavailable")
         stored = {**params, **({"submittedBy": principal} if principal else {})}
         job = await uow.jobs.create(workspace_id=workspace_id, kind="batch" if count > 1 else kind, params=stored)
+        # Resolve a random seed at acceptance so the actual value persists with the job
+        # (same derivation the worker applies) and comes back in the public projection;
+        # the worker then reuses it instead of re-deriving from the job id. The resolved
+        # dict must be a fresh object: jobs.create stored `stored` itself, and mutating it
+        # in place would also mutate the ORM's committed snapshot, hiding the change.
+        if stored.get("seed", -1) < 0:
+            stored = {**stored, "seed": int(hashlib.sha256(str(job.id).encode()).hexdigest()[:8], 16) % (2**31)}
+            job.params = stored
         job.document_id = document_id
         job.provider_snapshot = dict(provider_snapshot or {})
         if kind == "export":

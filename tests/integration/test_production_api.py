@@ -1,6 +1,7 @@
 """Explicit isolated PostgreSQL tests for the database-only HTTP boundary."""
 import asyncio
 from contextlib import asynccontextmanager
+import hashlib
 import json
 import os
 import uuid
@@ -102,6 +103,34 @@ def test_direction_group_is_atomic_idempotent_and_visible_as_slots(tmp_path):
             assert {job["slot"] for job in visible} == {0, 1, 2, 3}
             assert len({job["params"]["prompt"] for job in visible}) == 4
             await client.delete("/api/jobs/" + first.json()["groupId"])
+    asyncio.run(scenario())
+
+
+def test_random_seed_is_resolved_at_acceptance_and_persisted(tmp_path):
+    """T18 种子锁定的契约:随机种子在受理时固化为确定值并随任务参数返回。"""
+    async def scenario():
+        async with api(tmp_path) as (app, client, workspace):
+            accepted = await client.post("/api/generate", json={"prompt": "test", "model": "mock-test",
+                "requestId": str(uuid.uuid4()), "seed": -1})
+            assert accepted.status_code == 202
+            job_id = uuid.UUID(accepted.json()["jobId"])
+            derived = int(hashlib.sha256(str(job_id).encode()).hexdigest()[:8], 16) % (2**31)
+            async with app.state.factory() as session:
+                row = await session.get(Job, job_id)
+                assert row.params["seed"] == derived
+            fixed = await client.post("/api/generate", json={"prompt": "test", "model": "mock-test",
+                "requestId": str(uuid.uuid4()), "seed": 7})
+            assert fixed.status_code == 202
+            async with app.state.factory() as session:
+                assert (await session.get(Job, uuid.UUID(fixed.json()["jobId"]))).params["seed"] == 7
+            batch = await client.post("/api/generate", json={"prompt": "test", "model": "mock-test",
+                "requestId": str(uuid.uuid4()), "batchCount": 3})
+            assert batch.status_code == 202
+            async with app.state.factory() as session:
+                children = list(await session.scalars(
+                    select(Job).where(Job.parent_id == uuid.UUID(batch.json()["jobId"]))))
+                seeds = [child.params["seed"] for child in children]
+                assert len(set(seeds)) == 3 and all(0 <= seed < 2**31 for seed in seeds)
     asyncio.run(scenario())
 
 
