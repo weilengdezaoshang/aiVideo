@@ -637,42 +637,41 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
                 ))}
               </select>
             )}
-            <label
-              className="next-composer-check"
+            <button
+              type="button"
+              className="next-composer-pill"
+              aria-pressed={draftMode && generationKind === 'image'}
+              disabled={generationKind === 'video'}
               title={
                 generationKind === 'video'
                   ? '视频尺寸为固定档位，暂不支持草稿模式'
-                  : '低步数小尺寸先出小样，满意后右键高配重出'
+                  : '草稿模式：低步数小尺寸先出小样，满意后右键高配重出'
               }
+              onClick={() => setDraftMode((on) => !on)}
             >
-              <input
-                type="checkbox"
-                checked={draftMode && generationKind === 'image'}
-                disabled={generationKind === 'video'}
-                onChange={(event) => setDraftMode(event.target.checked)}
-              />
-              草稿模式
-            </label>
-            <label
-              className="next-composer-check"
-              title="锁定种子可复现构图；开启时会自动取当前选中结果的种子"
-            >
-              <input
-                type="checkbox"
-                checked={seedLocked}
-                onChange={(event) => {
-                  const locked = event.target.checked
-                  if (locked && !seedValue.trim()) {
-                    const seed = selectedSeed(store, snapshot.selection[0])
-                    if (seed !== null) {
-                      setSeedValue(String(seed))
-                    }
+              草稿
+            </button>
+            <button
+              type="button"
+              className="next-composer-pill"
+              aria-pressed={seedLocked}
+              title="锁定种子可复现构图；开启时自动取当前选中结果的种子，留空则随机"
+              onClick={() => {
+                const locked = !seedLocked
+                if (locked && !seedValue.trim()) {
+                  const seed = selectedSeed(store, snapshot.selection[0])
+                  if (seed !== null) {
+                    setSeedValue(String(seed))
                   }
-                  setSeedLocked(locked)
-                }}
-              />
-              锁定种子
-            </label>
+                }
+                setSeedLocked(locked)
+              }}
+            >
+              种子
+              {seedLocked && lockedSeed(true, seedValue) >= 0
+                ? `·${lockedSeed(true, seedValue)}`
+                : ''}
+            </button>
             {seedLocked && (
               <input
                 className="next-composer-seed"
@@ -682,22 +681,23 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
                 step={1}
                 value={seedValue}
                 placeholder="随机"
+                title="锁定的种子值，留空则随机"
                 onChange={(event) => setSeedValue(event.target.value)}
               />
             )}
-          </div>
-          <div className="next-composer-actions">
+            <span className="next-composer-spacer" />
             <button
               type="button"
-              className="next-composer-secondary"
+              className="next-composer-quiet"
               aria-expanded={promptLibraryOpen}
+              title="提示词库：收藏与历史搜索"
               onClick={() => setPromptLibraryOpen((open) => !open)}
             >
-              提示词库
+              词库
             </button>
             <button
               type="button"
-              className="next-composer-secondary"
+              className="next-composer-quiet"
               disabled={!prompt.trim()}
               title={isFavorite(favorites, prompt) ? '已在收藏中' : '收藏当前提示词'}
               onClick={() => setFavorites(addFavorite(localStorage, prompt))}
