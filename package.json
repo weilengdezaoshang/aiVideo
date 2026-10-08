@@ -22,7 +22,9 @@
     "build:web": "tsc -p tsconfig.web.json && npm run build:react",
     "build:react": "node --import tsx scripts/build-react.ts",
     "dev:api": "npm run dev --workspace @frayune/api",
-    "build:apps": "npm run build --workspaces --if-present"
+    "build:apps": "npm run build --workspaces --if-present",
+    "dev:stack": "python3 scripts/dev_stack.py up",
+    "dev:stack:down": "python3 scripts/dev_stack.py down"
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,cjs,css,yml,yaml,json}": [

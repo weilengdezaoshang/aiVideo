@@ -12,8 +12,9 @@ TypeScript 前端(工作台、落地页与画布为 React + TSX，画布使用 r
 
 ## 常用命令
 
+- `npm run dev:stack` / `npm run dev:stack:down` — 一键本地开发环境(mock Provider + 本地 OIDC,API 8443 TLS);详见 `docs/runbooks/dev-environment.md`
 - `npm run dev -- --env-file /absolute/path/to/dev.env` — 启动同一数据库 API 的 Uvicorn 热重载；需显式基础设施、OIDC、路由与共享媒体配置
-- `npm run stack:up` — 启动统一 Compose 应用栈；先填写 `.env.production.example` 对应配置
+- `npm run stack:up` — 启动统一 Compose 应用栈；先填写 `.env.production.example` 对应配置(生产环境,与 dev:stack 分离)
 - `npm run verify` — typecheck + eslint + 测试,提交前必跑(pre-commit 会自动执行 typecheck)
 - `npm run format` / `npm run lint:fix` — 格式化 / lint 自动修复
 - `LOG_LEVEL=debug npm run dev` — 开启请求级访问日志

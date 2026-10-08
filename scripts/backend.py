@@ -24,6 +24,8 @@ if args and args[0] == "verify":
             "apps/api/backend",
             "tests/backend",
             "scripts/backend.py",
+            "scripts/dev_stack.py",
+            "deploy/dev/oidc_fixture.py",
             "scripts/eval.py",
         ],
         [str(python), "-m", "pytest", "-q"],
