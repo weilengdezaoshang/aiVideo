@@ -11,9 +11,11 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -34,11 +36,21 @@ def run(command: list[str], **kwargs) -> subprocess.CompletedProcess:
 def ensure_certificates() -> None:
     if (RUNTIME / "tls.pem").exists():
         return
+    # 优先 mkcert:证书被系统信任,内嵌浏览器(无"继续前往"按钮)也能打开。
+    mkcert = shutil.which("mkcert")
+    if mkcert and Path.home().joinpath("Library/Application Support/mkcert/rootCA.pem").exists():
+        run([mkcert, "-cert-file", str(RUNTIME / "tls.pem"), "-key-file", str(RUNTIME / "tls.key"),
+             "localhost", "127.0.0.1"])
+        print("已用 mkcert 生成受信证书 data/dev/tls.pem")
+        return
     run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
          "-keyout", str(RUNTIME / "tls.key"), "-out", str(RUNTIME / "tls.pem"),
          "-days", "825", "-subj", "/CN=localhost",
          "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1"])
     print("已生成自签证书 data/dev/tls.pem(仅本机开发用)")
+    if not mkcert:
+        print("提示:安装并信任 mkcert(brew install mkcert && sudo mkcert -install)后,"
+              "删除 data/dev/tls.* 重跑可生成受信证书,内嵌浏览器即可打开。")
 
 
 def ensure_api_env() -> None:
@@ -120,6 +132,17 @@ def stop_children() -> None:
         pidfile.unlink(missing_ok=True)
 
 
+def ensure_workspace_member() -> None:
+    """把本地 OIDC 的 dev-user 加入固定开发工作区(幂等);应用层不做登录旁路。"""
+    subprocess.run(
+        [str(PYTHON), "-m", "backend.tools.production_admin", "grant-member",
+         "--workspace", str(uuid.uuid5(uuid.NAMESPACE_URL, "https://localhost:8443/#dev")),
+         "--issuer", f"https://localhost:{OIDC_PORT}", "--subject", "dev-user",
+         "--role", "admin", "--actor", "dev_stack"],
+        cwd=ROOT, env=load_env(), check=True, capture_output=True)
+    print("dev-user 已加入开发工作区(admin)")
+
+
 def wait_healthy() -> bool:
     import urllib.request
     import ssl
@@ -164,13 +187,11 @@ def up() -> None:
                    "--port", OIDC_PORT, "--log-level", "warning", *tls])
     spawn("api", [str(PYTHON), "-m", "uvicorn", "backend.app:create_app", "--factory",
                   "--host", "127.0.0.1", "--port", API_PORT, "--log-level", "info", *tls], env)
-    if wait_healthy():
-        print(f"\n开发环境就绪: https://localhost:{API_PORT}/  (OIDC: https://localhost:{OIDC_PORT})")
-        print("自签证书首次访问需在浏览器手动放行;登录经本地 OIDC 自动完成。")
-        print("改后端代码后重跑 dev:stack 即可;改前端跑 npm run build:web 或用 npm run dev 热更新。")
-    else:
+    if not wait_healthy():
         print("API 未在 30 秒内就绪,查看 data/dev/api.log 与 docker 日志排查。")
         sys.exit(1)
+    ensure_workspace_member()
+    print(f"\n开发环境就绪: https://localhost:{API_PORT}/  (OIDC: https://localhost:{OIDC_PORT})")
 
 
 def down() -> None:
