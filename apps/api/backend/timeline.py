@@ -111,7 +111,7 @@ def validate_audio_clips(clips):
         asset = source["assetId"]
         if (
             not re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", asset)
-            or source.get("url") != f"/assets/{asset}/original.wav"
+            or source.get("url") not in (f"/assets/{asset}/original.wav", f"/api/assets/{asset}/content")
         ):
             raise ValueError("音频来源必须是资产库 WAV")
         start, inside, outside, duration = (

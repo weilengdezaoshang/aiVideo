@@ -731,7 +731,7 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
             if not match:
                 raise HTTPException(400, "导出仅允许已授权的资产库素材")
             asset = await owned_asset(uuid.UUID(match[1]), identity)
-            if clip["source"]["kind"] != asset.kind:
+            if clip["source"].get("kind", "audio") != asset.kind:
                 raise HTTPException(400, "素材类型不一致")
             sources[url] = asset.storage_key
             refs.add(str(asset.id))

@@ -150,3 +150,17 @@ def test_audio_track_roundtrip_and_invalid_ranges(tmp_path):
         invalid["audioClips"][0]["startFrame"] = bad
         with pytest.raises(ValueError):
             validate_timeline(invalid)
+
+
+def test_audio_track_accepts_authorized_current_asset_url():
+    ident = "12345678-1234-1234-1234-123456789abc"
+    raw = timeline()
+    raw["audioClips"] = [dict(
+        id="audio", name="music", source=dict(assetId=ident,
+            url=f"/api/assets/{ident}/content", durationFrames=90),
+        startFrame=0, inFrame=0, outFrame=90, volume=1,
+        fadeInFrames=0, fadeOutFrames=0)]
+    assert validate_timeline(raw)["audioClips"][0]["source"]["url"] == f"/api/assets/{ident}/content"
+    raw["audioClips"][0]["source"]["url"] = "/api/assets/another/content"
+    with pytest.raises(ValueError):
+        validate_timeline(raw)

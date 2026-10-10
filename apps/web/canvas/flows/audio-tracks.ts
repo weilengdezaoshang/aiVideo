@@ -68,7 +68,7 @@ export function createAudioTracks(panel: HTMLElement, store: DocStore) {
             name: file.name,
             source: {
               assetId: asset.id,
-              url: `/assets/${asset.id}/original.wav`,
+              url: `/api/assets/${asset.id}/content`,
               durationFrames: frames,
             },
             startFrame: 0,

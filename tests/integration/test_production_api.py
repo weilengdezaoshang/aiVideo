@@ -160,7 +160,8 @@ def test_cutout_precancel_prevents_inference_and_never_persists_mask(tmp_path, m
     asyncio.run(scenario())
 
 
-def test_real_export_worker_uses_database_and_shared_assets(tmp_path):
+@pytest.mark.parametrize("with_audio", [False, True])
+def test_real_export_worker_uses_database_and_shared_assets(tmp_path, with_audio):
     import io
     from PIL import Image
     from backend.services.export_runner import execute_export
@@ -177,6 +178,21 @@ def test_real_export_worker_uses_database_and_shared_assets(tmp_path):
                 "id": "clip-1", "name": "red", "inFrame": 0, "outFrame": 3,
                 "source": {"nodeId": "node-1", "kind": "image", "durationFrames": 30,
                            "url": asset["urls"]["original"]}}]}
+            if with_audio:
+                import wave
+                audio_bytes = io.BytesIO()
+                with wave.open(audio_bytes, "wb") as wav:
+                    wav.setnchannels(1)
+                    wav.setsampwidth(2)
+                    wav.setframerate(8000)
+                    wav.writeframes(b"\x00\x00" * 800)
+                audio = await client.post("/api/assets?kind=audio&ext=wav", content=audio_bytes.getvalue())
+                assert audio.status_code == 201, audio.text
+                audio_asset = audio.json()
+                timeline["audioClips"] = [{"id": "music", "name": "music", "startFrame": 0,
+                    "inFrame": 0, "outFrame": 3, "volume": 1, "fadeInFrames": 0, "fadeOutFrames": 0,
+                    "source": {"assetId": audio_asset["asset"]["id"], "url": audio_asset["urls"]["original"],
+                        "durationFrames": 3}}]
             response = await client.post("/api/exports", json={"requestId": str(uuid.uuid4()),
                 "documentId": doc["id"], "timeline": timeline})
             assert response.status_code == 202, response.text
