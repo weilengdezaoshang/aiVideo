@@ -7,7 +7,15 @@ import tseslint from 'typescript-eslint'
 // eslint-config-prettier 需在 curly 之前声明,否则 curly 会被其静默关闭。
 export default tseslint.config(
   {
-    ignores: ['node_modules/', '.web-build/', '.venv/', 'data/', 'apps/web/vendor/', 'docs/'],
+    ignores: [
+      '**/node_modules/',
+      'apps/web/creation-agent/dist/',
+      '.web-build/',
+      '.venv/',
+      'data/',
+      'apps/web/vendor/',
+      'docs/',
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
