@@ -17,13 +17,15 @@
   "include": [
     "tests",
     "apps/web/canvas",
-    "apps/web/canvas-next",
     "apps/web/shared",
     "apps/web/ui",
     "apps/web/workspace",
     "apps/web/evaluation",
     "scripts/build-react.ts",
     "scripts/perf",
-    "apps/web/landing"
+    "apps/web/landing",
+    "apps/web/creation-agent/src",
+    "apps/server/src",
+    "apps/server/tests"
   ]
 }

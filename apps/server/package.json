@@ -1,0 +1,21 @@
+{
+  "name": "@frayune/creation-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch src/app/main.ts",
+    "start": "tsx src/app/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "migrate:trace-v1": "tsx scripts/migrate-trace-v1.ts"
+  },
+  "dependencies": {
+    "hono": "^4.0.0",
+    "@hono/node-server": "^1.0.0",
+    "zod": "^4.0.0"
+  }
+}

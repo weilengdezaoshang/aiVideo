@@ -13,3 +13,6 @@ __pycache__/
 .ruff_cache/
 
 .web-build/
+
+# 创作 Agent 运行 Trace（保留 eval/cases）
+eval/runs/

@@ -24,7 +24,9 @@
     "dev:api": "npm run dev --workspace @frayune/api",
     "build:apps": "npm run build --workspaces --if-present",
     "dev:stack": "python3 scripts/dev_stack.py up",
-    "dev:stack:down": "python3 scripts/dev_stack.py down"
+    "dev:stack:down": "python3 scripts/dev_stack.py down",
+    "dev:creation-server": "npm run dev --workspace @frayune/creation-server",
+    "migrate:trace-v1": "npm run migrate:trace-v1 --workspace @frayune/creation-server"
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,cjs,css,yml,yaml,json}": [
