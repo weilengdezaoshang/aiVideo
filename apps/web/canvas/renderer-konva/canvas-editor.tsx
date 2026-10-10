@@ -31,10 +31,13 @@ import type {
 } from '../core/types.js'
 import { useImageElement, useVideoElement } from './use-media.js'
 import { exposeRendererDiagnostics } from './perf-diagnostics.js'
+import type { Theme } from '../theme.js'
 
-export type CanvasEditorProps = { className?: string; style?: CSSProperties }
+const SELECTION_COLOR = '#3478f6'
 
-export function CanvasEditor({ className, style }: CanvasEditorProps) {
+export type CanvasEditorProps = { className?: string; style?: CSSProperties; theme?: Theme }
+
+export function CanvasEditor({ className, style, theme = 'light' }: CanvasEditorProps) {
   useEffect(exposeRendererDiagnostics, [])
   const view = useCanvasView()
   const snapshot = useCanvasViewSnapshot()
@@ -61,6 +64,9 @@ export function CanvasEditor({ className, style }: CanvasEditorProps) {
     if (!point) {
       return
     }
+    if (type === 'lbutton-down' || type === 'rbutton-down') {
+      containerRef.current?.focus({ preventScroll: true })
+    }
     const native = event.evt
     const target = resolveHitTarget(event.target)
     const input: CanvasMouseEvent = {
@@ -85,6 +91,7 @@ export function CanvasEditor({ className, style }: CanvasEditorProps) {
   return (
     <div
       ref={containerRef}
+      data-canvas-keyboard-target
       className={className}
       tabIndex={0}
       style={{ width: '100%', height: '100%', overflow: 'hidden', outline: 'none', ...style }}
@@ -127,7 +134,7 @@ export function CanvasEditor({ className, style }: CanvasEditorProps) {
           scaleX={snapshot.camera.scale}
           scaleY={snapshot.camera.scale}
         >
-          <ConnectionScene />
+          <ConnectionScene theme={theme} />
           <ContentScene />
           <SelectionScene />
           <EditingScene />
@@ -161,7 +168,7 @@ function ContentScene() {
   )
 }
 
-function ConnectionScene() {
+function ConnectionScene({ theme }: { theme: Theme }) {
   const view = useCanvasView()
   const snapshot = useCanvasViewSnapshot()
   const document = view.getDocument()
@@ -173,14 +180,16 @@ function ConnectionScene() {
         if (!source || !target) {
           return null
         }
+        const active =
+          snapshot.selection.includes(source.id) || snapshot.selection.includes(target.id)
         return (
           <Line
             key={`${edge.sourceId}:${edge.targetId}:${edge.kind}`}
             points={connectionPoints(source, target)}
             bezier
-            stroke={edge.kind === 'reference' ? '#5b7fd7' : '#9a70d6'}
+            stroke={active ? SELECTION_COLOR : theme === 'dark' ? '#c9ccd4' : '#9aa0a8'}
             strokeWidth={2 / snapshot.camera.scale}
-            opacity={0.72}
+            opacity={active ? 1 : 0.72}
           />
         )
       })}
@@ -213,7 +222,7 @@ function ObjectNode({
     }
   }, [video])
 
-  const stroke = selected ? '#3478f6' : hovered ? '#79a8ff' : undefined
+  const stroke = selected ? SELECTION_COLOR : hovered ? '#79a8ff' : undefined
   const common = {
     width: object.width,
     height: object.height,
@@ -269,7 +278,11 @@ function ObjectNode({
           <Text
             width={object.width}
             height={object.height}
-            text={object.gen?.message || object.nodeRun?.message || '生成中…'}
+            text={
+              object.gen?.message ||
+              object.nodeRun?.message ||
+              (object.placeholderType ? object.name || '空占位符' : '生成中…')
+            }
             align="center"
             verticalAlign="middle"
             fill="#4771c5"

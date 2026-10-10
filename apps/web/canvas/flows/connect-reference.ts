@@ -21,7 +21,7 @@ export async function connectReference(
     target.nodeRun ||
     target.assetId ||
     target.src ||
-    !['image', 'video'].includes(target.kind)
+    !['image', 'video'].includes(target.mediaType ?? target.kind)
   ) {
     throw new Error('请将已有图片连接到空的图片或视频节点')
   }
@@ -33,7 +33,7 @@ export async function connectReference(
     throw new Error('无法读取模型参考能力，请重试')
   }
   const capabilities = (await response.json()) as Capabilities
-  const cap = capabilities[target.kind as 'image' | 'video']
+  const cap = capabilities[(target.mediaType ?? target.kind) as 'image' | 'video']
   if (!cap?.supported || !Number.isInteger(cap.referenceLimit) || cap.referenceLimit < 1) {
     throw new Error('当前模型不支持参考图')
   }

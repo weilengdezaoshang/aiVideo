@@ -7,7 +7,11 @@ type ExportJob = {
   progress: number
   error?: string
 }
-export function createTimelineExport(panel: HTMLElement, store: DocStore) {
+export function createTimelineExport(
+  panel: HTMLElement,
+  store: DocStore,
+  options: { ensureSaved?: () => Promise<unknown>; storageKey?: string } = {},
+) {
   const area = document.createElement('div')
   area.className = 'timeline-export'
   area.innerHTML =
@@ -38,7 +42,7 @@ export function createTimelineExport(panel: HTMLElement, store: DocStore) {
     status.textContent = '字幕按当前片段时长导出；MP4 包含可开关字幕轨，显示效果取决于播放器'
   })
   area.append(subtitles)
-  const key = `gencanvas.export.${store.doc.id}`
+  const key = options.storageKey ?? `gencanvas.export.${store.doc.id}`
   let active = ''
   let timer: ReturnType<typeof setTimeout> | undefined
   let disposed = false
@@ -56,6 +60,8 @@ export function createTimelineExport(panel: HTMLElement, store: DocStore) {
     }
   }
   function show(job: ExportJob) {
+    active = job.id
+    remember()
     busy = ['queued', 'running'].includes(job.status)
     submit.disabled = busy
     cancel.hidden = !busy
@@ -81,13 +87,21 @@ export function createTimelineExport(panel: HTMLElement, store: DocStore) {
     }
     clearTimeout(timer)
     try {
-      const res = await fetch(`/api/exports/${encodeURIComponent(active)}`)
+      let res = await fetch(`/api/exports/${encodeURIComponent(active)}`)
       if (res.status === 404) {
-        busy = false
-        submit.disabled = false
-        cancel.hidden = true
-        status.textContent = '未找到该次导出，可重新导出'
-        return
+        const recovery = await fetch(
+          `/api/generation-requests/${encodeURIComponent(active)}?documentId=${encodeURIComponent(store.doc.id)}`,
+        )
+        if (!recovery.ok) {
+          throw new Error('原导出请求尚未确认')
+        }
+        const recovered = (await recovery.json()) as { job?: { id: string } }
+        if (!recovered.job) {
+          throw new Error('原导出请求尚未确认')
+        }
+        active = recovered.job.id
+        remember()
+        res = await fetch(`/api/exports/${encodeURIComponent(active)}`)
       }
       if (!res.ok) {
         throw new Error()
@@ -119,17 +133,27 @@ export function createTimelineExport(panel: HTMLElement, store: DocStore) {
     status.textContent = '正在提交导出…'
     active = crypto.randomUUID()
     remember()
+    let attempted = false
+    const snapshot = structuredClone(store.doc.timeline)
     try {
+      await options.ensureSaved?.()
+      if (disposed) {
+        return
+      }
+      attempted = true
       const res = await fetch('/api/exports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           documentId: store.doc.id,
           requestId: active,
-          timeline: structuredClone(store.doc.timeline),
+          timeline: snapshot,
         }),
       })
       const body = (await res.json()) as { export?: ExportJob; error?: string }
+      if (res.status >= 500) {
+        throw new Error('提交结果待确认')
+      }
       if (!res.ok || !body.export) {
         busy = false
         submit.disabled = false
@@ -140,6 +164,14 @@ export function createTimelineExport(panel: HTMLElement, store: DocStore) {
         show(body.export)
       }
     } catch {
+      if (!attempted) {
+        busy = false
+        submit.disabled = false
+        active = ''
+        remember()
+        status.textContent = '保存失败，请先保存画布再导出'
+        return
+      }
       if (!disposed) {
         void poll()
       }

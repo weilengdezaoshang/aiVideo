@@ -3,7 +3,7 @@ import test, { afterEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { cleanup, render, screen } from '@testing-library/react'
-import { AgentEvidence } from '../apps/web/canvas-next/agent-evidence.js'
+import { AgentEvidence } from '../apps/web/canvas/agent-evidence.js'
 import { parseEnvelope } from '../apps/web/canvas/agent/contracts.js'
 
 afterEach(cleanup)

@@ -2,7 +2,7 @@ import './dom.js'
 import test, { afterEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { AgentPanel } from '../apps/web/canvas-next/agent-panel.js'
+import { AgentPanel } from '../apps/web/canvas/agent-panel.js'
 import { createAgentStore } from '../apps/web/canvas/agent/store.js'
 import type { AgentApi } from '../apps/web/canvas/agent/api.js'
 import type { AgentRequest, AgentRun } from '../apps/web/canvas/agent/types.js'
@@ -142,10 +142,37 @@ test('展示真实工具输入输出与最终回复，输出文本不能成为HT
   })
   try {
     await screen.findByText('找到一张图片')
+    const process = screen.getByText('查看处理过程').closest('details')
+    assert.ok(process)
+    assert.equal(process.open, false)
+    fireEvent.click(screen.getByText('查看处理过程'))
+    assert.equal(process.open, true)
     assert.ok(screen.getByText('inspect_image · 已返回'))
     await waitFor(() => assert.match(screen.getByText(/"width": 1024/).textContent ?? '', /1024/))
     assert.equal(document.querySelector('img'), null)
     assert.equal(screen.queryByRole('button', { name: '停止' }), null)
+  } finally {
+    close()
+  }
+})
+
+test('建议只填入草稿，Shift Enter 与中文输入不提交，Enter提交一次', async () => {
+  const { close, requests } = setup()
+  try {
+    await screen.findByRole('option', { name: 'DeepSeek' })
+    fireEvent.click(screen.getByRole('button', { name: '画布上有哪些素材？' }))
+    const input = screen.getByRole('textbox', { name: '向画布助手提问' }) as HTMLTextAreaElement
+    assert.equal(input.value, '画布上有哪些素材？')
+    assert.equal(document.activeElement, input)
+    assert.equal(requests.length, 0)
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true })
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true })
+    assert.equal(requests.length, 0)
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await screen.findByRole('button', { name: '停止' })
+    assert.equal(requests.length, 1)
+    fireEvent.keyDown(input, { key: 'Enter' })
+    assert.equal(requests.length, 1)
   } finally {
     close()
   }

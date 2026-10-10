@@ -1,6 +1,6 @@
-import type { AgentRun, AgentStep, AgentStepStatus } from '../canvas/agent/types.js'
+import type { AgentRun, AgentStep, AgentStepStatus } from './agent/types.js'
 import { factAnchor, jumpTo, toolAnchor } from './agent-answer.js'
-import { evidenceOf } from '../canvas/agent/citations.js'
+import { evidenceOf } from './agent/citations.js'
 
 const stepLabels: Record<AgentStepStatus, string> = {
   pending: '待执行',

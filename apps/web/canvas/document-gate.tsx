@@ -1,11 +1,11 @@
 import React, { useEffect, useState, type ReactNode } from 'react'
-import type { CanvasDocData } from '../canvas/state/doc-store.js'
+import type { CanvasDocData } from './state/doc-store.js'
 import {
   clearLocalDraftIfMatches,
   loadLocalDraft,
   openDocument,
   resolveDraftOnOpen,
-} from '../canvas/state/document-api.js'
+} from './state/document-api.js'
 
 /** Keep the editor (and its autosaver) unmounted until a recovery choice is made. */
 export function CanvasDocumentGate({

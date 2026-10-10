@@ -29,7 +29,7 @@ def test_pages_and_errors(client):
         "/workspace/",
         "/canvas",
         "/canvas/",
-        "/canvas-next/app.js",
+        "/canvas/app.js",
     ]:
         assert client.get(path).status_code == 200, path
     for removed in ["/legacy", "/legacy/", "/index.html", "/app.js", "/style.css"]:
@@ -264,11 +264,14 @@ def test_cutout_session_requires_manual_confirmation(root, png):
 
 def test_node_styles_are_served_and_frontend_revalidates(client):
     page = client.get('/canvas/')
-    assert '/canvas-next/canvas-next.css' in page.text
-    assert '/canvas-next/app.js' in page.text
-    style = client.get('/canvas-next/canvas-next.css')
+    assert '/canvas/canvas.css' in page.text
+    assert '/canvas/app.js' in page.text
+    style = client.get('/canvas/canvas.css')
     assert style.status_code == 200
-    assert '.next-shell' in style.text and '.next-canvas' in style.text
+    assert '.tool-rail' in style.text and '.canvas-root' in style.text
+    assert '/canvas/panels.css' in page.text
+    assert 'canvas-next' not in page.text
+    assert client.get('/canvas/panels.css').status_code == 200
     assert style.headers['cache-control'] == 'no-cache'
-    assert client.get('/canvas-next/app.js').headers['cache-control'] == 'no-cache'
+    assert client.get('/canvas/app.js').headers['cache-control'] == 'no-cache'
     assert page.headers['cache-control'] == 'no-cache'

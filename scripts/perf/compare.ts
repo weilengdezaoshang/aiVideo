@@ -44,7 +44,7 @@ const beforeEnv = JSON.parse(await readFile(join(beforeDir, 'environment.json'),
 const afterEnv = JSON.parse(
   await readFile(join(afterDir, 'environment.json'), 'utf8'),
 ) as typeof beforeEnv
-const buildHash = (env: typeof beforeEnv) => env.sourceHashes['.web-build/canvas-next/app.js']
+const buildHash = (env: typeof beforeEnv) => env.sourceHashes['.web-build/canvas/app.js']
 const sameBuild = Boolean(buildHash(beforeEnv) && buildHash(beforeEnv) === buildHash(afterEnv))
 const environmentIssues = (['cpu', 'ramBytes', 'collectorHash', 'headless'] as const)
   .filter((key) => beforeEnv[key] !== afterEnv[key])

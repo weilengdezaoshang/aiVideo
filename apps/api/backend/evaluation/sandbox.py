@@ -21,7 +21,7 @@ from uuid import uuid4
 import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -1052,8 +1052,7 @@ def create_sandbox_app(
     pages = {
         "/": "landing/index.html",
         "/workspace": "workspace/index.html",
-        "/canvas": "canvas-next/index.html",
-        "/canvas-next": "canvas-next/index.html",
+        "/canvas": "canvas/index.html",
         "/evals": "evaluation/index.html",
     }
 
@@ -1070,14 +1069,13 @@ def create_sandbox_app(
     @app.get("/canvas/", include_in_schema=False)
     async def canvas_slash():
         return FileResponse(
-            root / "apps/web/canvas-next/index.html", headers={"Cache-Control": "no-cache"}
+            root / "apps/web/canvas/index.html", headers={"Cache-Control": "no-cache"}
         )
 
+    @app.get("/canvas-next", include_in_schema=False)
     @app.get("/canvas-next/", include_in_schema=False)
-    async def canvas_next_slash():
-        return FileResponse(
-            root / "apps/web/canvas-next/index.html", headers={"Cache-Control": "no-cache"}
-        )
+    async def previous_canvas_entry(request: Request):
+        return RedirectResponse(str(request.url.replace(path="/canvas")), status_code=307)
 
     @app.get("/workspace/", include_in_schema=False)
     async def workspace_slash():

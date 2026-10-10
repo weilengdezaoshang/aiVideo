@@ -7,7 +7,7 @@ const options: BuildOptions = {
     { in: 'apps/web/workspace/app.tsx', out: 'workspace/app' },
     { in: 'apps/web/landing/main.tsx', out: 'landing/app' },
     { in: 'apps/web/evaluation/app.tsx', out: 'evaluation/app' },
-    { in: 'apps/web/canvas-next/app.tsx', out: 'canvas-next/app' },
+    { in: 'apps/web/canvas/app.tsx', out: 'canvas/app' },
   ],
   bundle: true,
   format: 'esm',

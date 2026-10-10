@@ -16,6 +16,9 @@ export type CanvasObj = {
   kind: 'image' | 'video' | 'placeholder' | 'error' | 'board' | 'text' | 'draft'
   /** 未生成节点的目标类型 */
   mediaType?: 'image' | 'video'
+  /** 用户插入的空节点，与生成任务占位区分。 */
+  placeholderType?: 'image' | 'video' | 'timeline'
+  timeline?: Timeline
   x: number
   y: number
   width: number
@@ -115,6 +118,7 @@ export function cmdGenerateNode(spec: {
   objectId: string
   generationId: string
   initialPlacement: CanvasObj
+  previousPlacement?: CanvasObj
 }): GenerateNodeCommand {
   return { type: 'generateNode', ...spec, initialPlacement: structuredClone(spec.initialPlacement) }
 }
@@ -141,6 +145,7 @@ export type GenerateNodeCommand = {
   objectId: string
   generationId: string
   initialPlacement: CanvasObj
+  previousPlacement?: CanvasObj
 }
 export type SetTimelineCommand = { type: 'setTimeline'; before?: Timeline; after?: Timeline }
 export type SetStoryboardCommand = {
@@ -250,7 +255,12 @@ export function invertCommand(cmd: CanvasCommand): CanvasCommand {
     case 'updateObject':
       return cmdUpdateObject(cmd.id, cmd.prevPatch, cmd.patch)
     case 'generateNode': {
-      return cmdRemoveObjects([{ object: structuredClone(cmd.initialPlacement), orderIndex: -1 }])
+      const remove = cmdRemoveObjects([
+        { object: structuredClone(cmd.initialPlacement), orderIndex: -1 },
+      ])
+      return cmd.previousPlacement
+        ? cmdBatch([remove, cmdAddObjects([structuredClone(cmd.previousPlacement)])])
+        : remove
     }
     case 'batch':
       return cmdBatch([...cmd.commands].reverse().map((child) => invertCommand(child)))

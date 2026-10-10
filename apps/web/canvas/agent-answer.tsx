@@ -1,6 +1,6 @@
-import { evidenceOf, splitCitations } from '../canvas/agent/citations.js'
-import { parseEnvelope } from '../canvas/agent/contracts.js'
-import type { AgentRun } from '../canvas/agent/types.js'
+import { evidenceOf, splitCitations } from './agent/citations.js'
+import { parseEnvelope } from './agent/contracts.js'
+import type { AgentRun } from './agent/types.js'
 
 export const toolAnchor = (runId: string, evidenceId: string): string =>
   `agent-tool-${runId}-${evidenceId}`

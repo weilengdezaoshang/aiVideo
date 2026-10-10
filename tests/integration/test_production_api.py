@@ -236,3 +236,56 @@ def test_oidc_validates_real_signed_token_and_pkce(tmp_path, audience, status):
                 else:
                     assert SESSION_COOKIE not in browser.cookies
     asyncio.run(scenario())
+
+
+def test_canvas_serves_restored_page_and_current_bundle(tmp_path):
+    async def scenario():
+        async with api(tmp_path) as (_app, client, _workspace):
+            for url in ("/canvas?doc=existing-document", "/canvas/"):
+                page = await client.get(url)
+                assert page.status_code == 200
+                assert '/canvas/app.js' in page.text
+                assert '/canvas/canvas.css' in page.text
+                assert '/canvas-next/' not in page.text
+                assert page.headers['cache-control'] == 'no-cache'
+            for url in ('/canvas-next?doc=existing-document', '/canvas-next/?doc=existing-document'):
+                alias = await client.get(url)
+                assert alias.status_code == 307
+                assert alias.headers['location'] == 'https://api.test/canvas?doc=existing-document'
+            for url in ('/canvas', '/canvas/'):
+                head = await client.head(url)
+                assert head.status_code == 200
+                assert head.headers['content-type'].startswith('text/html')
+            style = await client.get('/canvas/canvas.css')
+            assert style.status_code == 200
+            assert '.tool-rail' in style.text
+            bundle = await client.get('/canvas/app.js')
+            assert bundle.status_code == 200
+            assert bundle.headers['cache-control'] == 'no-cache'
+    asyncio.run(scenario())
+
+
+def test_canvas_node_drafts_and_independent_timelines_roundtrip(tmp_path):
+    async def scenario():
+        async with api(tmp_path) as (_app, client, _workspace):
+            doc = (await client.post('/api/documents', json={'name': 'node bindings'})).json()['document']
+            empty = {'version': 1, 'fps': 30, 'width': 640, 'height': 360, 'clips': []}
+            objects = {
+                'image': {'id': 'image', 'kind': 'placeholder', 'placeholderType': 'image',
+                    'mediaType': 'image', 'x': 0, 'y': 0, 'width': 320, 'height': 320,
+                    'nodeDraft': {'prompt': 'saved per node', 'model': 'mock-test', 'ratio': '1:1',
+                        'resolution': 1024, 'durationSec': 4, 'denoise': .6, 'references': []}},
+                'timeline-a': {'id': 'timeline-a', 'kind': 'placeholder', 'placeholderType': 'timeline',
+                    'x': 400, 'y': 0, 'width': 480, 'height': 160, 'timeline': empty},
+                'timeline-b': {'id': 'timeline-b', 'kind': 'placeholder', 'placeholderType': 'timeline',
+                    'x': 400, 'y': 200, 'width': 480, 'height': 160,
+                    'timeline': {**empty, 'width': 1280, 'height': 720}},
+            }
+            response = await client.post(f"/api/documents/{doc['id']}", json={
+                'objects': objects, 'order': list(objects), 'baseRevision': doc['revision']})
+            assert response.status_code == 200, response.text
+            loaded = (await client.get(f"/api/documents/{doc['id']}")).json()['document']
+            assert loaded['objects'] == objects
+            assert loaded['objects']['timeline-a']['timeline']['width'] == 640
+            assert loaded['objects']['timeline-b']['timeline']['width'] == 1280
+    asyncio.run(scenario())

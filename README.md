@@ -149,8 +149,7 @@ aiVideo/
 │   └── web/                     # @frayune/web：React + TypeScript
 │       ├── landing/             # 落地页
 │       ├── workspace/           # 创作工作台
-│       ├── canvas/              # 画布核心、状态与 React/Konva 渲染
-│       ├── canvas-next/         # React 画布应用入口
+│       ├── canvas/              # 正式画布页面、状态与 React/Konva 渲染
 │       ├── ui/                  # 前端共享组件
 │       └── shared/              # 前端共享逻辑
 ├── scripts/                     # 开发启动、构建、评测 CLI

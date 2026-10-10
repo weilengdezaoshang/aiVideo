@@ -25,6 +25,7 @@ export type GroupDirectionMeta = {
 
 /** 随文档持久化的组元数据(标题 = 需求截断;方向待服务端规划回填) */
 export type GroupMeta = {
+  requestId?: string
   title: string
   prompt: string
   createdAt: string

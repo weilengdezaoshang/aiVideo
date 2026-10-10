@@ -1,9 +1,5 @@
-import type {
-  AgentReflectionRecord,
-  AgentReflectionSource,
-  AgentRun,
-} from '../canvas/agent/types.js'
-import type { AgentIssueKind } from '../canvas/agent/contracts.js'
+import type { AgentReflectionRecord, AgentReflectionSource, AgentRun } from './agent/types.js'
+import type { AgentIssueKind } from './agent/contracts.js'
 
 const sourceLabels: Record<AgentReflectionSource, string> = {
   blocker: '受阻复盘',

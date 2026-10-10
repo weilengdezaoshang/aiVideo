@@ -1,9 +1,5 @@
 import { factAnchor } from './agent-answer.js'
-import type {
-  AgentControlReceipt,
-  AgentEnvelope,
-  AgentNextAction,
-} from '../canvas/agent/contracts.js'
+import type { AgentControlReceipt, AgentEnvelope, AgentNextAction } from './agent/contracts.js'
 
 function displayData(value: unknown): string {
   const text = JSON.stringify(value, null, 2) ?? '无返回内容'

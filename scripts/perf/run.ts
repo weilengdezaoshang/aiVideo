@@ -244,8 +244,8 @@ try {
       }
     }
     await hashTree('apps/web/canvas')
-    await hashTree('apps/web/canvas-next')
-    await hashTree('.web-build/canvas-next')
+    await hashTree('apps/web/canvas')
+    await hashTree('.web-build/canvas')
     await writeFile(
       join(output, 'environment.json'),
       JSON.stringify(

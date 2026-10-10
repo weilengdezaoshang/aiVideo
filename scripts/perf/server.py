@@ -51,7 +51,7 @@ app = create_app(root=root, data_dir=data, config=Config(provider='mock', port=a
 
 
 async def page(_request):
-    return HTMLResponse((root / 'apps/web/canvas-next/index.html').read_text())
+    return HTMLResponse((root / 'apps/web/canvas/index.html').read_text())
 
 
 async def manifest(_request):

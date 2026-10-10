@@ -155,6 +155,7 @@ export function createGenerationCoordinator(
         objectId,
         generationId,
         initialPlacement: placement,
+        ...(existingObject ? { previousPlacement: structuredClone(existingObject) } : {}),
       })
       docStore.apply(
         request.additionalCommands?.length

@@ -2,7 +2,7 @@ import './dom.js'
 import test, { afterEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { CanvasDocumentGate } from '../apps/web/canvas-next/document-gate.js'
+import { CanvasDocumentGate } from '../apps/web/canvas/document-gate.js'
 import { loadLocalDraft, writeLocalDraft } from '../apps/web/canvas/state/document-api.js'
 import type { CanvasDocData } from '../apps/web/canvas/state/doc-store.js'
 

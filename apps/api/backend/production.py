@@ -822,7 +822,12 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
     from backend.agent.api import install_agent_routes
     install_agent_routes(app, read_json)
 
-    for url, file in {"/": "landing", "/workspace": "workspace", "/canvas": "canvas-next", "/canvas-next": "canvas-next"}.items():
+    @app.api_route("/canvas-next", methods=["GET", "HEAD"], include_in_schema=False)
+    @app.api_route("/canvas-next/", methods=["GET", "HEAD"], include_in_schema=False)
+    async def previous_canvas_entry(request: Request):
+        return RedirectResponse(str(request.url.replace(path="/canvas")), status_code=307)
+
+    for url, file in {"/": "landing", "/workspace": "workspace", "/canvas": "canvas", "/canvas/": "canvas"}.items():
         def endpoint_factory(name):
             async def page(request: Request):
                 if name != "landing":
@@ -834,6 +839,6 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
                         raise
                 return FileResponse(root / "apps/web" / name / "index.html", headers={"Cache-Control": "no-cache"})
             return page
-        app.add_api_route(url, endpoint_factory(file), methods=["GET"], include_in_schema=False)
+        app.add_api_route(url, endpoint_factory(file), methods=["GET", "HEAD"], include_in_schema=False)
     app.mount("/", FrontendFiles(root), name="web")
     return app

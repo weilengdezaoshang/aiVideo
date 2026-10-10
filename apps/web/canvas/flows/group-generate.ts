@@ -1,3 +1,5 @@
+import { applyGroupJobs } from '../state/group-state.js'
+import { imageRecordToAsset, type JobLike } from '../state/generation-reducer.js'
 // 四方向组生成提交流程(PRD §5):
 //   提交 = 原位同时创建 4 个占位(同一 groupId,横排成组)+ POST /api/generate/group;
 //   服务端规划四条方向,每方向一个任务;四占位状态由 SSE 组语义驱动
@@ -39,6 +41,7 @@ export type GroupChatHooks = {
 
 /** 随文档 groups 字段持久化的组元数据 */
 type GroupMeta = {
+  requestId?: string
   title?: string
   prompt: string
   createdAt?: string
@@ -73,6 +76,7 @@ export async function submitGroupGeneration(options: {
   chat?: GroupChatHooks
   onPlaceholderCreated?: (slotIds: string[]) => void
   fetchImpl?: typeof fetch
+  ensureSaved?: () => Promise<unknown>
 }): Promise<GroupSubmitResult> {
   const {
     docStore,
@@ -99,6 +103,7 @@ export async function submitGroupGeneration(options: {
   // 整行占位先整体找空位(4 宽 + 3 间距),再切成四个锚点 → 横排成组不压其他对象
   const rowSize = { width: width * 4 + GROUP_GAP * 3, height }
   const rowPos = findFreePosition(docStore.doc, base, rowSize, { gap: GROUP_GAP })
+  const requestId = crypto.randomUUID()
   const groupId = `grp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   const slotIds = Array.from(
     { length: 4 },
@@ -121,6 +126,7 @@ export async function submitGroupGeneration(options: {
   docStore.mutateTransient((doc) => {
     const groups = (doc.groups ??= {}) as Record<string, GroupMeta>
     groups[groupId] = {
+      requestId,
       title: String(genParams.prompt || '').slice(0, 40) || '四方向生成',
       prompt: String(genParams.prompt || ''),
       createdAt: new Date().toISOString(),
@@ -166,11 +172,21 @@ export async function submitGroupGeneration(options: {
     return { ok: false, pendingConfirm: true, groupId, slotIds }
   }
 
+  let attempted = false
   try {
+    await options.ensureSaved?.()
+    attempted = true
     const res = await fetchImpl('/api/generate/group', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...genParams, batchCount: 1, seed: -1, clientRefs: slotIds }),
+      body: JSON.stringify({
+        ...genParams,
+        documentId: docStore.doc.id,
+        requestId,
+        batchCount: 1,
+        seed: -1,
+        clientRefs: slotIds,
+      }),
     })
     const body: {
       error?: string
@@ -179,6 +195,9 @@ export async function submitGroupGeneration(options: {
       slots?: GroupDirection[]
     } = await res.json().catch(() => ({}))
     if (!res.ok) {
+      if (res.status >= 500) {
+        return markPendingConfirm(body.error || '服务响应待确认')
+      }
       return abort(body.error || `提交失败 HTTP ${res.status}`)
     }
     // 回填方向元数据(标题/维度),占位标签换成方向名
@@ -203,6 +222,9 @@ export async function submitGroupGeneration(options: {
     })
     return { ok: true, groupId, slotIds }
   } catch (err) {
+    if (!attempted) {
+      return abort('画布保存失败，请保存后再生成')
+    }
     // fetch 抛错 = 网络层失败,请求可能已到达服务端:进入"结果待确认"(A06)
     return markPendingConfirm((err instanceof Error ? err.message : String(err)) || '网络错误')
   }
@@ -227,6 +249,35 @@ export async function confirmPendingGroup(options: {
   const slotIds = meta?.slots || []
   if (!Array.isArray(slotIds) || slotIds.length === 0) {
     return { ok: false }
+  }
+  if (meta.requestId) {
+    try {
+      const response = await fetchImpl(
+        `/api/generation-requests/${encodeURIComponent(meta.requestId)}?documentId=${encodeURIComponent(docStore.doc.id)}`,
+      )
+      if (!response.ok) {
+        return { ok: false, found: false }
+      }
+      const body = (await response.json()) as { job?: { id: string; children?: JobLike[] } }
+      if (!body.job) {
+        return { ok: false, found: false }
+      }
+      docStore.mutateTransient((doc) => {
+        applyGroupJobs(doc, body.job?.children ?? [], imageRecordToAsset)
+        for (const id of slotIds) {
+          const object = doc.objects[id]
+          if (object) {
+            object.pendingConfirm = false
+            if (object.gen) {
+              object.gen.message = '准备中'
+            }
+          }
+        }
+      })
+      return { ok: true, found: true }
+    } catch {
+      return { ok: false }
+    }
   }
   let jobs: Array<{ clientRef?: string }> = []
   try {
@@ -293,4 +344,34 @@ export async function regenerateGroup(options: {
     kind: 'image',
   }
   return submitGroupGeneration({ docStore, genParams, chat, engine, fetchImpl })
+}
+
+/** Only remove uncertain placeholders after the original request is explicitly cancelled. */
+export async function cancelPendingGroup(options: {
+  docStore: GroupDocStore
+  groupId: string
+  fetchImpl?: typeof fetch
+}): Promise<void> {
+  const { docStore, groupId, fetchImpl = fetch } = options
+  const meta = docStore.doc.groups?.[groupId] as GroupMeta | undefined
+  if (!meta?.requestId) {
+    throw new Error('缺少原请求标识，无法确认取消')
+  }
+  const response = await fetchImpl(
+    `/api/generation-requests/${encodeURIComponent(meta.requestId)}?documentId=${encodeURIComponent(docStore.doc.id)}`,
+    { method: 'DELETE' },
+  )
+  if (!response.ok) {
+    throw new Error('取消尚未确认，请稍后重试')
+  }
+  docStore.apply(
+    cmdRemoveObjects(
+      (meta.slots ?? []).flatMap((id) => {
+        const object = docStore.doc.objects[id]
+        return object?.pendingConfirm && object.kind === 'placeholder'
+          ? [{ object, orderIndex: docStore.doc.order.indexOf(id) }]
+          : []
+      }),
+    ),
+  )
 }
