@@ -1,4 +1,5 @@
 import type { CanvasObj } from './commands.js'
+import type { ObjectPreview } from '../core/types.js'
 import { transformPoint, type Geometry } from '../engine/transform-geometry.js'
 
 export type CanvasConnection = {
@@ -47,4 +48,19 @@ export function connectionPoints(source: Geometry, target: Geometry): number[] {
   const first = transformPoint(source, source.width + reach, source.height / 2)
   const second = transformPoint(target, -reach, target.height / 2)
   return [start.x, start.y, first.x, first.y, second.x, second.y, end.x, end.y]
+}
+
+/**
+ * 显示态几何 = 已提交文档 + 交互瞬态预览（拖动/缩放/旋转未松手时的位置）。
+ * 渲染层取几何一律从这里走，不得各组件手工合并预览，否则会出现连线不跟手这类失配。
+ */
+export function withObjectPreviews(
+  objects: Record<string, CanvasObj>,
+  previews: Readonly<Record<string, ObjectPreview>>,
+): Record<string, CanvasObj> {
+  const merged: Record<string, CanvasObj> = {}
+  for (const [id, object] of Object.entries(objects)) {
+    merged[id] = previews[id] ? { ...object, ...previews[id] } : object
+  }
+  return merged
 }

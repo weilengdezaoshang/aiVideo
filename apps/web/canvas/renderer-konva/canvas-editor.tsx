@@ -4,6 +4,7 @@ import {
   useRef,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
 } from 'react'
 import {
   Circle,
@@ -21,7 +22,7 @@ import type { KonvaEventObject } from 'konva/lib/Node'
 
 import { useCanvasView, useCanvasViewSnapshot } from '../react/canvas-view-context.js'
 import type { CanvasObj } from '../state/commands.js'
-import { connectionPoints, documentConnections } from '../state/connections.js'
+import { connectionPoints, documentConnections, withObjectPreviews } from '../state/connections.js'
 import type {
   CanvasHitTarget,
   CanvasInputEvent,
@@ -83,11 +84,6 @@ export function CanvasEditor({ className, style, theme = 'light' }: CanvasEditor
     view.dispatchInput(input)
   }
 
-  const cameraPosition = {
-    x: -snapshot.camera.x * snapshot.camera.scale,
-    y: -snapshot.camera.y * snapshot.camera.scale,
-  }
-
   return (
     <div
       ref={containerRef}
@@ -128,19 +124,34 @@ export function CanvasEditor({ className, style, theme = 'light' }: CanvasEditor
             fill="transparent"
           />
         </Layer>
-        <Layer
-          x={cameraPosition.x}
-          y={cameraPosition.y}
-          scaleX={snapshot.camera.scale}
-          scaleY={snapshot.camera.scale}
-        >
+        <CameraLayer listening={false}>
           <ConnectionScene theme={theme} />
+        </CameraLayer>
+        <CameraLayer>
           <ContentScene />
+        </CameraLayer>
+        <CameraLayer>
           <SelectionScene />
           <EditingScene />
-        </Layer>
+        </CameraLayer>
       </Stage>
     </div>
+  )
+}
+
+/** 相机变换层：分层后各层共用同一取景，交互变化只重绘所在层。 */
+function CameraLayer({ children, listening }: { children: ReactNode; listening?: boolean }) {
+  const snapshot = useCanvasViewSnapshot()
+  return (
+    <Layer
+      listening={listening}
+      x={-snapshot.camera.x * snapshot.camera.scale}
+      y={-snapshot.camera.y * snapshot.camera.scale}
+      scaleX={snapshot.camera.scale}
+      scaleY={snapshot.camera.scale}
+    >
+      {children}
+    </Layer>
   )
 }
 
@@ -148,17 +159,18 @@ function ContentScene() {
   const view = useCanvasView()
   const snapshot = useCanvasViewSnapshot()
   const doc = view.getDocument()
+  const objects = withObjectPreviews(doc.objects, snapshot.objectPreviews)
   return (
     <Group>
       {doc.order.map((id) => {
-        const object = doc.objects[id]
+        const object = objects[id]
         if (!object) {
           return null
         }
         return (
           <ObjectNode
             key={id}
-            object={{ ...object, ...snapshot.objectPreviews[id] }}
+            object={object}
             selected={snapshot.selection.includes(id)}
             hovered={snapshot.hoveredId === id}
           />
@@ -171,12 +183,12 @@ function ContentScene() {
 function ConnectionScene({ theme }: { theme: Theme }) {
   const view = useCanvasView()
   const snapshot = useCanvasViewSnapshot()
-  const document = view.getDocument()
+  const objects = withObjectPreviews(view.getDocument().objects, snapshot.objectPreviews)
   return (
     <Group listening={false}>
-      {documentConnections(document.objects).map((edge) => {
-        const source = document.objects[edge.sourceId]
-        const target = document.objects[edge.targetId]
+      {documentConnections(objects).map((edge) => {
+        const source = objects[edge.sourceId]
+        const target = objects[edge.targetId]
         if (!source || !target) {
           return null
         }
@@ -355,11 +367,10 @@ function SelectionScene() {
     return null
   }
   const id = snapshot.selection[0]
-  const base = view.getDocument().objects[id]
-  if (!base) {
+  const object = withObjectPreviews(view.getDocument().objects, snapshot.objectPreviews)[id]
+  if (!object) {
     return null
   }
-  const object = { ...base, ...snapshot.objectPreviews[id] }
   const size = 9 / snapshot.camera.scale
   const half = size / 2
   const handles: { handle: ResizeHandle; x: number; y: number }[] = [

@@ -1,6 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { documentConnections, connectionPoints } from '../apps/web/canvas/state/connections.js'
+import {
+  connectionPoints,
+  documentConnections,
+  withObjectPreviews,
+} from '../apps/web/canvas/state/connections.js'
 import { createDocStore } from '../apps/web/canvas/state/doc-store.js'
 import { cmdRemoveObjects, cmdUpdateObject } from '../apps/web/canvas/state/commands.js'
 import { createNode } from '../apps/web/canvas/state/node-model.js'
@@ -64,4 +68,25 @@ test('旋转后的端口与对象几何一致，向左连接仍有有效曲线',
   assert.equal(points[1], 100)
   assert.deepEqual(points.slice(-2), [-200, 140])
   assert.ok(points.every(Number.isFinite))
+})
+
+test('拖动预览期间连线端点跟随瞬态几何，不停留在已提交坐标', () => {
+  const source = createNode('image', { x: 0, y: 0 }, '角色')
+  const target = createNode('video', { x: 500, y: 0 }, '镜头')
+  target.nodeDraft!.references = [
+    { assetId: 'asset-1', ext: 'png', name: '角色', sourceNodeId: source.id },
+  ]
+  const objects = { [source.id]: source, [target.id]: target }
+  const committed = connectionPoints(source, target)
+
+  const display = withObjectPreviews(objects, { [source.id]: { x: 120, y: 60 } })
+  const followed = connectionPoints(display[source.id], display[target.id])
+  // 源端起点 = 右中点：应平移到预览位置，而非停留提交坐标。
+  assert.deepEqual(followed.slice(0, 2), [120 + source.width, 60 + source.height / 2])
+  assert.notDeepEqual(followed.slice(0, 2), committed.slice(0, 2))
+  // 未拖动的目标端点保持不动。
+  assert.deepEqual(followed.slice(-2), committed.slice(-2))
+  // 松手后预览清空，连线回到提交几何。
+  const settled = withObjectPreviews(objects, {})
+  assert.deepEqual(connectionPoints(settled[source.id], settled[target.id]), committed)
 })
