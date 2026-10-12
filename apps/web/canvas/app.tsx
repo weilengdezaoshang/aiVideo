@@ -253,7 +253,20 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
       saveNodeDraft(store, composerNodeId, { ...generationDraft, prompt })
     }
   }, [composerNodeId, selectedObjectId, generationDraft, prompt, store])
-  const fitted = useRef(false)
+  /** 视野适配分两阶段：空画布居中一次；内容首次就绪再框一次，避免“文档加载晚于视口就绪”时内容落在视野外。 */
+  const fittedStage = useRef<'empty' | 'content' | null>(null)
+  const objectCount = view.getDocument().order.length
+  useEffect(() => {
+    if (snapshot.viewport.width <= 1 || snapshot.viewport.height <= 1) {
+      return
+    }
+    const stage = objectCount > 0 ? 'content' : 'empty'
+    if (fittedStage.current === 'content' || fittedStage.current === stage) {
+      return
+    }
+    fittedStage.current = stage
+    view.fitToContent()
+  }, [snapshot.viewport.height, snapshot.viewport.width, view, objectCount])
   const saver = useMemo(
     () =>
       createAutoSaver({
@@ -410,14 +423,6 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
       }),
     [store, view],
   )
-  useEffect(() => {
-    if (fitted.current || snapshot.viewport.width <= 1 || snapshot.viewport.height <= 1) {
-      return
-    }
-    fitted.current = true
-    view.fitToContent()
-  }, [snapshot.viewport.height, snapshot.viewport.width, view])
-
   return (
     <main className={`editor-body ${sidebarOpen ? 'chat-open-narrow' : 'chat-collapsed'}`}>
       {svgObject && <SvgStudio object={svgObject} onClose={() => setSvgObject(null)} />}
