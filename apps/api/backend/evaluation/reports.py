@@ -118,10 +118,17 @@ def build_report(state: RunState, cases: list[CaseVersion]) -> dict:
         "costPerQualifiedArtifact": None,  # mock 无费用;live 由预算账本提供,未知保持 null
     }
     annotations = []
+    flow_cases = [case for case in cases if case.taskType == "agent_flow"]
+    flow_only = bool(cases) and len(flow_cases) == len(cases)
     if manifest.provider == "mock":
-        annotations.append("mock 生成:分数仅验证管线,不代表模型质量(§1.3)")
-    if manifest.grading.get("judge") == "stub":
+        if flow_only:
+            annotations.append("生图为 stub/mock:流程分不代表画质。")
+        else:
+            annotations.append("mock 生成:分数仅验证管线,不代表模型质量(§1.3)")
+    if manifest.grading.get("judge") == "stub" and not flow_only:
         annotations.append("stub 判分:合成回答,仅验证判分管线")
+    if flow_only:
+        annotations.append("流程分来自真实 Host 执行与类型化规则，不使用 cloud/VLM 画质分。")
     if manifest.legacy:
         annotations.append("legacy 导入:原记录缺失执行与裁判细节,分数不可复现(§19.2)")
     if judge_error_trials:
@@ -160,6 +167,37 @@ def build_report(state: RunState, cases: list[CaseVersion]) -> dict:
         "annotations": annotations,
         "coverageGaps": coverage_gaps,
         "entries": entries,
+        "flow": _flow_section(state, cases) if flow_cases else None,
+    }
+
+
+def _flow_section(state: RunState, cases: list[CaseVersion]) -> dict:
+    from .agent_flow import case_layer, failure_rows
+
+    layers: dict[str, dict[str, int]] = {}
+    by_id = {case.caseId: case for case in cases if case.taskType == "agent_flow"}
+    for trial in state.trials:
+        case = by_id.get(trial.caseId)
+        if case is None:
+            continue
+        layer = trial.flowLayer or case_layer(list(case.suites))
+        bucket = layers.setdefault(layer, {"plan": 0, "pass": 0, "fail": 0})
+        bucket["plan"] += 1
+        if trial.status == "completed" and trial.qualityVerdict == "pass":
+            bucket["pass"] += 1
+        else:
+            bucket["fail"] += 1
+    failures = failure_rows(state, cases)
+    plan = sum(item["plan"] for item in layers.values())
+    passed = sum(item["pass"] for item in layers.values())
+    return {
+        "layers": layers,
+        "failures": failures,
+        "passRate": round(passed / plan, 4) if plan else None,
+        "unsupported": [
+            "Redis/BullMQ 未实现。L5 的 bullmq_refused 只验证驱动被拒绝，不能记为 Redis 通过。"
+        ],
+        "scoreNote": "流程分是计划内规则通过率，不使用 cloud/VLM 画质分。",
     }
 
 
@@ -248,6 +286,17 @@ _MARKDOWN_TEMPLATE = Template(
 
 - 执行:{{ execution_summary }}
 - 质量:{{ verdict_summary }}
+{% if report.flow %}
+## Agent 流程
+
+- 流程通过率:{{ report.flow.passRate if report.flow.passRate is not none else "N/A" }}
+- {{ report.flow.scoreNote }}
+{% for note in report.flow.unsupported %}- 未支持:{{ note }}
+{% endfor %}
+{% if report.flow.failures %}失败定位:
+{% for item in report.flow.failures %}- layer={{ item.layer }} caseId={{ item.caseId }} reason={{ item.reason }} trace={{ item.tracePath or "无" }}
+{% endfor %}{% else %}失败定位:(无)
+{% endif %}{% endif %}
 {% if report.coverageGaps %}
 ## 覆盖缺口(不计入质量分母,但阻断隐含的通过率)
 {% for gap in report.coverageGaps %}- {{ gap }}

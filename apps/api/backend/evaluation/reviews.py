@@ -16,8 +16,9 @@ import json
 import threading
 import uuid
 from pathlib import Path
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from ..common import atomic_write_text, now
 from .models import CaseVersion, RunState
@@ -129,27 +130,28 @@ class ReviewStore:
         priority="normal",
         sampling: dict | None = None,
     ) -> ReviewTask:
-        for existing in self.list():
-            if existing.runId == run_id and existing.trialId == trial_id:
-                return existing  # 同一 trial 不重复建任务
-        task = ReviewTask(
-            reviewTaskId=f"review-{uuid.uuid4().hex[:12]}",
-            runId=run_id,
-            trialId=trial_id,
-            caseId=case_id,
-            artifactIds=artifact_ids or [],
-            gradeRefs=grade_refs or [],
-            rubricVersion=rubric_version,
-            priority=priority,
-            sampling=sampling or {"rule": "manual", "policyVersion": None},
-        )
-        directory = self._dir(task.reviewTaskId)
-        directory.mkdir(parents=True)
-        atomic_write_text(
-            directory / "task.json",
-            json.dumps(task.model_dump(), ensure_ascii=False, indent=2),
-        )
-        return task
+        with _task_lock(f"create:{self.root}:{run_id}:{trial_id}"):
+            for existing in self.list():
+                if existing.runId == run_id and existing.trialId == trial_id:
+                    return existing  # 同一 trial 不重复建任务
+            task = ReviewTask(
+                reviewTaskId=f"review-{uuid.uuid4().hex[:12]}",
+                runId=run_id,
+                trialId=trial_id,
+                caseId=case_id,
+                artifactIds=artifact_ids or [],
+                gradeRefs=grade_refs or [],
+                rubricVersion=rubric_version,
+                priority=priority,
+                sampling=sampling or {"rule": "manual", "policyVersion": None},
+            )
+            directory = self._dir(task.reviewTaskId)
+            directory.mkdir(parents=True)
+            atomic_write_text(
+                directory / "task.json",
+                json.dumps(task.model_dump(), ensure_ascii=False, indent=2),
+            )
+            return task
 
     def get(self, task_id: str) -> ReviewTask:
         task_file = self._dir(task_id) / "task.json"
@@ -407,17 +409,32 @@ def publish_case_draft(store: Path, draft_id: str, dataset_id: str, split: str =
 
 # ---------- 抽样策略(§11.2):run 完成后自动生成审核任务 ----------
 
-SAMPLING_SCHEMA_VERSION = 1
+SAMPLING_SCHEMA_VERSION = 2
 
 
 class ReviewSamplingPolicy(BaseModel):
     """必审/风险抽样/随机抽样的版本化策略;抽样依据写入每个任务。"""
 
     schemaVersion: int = SAMPLING_SCHEMA_VERSION
-    required: str = "fail_or_undetermined"  # fail_or_undetermined | none | all
-    riskRate: float = 0.0  # 对通过 trial 的风险抽样比例(0-1)
-    randomRate: float = 0.0  # 全体 trial 的随机抽样比例(0-1)
-    seed: int = 0  # 抽样随机种子;固定种子保证同状态可复现
+    enabled: bool = True
+    required: Literal["fail_or_undetermined", "none", "all"] = "fail_or_undetermined"  # 兼容旧配置；默认只送不可靠/标记题，不再把普通 FAIL 必送
+    riskRate: float = Field(default=1.0, ge=0, le=1)
+    randomRate: float = Field(default=0.05, ge=0, le=1)
+    riskThreshold: float = Field(default=0.8, ge=0, le=1)  # 模糊带参考阈值
+    riskMargin: float = Field(default=0.05, ge=0, le=1)
+    grayMin: float = Field(default=0.4, ge=0, le=1)
+    grayMax: float = Field(default=0.7, ge=0, le=1)
+    gateScoreThreshold: float | None = Field(default=None, ge=0, le=1)  # 配置质量分门槛时检测冲突
+    reviewAgentFlowFails: bool = False
+    agentFailures: bool = False  # 兼容旧显式开关
+    includeSynthetic: bool = False  # mock/stub 管线自测默认排除
+    seed: int = 0
+
+    @model_validator(mode="after")
+    def ordered_gray_range(self):
+        if self.grayMin > self.grayMax:
+            raise ValueError("灰区下限不得大于上限")
+        return self
 
     @classmethod
     def from_env(cls) -> "ReviewSamplingPolicy":
@@ -432,7 +449,7 @@ class ReviewSamplingPolicy(BaseModel):
             return cls()
 
     def version(self) -> str:
-        return f"sampling-v{self.schemaVersion}:{self.required}:r{self.riskRate}:x{self.randomRate}"
+        return f"sampling-v{self.schemaVersion}:" + hashlib.sha256(self.model_dump_json().encode()).hexdigest()[:16]
 
 
 def _deterministic_pick(seed: int, key: str) -> float:
@@ -440,35 +457,63 @@ def _deterministic_pick(seed: int, key: str) -> float:
     return int(digest[:8], 16) / 0xFFFFFFFF
 
 
-def plan_review_tasks(state: RunState, policy: ReviewSamplingPolicy) -> list[dict]:
-    """根据 run 状态与策略给出应审清单;返回 [{trial, priority, rule, basis}]。"""
+def plan_review_tasks(state: RunState, policy: ReviewSamplingPolicy, cases: list[CaseVersion] | None = None) -> list[dict]:
+    """效果题才默认送审；规则 FAIL 不等同主观分不可靠。每条 trial 至多一个任务。"""
+    if not policy.enabled:
+        return []
     plan: list[dict] = []
+    by_case = {case.caseId: case for case in cases or []}
     version = policy.version()
     for trial in state.trials:
-        verdict = trial.qualityVerdict
-        if policy.required == "all":
-            plan.append(
-                {"trial": trial, "priority": "required",
-                 "rule": "required=all", "basis": version}
-            )
+        case = by_case.get(trial.caseId)
+        flow = (case is not None and case.taskType == "agent_flow") or bool(trial.flowLayer)
+        grades = [grade for grade in state.grades if grade.trialId == trial.trialId]
+        verdict, score = trial.qualityVerdict, trial.weightedScore
+        def append(priority, rule):
+            plan.append({"trial": trial, "priority": priority, "rule": rule, "basis": version})
+        if flow:
+            if case and case.needsHumanReview and policy.required != "none":
+                append("required", "flagged_case")
+            elif verdict == "fail" and (policy.reviewAgentFlowFails or policy.agentFailures) and _deterministic_pick(policy.seed, f"{trial.trialId}:risk") < policy.riskRate:
+                append("risk", "agent_flow_failure")
             continue
-        if policy.required == "fail_or_undetermined" and verdict in {"fail", "undetermined"}:
-            plan.append(
-                {"trial": trial, "priority": "required",
-                 "rule": f"required={policy.required}", "basis": version}
-            )
+        # 纯程序规则证据无需走质量分灰区或随机抽检；显式人工标记仍保留。
+        if grades and all(grade.source == "rules" and grade.status in {"pass", "fail", "dependency_failed"} for grade in grades) and not (case and case.needsHumanReview):
             continue
-        roll = _deterministic_pick(policy.seed, f"{trial.trialId}:risk")
-        if verdict == "pass" and roll < policy.riskRate:
-            plan.append(
-                {"trial": trial, "priority": "risk", "rule": "riskSample", "basis": version}
-            )
+        if not policy.includeSynthetic and (state.manifest.mode == "mock" or state.manifest.provider == "mock" or state.manifest.grading.get("judge", "stub") == "stub"):
             continue
-        roll = _deterministic_pick(policy.seed, f"{trial.trialId}:random")
-        if roll < policy.randomRate:
-            plan.append(
-                {"trial": trial, "priority": "random", "rule": "randomSample", "basis": version}
-            )
+        if trial.status not in {"completed", "failed", "timed_out"}:
+            continue
+        if policy.required != "none":
+            if case and case.needsHumanReview:
+                append("required", "flagged_case")
+                continue
+            if any(grade.status == "error" for grade in grades) or any(attempt.trialId == trial.trialId and attempt.callSite == "judge" and attempt.status == "failed" for attempt in state.attempts):
+                append("required", "judge_error")
+                continue
+            if trial.status == "completed" and verdict in {None, "undetermined"}:
+                append("required", "judge_unreliable")
+                continue
+            if score is not None:
+                if policy.gateScoreThreshold is not None and verdict in {"pass", "fail"} and ((score >= policy.gateScoreThreshold) != (verdict == "pass")):
+                    append("required", "score_gate_conflict")
+                    continue
+                if abs(score - policy.riskThreshold) <= policy.riskMargin + 1e-12:
+                    append("required", "score_ambiguous")
+                    continue
+            if policy.required == "all":
+                append("required", "required_all")
+                continue
+        conflict = any(a.checkId == b.checkId and a.evaluator != b.evaluator and a.status in {"pass", "fail"} and b.status in {"pass", "fail"} and (a.status != b.status or a.observed != b.observed) for a in grades for b in grades)
+        if _deterministic_pick(policy.seed, f"{trial.trialId}:risk") < policy.riskRate:
+            if conflict:
+                append("risk", "judge_disagreement")
+                continue
+            if score is not None and policy.grayMin <= score <= policy.grayMax:
+                append("risk", "score_gray")
+                continue
+        if verdict == "pass" and trial.status == "completed" and _deterministic_pick(policy.seed, f"{trial.trialId}:random") < policy.randomRate:
+            append("random", "random")
     return plan
 
 
@@ -479,8 +524,10 @@ def create_scheduled_reviews(
     grades_by_trial: dict[str, list[dict]] = {}
     for grade in state.grades:
         grades_by_trial.setdefault(grade.trialId, []).append(grade.model_dump())
+    from .datasets import DatasetStore
+    cases = DatasetStore.load_run_snapshot(review_store.root.parent / "runs" / state.manifest.runId)
     created = []
-    for item in plan_review_tasks(state, policy):
+    for item in plan_review_tasks(state, policy, cases):
         trial = item["trial"]
         task = review_store.create(
             state.manifest.runId,

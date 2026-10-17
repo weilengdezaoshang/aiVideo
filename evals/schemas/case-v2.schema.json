@@ -171,7 +171,14 @@
     },
     "taskType": {
       "default": "text_to_image",
-      "enum": ["text_to_image", "image_to_image", "image_edit", "text_to_video", "image_to_video"],
+      "enum": [
+        "text_to_image",
+        "image_to_image",
+        "image_edit",
+        "text_to_video",
+        "image_to_video",
+        "agent_flow"
+      ],
       "title": "Tasktype",
       "type": "string"
     },
@@ -190,7 +197,22 @@
           "capability",
           "judge_calibration",
           "reliability",
-          "acceptance"
+          "acceptance",
+          "agent_flow",
+          "L0",
+          "L1",
+          "L2",
+          "L3",
+          "L4",
+          "L5",
+          "L7",
+          "protocol",
+          "routing",
+          "plan",
+          "interrupt",
+          "continue",
+          "queue",
+          "reflection"
         ],
         "type": "string"
       },
@@ -232,6 +254,11 @@
       "default": "",
       "title": "Contenthash",
       "type": "string"
+    },
+    "needsHumanReview": {
+      "type": "boolean",
+      "default": false,
+      "description": "显式要求人工审核；自动送审总开关关闭时不创建任务。"
     }
   },
   "required": ["caseId", "input", "checks"],

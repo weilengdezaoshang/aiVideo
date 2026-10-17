@@ -81,6 +81,18 @@ def validate_source_params(cases: list[CaseVersion]) -> list[str]:
     按对象库与能力快照判断(§1.2),这里只校验任务类型与参数的一致性。"""
     problems: list[str] = []
     for case in cases:
+        if case.taskType == "agent_flow":
+            params = case.input.params
+            if params.get("kind") != "agent_flow":
+                problems.append(f"{case.caseId}:agent_flow 需要 params.kind=agent_flow")
+            if not isinstance(params.get("steps"), list) or not params.get("steps"):
+                problems.append(f"{case.caseId}:agent_flow 缺少 steps")
+            if not isinstance(params.get("expect"), dict) or not params.get("expect"):
+                problems.append(f"{case.caseId}:agent_flow 缺少 expect")
+            provider = (params.get("mocks") or {}).get("imageProvider", "stub")
+            if provider != "stub":
+                problems.append(f"{case.caseId}:agent_flow 只允许 stub 生图，当前为 {provider}")
+            continue
         unknown = set(case.input.params) - SUPPORTED_INPUT_PARAMS
         if unknown:
             problems.append(f"{case.caseId}:不支持的生成参数 {sorted(unknown)}")

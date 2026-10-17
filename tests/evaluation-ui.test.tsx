@@ -135,12 +135,13 @@ describe('评测工作台', () => {
     assert.equal(STATUS_LABELS.interrupted, '已中断(待恢复)')
   })
 
-  test('总览:数据集与运行列表渲染,空态有引导', async () => {
+  test('数据集入口:冻结数据集与运行列表保留', async () => {
     const fetcher = installFetch([
       { pattern: /datasets$/, body: DATASETS },
       { pattern: /runs$/, body: { runs: [] } },
     ])
     render(<EvaluationApp />)
+    fireEvent.click(screen.getByRole('button', { name: /^数据集$/ }))
     await waitFor(() => screen.getByText('ds-zh'))
     assert.ok(screen.getByText(/尚无评测运行/))
     assert.ok(screen.getByText(/v1/))
@@ -235,6 +236,21 @@ describe('评测工作台', () => {
     fetcher.restore()
   })
 
+  test('审核空状态解释策略并提供创建入口', async () => {
+    const fetcher = installFetch([{ pattern: /review-tasks$/, body: { tasks: [] } }])
+    render(<EvaluationApp />)
+    fireEvent.click(screen.getByRole('button', { name: '人工审核' }))
+    assert.ok(await screen.findByText('未命中自动送审策略'))
+    assert.ok(screen.getByText(/Agent 规则 PASS\/FAIL/))
+    assert.ok(screen.getByRole('button', { name: '查看运行与送审结果' }))
+    assert.ok(screen.getByRole('button', { name: '去新建/查看评测' }))
+    assert.equal(
+      (screen.getByRole('button', { name: '创建审核任务' }) as HTMLButtonElement).disabled,
+      true,
+    )
+    fetcher.restore()
+  })
+
   test('审核:无审核人时操作被拦截并提示身份要求', async () => {
     const fetcher = installFetch([
       {
@@ -258,14 +274,99 @@ describe('评测工作台', () => {
     ])
     render(<EvaluationApp />)
     fireEvent.click(screen.getByRole('button', { name: '人工审核' }))
-    const claimButtons = await screen.findAllByRole('button', { name: '领取' })
+    const claimButtons = await screen.findAllByRole('button', { name: '领取任务' })
     fireEvent.click(claimButtons[0])
     await waitFor(() => screen.getByText(/请先填写审核人身份/))
     fetcher.restore()
   })
 
+  test('成本页没有配对时给出中文原因与重跑引导，不以空 ID 表单为主入口', async () => {
+    const fetcher = installFetch([
+      {
+        pattern: /suggest-pair/,
+        body: {
+          currentRunId: 'only-run',
+          currentRole: 'baseline',
+          pairRunId: null,
+          candidates: [],
+          reasons: [
+            {
+              code: 'no_counterpart',
+              message: '没有找到与「only-run」同数据集、开启压缩的成功运行。',
+            },
+          ],
+          guidance: {
+            action: 'create_counterpart',
+            message: '本运行未压缩,可作为基线;先跑一次同数据集、开启压缩的 live 运行,再回来对比。',
+            prefill: {
+              datasetId: 'ds-zh',
+              version: 1,
+              mode: 'live',
+              compression: { enabled: true },
+              purpose: '压缩对比运行',
+            },
+          },
+          coverage: null,
+        },
+      },
+      {
+        pattern: /runs$/,
+        body: {
+          runs: [{ runId: 'only-run', createdAt: '2026-01-01', status: 'completed', purpose: '' }],
+        },
+      },
+    ])
+    render(<EvaluationApp />)
+    fireEvent.click(screen.getByRole('button', { name: '成本与压缩' }))
+    await screen.findByText('暂无可对比的配对')
+    assert.ok(screen.getAllByText(/没有找到与「only-run」同数据集、开启压缩的成功运行/).length >= 1)
+    assert.ok(screen.getByRole('button', { name: /一键新建配对运行/ }))
+    // 未命中配对:不渲染未知数字表,生成按钮保持禁用
+    assert.equal(screen.queryByText('本次费用'), null)
+    assert.ok((screen.getByRole('button', { name: '生成对比报告' }) as HTMLButtonElement).disabled)
+    for (const input of screen.queryAllByRole('textbox')) {
+      assert.equal(input.closest('details')?.open, false)
+    }
+    assert.ok(screen.getByText('更换对比对象'))
+    assert.ok(screen.getByText('粘贴运行 ID'))
+    fetcher.restore()
+  })
+
   test('比较结果:mock 不计独立样本,总体差值显示 N/A', async () => {
     const fetcher = installFetch([
+      {
+        pattern: /suggest-baseline/,
+        body: { candidateRunId: 'cand', baselineRunId: 'base', reason: null, options: [] },
+      },
+      {
+        pattern: /runs$/,
+        body: {
+          runs: [
+            { runId: 'base', status: 'completed', createdAt: '2026-01-01', purpose: '' },
+            { runId: 'cand', status: 'completed', createdAt: '2026-01-02', purpose: '' },
+          ],
+        },
+      },
+      { pattern: /gates$/, body: { gates: [] } },
+      {
+        pattern: /compression-report$/,
+        body: {
+          baselineRunId: 'base',
+          compressedRunId: 'cand',
+          compressorVersion: null,
+          compressionEnabled: false,
+          quality: { baselinePassRate: 1, compressedPassRate: 1, delta: 0, note: '' },
+          tokens: {
+            baseline: { providerReportedTokens: null },
+            compressed: { providerReportedTokens: null },
+            delta: null,
+            note: '',
+          },
+          cost: { baselineSettled: null, compressedSettled: null, delta: null, note: '' },
+          promote: true,
+          promoteReason: '',
+        },
+      },
       {
         pattern: /comparisons$/,
         body: {
@@ -301,19 +402,19 @@ describe('评测工作台', () => {
     ])
     render(<EvaluationApp />)
     fireEvent.click(screen.getByRole('button', { name: '批次比较' }))
-    const inputs = screen.getAllByRole('textbox')
-    fireEvent.change(inputs[0], { target: { value: 'base' } })
-    fireEvent.change(inputs[1], { target: { value: 'cand' } })
-    fireEvent.click(screen.getByRole('button', { name: '比较' }))
-    await waitFor(() => screen.getByText(/独立统计样本/))
-    assert.ok(screen.getByText(/否\(Mock\/缓存\/回放不计入样本量\)/))
-    assert.ok(screen.getByText(/N\/A/))
-    // 退化定位:检查项级退化与错误类别分组可见,gradeId 可回查
-    assert.ok(screen.getByText(/检查项级退化/))
-    assert.ok(screen.getByText('has_cat'))
-    assert.ok(screen.getByText('trial-b:has_cat'))
-    assert.ok(screen.getByText(/按错误类别分组/))
-    assert.ok(screen.getByText('timeout'))
+    await waitFor(() =>
+      assert.equal(
+        (screen.getByRole('button', { name: '生成对比报告' }) as HTMLButtonElement).disabled,
+        false,
+      ),
+    )
+    fireEvent.click(screen.getByRole('button', { name: '生成对比报告' }))
+    await screen.findByText('发现变差项，建议复核')
+    assert.ok(screen.getByText('下载报告'))
+    assert.ok(screen.getByText(/has_cat：检查退化/))
+    assert.ok(screen.getByText(/独立样本：/))
+    assert.ok(screen.getByText(/trial-b:has_cat/))
+    assert.ok(screen.getByText(/timeout：/))
     fetcher.restore()
   })
 
@@ -346,8 +447,8 @@ describe('评测工作台', () => {
     render(<EvaluationApp />)
     fireEvent.click(screen.getByRole('button', { name: '运营状态' }))
     await screen.findByText('未配置', { exact: true })
-    assert.ok(screen.getByText(/积压 12 条/))
-    assert.ok(screen.getByText(/尚无校准记录/))
+    assert.ok(screen.getByText('12 条'))
+    assert.ok(screen.getByText('暂无校准记录'))
     fetcher.restore()
   })
 })
@@ -457,8 +558,8 @@ describe('评测工作台·审核闭环与调用记录', () => {
     ])
     render(<EvaluationApp />)
     fireEvent.click(screen.getByRole('button', { name: '人工审核' }))
-    fireEvent.click(await screen.findByRole('button', { name: '详情' }))
-    await waitFor(() => screen.getByText(/自动证据/))
+    await screen.findByText('规则与评分结果')
+    fireEvent.click(screen.getByText('转为回归用例'))
     assert.ok(screen.getByAltText('素材 art-abc123'))
     assert.ok(screen.getByText(/人工确认失败/))
     // 转回归用例:填写表单后提交,走 case-drafts → publish 两步
@@ -513,3 +614,177 @@ describe('评测工作台·审核闭环与调用记录', () => {
     assert.ok(screen.getByText('task-9'))
   })
 })
+
+test('运行结果可以按中文题名搜索并组合筛选失败项', async () => {
+  const fetcher = installFetch([
+    { pattern: /runs$/, body: RUNS },
+    { pattern: /runs\/run-live-1$/, body: RUN_DETAIL },
+    {
+      pattern: /runs\/run-live-1\/cases$/,
+      body: {
+        cases: [
+          {
+            caseId: 't2i-a',
+            title: '猫咪画质检查',
+            taskType: 't2i',
+            suites: [],
+            input: { prompt: '猫', params: {} },
+            checks: [],
+          },
+          {
+            caseId: 't2i-b',
+            title: '广告构图检查',
+            taskType: 't2i',
+            suites: [],
+            input: { prompt: '广告', params: {} },
+            checks: [],
+          },
+        ],
+      },
+    },
+    {
+      pattern: /runs\/run-live-1\/trials$/,
+      body: {
+        trials: [
+          { ...TRIALS.trials[0], status: 'completed', qualityVerdict: 'pass' },
+          {
+            ...TRIALS.trials[0],
+            trialId: 'trial-2',
+            caseId: 't2i-b',
+            status: 'failed',
+            qualityVerdict: 'fail',
+          },
+        ],
+      },
+    },
+    { pattern: /gates$/, body: { gates: [] } },
+    { pattern: /events/, body: { events: [] } },
+  ])
+  try {
+    render(<EvaluationApp />)
+    fireEvent.click(screen.getByRole('button', { name: '运行详情' }))
+    await screen.findByText('猫咪画质检查')
+    fireEvent.change(screen.getByLabelText('搜索运行用例'), { target: { value: '广告' } })
+    assert.equal(screen.queryByText('猫咪画质检查'), null)
+    assert.ok(screen.getByText('广告构图检查'))
+    fireEvent.change(screen.getByLabelText('结果筛选'), { target: { value: 'pass' } })
+    assert.equal(screen.queryByText('广告构图检查'), null)
+    fireEvent.change(screen.getByLabelText('结果筛选'), { target: { value: 'fail' } })
+    assert.ok(screen.getByText('广告构图检查'))
+  } finally {
+    fetcher.restore()
+  }
+})
+
+test('流程规则结果保留查看入口，不展示常规人工重判按钮', async () => {
+  const fetcher = installFetch([
+    { pattern: /runs$/, body: RUNS },
+    {
+      pattern: /runs\/run-live-1$/,
+      body: { ...RUN_DETAIL, flow: { passRate: 1, layers: {}, failures: [] } },
+    },
+    { pattern: /trials$/, body: TRIALS },
+    { pattern: /gates$/, body: { gates: [] } },
+    { pattern: /events/, body: { events: [] } },
+  ])
+  try {
+    render(<EvaluationApp />)
+    fireEvent.click(screen.getByRole('button', { name: '运行详情' }))
+    await screen.findByText('程序判定，无需人工重判')
+    assert.equal(screen.queryByRole('button', { name: '送去人工审核' }), null)
+    assert.ok(screen.getByRole('button', { name: '查看结果' }))
+  } finally {
+    fetcher.restore()
+  }
+})
+
+test('领取期间防止重复请求，成功后显示审核归属与续期操作', async () => {
+  const body = {
+    tasks: [
+      {
+        reviewTaskId: 'claim-task',
+        runId: 'run-live-1',
+        trialId: 'trial-1',
+        caseId: 't2i-a',
+        status: 'pending',
+        revision: 1,
+        priority: 'required',
+        claim: null as { reviewer: string; leaseUntil: string } | null,
+        sampling: { rule: 'judge_error', policyVersion: 'v2' },
+      },
+    ],
+  }
+  const fetcher = installFetch([{ pattern: /review-tasks$/, body }])
+  const baseFetch = globalThis.fetch
+  let release: (() => void) | undefined
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  let claims = 0
+  globalThis.fetch = async (input, init) => {
+    if (String(input).endsWith('/claim')) {
+      claims += 1
+      await gate
+      body.tasks[0].status = 'claimed'
+      body.tasks[0].claim = { reviewer: '审核者甲', leaseUntil: '2099-01-01T00:00:00Z' }
+      return new Response(JSON.stringify({ task: body.tasks[0] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+    return baseFetch(input, init)
+  }
+  try {
+    render(<EvaluationApp />)
+    fireEvent.click(screen.getByRole('button', { name: '人工审核' }))
+    const button = await screen.findByRole('button', { name: '领取任务' })
+    fireEvent.change(screen.getByPlaceholderText('alice'), { target: { value: '审核者甲' } })
+    fireEvent.click(button)
+    assert.ok(screen.getByRole('button', { name: '领取中…' }).hasAttribute('disabled'))
+    fireEvent.click(button)
+    assert.equal(claims, 1)
+    release?.()
+    await screen.findByRole('button', { name: '延长领取时间' })
+    assert.ok(screen.getByText('由你审核'))
+    assert.equal(screen.queryByRole('button', { name: '领取任务' }), null)
+  } finally {
+    release?.()
+    fetcher.restore()
+  }
+})
+
+for (const status of ['claimed', 'submitted', 'adjudicated']) {
+  test(`${status} 不显示可重复领取的主按钮`, async () => {
+    const fetcher = installFetch([
+      {
+        pattern: /review-tasks$/,
+        body: {
+          tasks: [
+            {
+              reviewTaskId: 'other-task',
+              runId: 'run-live-1',
+              trialId: 'trial-1',
+              caseId: 't2i-a',
+              status,
+              revision: 1,
+              priority: 'required',
+              claim: { reviewer: '审核者乙', leaseUntil: '2099-01-01T00:00:00Z' },
+              sampling: { rule: 'judge_error', policyVersion: 'v2' },
+            },
+          ],
+        },
+      },
+    ])
+    try {
+      render(<EvaluationApp />)
+      fireEvent.click(screen.getByRole('button', { name: '人工审核' }))
+      await screen.findByText('本次运行抽样')
+      assert.equal(screen.queryByRole('button', { name: /领取任务|重新领取|延长领取时间/ }), null)
+      if (status === 'claimed') {
+        assert.ok(screen.getByText('由 审核者乙 审核'))
+      }
+    } finally {
+      fetcher.restore()
+    }
+  })
+}

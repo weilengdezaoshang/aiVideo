@@ -45,14 +45,39 @@ GradeStatus = Literal[
 ]
 ExecutionMode = Literal["mock", "replay", "live"]
 TaskType = Literal[
-    "text_to_image", "image_to_image", "image_edit", "text_to_video", "image_to_video"
+    "text_to_image",
+    "image_to_image",
+    "image_edit",
+    "text_to_video",
+    "image_to_video",
+    "agent_flow",
 ]
 CheckKind = Literal["boolean", "integer", "number", "text"]
 DatasetSplit = Literal[
     "dev", "holdout", "regression", "calibration_train", "calibration_dev", "calibration_test"
 ]
 SuiteType = Literal[
-    "smoke", "regression", "capability", "judge_calibration", "reliability", "acceptance"
+    "smoke",
+    "regression",
+    "capability",
+    "judge_calibration",
+    "reliability",
+    "acceptance",
+    "agent_flow",
+    "L0",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5",
+    "L7",
+    "protocol",
+    "routing",
+    "plan",
+    "interrupt",
+    "continue",
+    "queue",
+    "reflection",
 ]
 FixtureSource = Literal["internal", "synthetic", "recorded", "real", "imported"]
 GradeSource = Literal["rules", "stub", "vlm", "human", "legacy"]
@@ -154,11 +179,25 @@ class CaseVersion(BaseModel):
     tags: list[str] = Field(default_factory=list)
     suites: list[SuiteType] = Field(default_factory=lambda: ["smoke"])
     title: str = ""
+    needsHumanReview: bool = False
     input: CaseInput
     checks: list[Check] = Field(min_length=1)
     expectedOutcome: ExpectedOutcome = ExpectedOutcome()
     provenance: Provenance = Provenance()
     contentHash: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_agent_flow(cls, value: Any) -> Any:
+        """agent_flow 源用例使用 steps/expect/mocks；归一进 input.params 与类型化 checks。
+
+        只改 taskType=agent_flow 的记录，文生图用例的字段与 contentHash 保持原样。
+        """
+        if not isinstance(value, dict) or value.get("taskType") != "agent_flow":
+            return value
+        from .agent_flow import normalize_agent_flow_payload
+
+        return normalize_agent_flow_payload(value)
 
     @field_validator("caseId")
     @classmethod
@@ -257,6 +296,7 @@ class RunManifest(BaseModel):
     parentRunId: str | None = None
     code: dict[str, Any] = Field(default_factory=dict)
     # 非密钥沙盒配置快照(provider/cloudVendor/cloudBaseUrl/cloudModel 等);密钥永不入 manifest(§16)。
+    reviewSampling: dict[str, Any] | None = None
     sandboxConfig: dict[str, Any] = Field(default_factory=dict)
     recordingId: str | None = None
     seedPolicy: str = "deterministic"
@@ -381,6 +421,10 @@ class Trial(BaseModel):
     latencyMs: int | None = None
     startedAt: str | None = None
     finishedAt: str | None = None
+    # agent_flow：真实 Trace v1 路径与层。图像 trial 保持空，不参与画质分母。
+    tracePath: str | None = None
+    tracePaths: list[str] = Field(default_factory=list)
+    flowLayer: str | None = None
 
 
 class RunState(BaseModel):

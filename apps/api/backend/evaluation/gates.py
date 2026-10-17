@@ -139,6 +139,8 @@ def evaluate_gate(
     reasons_inconclusive: list[str] = []
     report = build_report(state, cases)
     integrity = policy.get("integrity", {})
+    # 流程 run 的证据是真实 Host 轨迹与类型化规则，不以 mock 画质或 stub/VLM 裁判作结论。
+    flow_only = bool(cases) and all(getattr(case, "taskType", None) == "agent_flow" for case in cases)
 
     if integrity.get("requireFrozenDataset") and state.manifest.dataset.get("contentHash") in (
         None,
@@ -146,10 +148,10 @@ def evaluate_gate(
         "unavailable",
     ):
         reasons_inconclusive.append("数据集快照缺失,证据链不完整")
-    if integrity.get("allowMockQualityEvidence") is False:
+    if not flow_only and integrity.get("allowMockQualityEvidence") is False:
         if state.manifest.provider == "mock":
             reasons_inconclusive.append("mock 生成证据不能支撑质量结论(§1.3)")
-    if integrity.get("allowStubJudgeEvidence", False) is False:
+    if not flow_only and integrity.get("allowStubJudgeEvidence", False) is False:
         if state.manifest.grading.get("judge", "stub") == "stub":
             reasons_inconclusive.append("stub 判分证据不能支撑质量结论(§1.3)")
     if integrity.get("requireCompleteCoreEvidence") and report["coverageGaps"]:
@@ -194,7 +196,19 @@ def evaluate_gate(
         reasons_block.extend(block)
         reasons_inconclusive.extend(inconclusive)
 
-    reasons_inconclusive.extend(_calibration_findings(store, state, policy.get("quality", {})) if store else [])
+    if store and not flow_only:
+        reasons_inconclusive.extend(_calibration_findings(store, state, policy.get("quality", {})))
+
+    # 显式质量分门槛与送审策略共用；缺省仍沿用 required checks 的质量判定。
+    score_threshold = policy.get("quality", {}).get("minWeightedScore", (state.manifest.reviewSampling or {}).get("gateScoreThreshold"))
+    if score_threshold is not None and not flow_only:
+        for trial in state.trials:
+            if trial.status != "completed":
+                continue
+            if trial.weightedScore is None:
+                reasons_inconclusive.append(f"用例 {trial.caseId} 无法取得质量分，门槛 {score_threshold}")
+            elif trial.weightedScore < score_threshold:
+                reasons_block.append(f"用例 {trial.caseId} 质量分 {trial.weightedScore} 低于门槛 {score_threshold}")
 
     performance = policy.get("performance", {}) or {}
     max_latency = performance.get("maxLatencyP95Ms")

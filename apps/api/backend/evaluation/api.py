@@ -22,13 +22,13 @@ from .gates import GateStore, evaluate_gate
 from .integrations import LangfuseExporter, make_outbox_exporter
 from .outbox import Outbox
 from .reports import ReportWriter, build_report
-from .reviews import ReviewConflict, ReviewStore, publish_case_draft
+from .reviews import ReviewSamplingPolicy, ReviewConflict, ReviewStore, publish_case_draft
 from .runner import EvaluationRunner
 from .scheduler import EvaluationScheduler
 
 
 def _runner(data_dir: Path) -> EvaluationRunner:
-    root = data_dir.parent.parent  # data/ -> 仓库根(仅用于 code 指纹)
+    root = Path(__file__).resolve().parents[4]  # 仓库代码与证据目录独立定位
     return EvaluationRunner(root, store=data_dir / "evaluation")
 
 
@@ -72,6 +72,21 @@ def build_eval_router(data_dir: Path) -> APIRouter:
 
     router.on_shutdown.append(_shutdown_scheduler)
 
+    def save_sampling(runner, run_id, raw):
+        from ..common import atomic_write_text
+        policy = ReviewSamplingPolicy.model_validate(raw["reviewSampling"]) if raw.get("reviewSampling") is not None else ReviewSamplingPolicy.from_env()
+        state = runner.load_run(run_id)
+        state.manifest.reviewSampling = policy.model_dump()
+        atomic_write_text(runner.run_dir(run_id) / "manifest.json", state.manifest.model_dump_json())
+
+    def review_evidence(task):
+        state = _state_or_404(data_dir, task.runId)
+        trial = next((t for t in state.trials if t.trialId == task.trialId), None)
+        return {"suite": trial.flowLayer if trial else None,
+                "reasons": [g.checkId for g in state.grades if g.trialId == task.trialId and g.status in {"fail", "error", "inconclusive", "dependency_failed"}],
+                "tracePath": trial.tracePath if trial else None,
+                "traceUrl": f"/api/evals/v1/runs/{task.runId}/trials/{task.trialId}/trace" if trial and trial.tracePath else None}
+
     # ---------- 数据集 ----------
 
     @router.get("/datasets")
@@ -100,12 +115,86 @@ def build_eval_router(data_dir: Path) -> APIRouter:
                 )
         return {"datasets": items}
 
+    @router.get("/datasets/{dataset_id}/cases")
+    async def dataset_cases(dataset_id: str, version: int | None = None):
+        if Path(dataset_id).name != dataset_id or dataset_id in {".", ".."}:
+            raise HTTPException(400, "数据集标识不合法")
+        try:
+            dataset_store = DatasetStore(store)
+            if version is None:
+                versions = dataset_store.list_versions(dataset_id)
+                version = max((item.version for item in versions), default=None)
+            frozen = dataset_store.load(dataset_id, version)
+            return {"cases": [case.model_dump() for case in frozen.cases]}
+        except FileNotFoundError as exc:
+            raise HTTPException(404, str(exc)) from None
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from None
+
+    @router.get("/runs/{run_id}/cases")
+    async def run_cases(run_id: str):
+        _state_or_404(data_dir, run_id)
+        try:
+            cases = DatasetStore.load_run_snapshot(_runner(data_dir).run_dir(run_id))
+            return {"cases": [case.model_dump() for case in cases]}
+        except FileNotFoundError as exc:
+            raise HTTPException(404, "此运行缺少用例快照，无法查看定义") from exc
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from None
+
+    @router.get("/agent-flow/cases")
+    async def preview_flow_cases(suite: str = "agent_flow"):
+        from .agent_flow import load_flow_sources, select_flow_suite
+        try:
+            loaded = load_flow_sources(_runner(data_dir).root)
+            cases = select_flow_suite([case for _, case in loaded], suite)
+            return {"cases": [case.model_dump() for case in cases]}
+        except (ValueError, OSError) as exc:
+            raise HTTPException(422, str(exc)) from None
+
+    @router.post("/agent-flow", status_code=202)
+    async def agent_flow(request: Request):
+        from uuid import uuid4
+        from .agent_flow import load_flow_sources, select_flow_suite
+        raw = await request.json()
+        try:
+            ReviewSamplingPolicy.model_validate(raw.get("reviewSampling") or {})
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+        suite = raw.get("suite", "agent_flow")
+        runner = _runner(data_dir)
+        try:
+            loaded = load_flow_sources(runner.root)
+            selected = select_flow_suite([case for _, case in loaded], suite)
+            layers = raw.get("layers")
+            if layers is not None:
+                if not isinstance(layers, list) or not layers or any(not isinstance(layer, str) or layer not in {"L0", "L1", "L2", "L3", "L4", "L5", "L7"} for layer in layers):
+                    raise ValueError("请选择有效的 L0～L5、L7 层级")
+                selected = [case for case in selected if any(layer in case.suites for layer in layers)]
+            run_id = f"af-{uuid4().hex[:12]}"
+            source = store / "staging" / f"{run_id}.jsonl"
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_text("\n".join(case.model_dump_json() for case in selected) + "\n")
+            scope = "-".join(sorted(set(layers))) if layers is not None else suite
+            dataset_id = f"agent-flow-{scope.lower()}"
+            runner.freeze_dataset(source, dataset_id, split="dev")
+            runner.create_run(run_id, dataset_id, purpose=f"Agent 流程 · {scope}")
+        except (ValueError, OSError) as exc:
+            raise HTTPException(422, str(exc)) from None
+        save_sampling(runner, run_id, raw)
+        _scheduler(data_dir).submit(run_id)
+        return {"runId": run_id}
+
     # ---------- Run ----------
 
     @router.post("/runs", status_code=202)
     async def create_run(request: Request):
         """创建 run 并入队;立即返回 202,不阻塞等待执行完成(§14.1)。"""
         raw = await request.json()
+        try:
+            ReviewSamplingPolicy.model_validate(raw.get("reviewSampling") or {})
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
         run_id = raw.get("runId")
         if not isinstance(run_id, str) or not run_id.strip():
             raise HTTPException(422, "缺少 runId")
@@ -142,6 +231,7 @@ def build_eval_router(data_dir: Path) -> APIRouter:
         except ValueError as exc:
             message = str(exc)
             raise HTTPException(409 if "已存在" in message else 422, message) from None
+        save_sampling(runner, manifest.runId, raw)
         queued = _scheduler(data_dir).submit(manifest.runId)
         return {
             "runId": manifest.runId,
@@ -198,6 +288,7 @@ def build_eval_router(data_dir: Path) -> APIRouter:
             "metrics": report["metrics"],
             "annotations": report["annotations"],
             "coverageGaps": report["coverageGaps"],
+            "flow": report.get("flow"),
         }
 
     @router.get("/runs/{run_id}/trials")
@@ -219,11 +310,26 @@ def build_eval_router(data_dir: Path) -> APIRouter:
                     "resolvedSeed": trial.resolvedSeed,
                     "error": trial.error,
                     "artifactIds": trial.artifactIds,
+                    "tracePath": trial.tracePath,
                     "grades": grades_by_trial.get(trial.trialId, []),
                 }
                 for trial in state.trials
             ]
         }
+
+    @router.get("/runs/{run_id}/trials/{trial_id}/trace")
+    async def trial_trace(run_id: str, trial_id: str):
+        runner = _runner(data_dir)
+        state = _state_or_404(data_dir, run_id)
+        trial = next((t for t in state.trials if t.trialId == trial_id), None)
+        if not trial or not trial.tracePath:
+            raise HTTPException(404, "该用例未生成 Trace")
+        path = Path(trial.tracePath).resolve()
+        if not (path.is_relative_to(runner.run_dir(run_id).resolve()) or path.is_relative_to((runner.root / "eval/runs").resolve())):
+            raise HTTPException(403, "Trace 不在本次运行目录")
+        if not path.is_file():
+            raise HTTPException(404, "Trace 文件不存在")
+        return json.loads(path.read_text())
 
     @router.get("/runs/{run_id}/events")
     async def run_events(run_id: str, after: int = 0):
@@ -389,11 +495,69 @@ def build_eval_router(data_dir: Path) -> APIRouter:
 
     # ---------- 比较 ----------
 
+    @router.get("/suggest-baseline")
+    async def baseline_suggestion(run_id: str | None = None):
+        from .baselines import suggest_baseline
+        if run_id:
+            _state_or_404(data_dir, run_id)
+        return suggest_baseline(_runner(data_dir), run_id)
+
+    # ---------- 成本与压缩配对(硬条件 + 重跑引导) ----------
+
+    def _pair_reasons(baseline, candidate) -> list[dict] | None:
+        """压缩对比硬校验;不合法时返回中文 reasons[](不生成全未知报告)。"""
+        from .pairing import validate_pair
+
+        reasons = validate_pair(store, baseline, candidate)
+        return reasons or None
+
+    def _invalid_pair_response(reasons: list[dict]):
+        """4xx + 中文 reasons[];直接 JSONResponse,形状不随宿主 app 的异常处理器变化。"""
+        from fastapi.responses import JSONResponse
+
+        summary = "无法对比:" + ";".join(item["message"] for item in reasons)
+        return JSONResponse({"error": summary, "reasons": reasons}, status_code=422)
+
+    @router.get("/suggest-pair")
+    async def pair_suggestion(run_id: str | None = None):
+        from .pairing import suggest_pair
+        if run_id:
+            _state_or_404(data_dir, run_id)
+        return suggest_pair(_runner(data_dir), store, run_id)
+
+    @router.post("/validate-pair")
+    async def validate_pair_endpoint(request: Request):
+        from .pairing import pair_coverage
+        raw = await request.json()
+        baseline = _state_or_404(data_dir, str(raw.get("baselineRunId", "")))
+        candidate = _state_or_404(data_dir, str(raw.get("candidateRunId", "")))
+        reasons = _pair_reasons(baseline, candidate)
+        if reasons:
+            return _invalid_pair_response(reasons)
+        return {
+            "valid": True,
+            "baselineRunId": baseline.manifest.runId,
+            "candidateRunId": candidate.manifest.runId,
+            "coverage": pair_coverage(baseline, candidate),
+        }
+
+    def resolve_baseline(raw, candidate_key):
+        from .baselines import suggest_baseline
+        explicit = raw.get("baselineRunId")
+        if explicit:
+            return str(explicit)
+        candidate = str(raw.get(candidate_key, ""))
+        _state_or_404(data_dir, candidate)
+        suggestion = suggest_baseline(_runner(data_dir), candidate)
+        if not suggestion["baselineRunId"]:
+            raise HTTPException(422, suggestion["reason"])
+        return suggestion["baselineRunId"]
+
     @router.post("/comparisons")
     async def comparisons(request: Request):
         raw = await request.json()
         runner = _runner(data_dir)
-        baseline = _state_or_404(data_dir, str(raw.get("baselineRunId", "")))
+        baseline = _state_or_404(data_dir, resolve_baseline(raw, "candidateRunId"))
         candidate = _state_or_404(data_dir, str(raw.get("candidateRunId", "")))
 
         def snapshot_cases(state):
@@ -414,8 +578,12 @@ def build_eval_router(data_dir: Path) -> APIRouter:
     @router.post("/compression-report")
     async def compression_report(request: Request):
         raw = await request.json()
-        baseline = _state_or_404(data_dir, str(raw.get("baselineRunId", "")))
+        baseline = _state_or_404(data_dir, resolve_baseline(raw, "compressedRunId"))
         compressed = _state_or_404(data_dir, str(raw.get("compressedRunId", "")))
+        # 非法配对(快照不一致/缺费用/token/非压缩对)直接 4xx + reasons,不生成全未知报告(§12.3)。
+        reasons = _pair_reasons(baseline, compressed)
+        if reasons:
+            return _invalid_pair_response(reasons)
         summary = compression_summary(baseline, compressed)
         budgets = {}
         for label, state in (("baseline", baseline), ("compressed", compressed)):
@@ -504,18 +672,34 @@ def build_eval_router(data_dir: Path) -> APIRouter:
         tasks = ReviewStore(store).list(status=status)
         if run_id:
             tasks = [task for task in tasks if task.runId == run_id]
-        return {"tasks": [t.model_dump() for t in tasks]}
+        return {"tasks": [{**t.model_dump(), "evidence": review_evidence(t)} for t in tasks]}
 
     @router.get("/review-tasks/{task_id}")
     async def review_task_detail(task_id: str):
         try:
-            return ReviewStore(store).task_detail(task_id)
+            detail = ReviewStore(store).task_detail(task_id)
+            task = ReviewStore(store).get(task_id)
+            detail["task"]["evidence"] = review_evidence(task)
+            return detail
         except FileNotFoundError as exc:
             raise HTTPException(404, str(exc)) from None
 
     @router.post("/review-tasks", status_code=201)
     async def create_review_task(request: Request):
         raw = await request.json()
+        state = _state_or_404(data_dir, str(raw.get("runId", "")))
+        trial = next((t for t in state.trials if t.trialId == str(raw.get("trialId", ""))), None)
+        if trial is not None:
+            cases = DatasetStore.load_run_snapshot(store / "runs" / state.manifest.runId)
+            case = next((item for item in cases if item.caseId == trial.caseId), None)
+            flow = bool(trial.flowLayer) or bool(case and case.taskType == "agent_flow")
+            grades = [grade for grade in state.grades if grade.trialId == trial.trialId]
+            rules_only = bool(grades) and all(grade.source == "rules" and grade.status in {"pass", "fail", "dependency_failed"} for grade in grades)
+            policy = ReviewSamplingPolicy.model_validate(state.manifest.reviewSampling or {})
+            flagged = bool(case and case.needsHumanReview)
+            attribution = flow and trial.qualityVerdict == "fail" and (policy.reviewAgentFlowFails or policy.agentFailures)
+            if (flow or rules_only) and not flagged and not attribution:
+                raise HTTPException(422, "此用例由程序规则判定，无需人工重判；流程失败请查看 Trace 与失败原因。失败归因抽检需在运行配置中显式开启。")
         artifact_ids = raw.get("artifactIds") or []
         grade_refs = raw.get("gradeRefs") or []
         # 未显式提供时自动补全绑定:从 run 的 trial 取素材与评分引用,
@@ -542,7 +726,7 @@ def build_eval_router(data_dir: Path) -> APIRouter:
             grade_refs=grade_refs,
             priority=str(raw.get("priority", "normal")),
         )
-        return {"task": task.model_dump()}
+        return {"task": {**task.model_dump(), "evidence": review_evidence(task)}}
 
     def _guard_conflict(func):
         try:
@@ -588,7 +772,7 @@ def build_eval_router(data_dir: Path) -> APIRouter:
                 task_id, str(raw.get("by", "")), str(raw.get("reason", ""))
             )
         )
-        return {"task": task.model_dump()}
+        return {"task": {**task.model_dump(), "evidence": review_evidence(task)}}
 
     @router.post("/review-tasks/{task_id}/adjudications", status_code=201)
     async def adjudicate_review(task_id: str, request: Request):

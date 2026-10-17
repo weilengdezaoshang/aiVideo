@@ -63,7 +63,14 @@ def register_builtin() -> None:
             id="typed-rules",
             version="1",
             rubric_version="1",
-            applies_to={"text_to_image", "image_to_image", "image_edit", "text_to_video", "image_to_video"},
+            applies_to={
+                "text_to_image",
+                "image_to_image",
+                "image_edit",
+                "text_to_video",
+                "image_to_video",
+                "agent_flow",
+            },
             inputs={"observed": "typed(bool/int/float/str)"},
             results={"status": "pass|fail|dependency_failed|inconclusive|error|not_applicable"},
             dependencies=["judge 结构化回答"],
@@ -171,7 +178,7 @@ def capabilities_for(config: dict) -> ProviderCapabilities:
 
 def check_case_supported(case: CaseVersion, caps: ProviderCapabilities) -> None:
     """能力不支持的组合必须显式拒绝(§10.3):不让它静默落入另一个任务类型。"""
-    if case.taskType == "text_to_image":
+    if case.taskType in {"text_to_image", "agent_flow"}:
         return
     if not caps.supports(case.taskType):
         labels = {

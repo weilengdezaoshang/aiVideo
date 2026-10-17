@@ -1,3 +1,9 @@
+import { EvaluationTable } from './EvaluationTable.js'
+import {
+  defaultReviewSampling,
+  ReviewSamplingSettings,
+  reviewReason,
+} from './ReviewSamplingSettings.js'
 /** FRAYUNE 评测工作台(§15):数据集/新建/运行详情/审核/比较/成本与压缩/运营。
 
 交互纪律:
@@ -6,25 +12,39 @@
 - 未配置的能力(live 密钥、Langfuse)如实显示"未配置",不显示已接通。
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ComparisonWorkspace } from './ComparisonWorkspace.js'
+import { RunLaunchStatus, useRunLaunch } from './RunLaunchStatus.js'
+import {
+  CaseIdentity,
+  RunCaseIdentity,
+  RunCheckLabel,
+  useRunDefinitions,
+  AgentSourceCases,
+  harnessLayers,
+  DatasetCases,
+  RunCaseDefinition,
+} from './CaseBrowser.js'
+import { checkLabel, failureReason, humanValue } from './caseCopy.js'
+import { FlowOverview } from './FlowOverview.js'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
 import { ACTIVE_POLL_MS, LIST_POLL_MS, OPS_POLL_MS, useEvalQuery } from './queries.js'
 import {
   api,
   ApiError,
-  type ComparisonView,
   type DatasetInfo,
   type GradeView,
-  type CompressionReport,
+  type PairRunPrefill,
   type ReviewTaskView,
   type RunDetail,
   type TrialView,
 } from './api.js'
 
-type Tab = 'overview' | 'new' | 'runs' | 'reviews' | 'compare' | 'cost' | 'ops'
+type Tab = 'datasets' | 'overview' | 'new' | 'runs' | 'reviews' | 'compare' | 'cost' | 'ops'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview', label: '评测总览' },
+  { id: 'datasets', label: '数据集' },
   { id: 'new', label: '新建评测' },
   { id: 'runs', label: '运行详情' },
   { id: 'reviews', label: '人工审核' },
@@ -36,6 +56,8 @@ const TABS: { id: Tab; label: string }[] = [
 const ACTIVE_STATUSES = new Set(['queued', 'running', 'stopping'])
 
 export const STATUS_LABELS: Record<string, string> = {
+  pending: '等待执行',
+  timed_out: '已超时',
   queued: '排队中',
   running: '运行中',
   stopping: '取消中',
@@ -74,6 +96,9 @@ function EmptyNote({ text }: { text: string }) {
 }
 
 function OverviewTab({ onOpenRun }: { onOpenRun: (runId: string) => void }) {
+  const [datasetSelection, setDatasetSelection] = useState<{ id: string; version: number } | null>(
+    null,
+  )
   const runsQuery = useEvalQuery(['eval-runs'], () => api.runs(), LIST_POLL_MS)
   const datasetsQuery = useEvalQuery(['eval-datasets'], () => api.datasets())
   const runs = runsQuery.data?.runs ?? null
@@ -85,14 +110,15 @@ function OverviewTab({ onOpenRun }: { onOpenRun: (runId: string) => void }) {
   }
   return (
     <section>
-      <h2>评测总览</h2>
+      <h2>数据集</h2>
+      <AgentSourceCases />
       <h3>数据集(冻结版本)</h3>
       {datasetsQuery.isPending ? (
         <EmptyNote text="加载中…" />
       ) : datasets === null || datasets.length === 0 ? (
-        <EmptyNote text="尚无冻结数据集;先用 CLI 冻结:python scripts/eval.py dataset freeze <文件> <数据集ID>。" />
+        <EmptyNote text="暂无数据集" />
       ) : (
-        <table className="eval-table">
+        <EvaluationTable className="eval-table">
           <thead>
             <tr>
               <th>数据集</th>
@@ -106,7 +132,17 @@ function OverviewTab({ onOpenRun }: { onOpenRun: (runId: string) => void }) {
             {datasets.map((dataset) =>
               dataset.versions.map((version) => (
                 <tr key={`${dataset.datasetId}@${version.version}`}>
-                  <td>{dataset.datasetId}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="eval-link"
+                      onClick={() =>
+                        setDatasetSelection({ id: dataset.datasetId, version: version.version })
+                      }
+                    >
+                      {dataset.datasetId}
+                    </button>
+                  </td>
                   <td>v{version.version}</td>
                   <td>{version.split}</td>
                   <td>{version.caseCount}</td>
@@ -117,7 +153,14 @@ function OverviewTab({ onOpenRun }: { onOpenRun: (runId: string) => void }) {
               )),
             )}
           </tbody>
-        </table>
+        </EvaluationTable>
+      )}
+      {datasetSelection && (
+        <DatasetCases
+          key={`${datasetSelection.id}@${datasetSelection.version}`}
+          datasetId={datasetSelection.id}
+          version={datasetSelection.version}
+        />
       )}
       <h3>运行记录(每 4 秒刷新)</h3>
       {runsQuery.isPending ? (
@@ -125,7 +168,7 @@ function OverviewTab({ onOpenRun }: { onOpenRun: (runId: string) => void }) {
       ) : runs === null || runs.length === 0 ? (
         <EmptyNote text="尚无评测运行。" />
       ) : (
-        <table className="eval-table">
+        <EvaluationTable className="eval-table">
           <thead>
             <tr>
               <th>runId</th>
@@ -156,15 +199,27 @@ function OverviewTab({ onOpenRun }: { onOpenRun: (runId: string) => void }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </EvaluationTable>
       )}
     </section>
   )
 }
 
-function NewRunTab({ onCreated }: { onCreated: (runId: string) => void }) {
+function NewRunTab({
+  onCreated,
+  onReviews,
+  prefill,
+}: {
+  onCreated: (runId: string) => void
+  onReviews: (runId: string) => void
+  prefill?: PairRunPrefill | null
+}) {
+  const launch = useRunLaunch()
+  const [reviewSampling, setReviewSampling] = useState(defaultReviewSampling)
   const [datasets, setDatasets] = useState<DatasetInfo[]>([])
   const [datasetId, setDatasetId] = useState('')
+  const [versionOverride, setVersionOverride] = useState<number | null>(null)
+  const [agentLayers, setAgentLayers] = useState<string[]>(harnessLayers)
   const [runId, setRunId] = useState('')
   const [repetitions, setRepetitions] = useState(1)
   const [purpose, setPurpose] = useState('')
@@ -178,7 +233,6 @@ function NewRunTab({ onCreated }: { onCreated: (runId: string) => void }) {
   const [compression, setCompression] = useState(false)
   const [useCache, setUseCache] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -193,14 +247,58 @@ function NewRunTab({ onCreated }: { onCreated: (runId: string) => void }) {
       .catch((exc: unknown) => setError(exc instanceof Error ? exc.message : '加载失败'))
   }, [])
 
+  // 配对重跑引导:同数据集 + 反向压缩开关 + live 配置一次填好,用户只需确认费用参数。
+  const appliedPrefill = useRef(false)
+  useEffect(() => {
+    if (!prefill || appliedPrefill.current || datasets.length === 0) {
+      return
+    }
+    appliedPrefill.current = true
+    if (prefill.datasetId && datasets.some((item) => item.datasetId === prefill.datasetId)) {
+      setDatasetId(prefill.datasetId)
+    }
+    setVersionOverride(prefill.version ?? null)
+    setCompression(Boolean(prefill.compression?.enabled))
+    setPurpose(prefill.purpose ?? '')
+    if (prefill.mode === 'live') {
+      setLiveMode(true)
+      const budget = prefill.budget as
+        { maxCost?: number; prices?: Record<string, number> } | undefined
+      if (budget?.maxCost !== undefined && budget.maxCost !== null) {
+        setMaxCost(String(budget.maxCost))
+      }
+      if (budget?.prices?.generation !== undefined) {
+        setGenPrice(String(budget.prices.generation))
+      }
+      if (budget?.prices?.judge !== undefined) {
+        setJudgePrice(String(budget.prices.judge))
+      }
+      const judgeConfig = prefill.judgeConfig as { model?: string } | undefined
+      if (judgeConfig?.model) {
+        setJudgeModel(judgeConfig.model)
+      } else if (prefill.judge === 'vlm') {
+        setJudgeModel('qwen-vl-max-latest')
+      }
+    }
+  }, [prefill, datasets])
+
+  const selectedVersion =
+    versionOverride ??
+    datasets
+      .find((dataset) => dataset.datasetId === datasetId)
+      ?.versions.reduce<number | undefined>(
+        (latest, entry) => Math.max(latest ?? 0, entry.version),
+        undefined,
+      )
+
   const submit = useCallback(() => {
     setBusy(true)
     setError(null)
-    setMessage(null)
     const body: Parameters<typeof api.createRun>[0] = liveMode
       ? {
           runId,
           datasetId,
+          version: selectedVersion,
           repetitions,
           purpose,
           mode: 'live',
@@ -220,21 +318,32 @@ function NewRunTab({ onCreated }: { onCreated: (runId: string) => void }) {
           compression: { enabled: compression },
           useGradeCache: useCache,
         }
-      : { runId, datasetId, repetitions, purpose, mode: 'mock', useGradeCache: useCache }
+      : {
+          runId,
+          datasetId,
+          version: selectedVersion,
+          repetitions,
+          purpose,
+          mode: 'mock',
+          // mock 也如实记录压缩开关:配对校验按 not_compression_pair/missing_cost 精确报因,
+          // 不会把「忘了开压缩」误报成「快照不一致」。
+          compression: { enabled: compression },
+          useGradeCache: useCache,
+        }
+    body.reviewSampling = reviewSampling
     api
       .createRun(body)
       .then((result) => {
-        setMessage(
-          `已创建 ${result.runId}(状态 ${statusLabel(result.status)});后台执行中,可在"运行详情"轮询。`,
-        )
-        onCreated(result.runId)
+        launch.recordRun(result.runId)
       })
       .catch((exc: unknown) => setError(exc instanceof ApiError ? exc.message : String(exc)))
       .finally(() => setBusy(false))
   }, [
+    reviewSampling,
     liveMode,
     runId,
     datasetId,
+    selectedVersion,
     repetitions,
     purpose,
     maxCost,
@@ -243,13 +352,12 @@ function NewRunTab({ onCreated }: { onCreated: (runId: string) => void }) {
     judgeModel,
     compression,
     useCache,
-    onCreated,
+    launch,
   ])
 
   const submitReplay = useCallback(() => {
     setBusy(true)
     setError(null)
-    setMessage(null)
     api
       .createRun({
         runId,
@@ -259,123 +367,234 @@ function NewRunTab({ onCreated }: { onCreated: (runId: string) => void }) {
         purpose: purpose || '严格回放',
       })
       .then((result) => {
-        setMessage(`严格回放已创建 ${result.runId}(禁网;差异见运行详情的回放证据)。`)
-        onCreated(result.runId)
+        launch.recordRun(result.runId)
       })
       .catch((exc: unknown) => setError(exc instanceof ApiError ? exc.message : String(exc)))
       .finally(() => setBusy(false))
-  }, [runId, replaySource, recordingId, purpose, onCreated])
+  }, [runId, replaySource, recordingId, purpose, launch])
+
+  if (datasetId === '__agent_source__') {
+    return (
+      <section className="eval-new-page">
+        <h2>新建评测</h2>
+        <ErrorNote message={error} />
+        <RunLaunchStatus launch={launch} onOpenRun={onCreated} onReviews={onReviews} />
+        <label>
+          数据集
+          <select
+            value={datasetId}
+            disabled={busy || launch.active}
+            onChange={(event) => setDatasetId(event.target.value)}
+          >
+            <option value="__agent_source__">Agent 流程 · 源题库（L0～L5、L7）</option>
+            {datasets.map((dataset) => (
+              <option key={dataset.datasetId} value={dataset.datasetId}>
+                {dataset.datasetId}
+              </option>
+            ))}
+          </select>
+        </label>
+        <fieldset disabled={busy || launch.active}>
+          <AgentSourceCases selection={agentLayers} onSelection={setAgentLayers} />
+        </fieldset>
+        <ReviewSamplingSettings value={reviewSampling} onChange={setReviewSampling} />
+        <p>运行编号自动生成，每题执行一次，使用固定模拟模型与流程规则判分。</p>
+        <button
+          className="eval-primary"
+          disabled={
+            busy ||
+            launch.active ||
+            !agentLayers.length ||
+            reviewSampling.grayMin > reviewSampling.grayMax
+          }
+          onClick={() => {
+            setBusy(true)
+            setError(null)
+            void api
+              .startFlow('agent_flow', agentLayers, reviewSampling)
+              .then((result) => launch.recordRun(result.runId))
+              .catch((exc: unknown) => setError(exc instanceof Error ? exc.message : String(exc)))
+              .finally(() => setBusy(false))
+          }}
+        >
+          {busy || launch.active ? '本次评测进行中…' : '启动所选 Agent 层级'}
+        </button>
+      </section>
+    )
+  }
 
   return (
-    <section>
+    <section className="eval-new-page">
       <h2>新建评测</h2>
-      <p className="eval-note">
-        Mock 与回放零费用。live 默认禁止:需显式预算与密钥(SWARMUI_IMAGE_API_KEY /
-        EVAL_JUDGE_API_KEY), 未配置时执行会以明确错误停止,不会静默转免费。默认预算 0(§13.2)。
-      </p>
       <ErrorNote message={error} />
-      {message && <div className="eval-ok">{message}</div>}
-      <h3>生成运行(Mock / Live)</h3>
-      <label className="eval-checkbox">
-        <input type="checkbox" checked={liveMode} onChange={(e) => setLiveMode(e.target.checked)} />
-        live 模式(真实调用,产生费用)
-      </label>
-      {liveMode && (
-        <div className="eval-live-config">
-          <label>
-            预算上限(CNY,必填正数)
-            <input value={maxCost} onChange={(e) => setMaxCost(e.target.value)} placeholder="5.0" />
-          </label>
-          <label>
-            生成单价/次(CNY)
+      <RunLaunchStatus launch={launch} onOpenRun={onCreated} onReviews={onReviews} />
+      <div className="eval-create-layout">
+        <div className="eval-config-card">
+          <h3>配置评测</h3>
+          <div className="eval-field-grid">
+            <label>
+              数据集
+              <select
+                value={datasetId}
+                onChange={(event) => {
+                  setDatasetId(event.target.value)
+                  setVersionOverride(null)
+                }}
+              >
+                <option value="__agent_source__">Agent 流程 · 源题库（L0～L5、L7）</option>
+                {datasets.map((dataset) => (
+                  <option key={dataset.datasetId} value={dataset.datasetId}>
+                    {dataset.datasetId}(最新 v
+                    {Math.max(...dataset.versions.map((entry) => entry.version))})
+                  </option>
+                ))}
+              </select>
+            </label>
+            {versionOverride !== null && (
+              <p className="eval-prefill-note">
+                已锁定数据集版本 v{versionOverride}（与配对运行的冻结快照一致）。
+              </p>
+            )}
+            <label>
+              运行 ID
+              <input
+                value={runId}
+                onChange={(event) => setRunId(event.target.value)}
+                placeholder="web-run-1"
+              />
+            </label>
+            <label>
+              重复次数
+              <input
+                type="number"
+                min={1}
+                max={10}
+                value={repetitions}
+                onChange={(event) => setRepetitions(Number(event.target.value))}
+              />
+            </label>
+            <label>
+              目的说明
+              <input value={purpose} onChange={(event) => setPurpose(event.target.value)} />
+            </label>
+          </div>
+          <label className="eval-checkbox">
             <input
-              value={genPrice}
-              onChange={(e) => setGenPrice(e.target.value)}
-              placeholder="0.5"
+              type="checkbox"
+              checked={liveMode}
+              onChange={(e) => setLiveMode(e.target.checked)}
             />
+            live 模式(真实调用,产生费用)
           </label>
-          <label>
-            裁判单价/次(CNY,可选)
-            <input
-              value={judgePrice}
-              onChange={(e) => setJudgePrice(e.target.value)}
-              placeholder="0"
-            />
-          </label>
-          <label>
-            vlm 裁判模型(可选;留空使用 stub 判分)
-            <input
-              value={judgeModel}
-              onChange={(e) => setJudgeModel(e.target.value)}
-              placeholder="qwen-vl-max-latest"
-            />
-          </label>
-          <p className="eval-note">
-            未登记价格的调用会被硬预算拒绝发送(PRICE_UNKNOWN),不会盲目计费。
+          {liveMode && (
+            <div className="eval-live-config">
+              <label>
+                预算上限(CNY,必填正数)
+                <input
+                  value={maxCost}
+                  onChange={(e) => setMaxCost(e.target.value)}
+                  placeholder="5.0"
+                />
+              </label>
+              <label>
+                生成单价/次(CNY)
+                <input
+                  value={genPrice}
+                  onChange={(e) => setGenPrice(e.target.value)}
+                  placeholder="0.5"
+                />
+              </label>
+              <label>
+                裁判单价/次(CNY,可选)
+                <input
+                  value={judgePrice}
+                  onChange={(e) => setJudgePrice(e.target.value)}
+                  placeholder="0"
+                />
+              </label>
+              <label>
+                裁判模型
+                <input
+                  value={judgeModel}
+                  onChange={(e) => setJudgeModel(e.target.value)}
+                  placeholder="qwen-vl-max-latest"
+                />
+              </label>
+            </div>
+          )}
+          <div className="eval-option-group">
+            <label className="eval-checkbox">
+              <input
+                type="checkbox"
+                checked={useCache}
+                onChange={(e) => setUseCache(e.target.checked)}
+              />
+              启用判分缓存
+            </label>
+            <label className="eval-checkbox">
+              <input
+                type="checkbox"
+                checked={compression}
+                onChange={(e) => setCompression(e.target.checked)}
+              />
+              提示词压缩实验（本次运行 compression: {compression ? 'on' : 'off'}）
+            </label>
+          </div>
+          <p className="eval-prefill-note">
+            成本对比需要一方关闭压缩、一方开启压缩，且两次都是带预算记账的 live 运行；mock
+            运行不产生费用与 token。
           </p>
+          {datasetId && (
+            <DatasetCases
+              key={`${datasetId}@${selectedVersion}`}
+              datasetId={datasetId}
+              version={selectedVersion}
+              preview
+            />
+          )}
+          <ReviewSamplingSettings value={reviewSampling} onChange={setReviewSampling} />
+          <div className="eval-submit-bar">
+            <button
+              className="eval-primary"
+              type="button"
+              disabled={
+                busy ||
+                launch.active ||
+                !runId ||
+                (!liveMode && !datasetId) ||
+                reviewSampling.grayMin > reviewSampling.grayMax
+              }
+              onClick={submit}
+            >
+              {busy
+                ? '正在启动…'
+                : launch.active
+                  ? '评测进行中…'
+                  : liveMode
+                    ? '预检并启动 live 运行'
+                    : '预检并启动 Mock 运行'}
+            </button>
+          </div>
         </div>
-      )}
-      <label className="eval-checkbox">
-        <input type="checkbox" checked={useCache} onChange={(e) => setUseCache(e.target.checked)} />
-        启用判分缓存(稳定性试验请关闭)
-      </label>
-      <label className="eval-checkbox">
-        <input
-          type="checkbox"
-          checked={compression}
-          onChange={(e) => setCompression(e.target.checked)}
-        />
-        启用提示词压缩实验(whitespace-v1;可能改变语义,结果需配对比较)
-      </label>
-      <label>
-        数据集
-        <select value={datasetId} onChange={(event) => setDatasetId(event.target.value)}>
-          {datasets.map((dataset) => (
-            <option key={dataset.datasetId} value={dataset.datasetId}>
-              {dataset.datasetId}(最新 v
-              {dataset.versions[dataset.versions.length - 1]?.version ?? '?'})
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        runId(每次运行需新 ID)
-        <input
-          value={runId}
-          onChange={(event) => setRunId(event.target.value)}
-          placeholder="web-run-1"
-        />
-      </label>
-      <label>
-        重复次数
-        <input
-          type="number"
-          min={1}
-          max={10}
-          value={repetitions}
-          onChange={(event) => setRepetitions(Number(event.target.value))}
-        />
-      </label>
-      <label>
-        目的说明
-        <input value={purpose} onChange={(event) => setPurpose(event.target.value)} />
-      </label>
-      <button type="button" disabled={busy || !runId || (!liveMode && !datasetId)} onClick={submit}>
-        {liveMode ? '预检并启动 live 运行' : '预检并启动 Mock 运行'}
-      </button>
-
-      <h3>严格回放(禁网)</h3>
-      <label>
-        源 runId
-        <input value={replaySource} onChange={(event) => setReplaySource(event.target.value)} />
-      </label>
-      <label>
-        录制 ID(留空使用源 run 默认录制)
-        <input value={recordingId} onChange={(event) => setRecordingId(event.target.value)} />
-      </label>
-      <button type="button" disabled={busy || !runId || !replaySource} onClick={submitReplay}>
-        启动严格回放
-      </button>
+        <details className="eval-replay-card">
+          <summary>严格回放已有运行</summary>
+          <label>
+            源 runId
+            <input value={replaySource} onChange={(event) => setReplaySource(event.target.value)} />
+          </label>
+          <label>
+            录制 ID
+            <input value={recordingId} onChange={(event) => setRecordingId(event.target.value)} />
+          </label>
+          <button
+            type="button"
+            disabled={busy || launch.active || !runId || !replaySource}
+            onClick={submitReplay}
+          >
+            启动严格回放
+          </button>
+        </details>
+      </div>
     </section>
   )
 }
@@ -447,7 +666,7 @@ function BudgetPanel({ runId }: { runId: string }) {
   return (
     <div className="eval-budget">
       <h4>预算账本(预留 ≠ 实际费用)</h4>
-      <table className="eval-table">
+      <EvaluationTable className="eval-table">
         <tbody>
           <tr>
             <th>上限</th>
@@ -470,7 +689,7 @@ function BudgetPanel({ runId }: { runId: string }) {
             </td>
           </tr>
         </tbody>
-      </table>
+      </EvaluationTable>
       {budget.project && (
         <p className="eval-muted">
           项目总预算:已结算 {money(budget.project.settled)},未结预留{' '}
@@ -478,7 +697,7 @@ function BudgetPanel({ runId }: { runId: string }) {
         </p>
       )}
       {budget.reservations && budget.reservations.length > 0 && (
-        <table className="eval-table">
+        <EvaluationTable className="eval-table">
           <thead>
             <tr>
               <th>调用点</th>
@@ -501,15 +720,127 @@ function BudgetPanel({ runId }: { runId: string }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </EvaluationTable>
       )}
     </div>
   )
 }
 
-function RunDetailPanel({ runId }: { runId: string }) {
+/** 入口 A:运行详情一键配对——找得到对手直接对比,找不到给重跑引导(§12.3)。 */
+function RunPairingPanel({
+  runId,
+  compressed,
+  onComparePair,
+  onCreatePairRun,
+  onOpenCost,
+}: {
+  runId: string
+  compressed: boolean
+  onComparePair: (pair: { baseline: string; candidate: string }) => void
+  onCreatePairRun: (prefill: PairRunPrefill) => void
+  onOpenCost: (runId: string) => void
+}) {
+  const pairQuery = useEvalQuery(['eval-pair', runId], () => api.suggestPair(runId))
+  if (pairQuery.isPending) {
+    return <p className="run-pairing">正在寻找可对比的配对运行…</p>
+  }
+  if (pairQuery.error) {
+    return <ErrorNote message={`配对推荐读取失败：${pairQuery.error.message}`} />
+  }
+  const suggestion = pairQuery.data
+  if (!suggestion) {
+    return null
+  }
+  if (suggestion.pairRunId && suggestion.currentRunId) {
+    const baseline =
+      suggestion.currentRole === 'compressed' ? suggestion.pairRunId : suggestion.currentRunId
+    const candidate =
+      suggestion.currentRole === 'compressed' ? suggestion.currentRunId : suggestion.pairRunId
+    return (
+      <div className="run-pairing run-pairing-ready">
+        <button
+          type="button"
+          className="eval-primary"
+          onClick={() => onComparePair({ baseline, candidate })}
+        >
+          {compressed
+            ? `与未压缩基线 ${suggestion.pairRunId} 对比成本`
+            : `与压缩运行 ${suggestion.pairRunId} 对比成本`}
+        </button>
+        <span>同数据集、快照一致且双方已记账，点击直接生成费用 / Token / 通过率报告。</span>
+      </div>
+    )
+  }
+  return (
+    <div className="run-pairing run-pairing-missing">
+      <strong>{compressed ? '未找到可对比的未压缩基线' : '未找到可对比的压缩运行'}</strong>
+      <ul>
+        {suggestion.reasons.map((item, index) => (
+          <li key={`${item.code}:${index}`}>
+            {item.message} <small>({item.code})</small>
+          </li>
+        ))}
+      </ul>
+      {suggestion.guidance && (
+        <div className="pair-guidance-action">
+          <p>{suggestion.guidance.message}</p>
+          <button
+            type="button"
+            className="eval-primary"
+            onClick={() => onCreatePairRun(suggestion.guidance!.prefill)}
+          >
+            一键新建配对运行（同数据集
+            {suggestion.guidance.prefill.compression.enabled ? '、开启压缩' : '、关闭压缩'}）
+          </button>
+        </div>
+      )}
+      <button type="button" onClick={() => onOpenCost(runId)}>
+        查看成本与压缩页
+      </button>
+    </div>
+  )
+}
+
+function RunDetailPanel({
+  runId,
+  onCompare,
+  onComparePair,
+  onCreatePairRun,
+}: {
+  runId: string
+  onCompare: (id: string) => void
+  onComparePair: (pair: { baseline: string; candidate: string }) => void
+  onCreatePairRun: (prefill: PairRunPrefill) => void
+}) {
+  const resultLabel = (value: unknown): string => {
+    const labels: Record<string, string> = {
+      true: '是',
+      false: '否',
+      sse_terminal: '流结束事件',
+      outcome: '执行结果',
+      route: '任务路由',
+      must_ask_user: '用户确认',
+      success_artifacts: '生成成功数',
+      draft_cleared: '续跑草稿已清除',
+      tool_handoff_to_planner: '转交策划工具',
+      interrupt_approval: '积分确认',
+      interrupted: '等待确认',
+      handoff_planner: '转交策划',
+      host_only: '直接生成',
+      completed: '已完成',
+      stream_complete: '正常结束',
+      cancelled: '已取消',
+    }
+    return value == null ? '—' : (labels[String(value)] ?? humanValue(value))
+  }
+  const [showDefinition, setShowDefinition] = useState(false)
   const [selected, setSelected] = useState<TrialView | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  useEffect(() => {
+    if (selected) {
+      document.getElementById('run-selected-result')?.scrollIntoView({ block: 'start' })
+    }
+  }, [selected])
   const [showBudget, setShowBudget] = useState(false)
   const queryClient = useQueryClient()
 
@@ -523,6 +854,9 @@ function RunDetailPanel({ runId }: { runId: string }) {
     },
   )
   const trialsQuery = useEvalQuery(['eval-trials', runId], () => api.trials(runId))
+  const definitions = useRunDefinitions(runId)
+  const [caseSearch, setCaseSearch] = useState('')
+  const [resultFilter, setResultFilter] = useState('all')
   const gatesQuery = useEvalQuery(['eval-gates', runId], () => api.gates(runId))
 
   const refresh = useCallback(() => {
@@ -563,61 +897,174 @@ function RunDetailPanel({ runId }: { runId: string }) {
   const gates = gatesQuery.data?.gates ?? []
   const metrics = detail.metrics
   const cancellable = ACTIVE_STATUSES.has(detail.status)
+  const caseById = new Map((definitions.data?.cases ?? []).map((item) => [item.caseId, item]))
+  const visibleTrials = trials.filter(
+    (trial) =>
+      (resultFilter === 'all' ||
+        (resultFilter === 'pass'
+          ? trial.qualityVerdict === 'pass'
+          : resultFilter === 'fail'
+            ? trial.qualityVerdict === 'fail' ||
+              trial.status === 'failed' ||
+              trial.status === 'timed_out'
+            : trial.qualityVerdict !== 'pass' && trial.qualityVerdict !== 'fail')) &&
+      `${trial.caseId} ${caseById.get(trial.caseId)?.title ?? ''} ${caseById.get(trial.caseId)?.input.prompt ?? ''}`
+        .toLowerCase()
+        .includes(caseSearch.toLowerCase()),
+  )
   return (
-    <div>
-      <h3>
-        run <code>{runId}</code>({detail.manifest.mode} / {detail.manifest.provider} / 状态{' '}
-        {statusLabel(detail.status)})
-      </h3>
-      <p className="eval-muted">
-        进度:完成 {detail.progress.completed}/{detail.progress.total};运行中{' '}
-        {detail.progress.running}; 排队 {detail.progress.pending};失败 {detail.progress.failed};取消{' '}
-        {detail.progress.cancelled}
-        {detail.manifest.parentRunId && (
-          <>
-            ;回放自 <code>{detail.manifest.parentRunId}</code>
-          </>
-        )}
-      </p>
-      {detail.extra.error && <ErrorNote message={detail.extra.error} />}
-      <ul className="eval-annotations">
-        {detail.annotations.map((note) => (
-          <li key={note}>⚠ {note}</li>
+    <div className="run-workspace">
+      {detail.status === 'completed' &&
+        (detail.flow ? (
+          <p className="run-pairing">Agent 流程 run 由类型化规则判定，不走成本与压缩对比。</p>
+        ) : (
+          <RunPairingPanel
+            runId={runId}
+            compressed={Boolean(detail.manifest.compression?.enabled)}
+            onComparePair={onComparePair}
+            onCreatePairRun={onCreatePairRun}
+            onOpenCost={onCompare}
+          />
         ))}
-      </ul>
-      <p>
-        数据集{' '}
-        <code>
-          {detail.manifest.dataset.datasetId}@v{detail.manifest.dataset.version}
-        </code>
-        (快照 {detail.manifest.dataset.contentHash.slice(0, 12)}…);计划 {detail.denominators.plan}{' '}
-        条
-        {detail.manifest.compression.enabled && (
-          <strong>;压缩实验已启用({detail.manifest.compression.compressorVersion})</strong>
-        )}
-      </p>
-      <table className="eval-table">
-        <tbody>
-          <tr>
-            <th>执行覆盖率</th>
-            <td>{percent(metrics.executionCoverage)}</td>
-            <th>生成成功率</th>
-            <td>{percent(metrics.generationSuccessRate)}</td>
-          </tr>
-          <tr>
-            <th>判定覆盖率</th>
-            <td>{percent(metrics.determinationCoverage)}</td>
-            <th>条件质量通过率</th>
-            <td>{percent(metrics.conditionalQualityPassRate)}</td>
-          </tr>
-          <tr>
-            <th>计划合格完成率</th>
-            <td>{percent(metrics.planCompletionRate)}</td>
-            <th>每份合格素材成本</th>
-            <td>N/A(见预算账本口径)</td>
-          </tr>
-        </tbody>
-      </table>
+      <h3 className="run-identity">
+        {detail.manifest.purpose || '评测结果'}
+        <small>
+          运行编号：{runId} ·{' '}
+          {detail.manifest.mode === 'mock'
+            ? '模拟运行'
+            : detail.manifest.mode === 'live'
+              ? '真实调用'
+              : '回放'}{' '}
+          · {statusLabel(detail.status)}
+        </small>
+      </h3>
+      <div className="run-meta">
+        <span>
+          {detail.manifest.dataset.datasetId} · v{detail.manifest.dataset.version}
+        </span>
+        <span>
+          完成 {detail.progress.completed}/{detail.progress.total}
+        </span>
+        <span>运行中 {detail.progress.running}</span>
+        <span>排队 {detail.progress.pending}</span>
+        <span>失败 {detail.progress.failed}</span>
+        <span>取消 {detail.progress.cancelled}</span>
+      </div>
+      {detail.extra.error && <ErrorNote message={detail.extra.error} />}
+      <details className="run-config">
+        <summary>运行配置</summary>
+        <dl>
+          <dt>数据集快照</dt>
+          <dd>{detail.manifest.dataset.contentHash}</dd>
+          <dt>计划用例</dt>
+          <dd>{detail.denominators.plan}</dd>
+          <dt>压缩实验</dt>
+          <dd>compression: {detail.manifest.compression.enabled ? 'on' : 'off'}</dd>
+          {detail.manifest.parentRunId && (
+            <>
+              <dt>回放来源</dt>
+              <dd>{detail.manifest.parentRunId}</dd>
+            </>
+          )}
+        </dl>
+      </details>
+      {detail.flow ? (
+        <div className="flow-panel eval-result-panel">
+          <div className="eval-result-summary">
+            <div>
+              <span>流程通过率</span>
+              <strong>{percent(detail.flow.passRate)}</strong>
+            </div>
+            <div>
+              <span>通过用例</span>
+              <strong>
+                {detail.denominators.pass}
+                <em> / {detail.denominators.plan}</em>
+              </strong>
+            </div>
+            <div>
+              <span>执行状态</span>
+              <strong className="eval-result-state">{statusLabel(detail.status)}</strong>
+            </div>
+          </div>
+          {Object.keys(detail.flow.layers).length > 1 && (
+            <div className="eval-layer-results">
+              {Object.entries(detail.flow.layers)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([layer, result]) => (
+                  <div className="eval-layer-result" key={layer}>
+                    <div>
+                      <b>{layer}</b>
+                      <span>
+                        {
+                          (
+                            {
+                              L0: '协议',
+                              L1: '路由',
+                              L2: '计划',
+                              L3: '中断',
+                              L4: '续跑',
+                              L5: '队列',
+                              L7: '反思',
+                            } as Record<string, string>
+                          )[layer]
+                        }
+                      </span>
+                    </div>
+                    <strong>
+                      {result.pass}
+                      <span> / {result.plan}</span>
+                    </strong>
+                    <progress
+                      value={result.pass}
+                      max={Math.max(result.plan, 1)}
+                      aria-label={`${layer} 通过进度`}
+                    />
+                    <span
+                      className={
+                        result.pass === result.plan ? 'eval-status-pass' : 'eval-status-pending'
+                      }
+                    >
+                      {result.pass === result.plan ? '全部通过' : `${result.fail} 条失败或待完成`}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          )}
+          {detail.flow.failures.map((failure, i) => (
+            <div className="failure-row" key={`${failure.caseId}-${i}`}>
+              <b>{failure.suite}</b> <code>{failure.caseId}</code>{' '}
+              <span className="failure-reason">
+                {failureReason(failure.reason)} <small>（原码：{failure.reason}）</small>
+              </span>
+              <p>Trace：{failure.tracePath ?? '未生成'}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EvaluationTable className="eval-table">
+          <tbody>
+            <tr>
+              <th>执行覆盖率</th>
+              <td>{percent(metrics.executionCoverage)}</td>
+              <th>生成成功率</th>
+              <td>{percent(metrics.generationSuccessRate)}</td>
+            </tr>
+            <tr>
+              <th>判定覆盖率</th>
+              <td>{percent(metrics.determinationCoverage)}</td>
+              <th>条件质量通过率</th>
+              <td>{percent(metrics.conditionalQualityPassRate)}</td>
+            </tr>
+            <tr>
+              <th>计划合格完成率</th>
+              <td>{percent(metrics.planCompletionRate)}</td>
+              <th>每份合格素材成本</th>
+              <td>N/A(见预算账本口径)</td>
+            </tr>
+          </tbody>
+        </EvaluationTable>
+      )}
       {detail.coverageGaps.length > 0 && (
         <div className="eval-gaps">
           <h4>覆盖缺口(不隐藏、不计为通过)</h4>
@@ -659,97 +1106,221 @@ function RunDetailPanel({ runId }: { runId: string }) {
           ))}
         </div>
       )}
-      <h4>逐 trial 明细</h4>
-      <table className="eval-table">
-        <thead>
-          <tr>
-            <th>用例</th>
-            <th>重复</th>
-            <th>执行</th>
-            <th>质量</th>
-            <th>加权分</th>
-            <th>seed(请求/实际)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {trials.map((trial) => (
-            <tr
-              key={trial.trialId}
-              className={selected?.trialId === trial.trialId ? 'eval-selected' : ''}
-              onClick={() => setSelected(trial)}
-            >
-              <td>{trial.caseId}</td>
-              <td>{trial.repetitionIndex}</td>
-              <td>{trial.status}</td>
-              <td>{trial.qualityVerdict ?? '未评分'}</td>
-              <td>{trial.weightedScore === null ? 'N/A(未评)' : trial.weightedScore.toFixed(2)}</td>
-              <td>
-                {trial.requestedSeed}/{trial.resolvedSeed ?? '?'}
-              </td>
+      <div className="run-results-heading">
+        <h4 className="eval-results-title">
+          用例结果{' '}
+          <small>
+            {visibleTrials.length} / {trials.length} 条
+          </small>
+        </h4>
+        <div className="run-result-filters">
+          <label>
+            搜索运行用例
+            <input
+              value={caseSearch}
+              onChange={(event) => setCaseSearch(event.target.value)}
+              placeholder="题目名称或用例编号"
+            />
+          </label>
+          <label>
+            结果筛选
+            <select value={resultFilter} onChange={(event) => setResultFilter(event.target.value)}>
+              <option value="all">全部结果</option>
+              <option value="fail">失败与超时</option>
+              <option value="pass">通过</option>
+              <option value="unknown">待执行或未判定</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div className="run-results-scroll">
+        <EvaluationTable className="eval-table run-results-table">
+          <thead>
+            <tr>
+              <th>用例</th>
+              <th>第几次</th>
+              <th>执行</th>
+              <th>{detail.flow ? '规则结果' : '质量'}</th>
+              <th>{detail.flow ? '规则分' : '加权分'}</th>
+              <th>{detail.flow ? '操作' : 'seed(请求/实际)'}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {visibleTrials.map((trial) => (
+              <tr
+                key={trial.trialId}
+                className={selected?.trialId === trial.trialId ? 'eval-selected' : ''}
+                onClick={() => setSelected(trial)}
+              >
+                <td>
+                  <button
+                    className="run-case-name"
+                    type="button"
+                    onClick={() => setSelected(trial)}
+                  >
+                    <CaseIdentity item={caseById.get(trial.caseId)} caseId={trial.caseId} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setSelected(trial)
+                      setShowDefinition(true)
+                    }}
+                  >
+                    查看用例定义
+                  </button>
+                </td>
+                <td>{trial.repetitionIndex + 1}</td>
+                <td>{statusLabel(trial.status)}</td>
+                <td>
+                  <span
+                    className={`eval-status-${trial.qualityVerdict === 'pass' ? 'pass' : trial.qualityVerdict === 'fail' ? 'fail' : 'pending'}`}
+                  >
+                    {trial.qualityVerdict === 'pass'
+                      ? '通过'
+                      : trial.qualityVerdict === 'fail'
+                        ? '失败'
+                        : '未评分'}
+                  </span>
+                </td>
+                <td>{trial.weightedScore === null ? '—' : trial.weightedScore.toFixed(2)}</td>
+                <td>
+                  {detail.flow ? (
+                    <div className="run-row-actions">
+                      <button type="button" onClick={() => setSelected(trial)}>
+                        查看结果
+                      </button>
+                      <span className="eval-rule-note">程序判定，无需人工重判</span>
+                    </div>
+                  ) : (
+                    <>
+                      {trial.requestedSeed}/{trial.resolvedSeed ?? '?'}
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </EvaluationTable>
+      </div>
+      {!visibleTrials.length && (
+        <p className="eval-empty">没有匹配的运行用例，请调整搜索或结果筛选。</p>
+      )}
       {selected && (
-        <div className="eval-trial-detail">
+        <div id="run-selected-result" className="eval-trial-detail run-selected-result">
           <h4>
             用例详情 <code>{selected.caseId}</code>
           </h4>
+          <div className="run-selected-meta">
+            <span>执行：{statusLabel(selected.status)}</span>
+            <span>
+              判定：
+              {selected.qualityVerdict === 'pass'
+                ? '通过'
+                : selected.qualityVerdict === 'fail'
+                  ? '失败'
+                  : '未判定'}
+            </span>
+            {selected.tracePath && (
+              <a
+                target="_blank"
+                rel="noreferrer"
+                href={`/api/evals/v1/runs/${encodeURIComponent(runId)}/trials/${encodeURIComponent(selected.trialId)}/trace`}
+              >
+                查看 Trace ↗
+              </a>
+            )}
+          </div>
+          <button
+            type="button"
+            aria-expanded={showDefinition}
+            onClick={() => setShowDefinition(!showDefinition)}
+          >
+            {showDefinition ? '收起用例定义' : '查看用例定义'}
+          </button>
+          {showDefinition && <RunCaseDefinition runId={runId} trial={selected} />}
           {selected.error && <div className="eval-error">执行错误:{selected.error}</div>}
-          <h5>产物</h5>
-          {selected.artifactIds.length === 0 ? (
-            <EmptyNote text="无产物(执行失败或未生成)。" />
+          <details open={selected.artifactIds.length > 0} className="eval-technical-details">
+            <summary>绑定作品（{selected.artifactIds.length}）</summary>
+            {selected.artifactIds.length === 0 ? (
+              <EmptyNote text="无产物(执行失败或未生成)。" />
+            ) : (
+              <div className="eval-thumbs">
+                {selected.artifactIds.map((artifactId) => (
+                  <a
+                    key={artifactId}
+                    href={api.artifactUrl(artifactId)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <img
+                      className="eval-thumb"
+                      src={api.artifactUrl(artifactId)}
+                      alt={`产物 ${artifactId}`}
+                      loading="lazy"
+                    />
+                  </a>
+                ))}
+              </div>
+            )}
+          </details>
+          <h5>规则检查</h5>
+          {selected.grades.length === 0 ? (
+            <EmptyNote text="未评分" />
           ) : (
-            <div className="eval-thumbs">
-              {selected.artifactIds.map((artifactId) => (
-                <a
-                  key={artifactId}
-                  href={api.artifactUrl(artifactId)}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <img
-                    className="eval-thumb"
-                    src={api.artifactUrl(artifactId)}
-                    alt={`产物 ${artifactId}`}
-                    loading="lazy"
-                  />
-                </a>
-              ))}
+            <div className="eval-check-list">
+              {[...selected.grades]
+                .sort((a, b) => Number(a.status === 'pass') - Number(b.status === 'pass'))
+                .map((grade) => (
+                  <article className="eval-check-card" key={grade.gradeId}>
+                    <header>
+                      <strong title={grade.checkId}>
+                        {checkLabel(grade.checkId)} <small>（{grade.checkId}）</small>
+                      </strong>
+                      <span
+                        className={`eval-status-${grade.status === 'pass' ? 'pass' : grade.status === 'fail' ? 'fail' : 'pending'}`}
+                      >
+                        {grade.status === 'pass'
+                          ? '通过'
+                          : grade.status === 'fail'
+                            ? '失败'
+                            : '未判定'}
+                      </span>
+                    </header>
+                    <dl>
+                      <div>
+                        <dt>期望</dt>
+                        <dd>{resultLabel(grade.expected)}</dd>
+                      </div>
+                      <div>
+                        <dt>实测</dt>
+                        <dd>{resultLabel(grade.observed)}</dd>
+                      </div>
+                    </dl>
+                    <details>
+                      <summary>判分信息</summary>
+                      <dl>
+                        <div>
+                          <dt>来源</dt>
+                          <dd>{grade.source}</dd>
+                        </div>
+                        <div>
+                          <dt>缓存</dt>
+                          <dd>{grade.cacheHit ? '命中' : '本次计算'}</dd>
+                        </div>
+                      </dl>
+                    </details>
+                  </article>
+                ))}
             </div>
           )}
-          <h5>逐项评分(自动/类型化规则)</h5>
-          {selected.grades.length === 0 ? (
-            <EmptyNote text="未评分:执行失败或未评,不显示 0 分(§15.2)。" />
-          ) : (
-            <table className="eval-table">
-              <thead>
-                <tr>
-                  <th>检查项</th>
-                  <th>期望</th>
-                  <th>实测</th>
-                  <th>判定</th>
-                  <th>来源</th>
-                  <th>缓存</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selected.grades.map((grade) => (
-                  <tr key={grade.gradeId}>
-                    <td>{grade.checkId}</td>
-                    <td>{String(grade.expected)}</td>
-                    <td>{String(grade.observed)}</td>
-                    <td>{grade.status}</td>
-                    <td>{grade.source}</td>
-                    <td>{grade.cacheHit ? '命中' : '本次'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          <AttemptsPanel trialId={selected.trialId} />
-          <h5>步骤时间线</h5>
-          <StepsPanel runId={runId} trialId={selected.trialId} />
+          <details className="eval-technical-details">
+            <summary>调用记录与步骤时间线</summary>
+            <AttemptsPanel trialId={selected.trialId} />
+            <h5>步骤时间线</h5>
+            <StepsPanel runId={runId} trialId={selected.trialId} />
+          </details>
         </div>
       )}
     </div>
@@ -771,7 +1342,7 @@ function AttemptsPanel({ trialId }: { trialId: string }) {
   return (
     <div>
       <h5>调用记录(每次外部请求尝试)</h5>
-      <table className="eval-table">
+      <EvaluationTable className="eval-table">
         <thead>
           <tr>
             <th>调用点</th>
@@ -804,37 +1375,92 @@ function AttemptsPanel({ trialId }: { trialId: string }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </EvaluationTable>
     </div>
   )
 }
 
-function RunsTab({ initialRun }: { initialRun: string }) {
+function RunsTab({
+  initialRun,
+  onCompare,
+  onComparePair,
+  onCreatePairRun,
+}: {
+  initialRun: string
+  onCompare: (id: string) => void
+  onComparePair: (pair: { baseline: string; candidate: string }) => void
+  onCreatePairRun: (prefill: PairRunPrefill) => void
+}) {
   const [current, setCurrent] = useState<string>(initialRun)
   const runsQuery = useEvalQuery(['eval-runs'], () => api.runs(), LIST_POLL_MS)
-  const runs = runsQuery.data?.runs ?? []
+  const runs = [...(runsQuery.data?.runs ?? [])].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  )
   useEffect(() => {
     if (!current && runs.length > 0) {
       setCurrent(runs[0].runId)
     }
   }, [runs, current])
   return (
-    <section>
+    <section className="run-page">
       <h2>运行详情</h2>
-      <select value={current} onChange={(event) => setCurrent(event.target.value)}>
-        {runs.length === 0 && <option value="">(暂无运行)</option>}
-        {runs.map((run) => (
-          <option key={run.runId} value={run.runId}>
-            {run.runId}({run.mode} / {statusLabel(run.status)})
-          </option>
-        ))}
-      </select>
-      {current ? <RunDetailPanel runId={current} /> : <EmptyNote text="尚无可查看的运行。" />}
+      <label className="run-picker">
+        选择运行
+        <select value={current} onChange={(event) => setCurrent(event.target.value)}>
+          {runs.length === 0 && <option value="">(暂无运行)</option>}
+          {runs.map((run) => (
+            <option key={run.runId} value={run.runId}>
+              {run.runId}({run.mode} / {statusLabel(run.status)})
+            </option>
+          ))}
+        </select>
+      </label>
+      {current ? (
+        <RunDetailPanel
+          key={current}
+          runId={current}
+          onCompare={onCompare}
+          onComparePair={onComparePair}
+          onCreatePairRun={onCreatePairRun}
+        />
+      ) : (
+        <EmptyNote text="尚无可查看的运行。" />
+      )}
     </section>
   )
 }
 
 function ReviewDetailPanel({ taskId }: { taskId: string }) {
+  const reviewValue = (value: unknown): string => {
+    const labels: Record<string, string> = {
+      true: '是',
+      false: '否',
+      pass: '通过',
+      fail: '失败',
+      interrupted: '等待确认',
+      completed: '已完成',
+      cancelled: '已取消',
+      inconclusive: '无法判定',
+      error: '错误',
+      dependency_failed: '前置检查失败',
+      not_applicable: '不适用',
+      interrupt_approval: '积分确认',
+      stream_complete: '正常结束',
+      stream_error: '执行错误',
+      host_only: '直接生成',
+      handoff_planner: '转交策划',
+    }
+    return value === null || value === undefined ? '—' : (labels[String(value)] ?? String(value))
+  }
+  const checkNames: Record<string, string> = {
+    sse_terminal: '流结束事件',
+    outcome: '执行结果',
+    route: '任务路由',
+    must_ask_user: '用户确认',
+    tool_handoff_to_planner: '转交策划工具',
+    success_artifacts: '成功作品数',
+    draft_cleared: '续跑草稿已清除',
+  }
   const [autoGrades, setAutoGrades] = useState<GradeView[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   // 转回归用例表单(§9.4):审核确认的问题 → 用例草稿 → 校验 → 冻结进回归集。
@@ -848,6 +1474,10 @@ function ReviewDetailPanel({ taskId }: { taskId: string }) {
 
   const detailQuery = useEvalQuery(['eval-review', taskId], () => api.reviewTaskDetail(taskId))
   const runId = detailQuery.data?.task.runId
+  const definitions = useRunDefinitions(runId)
+  const caseDefinition = definitions.data?.cases?.find(
+    (item) => item.caseId === detailQuery.data?.task.caseId,
+  )
   // 自动证据:同 run 的 trial 评分与任务绑定关系一致时展示,供比对人工意见。
   const autoTrialsQuery = useEvalQuery(
     ['eval-review-auto', runId ?? ''],
@@ -918,9 +1548,15 @@ function ReviewDetailPanel({ taskId }: { taskId: string }) {
     draftDataset.trim() !== ''
   return (
     <div className="eval-review-detail">
-      <h5>素材(自动评分与人工意见的判定对象)</h5>
+      <h5>作品产物</h5>
       {detail.task.artifactIds.length === 0 ? (
-        <EmptyNote text="任务未绑定素材。" />
+        <EmptyNote
+          text={
+            detail.task.evidence?.suite
+              ? '流程审核以 Trace 与规则证据为准，此任务未绑定作品。'
+              : '此任务未绑定作品。'
+          }
+        />
       ) : (
         <div className="eval-thumbs">
           {detail.task.artifactIds.map((artifactId) => (
@@ -935,13 +1571,13 @@ function ReviewDetailPanel({ taskId }: { taskId: string }) {
           ))}
         </div>
       )}
-      <h5>自动证据(独立意见与之比对;不覆盖自动评分)</h5>
+      <h5>规则与评分结果</h5>
       {autoGrades === null ? (
         <EmptyNote text="加载自动证据…" />
       ) : autoGrades.length === 0 ? (
         <EmptyNote text="无自动评分记录(执行失败或未评)。" />
       ) : (
-        <table className="eval-table">
+        <EvaluationTable className="eval-table">
           <thead>
             <tr>
               <th>检查项</th>
@@ -953,16 +1589,27 @@ function ReviewDetailPanel({ taskId }: { taskId: string }) {
           <tbody>
             {autoGrades.map((grade) => (
               <tr key={grade.gradeId}>
-                <td>{grade.checkId}</td>
-                <td>{String(grade.expected)}</td>
-                <td>{String(grade.observed)}</td>
-                <td>{grade.status}</td>
+                <td>
+                  <span>
+                    {caseDefinition?.checks.find((check) => check.id === grade.checkId)?.question ??
+                      checkNames[grade.checkId] ??
+                      failureReason(grade.checkId)}
+                  </span>
+                  <small className="eval-data-code">{grade.checkId}</small>
+                </td>
+                <td>{reviewValue(grade.expected)}</td>
+                <td>{reviewValue(grade.observed)}</td>
+                <td>
+                  <span className={`review-grade review-grade-${grade.status}`}>
+                    {reviewValue(grade.status)}
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </EvaluationTable>
       )}
-      <h5>独立意见(追加式,修订保留历史)</h5>
+      <h5>审核意见</h5>
       {detail.opinions.length === 0 ? (
         <EmptyNote text="尚无意见。" />
       ) : (
@@ -980,7 +1627,7 @@ function ReviewDetailPanel({ taskId }: { taskId: string }) {
           ))}
         </ul>
       )}
-      <h5>裁决(绑定意见与规则版本)</h5>
+      <h5>裁决记录</h5>
       {detail.adjudications.length === 0 ? (
         <EmptyNote text="尚未裁决。" />
       ) : (
@@ -1005,83 +1652,114 @@ function ReviewDetailPanel({ taskId }: { taskId: string }) {
           </ul>
         </>
       )}
-      <h5>确认问题 → 固化为回归用例(§9.4)</h5>
-      <div className="eval-draft-form">
-        <label>
-          提示词(复现问题的输入)
-          <input value={draftPrompt} onChange={(e) => setDraftPrompt(e.target.value)} />
-        </label>
-        <label>
-          检查项 ID(小写字母/数字/连字符)
-          <input
-            value={draftCheckId}
-            onChange={(e) => setDraftCheckId(e.target.value)}
-            placeholder="regression-check"
-          />
-        </label>
-        <label>
-          检查项问题
-          <input value={draftQuestion} onChange={(e) => setDraftQuestion(e.target.value)} />
-        </label>
-        <label>
-          期望
-          <select value={draftExpected} onChange={(e) => setDraftExpected(e.target.value)}>
-            <option value="false">false(问题复现)</option>
-            <option value="true">true</option>
-          </select>
-        </label>
-        <label>
-          回归数据集 ID(冻结为新版本)
-          <input
-            value={draftDataset}
-            onChange={(e) => setDraftDataset(e.target.value)}
-            placeholder="regression-zh"
-          />
-        </label>
-        <button type="button" disabled={draftBusy || !draftReady} onClick={submitCaseDraft}>
-          校验并冻结进回归集
-        </button>
-        {draftMessage && <p className="eval-ok">{draftMessage}</p>}
-      </div>
-      <ErrorNote message={loadError ?? error} />
+      <details className="review-regression">
+        <summary>转为回归用例</summary>
+        <div className="eval-draft-form">
+          <label>
+            提示词(复现问题的输入)
+            <input value={draftPrompt} onChange={(e) => setDraftPrompt(e.target.value)} />
+          </label>
+          <label>
+            检查项 ID(小写字母/数字/连字符)
+            <input
+              value={draftCheckId}
+              onChange={(e) => setDraftCheckId(e.target.value)}
+              placeholder="regression-check"
+            />
+          </label>
+          <label>
+            检查项问题
+            <input value={draftQuestion} onChange={(e) => setDraftQuestion(e.target.value)} />
+          </label>
+          <label>
+            期望
+            <select value={draftExpected} onChange={(e) => setDraftExpected(e.target.value)}>
+              <option value="false">false(问题复现)</option>
+              <option value="true">true</option>
+            </select>
+          </label>
+          <label>
+            回归数据集 ID(冻结为新版本)
+            <input
+              value={draftDataset}
+              onChange={(e) => setDraftDataset(e.target.value)}
+              placeholder="regression-zh"
+            />
+          </label>
+          <button type="button" disabled={draftBusy || !draftReady} onClick={submitCaseDraft}>
+            校验并冻结进回归集
+          </button>
+          {draftMessage && <p className="eval-ok">{draftMessage}</p>}
+        </div>
+        <ErrorNote message={loadError ?? error} />
+      </details>
     </div>
   )
 }
 
-function ReviewsTab() {
+function ReviewsTab({
+  onRuns,
+  onNew,
+  initialRun = '',
+}: {
+  onRuns: () => void
+  onNew: () => void
+  initialRun?: string
+}) {
+  const [filter, setFilter] = useState('all')
+  const [pendingAction, setPendingAction] = useState<{ taskId: string; action: string } | null>(
+    null,
+  )
+  const [reviewRun, setReviewRun] = useState(initialRun)
+  const reviewRuns = useEvalQuery(['eval-runs'], () => api.runs(), LIST_POLL_MS)
+  const [opinion, setOpinion] = useState('同意自动判定')
+  const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [reviewer, setReviewer] = useState('')
+  const [reviewer, setReviewer] = useState(() => localStorage.getItem('eval-reviewer') ?? '')
   const [runId, setRunId] = useState('')
   const [trialId, setTrialId] = useState('')
   const [caseId, setCaseId] = useState('')
   const [expanded, setExpanded] = useState<string>('')
   const queryClient = useQueryClient()
 
-  const tasksQuery = useEvalQuery(['eval-review-tasks'], () => api.reviewTasks())
-  const tasks = tasksQuery.data?.tasks ?? []
+  const tasksQuery = useEvalQuery(['eval-review-tasks'], () => api.reviewTasks(), LIST_POLL_MS)
+  const tasks = (tasksQuery.data?.tasks ?? []).filter(
+    (task) => !reviewRun || task.runId === reviewRun,
+  )
 
   const refresh = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ['eval-review-tasks'] })
-    void queryClient.invalidateQueries({ queryKey: ['eval-review'] })
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['eval-review-tasks'] }),
+      queryClient.invalidateQueries({ queryKey: ['eval-review'] }),
+    ])
   }, [queryClient])
 
   const createTask = useCallback(() => {
+    setCreating(true)
+    setError(null)
     api
-      .createReviewTask({ runId, trialId, caseId, priority: 'required' })
+      .createReviewTask({ runId, trialId, caseId, priority: 'normal' })
       .then(() => refresh())
       .catch((exc: unknown) => setError(exc instanceof ApiError ? exc.message : String(exc)))
+      .finally(() => setCreating(false))
   }, [runId, trialId, caseId, refresh])
 
   const act = useCallback(
     (task: ReviewTaskView, action: 'claim' | 'submit' | 'dispute' | 'adjudicate') => {
+      if (pendingAction) {
+        return
+      }
       const finish = (promise: Promise<unknown>) =>
         promise
           .then(() => refresh())
           .catch((exc: unknown) => setError(exc instanceof ApiError ? exc.message : String(exc)))
-      if (!reviewer) {
+          .finally(() => setPendingAction(null))
+      if (!reviewer.trim()) {
         setError('请先填写审核人身份(领取与提交都需要身份关联)')
         return
       }
+      setError(null)
+      setPendingAction({ taskId: task.reviewTaskId, action })
       if (action === 'claim') {
         void finish(api.claimReview(task.reviewTaskId, reviewer, task.revision))
       } else if (action === 'submit') {
@@ -1090,9 +1768,12 @@ function ReviewsTab() {
             reviewer,
             expectedRevision: task.revision,
             verdicts: [],
-            agreeWithAuto: null,
-            uncertain: true,
-            note: '页面提交:请补充逐项结论',
+            agreeWithAuto: opinion === '同意自动判定',
+            uncertain: opinion !== '同意自动判定',
+            note:
+              opinion === '同意自动判定' && task.evidence?.reasons.length
+                ? '同意自动失败'
+                : opinion,
           }),
         )
       } else if (action === 'dispute') {
@@ -1108,273 +1789,292 @@ function ReviewsTab() {
         )
       }
     },
-    [reviewer, refresh],
+    [reviewer, refresh, opinion, pendingAction],
   )
 
+  const visibleTasks = tasks.filter(
+    (task) =>
+      filter === 'all' ||
+      (filter === 'pending'
+        ? task.status === 'pending' || task.status === 'claimed'
+        : task.status !== 'pending' && task.status !== 'claimed'),
+  )
+  const selected = visibleTasks.find((task) => task.reviewTaskId === expanded) ?? visibleTasks[0]
+  const ownedByMe = Boolean(selected?.claim && selected.claim.reviewer === reviewer)
+  const expiredClaim = Boolean(
+    selected?.claim && Date.parse(selected.claim.leaseUntil) <= Date.now(),
+  )
+  const canClaim =
+    selected?.status === 'pending' ||
+    (selected?.status === 'claimed' && (ownedByMe || expiredClaim || !selected.claim))
+  const claiming =
+    pendingAction?.taskId === selected?.reviewTaskId && pendingAction?.action === 'claim'
+  const claimLabel =
+    selected?.status === 'pending' ? '领取任务' : expiredClaim ? '重新领取' : '延长领取时间'
+  const priorities: Record<string, string> = {
+    required: '必审',
+    risk: '风险',
+    random: '随机',
+    normal: '手动',
+  }
+  const states: Record<string, string> = {
+    pending: '待领取',
+    claimed: '审核中',
+    submitted: '已提交',
+    disputed: '有争议',
+    adjudicated: '已裁决',
+  }
   return (
-    <section>
-      <h2>人工审核</h2>
-      <ErrorNote message={error} />
-      <h3>从运行结果创建审核任务</h3>
+    <section className="review-workspace">
+      <div className="review-heading">
+        <div>
+          <h2>人工审核</h2>
+          <span>{tasks.length} 项任务</span>
+        </div>
+        <label>
+          审核人
+          <input
+            value={reviewer}
+            placeholder="alice"
+            onChange={(event) => {
+              setReviewer(event.target.value)
+              localStorage.setItem('eval-reviewer', event.target.value)
+            }}
+          />
+        </label>
+      </div>
+      <ErrorNote message={error ?? tasksQuery.error?.message ?? null} />
       <label>
-        runId
-        <input value={runId} onChange={(event) => setRunId(event.target.value)} />
+        审核运行
+        <select value={reviewRun} onChange={(event) => setReviewRun(event.target.value)}>
+          <option value="">全部运行</option>
+          {(reviewRuns.data?.runs ?? []).map((run) => (
+            <option key={run.runId} value={run.runId}>
+              {run.runId} · {statusLabel(run.status)}
+            </option>
+          ))}
+        </select>
       </label>
-      <label>
-        trialId
-        <input value={trialId} onChange={(event) => setTrialId(event.target.value)} />
-      </label>
-      <label>
-        caseId
-        <input value={caseId} onChange={(event) => setCaseId(event.target.value)} />
-      </label>
-      <label>
-        审核人(用于领取租约与意见身份关联)
-        <input
-          value={reviewer}
-          onChange={(event) => setReviewer(event.target.value)}
-          placeholder="alice"
-        />
-      </label>
-      <button type="button" disabled={!runId || !trialId || !caseId} onClick={createTask}>
-        创建审核任务
-      </button>
-      <h3>审核任务({tasks.length})</h3>
+      <div className="review-topbar">
+        <div className="review-filters">
+          {[
+            ['all', '全部'],
+            ['pending', '待处理'],
+            ['done', '已处理'],
+          ].map(([id, label]) => (
+            <button
+              type="button"
+              key={id}
+              className={filter === id ? 'active' : ''}
+              onClick={() => setFilter(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <details className="review-create">
+          <summary>＋ 创建审核任务</summary>
+          <div className="review-create-form">
+            <label>
+              运行 ID
+              <input value={runId} onChange={(e) => setRunId(e.target.value)} />
+            </label>
+            <label>
+              Trial ID
+              <input value={trialId} onChange={(e) => setTrialId(e.target.value)} />
+            </label>
+            <label>
+              用例 ID
+              <input value={caseId} onChange={(e) => setCaseId(e.target.value)} />
+            </label>
+            <button
+              type="button"
+              disabled={creating || !runId.trim() || !trialId.trim() || !caseId.trim()}
+              onClick={createTask}
+            >
+              {creating ? '创建中…' : '创建审核任务'}
+            </button>
+          </div>
+        </details>
+      </div>
       {tasks.length === 0 ? (
-        <EmptyNote text="暂无审核任务;run 完成后会按抽样策略自动生成(必审/风险/随机)。" />
+        <div className="eval-review-empty">
+          <h3>{reviewRun ? '本 run 未命中送审策略' : '未命中自动送审策略'}</h3>
+          <p>已完成的 run 未命中送审策略时不会创建任务；进行中的 run 会在结束后自动判断。</p>
+          <p>
+            效果题的裁判异常、模糊带或标记题会自动送审；Agent 规则 PASS/FAIL 和 mock/stub
+            自测默认不送。
+          </p>
+          <button onClick={onRuns}>查看运行与送审结果</button>
+          <button onClick={onNew}>去新建/查看评测</button>
+        </div>
       ) : (
-        <table className="eval-table">
-          <thead>
-            <tr>
-              <th>任务</th>
-              <th>run</th>
-              <th>用例</th>
-              <th>优先级</th>
-              <th>状态</th>
-              <th>抽样依据</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tasks.map((task) => (
-              <tr key={task.reviewTaskId}>
-                <td>
-                  <code>{task.reviewTaskId}</code>
-                </td>
-                <td>{task.runId}</td>
-                <td>{task.caseId}</td>
-                <td>{task.priority}</td>
-                <td>{task.status}</td>
-                <td>{task.sampling.rule}</td>
-                <td>
-                  <button type="button" onClick={() => act(task, 'claim')}>
-                    领取
-                  </button>
-                  <button type="button" onClick={() => act(task, 'submit')}>
-                    提交意见
-                  </button>
-                  <button type="button" onClick={() => act(task, 'dispute')}>
-                    争议
-                  </button>
-                  <button type="button" onClick={() => act(task, 'adjudicate')}>
-                    裁决
-                  </button>
+        <div className="review-split">
+          <div className="review-queue">
+            {visibleTasks.length === 0 && <EmptyNote text="没有符合筛选的任务" />}
+            {visibleTasks.map((task) => (
+              <button
+                type="button"
+                key={task.reviewTaskId}
+                className={`review-task ${selected?.reviewTaskId === task.reviewTaskId ? 'selected' : ''}`}
+                onClick={() => setExpanded(task.reviewTaskId)}
+              >
+                <div className="review-task-tags">
+                  <span>
+                    {priorities[task.priority] ?? task.priority}
+                    {task.evidence?.suite ? ` · ${task.evidence.suite}` : ''}
+                  </span>
+                  <span className="review-task-state" data-status={task.status}>
+                    {states[task.status] ?? task.status}
+                  </span>
+                </div>
+                <strong>
+                  <RunCaseIdentity runId={task.runId} caseId={task.caseId} />
+                </strong>
+                <span className="review-run-id">{task.runId}</span>
+                <span className="review-reason">
+                  {reviewReason(task.sampling.rule)} <small>（{task.sampling.rule}）</small>
+                </span>
+                {task.evidence?.reasons.length ? (
+                  <span className="review-reason">
+                    <RunCheckLabel
+                      runId={task.runId}
+                      caseId={task.caseId}
+                      checkId={task.evidence.reasons[0]}
+                    />
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+          {selected && (
+            <article className="review-inspector" key={selected.reviewTaskId}>
+              <div className="review-inspector-heading">
+                <div>
+                  <span className="review-eyebrow">
+                    {selected.evidence?.suite || '结果复核'} · {priorities[selected.priority]}
+                  </span>
+                  <h3>
+                    <RunCaseIdentity runId={selected.runId} caseId={selected.caseId} />
+                  </h3>
+                  <p>
+                    {reviewReason(selected.sampling.rule)}{' '}
+                    <small>（{selected.sampling.rule}）</small>
+                  </p>
+                </div>
+                <div className="review-primary-action">
+                  <span className="review-status" data-status={selected.status} role="status">
+                    <span className="review-status-dot" aria-hidden="true" />
+                    {claiming ? '正在领取' : (states[selected.status] ?? selected.status)}
+                  </span>
+                  {canClaim && (
+                    <button
+                      type="button"
+                      className={`review-claim-button ${selected.status === 'pending' ? 'eval-primary' : ''}`}
+                      disabled={pendingAction !== null}
+                      aria-busy={claiming}
+                      onClick={() => act(selected, 'claim')}
+                    >
+                      {claiming ? '领取中…' : claimLabel}
+                    </button>
+                  )}
+                  {selected.status === 'claimed' && selected.claim && (
+                    <span className="review-claim-owner">
+                      {ownedByMe ? '由你审核' : `由 ${selected.claim.reviewer} 审核`}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="review-context">
+                <span>本次运行抽样</span>
+                <b>
+                  必审{' '}
+                  {
+                    tasks.filter((t) => t.runId === selected.runId && t.priority === 'required')
+                      .length
+                  }
+                </b>
+                <b>
+                  风险{' '}
+                  {tasks.filter((t) => t.runId === selected.runId && t.priority === 'risk').length}
+                </b>
+                <b>
+                  随机{' '}
+                  {
+                    tasks.filter((t) => t.runId === selected.runId && t.priority === 'random')
+                      .length
+                  }
+                </b>
+              </div>
+              {selected.evidence?.reasons.length ? (
+                <div className="review-failure">
+                  <strong>自动判定依据</strong>
+                  {selected.evidence.reasons.map((reason) => (
+                    <RunCheckLabel
+                      key={reason}
+                      runId={selected.runId}
+                      caseId={selected.caseId}
+                      checkId={reason}
+                    />
+                  ))}
+                </div>
+              ) : null}
+              <div className="review-evidence-toolbar">
+                {selected.evidence?.traceUrl && (
+                  <a href={selected.evidence.traceUrl} target="_blank" rel="noreferrer">
+                    查看完整 Trace ↗
+                  </a>
+                )}
+                <details>
+                  <summary>任务标识</summary>
+                  <dl>
+                    <dt>运行</dt>
+                    <dd>{selected.runId}</dd>
+                    <dt>Trial</dt>
+                    <dd>{selected.trialId}</dd>
+                    <dt>任务</dt>
+                    <dd>{selected.reviewTaskId}</dd>
+                    {selected.evidence?.tracePath && (
+                      <>
+                        <dt>Trace</dt>
+                        <dd>{selected.evidence.tracePath}</dd>
+                      </>
+                    )}
+                  </dl>
+                </details>
+              </div>
+              <ReviewDetailPanel taskId={selected.reviewTaskId} />
+              <div className="review-decision">
+                <label>
+                  审核结论
+                  <select value={opinion} onChange={(e) => setOpinion(e.target.value)}>
+                    {['同意自动判定', '标记用例有问题', '标记判分器有问题'].map((value) => (
+                      <option key={value}>{value}</option>
+                    ))}
+                  </select>
+                </label>
+                <div>
                   <button
                     type="button"
-                    onClick={() =>
-                      setExpanded(expanded === task.reviewTaskId ? '' : task.reviewTaskId)
-                    }
+                    className="eval-primary"
+                    disabled={pendingAction !== null}
+                    onClick={() => act(selected, 'submit')}
                   >
-                    {expanded === task.reviewTaskId ? '收起详情' : '详情'}
+                    提交意见
                   </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      {expanded && <ReviewDetailPanel taskId={expanded} />}
-    </section>
-  )
-}
-
-function CompareTab() {
-  const [baseline, setBaseline] = useState('')
-  const [candidate, setCandidate] = useState('')
-  const [result, setResult] = useState<ComparisonView | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const submit = useCallback(() => {
-    setError(null)
-    api
-      .compare(baseline, candidate)
-      .then(setResult)
-      .catch((exc: unknown) => setError(exc instanceof ApiError ? exc.message : String(exc)))
-  }, [baseline, candidate])
-  return (
-    <section>
-      <h2>批次比较</h2>
-      <ErrorNote message={error} />
-      <label>
-        基线 runId
-        <input value={baseline} onChange={(event) => setBaseline(event.target.value)} />
-      </label>
-      <label>
-        候选 runId
-        <input value={candidate} onChange={(event) => setCandidate(event.target.value)} />
-      </label>
-      <button type="button" disabled={!baseline || !candidate} onClick={submit}>
-        比较
-      </button>
-      {result && (
-        <div>
-          <p
-            className={
-              result.comparability === 'compatible' || result.comparability === 'subject_comparison'
-                ? 'eval-ok'
-                : 'eval-note'
-            }
-          >
-            {result.note}
-          </p>
-          {result.subjectDeltas.length > 0 && <p>被测对象差异:{result.subjectDeltas.join(';')}</p>}
-          <p>
-            配对 {result.coverage.pairedCount};仅基线 {result.coverage.onlyInBaseline.length};
-            仅候选 {result.coverage.onlyInCandidate.length}
-          </p>
-          <p>
-            独立统计样本:
-            {result.independentSamples ? '是(live 双方)' : '否(Mock/缓存/回放不计入样本量)'}
-            ;总体差值 {result.summary.overallDelta === null ? 'N/A' : result.summary.overallDelta}
-          </p>
-          <p className="eval-muted">{result.summary.uncertainty}</p>
-          {result.checkRegressions.length > 0 && (
-            <div className="eval-gaps">
-              <h4>检查项级退化(通过 → 失败/依赖失败;gradeId 可回查证据)</h4>
-              <table className="eval-table">
-                <thead>
-                  <tr>
-                    <th>用例</th>
-                    <th>检查项</th>
-                    <th>基线</th>
-                    <th>候选</th>
-                    <th>候选 gradeId</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.checkRegressions.map((regression) => (
-                    <tr key={`${regression.caseId}:${regression.checkId}`}>
-                      <td>{regression.caseId}</td>
-                      <td>{regression.checkId}</td>
-                      <td>{regression.baselineStatus}</td>
-                      <td>{regression.candidateStatus}</td>
-                      <td>
-                        <code>{regression.candidateGradeId}</code>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  <details>
+                    <summary>更多操作</summary>
+                    <button type="button" onClick={() => act(selected, 'dispute')}>
+                      发起争议
+                    </button>
+                    <button type="button" onClick={() => act(selected, 'adjudicate')}>
+                      裁决
+                    </button>
+                  </details>
+                </div>
+              </div>
+            </article>
           )}
-          {result.candidateErrorCategories.length > 0 && (
-            <div className="eval-gaps">
-              <h4>候选 run 执行失败按错误类别分组(关联 trial 可查调用记录)</h4>
-              <ul>
-                {result.candidateErrorCategories.map((item) => (
-                  <li key={item.category}>
-                    <strong>{item.category}</strong>: {item.trialIds.length} 个 trial
-                    {item.trialIds.slice(0, 5).map((trialId) => (
-                      <code key={trialId}> {trialId.slice(0, 14)}…</code>
-                    ))}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          <table className="eval-table">
-            <thead>
-              <tr>
-                <th>用例</th>
-                <th>基线</th>
-                <th>候选</th>
-                <th>Δ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.paired.map((pair) => (
-                <tr key={`${pair.caseId}`}>
-                  <td>{pair.caseId}</td>
-                  <td>
-                    {pair.baseline.verdict ?? pair.baseline.status}(
-                    {pair.baseline.score === null ? '未评' : pair.baseline.score.toFixed(2)})
-                  </td>
-                  <td>
-                    {pair.candidate.verdict ?? pair.candidate.status}(
-                    {pair.candidate.score === null ? '未评' : pair.candidate.score.toFixed(2)})
-                  </td>
-                  <td>{pair.delta === null ? 'N/A' : pair.delta.toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  )
-}
-
-function CostTab() {
-  const [baseline, setBaseline] = useState('')
-  const [compressed, setCompressed] = useState('')
-  const [result, setResult] = useState<CompressionReport | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const submit = useCallback(() => {
-    setError(null)
-    api
-      .compressionReport(baseline, compressed)
-      .then(setResult)
-      .catch((exc: unknown) => setError(exc instanceof ApiError ? exc.message : String(exc)))
-  }, [baseline, compressed])
-  return (
-    <section>
-      <h2>成本与压缩实验</h2>
-      <p className="eval-note">
-        配对比较:同数据集各跑一个"原始"与"压缩"run(新建评测勾选压缩),差异只来自压缩。 token
-        仅统计服务商 reported usage;未知保持未知,字符数不冒充 token(§13.1)。
-      </p>
-      <ErrorNote message={error} />
-      <label>
-        基线 runId(未压缩)
-        <input value={baseline} onChange={(event) => setBaseline(event.target.value)} />
-      </label>
-      <label>
-        压缩 runId
-        <input value={compressed} onChange={(event) => setCompressed(event.target.value)} />
-      </label>
-      <button type="button" disabled={!baseline || !compressed} onClick={submit}>
-        生成压缩实验报告
-      </button>
-      {result && (
-        <div>
-          <p>
-            压缩器:{result.compressorVersion ?? '—'};质量:基线{' '}
-            {percent(result.quality.baselinePassRate)} → 压缩{' '}
-            {percent(result.quality.compressedPassRate)}(Δ {result.quality.delta ?? 'N/A'})
-          </p>
-          <p>
-            token(服务商口径):基线 {result.tokens.baseline.providerReportedTokens ?? '未知'} → 压缩{' '}
-            {result.tokens.compressed.providerReportedTokens ?? '未知'}
-            {result.tokens.delta !== null && `(Δ ${result.tokens.delta})`}
-          </p>
-          <p>
-            费用(已结算/估算口径):基线 {money(result.cost.baselineSettled)} → 压缩{' '}
-            {money(result.cost.compressedSettled)}
-            {result.cost.delta !== null && `(Δ ${result.cost.delta.toFixed(4)})`}
-          </p>
-          <p className={result.promote ? 'eval-ok' : 'eval-error'}>
-            推广结论:{result.promote === null ? '证据不足' : result.promote ? '可推广' : '禁止推广'}
-            {result.promoteReason && ` — ${result.promoteReason}`}
-          </p>
         </div>
       )}
     </section>
@@ -1423,48 +2123,56 @@ function OpsTab() {
   const calibrations = calibrationsQuery.data?.calibrations ?? null
   const loadError = error
   return (
-    <section>
-      <h2>运营状态</h2>
+    <section className="eval-ops-page">
+      <div className="eval-page-heading">
+        <h2>运营状态</h2>
+        <button type="button" onClick={reload}>
+          刷新状态
+        </button>
+      </div>
       <ErrorNote message={loadError} />
-      {health === null ? (
-        <EmptyNote text="加载健康指标…" />
-      ) : (
-        <table className="eval-table">
-          <tbody>
-            <tr>
-              <th>活跃 run</th>
-              <td>{health.activeRuns}</td>
-              <th>卡住 trial(&gt;1h)</th>
-              <td>{health.stuckTrials.length}</td>
-            </tr>
-            <tr>
-              <th>上游未知结果 trial</th>
-              <td>{health.unknownExternalTrials}</td>
-              <th>未结预算预留 / 未知结果</th>
-              <td>
-                {health.budget.unsettledReservations} / {health.budget.unknownOutcomes}
-              </td>
-            </tr>
-            <tr>
-              <th>裁判错误率</th>
-              <td>
-                {health.judgedTrials === 0
-                  ? 'N/A'
-                  : `${((health.judgeErrorTrials / health.judgedTrials) * 100).toFixed(1)}%`}
-              </td>
-              <th>最久待审</th>
-              <td>
-                {health.oldestPendingReviewHours === null
-                  ? 'N/A'
-                  : `${health.oldestPendingReviewHours}h`}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      )}
+      <div className="eval-health-card">
+        <h3>系统健康</h3>
+        {health === null ? (
+          <EmptyNote text="加载健康指标…" />
+        ) : (
+          <EvaluationTable className="eval-table">
+            <tbody>
+              <tr>
+                <th>活跃 run</th>
+                <td>{health.activeRuns}</td>
+                <th>卡住 trial(&gt;1h)</th>
+                <td>{health.stuckTrials.length}</td>
+              </tr>
+              <tr>
+                <th>上游未知结果 trial</th>
+                <td>{health.unknownExternalTrials}</td>
+                <th>未结预算预留 / 未知结果</th>
+                <td>
+                  {health.budget.unsettledReservations} / {health.budget.unknownOutcomes}
+                </td>
+              </tr>
+              <tr>
+                <th>裁判错误率</th>
+                <td>
+                  {health.judgedTrials === 0
+                    ? 'N/A'
+                    : `${((health.judgeErrorTrials / health.judgedTrials) * 100).toFixed(1)}%`}
+                </td>
+                <th>最久待审</th>
+                <td>
+                  {health.oldestPendingReviewHours === null
+                    ? 'N/A'
+                    : `${health.oldestPendingReviewHours}h`}
+                </td>
+              </tr>
+            </tbody>
+          </EvaluationTable>
+        )}
+      </div>
       {alerts && alerts.alerts.length > 0 && (
         <div className="eval-gaps">
-          <h4>告警(仅列出,不自动发送;阈值可配置)</h4>
+          <h4>告警</h4>
           <ul>
             {alerts.alerts.map((alert) => (
               <li key={alert.code}>
@@ -1474,61 +2182,73 @@ function OpsTab() {
           </ul>
         </div>
       )}
-      <h3>观测导出 Outbox</h3>
-      {outbox && (
-        <p>
-          积压 {outbox.pending} 条;Langfuse:{' '}
-          <strong>{outbox.langfuseConfigured ? '已配置(未验证连通)' : '未配置'}</strong>
-          <button type="button" onClick={flush}>
-            手动导出重试
-          </button>
-        </p>
-      )}
-      {flushMessage && <p className="eval-muted">{flushMessage}</p>}
-      <h3>裁判校准记录</h3>
-      {calibrations === null ? (
-        <EmptyNote text="加载中…" />
-      ) : calibrations.length === 0 ? (
-        <EmptyNote text="尚无校准记录;vlm 裁判未校准前,质量门禁保持 inconclusive(§11.3)。可通过 POST /api/evals/v1/calibrations 导入人工标注。" />
-      ) : (
-        <table className="eval-table">
-          <thead>
-            <tr>
-              <th>校准 ID</th>
-              <th>裁判模型</th>
-              <th>样本数</th>
-              <th>缺陷召回</th>
-              <th>误报率</th>
-              <th>排除(未定)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {calibrations.map((calibration) => (
-              <tr key={calibration.calibrationId}>
-                <td>
-                  <code>{calibration.calibrationId}</code>
-                </td>
-                <td>{calibration.judgeModel}</td>
-                <td>{calibration.sampleCount}</td>
-                <td>
-                  {calibration.report.defectRecall === null
-                    ? 'N/A'
-                    : percent(calibration.report.defectRecall)}
-                </td>
-                <td>
-                  {calibration.report.falsePositiveRate === null
-                    ? 'N/A'
-                    : percent(calibration.report.falsePositiveRate)}
-                </td>
-                <td>
-                  {calibration.report.excluded.autoUnknown +
-                    calibration.report.excluded.humanUnknown}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <div className="eval-ops-grid">
+        <div className="eval-outbox-card">
+          <h3>观测导出</h3>
+          {outbox && (
+            <div className="eval-export-status">
+              <div>
+                <span>待导出记录</span>
+                <strong>{outbox.pending} 条</strong>
+              </div>
+              <div>
+                <span>Langfuse</span>
+                <strong>{outbox.langfuseConfigured ? '已配置' : '未配置'}</strong>
+              </div>
+              <button type="button" onClick={flush}>
+                手动导出重试
+              </button>
+            </div>
+          )}
+          {flushMessage && <p className="eval-muted">{flushMessage}</p>}
+        </div>
+        <div className="eval-calibration-card">
+          <h3>裁判校准</h3>
+          {calibrations === null ? (
+            <EmptyNote text="加载中…" />
+          ) : calibrations.length === 0 ? (
+            <EmptyNote text="暂无校准记录" />
+          ) : (
+            <EvaluationTable className="eval-table">
+              <thead>
+                <tr>
+                  <th>校准 ID</th>
+                  <th>裁判模型</th>
+                  <th>样本数</th>
+                  <th>缺陷召回</th>
+                  <th>误报率</th>
+                  <th>排除(未定)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {calibrations.map((calibration) => (
+                  <tr key={calibration.calibrationId}>
+                    <td>
+                      <code>{calibration.calibrationId}</code>
+                    </td>
+                    <td>{calibration.judgeModel}</td>
+                    <td>{calibration.sampleCount}</td>
+                    <td>
+                      {calibration.report.defectRecall === null
+                        ? 'N/A'
+                        : percent(calibration.report.defectRecall)}
+                    </td>
+                    <td>
+                      {calibration.report.falsePositiveRate === null
+                        ? 'N/A'
+                        : percent(calibration.report.falsePositiveRate)}
+                    </td>
+                    <td>
+                      {calibration.report.excluded.autoUnknown +
+                        calibration.report.excluded.humanUnknown}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </EvaluationTable>
+          )}
+        </div>
+      </div>
     </section>
   )
 }
@@ -1545,17 +2265,56 @@ export function EvaluationApp() {
     const requested = new URLSearchParams(location.search).get('tab')
     return TABS.some((item) => item.id === requested) ? (requested as Tab) : 'overview'
   })
+  const [reviewScope, setReviewScope] = useState('')
+  const openReviews = (id: string) => {
+    setReviewScope(id)
+    setTab('reviews')
+  }
+  const [comparisonRun, setComparisonRun] = useState('')
+  const [comparisonPair, setComparisonPair] = useState<{
+    baseline: string
+    candidate: string
+  } | null>(null)
+  const openComparison = useCallback((id: string) => {
+    setComparisonRun(id)
+    setComparisonPair(null)
+    setTab('cost')
+  }, [])
+  const openPairComparison = useCallback((pair: { baseline: string; candidate: string }) => {
+    setComparisonPair(pair)
+    setComparisonRun('')
+    setTab('cost')
+  }, [])
+  const [newRunPrefill, setNewRunPrefill] = useState<PairRunPrefill | null>(null)
+  const openCreatePairRun = useCallback((prefill: PairRunPrefill) => {
+    setNewRunPrefill(prefill)
+    setTab('new')
+  }, [])
   const [pendingRun, setPendingRun] = useState<string>('')
   const openRun = useCallback((runId: string) => {
     setPendingRun(runId)
     setTab('runs')
   }, [])
-  const runsTab = useMemo(() => <RunsTab key={pendingRun} initialRun={pendingRun} />, [pendingRun])
+  const runsTab = useMemo(
+    () => (
+      <RunsTab
+        key={pendingRun}
+        initialRun={pendingRun}
+        onCompare={openComparison}
+        onComparePair={openPairComparison}
+        onCreatePairRun={openCreatePairRun}
+      />
+    ),
+    [pendingRun, openComparison, openPairComparison, openCreatePairRun],
+  )
   return (
     <QueryClientProvider client={queryClient}>
       <div className="eval-app">
         <header>
-          <h1>评测工作台 · 帧屿集 FRAYUNE</h1>
+          <a className="eval-brand" href="/">
+            FRAYUNE <span>帧屿集</span>
+          </a>
+          <h2>评测工作台</h2>
           <nav>
             {TABS.map((item) => (
               <button
@@ -1568,20 +2327,56 @@ export function EvaluationApp() {
               </button>
             ))}
           </nav>
+          <a className="eval-back" href="https://127.0.0.1:8443/">
+            ← 返回创作工作台
+          </a>
         </header>
         <main>
-          {tab === 'overview' && <OverviewTab onOpenRun={openRun} />}
-          {tab === 'new' && <NewRunTab onCreated={openRun} />}
+          {tab === 'overview' && (
+            <FlowOverview
+              onOpenRun={openRun}
+              onQuality={() => setTab('new')}
+              onReviews={openReviews}
+            />
+          )}
+          {tab === 'datasets' && <OverviewTab onOpenRun={openRun} />}
+          {tab === 'new' && (
+            <NewRunTab
+              key={
+                newRunPrefill
+                  ? `prefill:${newRunPrefill.datasetId}:${newRunPrefill.compression.enabled}:${newRunPrefill.purpose}`
+                  : 'plain'
+              }
+              onCreated={openRun}
+              onReviews={openReviews}
+              prefill={newRunPrefill}
+            />
+          )}
           {tab === 'runs' && runsTab}
-          {tab === 'reviews' && <ReviewsTab />}
-          {tab === 'compare' && <CompareTab />}
-          {tab === 'cost' && <CostTab />}
+          {tab === 'reviews' && (
+            <ReviewsTab
+              initialRun={reviewScope}
+              onRuns={() => setTab('runs')}
+              onNew={() => setTab('new')}
+            />
+          )}
+          {tab === 'compare' && <ComparisonWorkspace mode="compare" onOpenRun={openRun} />}
+          {tab === 'cost' && (
+            <ComparisonWorkspace
+              key={
+                comparisonPair
+                  ? `pair:${comparisonPair.baseline}:${comparisonPair.candidate}`
+                  : `run:${comparisonRun}`
+              }
+              initialRun={comparisonRun}
+              initialPair={comparisonPair}
+              auto
+              onOpenRun={openRun}
+              onCreatePairRun={openCreatePairRun}
+            />
+          )}
           {tab === 'ops' && <OpsTab />}
         </main>
-        <footer className="eval-muted">
-          证据库为权威来源;Mock/stub 分数仅验证管线。live 需显式预算与密钥(默认
-          0);未配置的集成如实标注。
-        </footer>
       </div>
     </QueryClientProvider>
   )

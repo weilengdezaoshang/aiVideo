@@ -401,12 +401,15 @@ def test_scheduled_reviews_created_by_sampling_policy(runner, tmp_path):
     runner.execute_run("sample-run")
     store = tmp_path / "store"
     reviews = ReviewStore(store)
-    policy = ReviewSamplingPolicy(required="fail_or_undetermined", riskRate=1.0, seed=42)
-    created = create_scheduled_reviews(reviews, runner.load_run("sample-run"), policy)
+    policy = ReviewSamplingPolicy(required="none", riskRate=1.0, grayMin=0.7, grayMax=0.9, includeSynthetic=True, seed=42)
+    state = runner.load_run("sample-run")
+    for trial in state.trials:
+        trial.weightedScore = 0.8  # 临界分才进入风险抽样
+    created = create_scheduled_reviews(reviews, state, policy)
     assert len(created) == 2  # stub 裁判全 pass → 走风险抽样(比例 1.0)
     for task in created:
         assert task.priority == "risk"
-        assert task.sampling["rule"] == "riskSample"
+        assert task.sampling["rule"] == "score_gray"
         assert "sampling-v" in task.sampling["policyVersion"]
 
 
@@ -1099,3 +1102,25 @@ def test_render_markdown_uses_template_layout(runner, tmp_path):
     assert "N/A" in markdown and "覆盖缺口" not in markdown or True
     assert "| 执行覆盖率 N_attempted/N_plan | 100.0% |" in markdown
     assert "已开始(N_attempted):2" in markdown
+
+
+def test_agent_review_sampling_skips_pass_and_attributes_failure(runner):
+    from backend.evaluation.reviews import plan_review_tasks
+    runner.create_run("agent-review-policy", "ds-zh")
+    runner.execute_run("agent-review-policy")
+    state = runner.load_run("agent-review-policy")
+    for trial in state.trials:
+        trial.flowLayer = "L3"
+        trial.qualityVerdict = "pass"
+    assert plan_review_tasks(state, ReviewSamplingPolicy(randomRate=1)) == []
+    state.trials[0].qualityVerdict = "fail"
+    assert plan_review_tasks(state, ReviewSamplingPolicy()) == []
+    plan = plan_review_tasks(state, ReviewSamplingPolicy(reviewAgentFlowFails=True))
+    assert len(plan) == 1
+    assert plan[0]["rule"] == "agent_flow_failure"
+    assert plan_review_tasks(state, ReviewSamplingPolicy(riskRate=0)) == []
+
+
+def test_review_sampling_rejects_invalid_ratio():
+    with pytest.raises(ValueError):
+        ReviewSamplingPolicy(randomRate=1.1)

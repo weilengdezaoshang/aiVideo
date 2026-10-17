@@ -237,3 +237,141 @@ CI 同时安装 Node 与 Python 3.11，运行前端类型检查、ESLint、node:
 ### 时间线与 MP4 导出
 
 时间线数据保存在 Document JSONB；`POST /api/exports` 提交 `{documentId, requestId, timeline}`，返回持久化导出任务。`GET /api/exports/{id}` 查询，`DELETE /api/exports/{id}` 请求取消，`GET /api/exports/{id}/download` 下载成片。FFmpeg 在独立 Worker 内运行，具备进程组回收和产物恢复；新版画布尚未装配完整的 TimelineExport flow。
+
+## 创作 Harness：生成后反思（Reflection）
+
+`apps/server` 的 Host 在生图结果返回后、计划步骤完成前执行 `finalizeGeneration`：硬检查（空文件、分辨率、比例）→ Reviewer port 审核 → 接受、自动重试或超限交回用户。默认使用确定性 stub，不调用付费 VLM；真实多模态适配器可通过 `ports.reviewer` 注入，读取作品 URL 与任务类型 rubric。Mock 产物提供尺寸与字节元数据；接入真实生成 Provider 时应提供实测元数据及需求尺寸/比例，不能用 stub 判定代替真实画质审核。
+
+| 配置（createApplication） | 环境变量 | 默认值 |
+| --- | --- | --- |
+| `reviewEnabled` | `REVIEW_ENABLED` | `true` |
+| `reviewThreshold` | `REVIEW_THRESHOLD` | `0.7` |
+| `maxReviewRetry` | `MAX_REVIEW_RETRY` | `2`（首轮之外再试两次） |
+| `retryCredits` | `RETRY_CREDITS` | `true` |
+| `rubric.image` / `rubric.video` | 通过 composition root 注入 | 图片：相关性/明显残缺/比例；视频：主题/连贯性 |
+
+必须硬检查全部通过、评分达标且 rubric 关键项通过才能接受。Trace 保持 `version:"1"`，生成工具记录 `evidence.checks`、`evidence.review`、`reviewHistory`、`reviewAttempts`（自动重试次数）和 `reviewOutcome`。重试沿用工具调用/计划步骤身份，使用 `toolCallId:attempt` 新幂等键；首轮保留原 `toolCallId` 键以兼容 S2/S3。审核关闭时不调用 reviewer，也不新增审核证据。
+
+执行状态保存当前 attempt，确认批准只覆盖当时的尝试；重试重新估算积分，超过阈值仍触发 interrupt。默认每次生成都计积分；`retryCredits=false` 时仅首轮计积分。用户只看到一行重试状态；达到上限后作品卡标记「未通过质量检查」，助手说明审核 issues，并提示调整需求。默认 stub 的超限路径结束失败步骤；不调用付费 Planner。取消和跨轮继续保留 attempt，取消中的队列任务重新分配执行 ID。
+
+L7 题库见 `evals/datasets/agent-flow-l7-reflection.jsonl`，工作台可选 L7 独立查看和运行。2026-10-10 验收：L0～L5 的 26 题与 L7 的 4 题共 30/30 通过；F4 忽略低分/失败关键项后 L7 变红（`unexpected_retry`），撤销注入后恢复绿色。复现：
+
+```bash
+python3 scripts/eval.py flow --suite L7
+python3 scripts/verify_agent_eval_sensitivity.py --fault f4 --store /tmp/aivideo-reflection-f4-new
+npm run test --workspace @frayune/creation-server
+npm run verify
+```
+
+完整校验的实际结果与证据说明见 [评测 README](evals/README.md#reflectionl7-验收)。
+
+### 可插拔 Reviewer（stub / real）
+
+默认 `REVIEWER_MODE=stub`，审核证据的 `reviewer` 为 `stub`；只有显式 `real` 才调用真实多模态 API。未知 mode 回退 stub。`apps/server/src/ports/index.ts` 定义 `ReviewInput` / `ReviewResult`：包含作品 URL/本地路径/夹具标识、prompt、taskType、rubricId、attempt、conversationId/turnId/toolCallId 上下文。输出继续写入同一 `evidence.review`，Trace 版本及前端文案不变。
+
+真实实现先支持图片，使用与现有 Python VlmJudge 相同的 OpenAI 兼容 `chat/completions` 协议。配置示例（密钥仅通过当前进程环境或部署 secret 注入）：
+
+```bash
+export REVIEWER_MODE=real
+export REAL_REVIEWER_API='https://your-vlm.example/v1/chat/completions'
+export REAL_REVIEWER_MODEL='支持视觉的模型名'
+# REAL_REVIEWER_API_KEY 由环境/secret 注入；不写入源码、Trace 或提交到 Git。
+export REAL_REVIEWER_TIMEOUT_MS=15000
+export REVIEW_RUBRIC='{"image":["相关性","明显残缺","比例"]}'
+npm run dev:creation-server
+```
+
+沿用 `REVIEW_THRESHOLD=0.7`、`MAX_REVIEW_RETRY=2`。`REVIEW_RUBRIC` 为按 image/video 配置的 JSON 字符串数组对象。程序化配置为 `createApplication({ reviewer: { mode: 'real', real: { api, model, timeoutMs } } })`；也可继续通过 `ports.reviewer` 注入自定义实现。API Key 由工厂读取 `REAL_REVIEWER_API_KEY`，不进入可序列化应用配置。主进程从 env 选择模式；离线 harness 的 composition root 默认始终为 stub，不受开发机 `REVIEWER_MODE` 影响。
+
+超时默认 15 秒，可设置 1～15000ms，覆盖请求、读取响应和解析过程。超时、空响应、坏 JSON、协议缺项或 HTTP 错误都得到零分/失败关键项及中文 issues，交给现有有限 retry → escalate；适配器不自行重试。用户停止操作传播取消信号。重试重新估算积分和 interrupt，未获得确认不继续生成。`reviewer` 由配置模型名写入、attempt 由本地上下文写入，模型不能伪造这两个字段。
+
+真实模式需生成 Provider 提供模型可访问的 PNG/JPEG/WebP/GIF 图片 URL 或 `metadata.localPath`（本地图片转 data URL，上限 20MB）；URL、本地文件不能仅用 fixture id 替代。默认 mock 生图仍返回本机 SVG，开启审核不会自动切换生成 Provider，不能把此 SVG 当作真实图片审核的有效输入。真实视频审核暂未实现，会返回可读失败原因并走重试上限。
+
+可选真实冒烟使用仓库茶饮 JPEG，通过完整 Host 流程检查 accepted 和真实模型 Trace：
+
+```bash
+# 配齐 REAL_REVIEWER_API / MODEL / API_KEY 后显式执行，可能产生模型费用。
+REAL_REVIEWER_SMOKE=1 node --import tsx --test apps/server/tests/real-reviewer.smoke.test.ts
+```
+
+默认 CI 即使有 key 也不执行真实请求；未显式 opt in 或无 key/模型/API 时测试 skip（`MARK_SKIP_IF_NO_KEY`）。无付费模型调用的验收结果见 [评测 README](evals/README.md#可插拔-reviewer-验收)。
+
+### Host 意图与视频路由（P0）
+
+完整设计见 [TECH_INTENT_VIDEO_ROUTING.md（v2）](TECH_INTENT_VIDEO_ROUTING.md)。
+`apps/server` 的 Host 在生成前与续跑时执行意图、模板和最终视频产物门禁；视频工具未注册或未启用返回 `video_unavailable`，不会转成生图。
+
+默认配置：`INTENT_MODE=rules_only`、`PLAN_VALIDATOR=enforce`、`IMAGE_VIDEO_STRATEGY=multiframe_first`、`DEFAULT_FRAME_COUNT=4`、`MAX_FRAME_COUNT=8`。
+联调结构化分类可用 `INTENT_MODE=rules_plus_llm`，通过现有 LLM port 的 `intent_result` JSON schema 工具输出；生产应配置真实 provider。
+`VIDEO_TOOL_ENABLED`、`MULTIFRAME_ENABLED`、`DIRECT_I2V_ENABLED` 默认均为 `false`，只在对应工具真实接入后开启；P0 测试使用显式注入的 stub，未上线 P1 真多帧链。
+
+词表在 `config/intent_lexicon.yaml`（JSON 兼容 YAML 1.2）。参考图通过 `imageRefs` 或 `canvas.assetUrls` 输入；外部 URL 仅允许 `REFERENCE_URL_ALLOWED_HOSTS` 中的精确域名（HTTPS），默认只允许本地开发域名和 `asset:` 内部资产引用。白名单检查发生在 LLM 与工具调用之前。
+多参考和低置信度会挂起为 `awaiting_user` / `interrupt_kind=clarify`；`resume_interrupt` 可携带 `clarification: {imageRefs: [选定参考], goal: "image"|"video"}`，恢复后重新校验。直接确认多参考卡会按卡片提议选择第一张。确认有效期为 24 小时。
+
+多帧计划一次确认总价；P0 帧失败采用 `abort_all`，保留已完成步骤的实际消耗与可续跑帧，不实现部分退款。节点 CAS 写回、帧并行、自有桶与人审台仍按 v2 分期。
+验证：`npm run verify`、`npm test --workspace @frayune/creation-server`。
+
+### 持久化多 Agent Host
+
+生产 Host 已接入统一 PostgreSQL / Outbox / RabbitMQ / Celery 的媒体 DAG、积分流水、节点租约、样片与正片流程。默认禁用，配置与隔离验收见 [多 Agent 运行手册](docs/runbooks/multi-agent-rollout.md)。`apps/server` 的内存 Host 仅用于开发评测，不能作为生产入口。
+
+
+### 主线与本地入口
+
+日常开发统一使用本仓库 `aiVideo` 的 `https://localhost:8443`（`npm run dev:stack`）。
+画布继续使用 AgentPanel/AgentRun 与 PostgreSQL/Celery 媒体链路；不再启动独立的 8445/8798 Host。
+模块移植与退役说明见 [8443 统一记录](docs/runbooks/8443-consolidation.md)。
+
+### 分层意图与顺位多步（8443 Host）
+
+实现依据：[分层意图 v1.2](docs/intent/TECH_LAYERED_INTENT.md)、[RAG 与闭环验收](docs/intent/HANDOFF_INTENT_RAG_FEEDBACK_LOOP.md)、[反馈闭环](docs/intent/TECH_INTENT_FEEDBACK_LOOP.md)、[顺位交接](docs/intent/HANDOFF_INTENT_P2_SEQUENTIAL.md)、[案例册](docs/intent/CASES_INTENT_SEQUENTIAL.md)。
+
+- `INTENT_RAG=false`：默认保留原 Host 路径；`true` 启用结构门、门闩、批准例句向量检索、槽位与绑定原参考快照的澄清。新路径要求 `context`，缺失返回 `CONTEXT_REQUIRED`。
+- `INTENT_MULTI_STEP=false`：默认关闭，且依赖 `INTENT_RAG=true`。顺位句要求澄清或拆成两次发送。开启后最多两步，仅允许 `image_edit → image_to_multiframe`（含 matting）或 `text_to_image → image_to_multiframe`。强「先…再…」可直接排计划，其它顺位需确认「一次做完」。同 L2 的多个约束仍是单步。
+- `INTENT_DIRECT_I2V=false`：默认多帧视频；仅显式开启并明确要求一步 I2V 才走直接图生视频。
+- `INTENT_RAG_SHADOW=false`：开启而 RAG 主开关关闭时只记录新决策，仍由旧路径执行。日志只含原话 hash 和槽位摘要；`AgentRun.execution.intentTrace` 保存版本、topK、门闩、降级、语义步骤与 `step_results`。
+- 后步关键帧只使用前步产物，依赖失败不调度后步；`step_fail_index` 从 0 开始。视频能力关闭或规格不支持明确报错，绝不改成静态图片。积分、安全与限流继续使用原 admission/Worker 错误码。
+
+向量侧车需在本机或内网单独部署，提供 `POST /v1/embeddings`：请求 `{ "model": "固定模型版本", "input": ["文本"] }`，返回 `{ "model": "同一版本", "data": [{ "embedding": [0.1, 0.2] }] }`。例如将内网的 sentence-transformers 服务适配为该协议，启动后设置：
+
+```dotenv
+INTENT_RAG=false
+INTENT_MULTI_STEP=false
+INTENT_RAG_SHADOW=false
+INTENT_EMBED_URL=http://127.0.0.1:8091/v1/embeddings
+INTENT_EMBED_MODEL_ID=部署固定的多语模型版本
+INTENT_EXEMPLARS=/absolute/path/exemplars-0.2.1.yaml
+INTENT_INDEX=/absolute/path/exemplars-0.2.1.index.json
+```
+
+未配置索引、模型版本不一致或侧车超过 0.8 秒预算时记录 `embed_degraded=true`，除确定性门闩外保守澄清。阈值初值 strong=0.82、跨 L2 margin=0.12、min=0.55，须用独立标注集标定后才能认定生产召回达标。
+
+随代码提供的 `intent/exemplars.yaml` 是只读文档 v0.2.0 的**待审副本**，没有自动批准任何例句，初始线上索引为空。人工审批前不能把固定测试夹具的通过率当作实际 embedding 准确率。批准后先 shadow，核对高成本误判与拒识分母，再灰度 `INTENT_RAG=true`；P0 验收通过后才开启多步。
+
+候选在现有 `AgentRun.execution.intentFeedback` 中事务持久化，包含来源、原文、L2、原 request_id、快照、时间和用户动作。多步带 `sequential_candidate`，不能成为单步金牌。成功任务候选需至少稳定 60 秒，撤销或取消状态不导出；任何候选都不自动入库。显式指定候选来源数据库后运行：
+
+```bash
+# INTENT_FEEDBACK_DATABASE_URL 显式设置为获授权的候选数据库连接。
+.venv/bin/python scripts/intent_exemplars.py export --output /absolute/path/candidates.jsonl
+# heldout.json 为隔离评测原话 JSON 数组；包含固定回归与盲测，禁止吸收入库。
+.venv/bin/python scripts/intent_exemplars.py wash --candidates /absolute/path/candidates.jsonl --heldout /absolute/path/heldout.json --output /absolute/path/ready.jsonl --rejected /absolute/path/rejected.jsonl
+.venv/bin/python scripts/intent_exemplars.py promote --library /absolute/path/exemplars-0.2.0.yaml --candidates /absolute/path/ready.jsonl --heldout /absolute/path/heldout.json --approve 候选ID --approved-by 审校人 --output /absolute/path/exemplars-0.2.1.yaml
+.venv/bin/python scripts/intent_exemplars.py reindex --library /absolute/path/exemplars-0.2.1.yaml --model-id 固定模型版本 --output /absolute/path/exemplars-0.2.1.index.json
+```
+
+所有脚本输出新文件，不覆盖在线版本。初始化种子库须人工逐条审校，通过 `scripts/intent_exemplars.py approve-seeds --library 待审库 --heldout 隔离集 --approve 明确批准的ID --approved-by 审校人 --model-id 固定版本 --output 新版本.yaml` 执行清洗、泄漏检查和 Approve；该命令不接收“全部批准”快捷参数。歧义条目保留 pending，评测专用条目标记 `evaluation_only: true`。回滚时先关闭 `INTENT_MULTI_STEP`，需要时关闭 `INTENT_RAG`；或同时切回旧 `INTENT_EXEMPLARS`、`INTENT_INDEX` 和对应模型版本并重启 Host。旧版本 YAML 与索引必须成对保留；摘要或模型不匹配会拒绝加载。
+
+验证：`npm run verify` 包含 `test_intent_pipeline.py`（E/S 安全门）、`test_intent_feedback.py`（A 门）、前端指纹与分步测试；独立且迁移后的 PostgreSQL/Redis 上执行 `tests/integration/test_intent_host.py` 与 `tests/integration/test_production_api.py`，分别验证实际依赖入队和 HTTP/存储回归。没有批准库、固定侧车与标注基线时不宣称生产 RAG 标定或 O04 已完成。
+
+可选本机侧车启动（模型目录须预先下载并固定快照，应用不会替你下载或调用云 embedding）：
+
+```bash
+.venv/bin/python -m pip install -r requirements-intent.txt
+INTENT_LOCAL_MODEL_PATH=/absolute/path/model-snapshot INTENT_EMBED_MODEL_ID=固定快照版本 .venv/bin/uvicorn scripts.intent_embed_server:create_app --factory --host 127.0.0.1 --port 8091
+```
+
+固定安全集对照命令：`.venv/bin/python scripts/eval_intent.py --output /absolute/path/shadow-report.json`；当前记录在 [safety-baseline.json](evals/intent/safety-baseline.json)，明确保留误判分母与 `production_calibrated=false`。CI 单测执行同一安全集，S07 另由隔离数据库的失败注入覆盖。它证明门闩/降级安全性，真实模型召回、阈值及灰度效果仍须批准库和实际侧车评测。
+
+清洗器还内置案例册和固定安全集的隔离原话清单（`intent/heldout.json`）；即便操作者漏传某条固定回归，也不能通过 Approve 混入线上索引。额外盲测继续通过 `--heldout` 补充。生产 Compose 用 `INTENT_ARTIFACTS_DIR` 将批准版本只读挂载到 `/run/config/intent`；环境变量须填写容器内路径。阈值可通过 `INTENT_T_STRONG` / `INTENT_T_MARGIN` / `INTENT_T_MIN` 配置，变更后重启并重新评测。
+
+58 条产品案例的机器可读副本在 [sequential-cases.json](evals/intent/sequential-cases.json)，保持案例编号与 P0/P2 期望原文，供批准库后的完整语义评测使用；它不作为训练例句。

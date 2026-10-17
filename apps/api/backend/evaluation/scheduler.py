@@ -23,7 +23,6 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 
 from .budgets import BudgetLedger, BudgetPolicy
-from .reviews import ReviewSamplingPolicy, ReviewStore, create_scheduled_reviews
 from .runner import EvaluationRunner
 
 logger = logging.getLogger(__name__)
@@ -35,7 +34,7 @@ class EvaluationScheduler:
 
     def __init__(self, store: Path, max_concurrent: int = 1, project_budget: BudgetPolicy | None = None):
         self.store = Path(store)
-        self.runner = EvaluationRunner(self.store.parent.parent, store=self.store)
+        self.runner = EvaluationRunner(Path(__file__).resolve().parents[4], store=self.store)
         self.max_concurrent = max(1, max_concurrent)
         self.project_ledger = (
             BudgetLedger.open(self.store, "project-total", project_budget)
@@ -178,13 +177,12 @@ class EvaluationScheduler:
             cancel_event = threading.Event()
             self._cancel_events[run_id] = cancel_event
         try:
-            state = self.runner.execute_run(
+            self.runner.execute_run(
                 run_id,
                 cancel_check=cancel_event.is_set,
                 project_ledger=self.project_ledger,
             )
-            if state.status == "completed":
-                self._create_reviews(run_id)
+            # runner 的完成钩子统一送审，避免完成状态与审核列表存在时间差。
         except Exception:
             logger.exception("评测 run 执行失败:%s", run_id)
         finally:
@@ -192,21 +190,6 @@ class EvaluationScheduler:
                 self._active.pop(run_id, None)
                 self._cancel_events.pop(run_id, None)
 
-    def _create_reviews(self, run_id: str) -> None:
-        """按抽样策略创建审核任务(环境变量 EVAL_REVIEW_SAMPLING 可覆盖)。"""
-        try:
-            from .config import load_eval_config
-
-            config = load_eval_config()
-            policy = (
-                ReviewSamplingPolicy.model_validate_json(config.review_sampling)
-                if config.review_sampling
-                else ReviewSamplingPolicy()
-            )
-            state = self.runner.load_run(run_id)
-            create_scheduled_reviews(ReviewStore(self.store), state, policy)
-        except Exception:
-            logger.exception("自动创建审核任务失败:%s", run_id)
 
 
 class EventLogSafe:

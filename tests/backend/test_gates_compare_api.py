@@ -340,3 +340,76 @@ def test_review_task_autobinds_artifacts_and_grades(api_client):
     assert task["artifactIds"] == trial.artifactIds  # 自动绑定产物
     assert task["gradeRefs"], "评分引用自动补全"
     assert task["gradeRefs"][0]["gradeId"].startswith("trial-")
+
+
+def test_review_evidence_and_trace_endpoint(api_client):
+    client, runner, _ = api_client
+    runner.create_run("review-trace", "ds-zh")
+    state = runner.execute_run("review-trace")
+    trial = state.trials[0]
+    # 模拟 harness 已记录的真实本地 Trace 收据，不通过接口传入任意路径。
+    trace = runner.run_dir("review-trace") / "trace.json"
+    trace.write_text('{"version":"1","runId":"review-trace"}')
+    trial_path = runner.run_dir("review-trace") / "trials" / trial.trialId / "trial.json"
+    row = json.loads(trial_path.read_text())
+    row.update(flowLayer="L3", tracePath=str(trace), qualityVerdict="fail")
+    # 流程任务仅在显式开启失败归因时送审，Trace 证据不用于人工重判规则分。
+    manifest_path = runner.run_dir("review-trace") / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["reviewSampling"] = {"reviewAgentFlowFails": True}
+    manifest_path.write_text(json.dumps(manifest))
+    trial_path.write_text(json.dumps(row))
+    response = client.post("/api/evals/v1/review-tasks", json={
+        "runId": "review-trace", "trialId": trial.trialId, "caseId": trial.caseId,
+    })
+    assert response.status_code == 201
+    evidence = response.json()["task"]["evidence"]
+    assert evidence["suite"] == "L3"
+    assert client.get(evidence["traceUrl"]).json()["version"] == "1"
+    task_id = response.json()["task"]["reviewTaskId"]
+    assert client.get(f"/api/evals/v1/review-tasks/{task_id}").json()["task"]["evidence"] == evidence
+
+
+def test_run_sampling_config_is_validated_and_frozen(api_client):
+    client, runner, _ = api_client
+    invalid = client.post("/api/evals/v1/runs", json={
+        "runId": "invalid-sampling", "datasetId": "ds-zh", "reviewSampling": {"randomRate": 2},
+    })
+    assert invalid.status_code == 422
+    created = client.post("/api/evals/v1/runs", json={
+        "runId": "sampling-config", "datasetId": "ds-zh",
+        "reviewSampling": {"required": "none", "riskRate": 0, "randomRate": 0},
+    })
+    assert created.status_code == 202
+    wait_terminal(client, "sampling-config")
+    assert runner.load_run("sampling-config").manifest.reviewSampling["randomRate"] == 0
+    assert client.get("/api/evals/v1/review-tasks?run_id=sampling-config").json()["tasks"] == []
+
+
+def test_suggest_baseline_and_optional_compare_base(api_client):
+    client, runner, tmp_path = api_client
+    runner.create_run("base", "ds-zh")
+    runner.execute_run("base")
+    runner.create_run("current", "ds-zh")
+    runner.execute_run("current")
+    suggestion = client.get("/api/evals/v1/suggest-baseline?run_id=current").json()
+    assert suggestion["baselineRunId"] == "base"
+    assert suggestion["candidateRunId"] == "current"
+    assert client.post("/api/evals/v1/comparisons", json={"candidateRunId": "current"}).status_code == 200
+    # mock+mock 且双方都未压缩:成本对比硬校验拒绝,不生成全未知报告(§12.3)。
+    compression = client.post("/api/evals/v1/compression-report", json={"compressedRunId": "current"})
+    assert compression.status_code == 422
+    codes = {item["code"] for item in compression.json()["reasons"]}
+    assert "not_compression_pair" in codes
+    assert "missing_cost" in codes
+    assert any("mock" in item["message"] for item in compression.json()["reasons"])
+    assert "无法" in compression.json()["error"]
+    assert client.get("/api/evals/v1/suggest-baseline?run_id=base").json()["baselineRunId"] is None
+    assert client.post("/api/evals/v1/comparisons", json={"candidateRunId": "base"}).status_code == 422
+    # 无关数据集不能成为上次；未完成运行不能成为候选。
+    source = write_jsonl(tmp_path / "other.jsonl", [make_case("other-case")])
+    runner.freeze_dataset(source, "other")
+    runner.create_run("other-new", "other")
+    runner.execute_run("other-new")
+    runner.create_run("queued-new", "ds-zh")
+    assert client.get("/api/evals/v1/suggest-baseline").json()["candidateRunId"] == "current"

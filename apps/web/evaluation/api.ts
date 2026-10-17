@@ -1,5 +1,26 @@
 /** /api/evals/v1 类型化客户端;禁止 any,所有载荷显式建模。 */
 
+export interface CaseDefinition {
+  caseId: string
+  taskType: string
+  title?: string
+  description?: string
+  tags?: string[]
+  suites: string[]
+  input: { prompt: string; params: Record<string, unknown> }
+  steps?: Record<string, unknown>[]
+  expect?: Record<string, unknown>
+  mocks?: Record<string, unknown>
+  checks: {
+    id: string
+    question: string
+    expected: unknown
+    required: boolean
+    weight: number
+    dependsOn?: string[]
+  }[]
+}
+
 export interface DatasetVersionInfo {
   version: number
   split: string
@@ -23,6 +44,8 @@ export interface RunListItem {
   status: string | null
   planCount: number
   planHash: string
+  datasetId?: string | null
+  compression?: boolean
 }
 
 export interface Denominators {
@@ -53,7 +76,14 @@ export interface ReplayVerification {
   verification: string
 }
 
+export interface FlowEvidence {
+  passRate: number | null
+  layers: Record<string, { plan: number; pass: number; fail: number }>
+  failures: { suite: string; caseId: string; reason: string; tracePath: string | null }[]
+}
+
 export interface RunDetail {
+  flow?: FlowEvidence | null
   runId: string
   manifest: {
     purpose: string
@@ -70,6 +100,14 @@ export interface RunDetail {
   status: string
   progress: RunProgress
   extra: {
+    reviewSummary?: {
+      status: string
+      error?: string
+      count: number
+      required: number
+      enabled: boolean
+      policyVersion: string
+    }
     replay?: ReplayVerification
     budget?: {
       settled: number
@@ -100,6 +138,7 @@ export interface GradeView {
 }
 
 export interface TrialView {
+  tracePath?: string | null
   trialId: string
   caseId: string
   repetitionIndex: number
@@ -196,6 +235,12 @@ export interface BudgetSummary {
 }
 
 export interface ReviewTaskView {
+  evidence?: {
+    suite: string | null
+    reasons: string[]
+    tracePath: string | null
+    traceUrl: string | null
+  }
   reviewTaskId: string
   runId: string
   trialId: string
@@ -329,6 +374,62 @@ export interface CompressionReport {
   promoteReason?: string
 }
 
+/** 配对硬校验的中文原因;code 为稳定原码(snapshot_mismatch / missing_cost / ...)。 */
+export interface PairReason {
+  code: string
+  message: string
+}
+
+export interface PairCoverage {
+  alignedCases: number
+  alignedCompletedCases: number
+  baselinePlan: number
+  compressedPlan: number
+}
+
+export interface PairCandidate {
+  runId: string
+  createdAt: string
+  role: 'baseline' | 'compressed'
+  valid: boolean
+  reasons: PairReason[]
+}
+
+/** 新建评测预填:重跑引导(同数据集 + 反向压缩开关 + live 配置)传给表单。 */
+export interface PairRunPrefill {
+  datasetId: string
+  version?: number
+  mode: 'live'
+  provider?: string
+  model?: string | null
+  budget?: Record<string, unknown>
+  judge?: string
+  judgeConfig?: Record<string, unknown>
+  compression: { enabled: boolean }
+  purpose: string
+}
+
+export interface PairSuggestion {
+  currentRunId: string | null
+  currentRole: 'baseline' | 'compressed' | null
+  pairRunId: string | null
+  candidates: PairCandidate[]
+  reasons: PairReason[]
+  guidance: {
+    action: 'create_counterpart' | 'rerun_current_live'
+    message: string
+    prefill: PairRunPrefill
+  } | null
+  coverage: PairCoverage | null
+}
+
+export interface ValidatedPair {
+  valid: true
+  baselineRunId: string
+  candidateRunId: string
+  coverage: PairCoverage
+}
+
 export interface CalibrationView {
   calibrationId: string
   judgeModel: string
@@ -344,7 +445,21 @@ export interface CalibrationView {
   createdAt: string
 }
 
+export interface ReviewSamplingConfig {
+  enabled: boolean
+  required: 'fail_or_undetermined' | 'none' | 'all'
+  riskRate: number
+  randomRate: number
+  riskThreshold: number
+  riskMargin: number
+  grayMin: number
+  grayMax: number
+  gateScoreThreshold: number | null
+  reviewAgentFlowFails: boolean
+  includeSynthetic: boolean
+}
 export interface CreateRunBody {
+  reviewSampling?: ReviewSamplingConfig
   runId: string
   datasetId?: string
   version?: number
@@ -374,11 +489,14 @@ export interface CreateRunResult {
 }
 
 export class ApiError extends Error {
+  readonly reasons?: PairReason[]
   constructor(
     readonly status: number,
     message: string,
+    reasons?: PairReason[],
   ) {
     super(message)
+    this.reasons = reasons
   }
 }
 
@@ -390,17 +508,58 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const text = await response.text()
   const payload: unknown = text ? JSON.parse(text) : {}
   if (!response.ok) {
+    const record = (typeof payload === 'object' && payload !== null ? payload : {}) as {
+      error?: unknown
+      detail?: unknown
+      reasons?: unknown
+    }
+    // 配对硬校验的 4xx:{"error": 中文总结, "reasons": [{code, message}]},reasons 单独保留供列表渲染。
+    const reasons = Array.isArray(record.reasons)
+      ? (record.reasons as PairReason[]).filter(
+          (item): item is PairReason =>
+            typeof item === 'object' && item !== null && 'code' in item && 'message' in item,
+        )
+      : undefined
+    const detailMessage =
+      typeof record.error === 'string' && record.error
+        ? record.error
+        : typeof record.detail === 'string'
+          ? record.detail
+          : undefined
     const message =
-      typeof payload === 'object' && payload !== null && 'error' in payload
-        ? String((payload as { error: unknown }).error)
-        : `请求失败(${response.status})`
-    throw new ApiError(response.status, message)
+      detailMessage ??
+      (reasons?.length
+        ? reasons.map((item) => item.message).join('；')
+        : `请求失败(${response.status})`)
+    throw new ApiError(response.status, message, reasons)
   }
   return payload as T
 }
 
 export const api = {
+  flowCases: (suite = 'agent_flow') =>
+    request<{ cases: CaseDefinition[] }>(
+      `/api/evals/v1/agent-flow/cases?suite=${encodeURIComponent(suite)}`,
+    ),
+  startFlow: (suite: string, layers?: string[], reviewSampling?: ReviewSamplingConfig) =>
+    request<{ runId: string }>('/api/evals/v1/agent-flow', {
+      method: 'POST',
+      body: JSON.stringify({ suite, layers, reviewSampling }),
+    }),
+  datasetCases: (datasetId: string, version?: number) =>
+    request<{ cases: CaseDefinition[] }>(
+      `/api/evals/v1/datasets/${encodeURIComponent(datasetId)}/cases${version === undefined ? '' : `?version=${version}`}`,
+    ),
+  runCases: (runId: string) =>
+    request<{ cases: CaseDefinition[] }>(`/api/evals/v1/runs/${encodeURIComponent(runId)}/cases`),
   datasets: () => request<{ datasets: DatasetInfo[] }>('/api/evals/v1/datasets'),
+  suggestBaseline: (runId?: string) =>
+    request<{
+      candidateRunId: string | null
+      baselineRunId: string | null
+      reason: string | null
+      options: RunListItem[]
+    }>(`/api/evals/v1/suggest-baseline${runId ? `?run_id=${encodeURIComponent(runId)}` : ''}`),
   runs: () => request<{ runs: RunListItem[] }>('/api/evals/v1/runs'),
   run: (runId: string) => request<RunDetail>(`/api/evals/v1/runs/${encodeURIComponent(runId)}`),
   trials: (runId: string) =>
@@ -437,6 +596,15 @@ export const api = {
     ),
   compare: (baselineRunId: string, candidateRunId: string) =>
     request<ComparisonView>('/api/evals/v1/comparisons', {
+      method: 'POST',
+      body: JSON.stringify({ baselineRunId, candidateRunId }),
+    }),
+  suggestPair: (runId?: string) =>
+    request<PairSuggestion>(
+      `/api/evals/v1/suggest-pair${runId ? `?run_id=${encodeURIComponent(runId)}` : ''}`,
+    ),
+  validatePair: (baselineRunId: string, candidateRunId: string) =>
+    request<ValidatedPair>('/api/evals/v1/validate-pair', {
       method: 'POST',
       body: JSON.stringify({ baselineRunId, candidateRunId }),
     }),

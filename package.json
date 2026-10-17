@@ -27,6 +27,8 @@
     "dev:stack:down": "python3 scripts/dev_stack.py down",
     "dev:creation-server": "npm run dev --workspace @frayune/creation-server",
     "migrate:trace-v1": "npm run migrate:trace-v1 --workspace @frayune/creation-server",
+    "eval:agent:faults": "python3 scripts/verify_agent_eval_sensitivity.py",
+    "dev:evaluation": "npm run build:web && python3 scripts/evaluation_web.py",
     "verify:creation-server": "npm run typecheck --workspace @frayune/creation-server && npm run test --workspace @frayune/creation-server"
   },
   "lint-staged": {

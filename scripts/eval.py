@@ -350,6 +350,7 @@ def cmd_runs_create(args) -> int:
             args.version,
             repetitions=args.repetitions,
             purpose=args.purpose,
+            suite=args.suite,
         )
         state = runner.execute_run(args.run_id)
     except (OSError, ValueError) as exc:
@@ -543,6 +544,52 @@ def cmd_promptfoo(args) -> int:
     return 0
 
 
+def cmd_flow(args) -> int:
+    """冻结所选 suite 并真实执行 Memory Host。退出 0 全通过，1 有失败，2 配置错误。"""
+    from backend.evaluation.agent_flow import failure_rows, load_flow_sources, select_flow_suite
+    from backend.evaluation.datasets import DatasetStore
+    from backend.evaluation.gates import GateStore, evaluate_gate
+
+    store = Path(args.store) if args.store else ROOT / "data" / "evaluation"
+    try:
+        loaded = load_flow_sources(ROOT)
+        selected = select_flow_suite([case for _, case in loaded], args.suite)
+    except (OSError, ValueError) as exc:
+        print(f"suite 错误:{exc}")
+        return 2
+    selected_ids = {case.caseId for case in selected}
+    staging = store / "staging"
+    staging.mkdir(parents=True, exist_ok=True)
+    source = staging / f"{args.suite}.jsonl"
+    lines = [json.dumps(item, ensure_ascii=False) for item, case in loaded if case.caseId in selected_ids]
+    source.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    dataset_id = "agent-flow" if args.suite == "agent_flow" else f"agent-flow-{args.suite.lower()}"
+    run_id = args.run_id or f"af-{args.suite}-{time.strftime('%Y%m%d-%H%M%S')}"
+    runner = _runner(store)
+    if args.node:
+        os.environ["AIVIDEO_NODE"] = args.node
+    try:
+        runner.freeze_dataset(source, dataset_id, split="dev")
+        runner.create_run(run_id, dataset_id, purpose=f"agent_flow suite={args.suite}")
+        state = runner.execute_run(run_id)
+    except (OSError, ValueError) as exc:
+        print(f"运行失败:{exc}")
+        return 2
+    cases = DatasetStore.load_run_snapshot(runner.run_dir(run_id))
+    _report_file, markdown = _write_report(runner, run_id)
+    decision = evaluate_gate(state, cases, store=runner.store)
+    GateStore(runner.store).save(decision)
+    rows = failure_rows(state, cases)
+    passed = sum(1 for trial in state.trials if trial.status == "completed" and trial.qualityVerdict == "pass")
+    print(f"run {run_id}: 流程通过 {passed}/{len(state.trials)}，门禁 {decision.verdict} → {markdown}")
+    for row in rows:
+        print(
+            f"- layer={row['layer']} caseId={row['caseId']} reason={row['reason']} "
+            f"trace={row['tracePath'] or '无'}"
+        )
+    return 0 if not rows and decision.verdict == "pass" else 1
+
+
 def cmd_health(args) -> int:
     import json as _json
 
@@ -595,6 +642,7 @@ def main(argv=None) -> int:
     runs_create.add_argument("--run-id", required=True)
     runs_create.add_argument("--repetitions", type=int, default=1)
     runs_create.add_argument("--purpose", default="")
+    runs_create.add_argument("--suite", default=None, help="只跑该 suite；不存在则失败")
     runs_create.add_argument("--store", default=None)
     runs_create.set_defaults(func=cmd_runs_create)
     runs_replay = runs_sub.add_parser("replay", help="严格回放源 run 的录制(强制离线)")
@@ -655,6 +703,13 @@ def main(argv=None) -> int:
     health = sub.add_parser("health", help="运维健康指标(§17.4,只读聚合)")
     health.add_argument("--store", default=None)
     health.set_defaults(func=cmd_health)
+
+    flow = sub.add_parser("flow", help="创作 Agent 流程评测：单层 L0–L5 或整包 agent_flow")
+    flow.add_argument("--suite", required=True, help="L0–L5、agent_flow，或 protocol/routing/plan/interrupt/continue/queue")
+    flow.add_argument("--run-id", default=None)
+    flow.add_argument("--store", default=None)
+    flow.add_argument("--node", default=None, help="Node 22 可执行文件，默认 AIVIDEO_NODE 或本机 Node 22")
+    flow.set_defaults(func=cmd_flow)
 
     args = parser.parse_args(argv)
     return args.func(args)

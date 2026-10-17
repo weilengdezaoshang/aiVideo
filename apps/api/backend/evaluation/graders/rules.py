@@ -39,7 +39,9 @@ def compare_typed(check: Check, observed: bool | int | float | str | None) -> bo
     if observed is None:
         return None
     if check.kind == "boolean":
-        return observed is True if isinstance(observed, bool) else None
+        # 与整数/文本一样做等值。期望为 True 时与「observed is True」相同，
+        # 期望为 False 的流程检查（例如短 prompt 不应确认）才能判过。
+        return observed == check.expected if isinstance(observed, bool) and isinstance(check.expected, bool) else None
     if check.kind == "integer":
         if isinstance(observed, bool) or not isinstance(observed, int):
             return None

@@ -267,6 +267,7 @@ class EvaluationRunner:
         compression: dict | None = None,
         use_grade_cache: bool = True,
         model: str | None = None,
+        suite: str | None = None,
     ) -> RunManifest:
         if model is not None and (not isinstance(model, str) or not model.strip() or len(model) > 128):
             raise ValueError("model 须为非空字符串(≤128 字符)")
@@ -298,6 +299,7 @@ class EvaluationRunner:
                 compression=compression,
                 use_grade_cache=use_grade_cache,
                 model=model,
+                suite=suite,
             )
         if mode == "live" and model:
             # 实验变量固定到 run:cloud 平台经沙盒配置下发(Provider 的请求体模型
@@ -331,6 +333,7 @@ class EvaluationRunner:
                 compression=compression,
                 use_grade_cache=use_grade_cache,
                 model=model,
+                suite=suite,
             )
         if mode == "replay":
             return self._create_replay_run(
@@ -357,12 +360,18 @@ class EvaluationRunner:
         compression=None,
         use_grade_cache=True,
         model: str | None = None,
+        suite: str | None = None,
     ) -> RunManifest:
         if mode != "mock":
             if not 1 <= repetitions <= MAX_REPETITIONS:
                 raise ValueError(f"重复次数须在 1-{MAX_REPETITIONS} 之间")
         frozen = self.datasets.load(dataset_id, version)
-        problems = validate_source_params(frozen.cases)
+        cases = list(frozen.cases)
+        if suite:
+            from .agent_flow import filter_cases_by_suite
+
+            cases = filter_cases_by_suite(cases, suite)
+        problems = validate_source_params(cases)
         if problems:
             raise ValueError("数据集快照与执行链不兼容:" + ";".join(problems))
         target = self.run_dir(run_id)
@@ -371,7 +380,7 @@ class EvaluationRunner:
         # 能力预检(P4,§1.2):不支持的组合显式拒绝,不降级、不静默改型。
         caps = capabilities_for({"provider": provider, **(sandbox_config or {})})
         references: dict[str, list[str]] = {}
-        for case in frozen.cases:
+        for case in cases:
             check_case_supported(case, caps)
             if case.input.referenceArtifactIds:
                 refs = self._archive_references(run_id, case)
@@ -379,7 +388,7 @@ class EvaluationRunner:
         target.mkdir(parents=True, exist_ok=True)  # references 归档可能已提前创建
         dataset_ref = self.datasets.snapshot_into(dataset_id, frozen.manifest.version, target)
         plan = []
-        for case in frozen.cases:
+        for case in cases:
             for repetition in range(repetitions):
                 raw_seed = case.input.params.get("seed")
                 requested = (
@@ -706,10 +715,13 @@ class EvaluationRunner:
                         (trial.caseId, trial.repetitionIndex)
                     )
                     context.attempt_index = 0
-                    self._execute_trial(
-                        client, trial, case, default_model, log, poll_interval, job_timeout_sec,
-                        cancel_check=cancel_check, manifest=manifest,
-                    )
+                    if case.taskType == "agent_flow":
+                        self._execute_agent_flow_trial(trial, case, log, cancel_check=cancel_check)
+                    else:
+                        self._execute_trial(
+                            client, trial, case, default_model, log, poll_interval, job_timeout_sec,
+                            cancel_check=cancel_check, manifest=manifest,
+                        )
                     context.match_trial_id = None
                     if cancel_check is not None and cancel_check():
                         cancelled = True
@@ -873,6 +885,19 @@ class EvaluationRunner:
     def _write_state(self, run_id: str, status: RunStatus, **fields) -> None:
         path = self.run_dir(run_id) / "state.json"
         state = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+        if status in {"completed", "cancelled", "failed", "budget_exhausted"}:
+            # 统一结束钩子：CLI 与队列运行一致，先送审再暴露完成状态。
+            from .reviews import ReviewSamplingPolicy, ReviewStore, create_scheduled_reviews
+            from .config import load_eval_config
+            finished = self.load_run(run_id)
+            config = load_eval_config()
+            policy = ReviewSamplingPolicy.model_validate(finished.manifest.reviewSampling) if finished.manifest.reviewSampling is not None else (ReviewSamplingPolicy.model_validate_json(config.review_sampling) if config.review_sampling else ReviewSamplingPolicy())
+            try:
+                tasks = create_scheduled_reviews(ReviewStore(self.store), finished, policy)
+                fields["reviewSummary"] = {"status": "completed", "count": len(tasks), "required": sum(task.priority == "required" for task in tasks), "enabled": policy.enabled, "policyVersion": policy.version()}
+            except (OSError, ValueError) as exc:
+                fields["reviewSummary"] = {"status": "failed", "count": 0, "required": 0, "enabled": policy.enabled, "policyVersion": policy.version(), "error": str(exc)}
+                EventLog(self.run_dir(run_id)).append("review.sampling_failed", run_id, error=str(exc))
         state.update(status=status, **fields)
         atomic_write_text(path, json.dumps(state, ensure_ascii=False, indent=2))
 
@@ -913,6 +938,94 @@ class EvaluationRunner:
         if task == "text_to_image" and case.input.referenceArtifactIds:
             raise ValueError("text_to_image 用例不应携带参考素材")
         return body
+
+    def _execute_agent_flow_trial(self, trial: Trial, case, log: EventLog, cancel_check=None) -> None:
+        """真实执行 apps/server Memory Host。失败保留 layer / reason / Trace 路径。"""
+        from .agent_flow import FlowHarnessError, case_layer, execute_flow_case, observe_agent_flow
+
+        run_id = trial.runId
+        trial.status = "running"
+        trial.startedAt = now()
+        trial.flowLayer = case_layer(list(case.suites))
+        self._write_trial(trial)
+        log.append(
+            "trial.started", run_id, trialId=trial.trialId, caseId=trial.caseId, taskType="agent_flow",
+            layer=trial.flowLayer,
+        )
+        if cancel_check is not None and cancel_check():
+            trial.status = "cancelled"
+            trial.error = "用户取消"
+            trial.finishedAt = now()
+            self._write_trial(trial)
+            log.append("trial.finished", run_id, trialId=trial.trialId, status="cancelled")
+            return
+        out_dir = self._trial_dir(run_id, trial.trialId) / "agent"
+        started = time.monotonic()
+        try:
+            observation = execute_flow_case(self.root, case, out_dir)
+            answers, trace_paths = observe_agent_flow(case, observation)
+        except (FlowHarnessError, OSError, ValueError) as exc:
+            trial.latencyMs = int((time.monotonic() - started) * 1000)
+            attempt = Attempt(
+                attemptId=f"{trial.trialId}-agent-0",
+                trialId=trial.trialId,
+                callSite="agent_flow",
+                status="not_started",
+                startedAt=trial.startedAt,
+            )
+            self._fail_trial(trial, attempt, "failed", str(exc), log, category="server_error")
+            return
+        atomic_write_text(
+            self._trial_dir(run_id, trial.trialId) / "observation.json",
+            json.dumps(observation, ensure_ascii=False, indent=2),
+        )
+        trial.tracePaths = trace_paths
+        trial.tracePath = trace_paths[-1] if trace_paths else None
+        trial.latencyMs = int((time.monotonic() - started) * 1000)
+        trial.status = "completed"
+        trial.finishedAt = now()
+        attempt = Attempt(
+            attemptId=f"{trial.trialId}-agent-0",
+            trialId=trial.trialId,
+            callSite="agent_flow",
+            status="succeeded",
+            startedAt=trial.startedAt,
+            finishedAt=trial.finishedAt,
+        )
+        self._persist_attempt(trial, attempt)
+        self._write_trial(trial)
+        log.append(
+            "trial.finished",
+            run_id,
+            trialId=trial.trialId,
+            status="completed",
+            layer=trial.flowLayer,
+            tracePath=trial.tracePath,
+            observedChecks=sorted(answers),
+        )
+
+    def _grade_agent_flow(self, trial: Trial, case, log: EventLog) -> None:
+        """用真实观测回答类型化规则。不走 stub 合成期望，也不走 VLM。"""
+        from .agent_flow import observe_agent_flow
+
+        path = self._trial_dir(trial.runId, trial.trialId) / "observation.json"
+        if not path.is_file():
+            self._persist_grading(
+                trial, case, {}, "缺少真实观测 observation.json", None, "rules", "", False, log,
+            )
+            return
+        try:
+            observation = json.loads(path.read_text(encoding="utf-8"))
+            answers, trace_paths = observe_agent_flow(case, observation)
+        except (OSError, ValueError) as exc:
+            self._persist_grading(
+                trial, case, {}, f"观测无法判分:{exc}", None, "rules", "", False, log,
+            )
+            return
+        if trace_paths and not trial.tracePath:
+            trial.tracePath = trace_paths[-1]
+            trial.tracePaths = trace_paths
+        self._persist_grading(trial, case, answers, None, None, "rules", trial.tracePath or "", False, log)
 
     def _execute_trial(
         self,
@@ -1160,6 +1273,9 @@ class EvaluationRunner:
                 continue
             context.trial_id = trial.trialId  # 裁判费用按 trial 归账
             case = cases[trial.caseId]
+            if case.taskType == "agent_flow":
+                self._grade_agent_flow(trial, case, log)
+                continue
             artifact_id = trial.artifactIds[0]
             record, data = self.objects.get(artifact_id)
             judge_error = None
@@ -1390,6 +1506,9 @@ class EvaluationRunner:
                     "status": state.get("status"),
                     "planCount": len(manifest.get("plan", [])),
                     "planHash": manifest.get("planHash", "")[:12],
+                    # 成本对比配对筛选需要:同数据集与压缩开关直接在运行列表可判。
+                    "datasetId": (manifest.get("dataset") or {}).get("datasetId"),
+                    "compression": bool((manifest.get("compression") or {}).get("enabled")),
                 }
             )
         return result
