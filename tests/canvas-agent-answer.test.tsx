@@ -124,10 +124,10 @@ test('回答中的引用是可跳转的标签，点击展开并定位对应事�
     assert.equal(chip.getAttribute('href'), '#agent-fact-run1-E2.f1')
     const target = view.container.querySelector('[id="agent-fact-run1-E2.f1"]')
     assert.ok(target)
-    const details = target.closest('details.next-agent-tool') as HTMLDetailsElement
-    assert.equal(details.open, false)
+    const row = target.closest('.next-agent-activity')?.querySelector('button')
+    assert.equal(row?.getAttribute('aria-expanded'), 'false')
     fireEvent.click(chip)
-    assert.equal(details.open, true)
+    assert.equal(row?.getAttribute('aria-expanded'), 'true')
     const unknown = screen.getByText('E9.f1')
     assert.equal(unknown.className.includes('is-unknown'), true)
     assert.equal(screen.queryByRole('link', { name: 'E9.f1' }), null)
@@ -165,14 +165,18 @@ test('没有检验记录的旧回答不显示徽标，控制回执显示拒绝�
   try {
     await screen.findByText('旧回答')
     assert.equal(view.container.querySelector('.next-agent-verdict'), null)
-    assert.ok(screen.getByText('finish · 失败', { exact: false }))
+    assert.ok(
+      Array.from(view.container.querySelectorAll('.next-agent-activity-row')).some((summary) =>
+        /finish\s*失败/.test(summary.textContent ?? ''),
+      ),
+    )
     assert.match(screen.getByText(/回答未通过证据检验/).textContent ?? '', /CLAIMS_INVALID/)
   } finally {
     close()
   }
 })
 
-test('面板标题显示运行冻结的人格名称，旧运行没有人格时保持默认标题', async () => {
+test('面板保留运行冻结的人格名称，旧运行省略重复助手标题', async () => {
   const named = mount(
     run({ reply: '好', persona: { id: 'warm', version: 2, displayName: '小帧' } }),
   )
@@ -185,7 +189,8 @@ test('面板标题显示运行冻结的人格名称，旧运行没有人格时�
   }
   const legacy = mount(run({ reply: '好', persona: null }))
   try {
-    await screen.findByText('画布助手')
+    await screen.findByText('好')
+    assert.equal(screen.queryByText('画布助手'), null)
   } finally {
     legacy.close()
   }

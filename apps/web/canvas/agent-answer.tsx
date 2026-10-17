@@ -28,12 +28,15 @@ export function jumpTo(id: string): void {
   if (!target) {
     return
   }
+  target.dispatchEvent(new CustomEvent('agent-reveal', { bubbles: true }))
   for (let node = target.parentElement; node; node = node.parentElement) {
     if (node.tagName === 'DETAILS') {
       ;(node as HTMLDetailsElement).open = true
     }
   }
   target.scrollIntoView?.({ block: 'nearest' })
+  // Controlled activity ancestors commit their expanded state after the event.
+  requestAnimationFrame(() => target.scrollIntoView?.({ block: 'nearest' }))
 }
 
 export function AgentAnswer({ run }: { run: AgentRun }) {

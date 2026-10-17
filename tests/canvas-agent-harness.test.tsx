@@ -182,13 +182,20 @@ function setup(initial: AgentRun) {
 test('计划清单只显示最新版本，覆盖每种步骤状态并标记当前步骤', async () => {
   const { close } = setup(harnessRun)
   try {
-    await screen.findByText(/执行计划 v2 · 盘点画布素材/)
-    assert.ok(screen.getByText('步骤 s2 · 已完成 · 重试 1 次'))
+    await screen.findByText(/生成计划/)
+    fireEvent.click(screen.getByLabelText('查看执行信息'))
+    for (const [title, status] of [
+      ['步骤 s2', '已完成 · 重试 1 次'],
+      ['步骤 s3', '执行中'],
+      ['步骤 s4', '待执行'],
+      ['步骤 s5', '受阻'],
+      ['被替代的步骤', '已废弃'],
+    ]) {
+      const row = screen.getByText(title).closest('li')!
+      assert.ok(row.textContent?.includes(status))
+    }
     assert.ok(screen.getByText('读取完成'))
-    assert.ok(screen.getByText('步骤 s3 · 执行中'))
-    assert.ok(screen.getByText('步骤 s4 · 待执行'))
-    assert.ok(screen.getByText('步骤 s5 · 受阻'))
-    assert.ok(screen.getByText('被替代的步骤 · 已废弃'))
+    assert.equal(screen.getByRole('progressbar').getAttribute('value'), '1')
     assert.equal(screen.queryByText(/旧版第一稿步骤/), null)
     const current = document.querySelector('.next-agent-step[data-current="true"]')
     assert.ok(current)
@@ -219,11 +226,14 @@ test('反思卡片逐项展示硬检验结果、语义问题与待澄清问题',
 test('步骤证据引用与工具调用关联步骤标识', async () => {
   const { close } = setup(harnessRun)
   try {
-    await screen.findByText(/执行计划 v2/)
+    await screen.findByText(/生成计划/)
+    fireEvent.click(screen.getByLabelText('查看执行信息'))
     const chips = screen.getAllByRole('link', { name: 'E1.f1' })
     assert.ok(chips.some((chip) => chip.getAttribute('href') === '#agent-fact-run1-E1.f1'))
     assert.ok(document.getElementById('agent-fact-run1-E1.f1'))
-    assert.ok(screen.getByText('s2 · E1 · read_canvas · 已返回'))
+    const tool = screen.getByRole('button', { name: /读取.*read_canvas.*s2.*已返回/ })
+    fireEvent.click(tool)
+    assert.ok(screen.getByText('证据 E1'))
   } finally {
     close()
   }
@@ -240,9 +250,8 @@ test('waiting_input 显示待答问题且允许直接发送回答', async () => 
   }
   const { close } = setup(run)
   try {
-    await screen.findByText('等待你的回答')
+    await screen.findByText(/等待你的回答/)
     assert.ok(screen.getByText('你要盘点哪一类素材？'))
-    assert.ok(screen.getByText('直接发送下一条消息即可回答这个问题。'))
     const send = screen.getByRole('button', { name: '发送' }) as HTMLButtonElement
     fireEvent.change(screen.getByRole('textbox', { name: '向画布助手提问' }), {
       target: { value: '只看图片素材' },
@@ -272,9 +281,29 @@ test('没有 harness 字段的旧运行不渲染计划与复盘', async () => {
   const { close } = setup(legacy)
   try {
     await screen.findByText('旧版回答')
-    assert.equal(screen.queryByText(/执行计划/), null)
+    assert.equal(screen.queryByText(/生成计划/), null)
     assert.equal(screen.queryByText(/复盘/), null)
     assert.equal(screen.queryByText(/需要你补充信息/), null)
+  } finally {
+    close()
+  }
+})
+
+test('ZCode活动行默认可见，任务清单通过执行信息入口按需展开', async () => {
+  const { close } = setup(harnessRun)
+  try {
+    const title = await screen.findByText(/生成计划/)
+    const plan = title.closest('details')!
+    assert.equal(plan.open, true)
+    const diagnostics = plan.closest('.next-agent-info') as HTMLDetailsElement
+    assert.ok(diagnostics)
+    assert.equal(diagnostics.open, false)
+    const process = screen.getByRole('region', { name: '处理过程' })
+    assert.equal(process.tagName, 'SECTION')
+    assert.ok(screen.getByRole('button', { name: /读取.*read_canvas.*s2.*已返回/ }))
+    fireEvent.click(screen.getByLabelText('查看执行信息'))
+    assert.equal(diagnostics.open, true)
+    assert.ok(screen.getByText(/步骤 s2/))
   } finally {
     close()
   }

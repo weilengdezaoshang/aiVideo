@@ -2,8 +2,7 @@ import { factAnchor } from './agent-answer.js'
 import type { AgentControlReceipt, AgentEnvelope, AgentNextAction } from './agent/contracts.js'
 
 function displayData(value: unknown): string {
-  const text = JSON.stringify(value, null, 2) ?? '无返回内容'
-  return text.length > 12000 ? `${text.slice(0, 12000)}\n…显示已截断` : text
+  return JSON.stringify(value, null, 2) ?? '无返回内容'
 }
 
 function formatValue(value: unknown): string {
@@ -34,7 +33,7 @@ function NextActions({ items }: { items: readonly AgentNextAction[] }) {
 
 export function AgentReceipt({ receipt }: { receipt: AgentControlReceipt }) {
   if (receipt.status === 'accepted') {
-    return <p className="next-agent-coverage">运行时已接受。</p>
+    return null
   }
   return (
     <div className="next-agent-evidence">
@@ -95,15 +94,11 @@ export function AgentEvidence({
   const { result } = envelope
   return (
     <div className="next-agent-evidence">
-      <p
-        className={
-          result.coverage.complete ? 'next-agent-coverage' : 'next-agent-coverage is-partial'
-        }
-      >
-        {result.coverage.complete
-          ? '结果完整'
-          : `部分结果：${result.coverage.reason ?? '未覆盖全部对象'}`}
-      </p>
+      {!result.coverage.complete && (
+        <p className="next-agent-coverage is-partial">
+          部分结果：{result.coverage.reason ?? '未覆盖全部对象'}
+        </p>
+      )}
       <strong>证据</strong>
       <ul className="next-agent-facts">
         {result.evidence.map((fact) => (

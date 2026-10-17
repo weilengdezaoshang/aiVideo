@@ -353,20 +353,27 @@ export class MaskPaintMono extends BaseMono {
   readonly objectIds: readonly string[]
   private readonly points: Point[]
 
-  constructor(event: CanvasMouseEvent, objectId: string) {
+  constructor(
+    event: CanvasMouseEvent,
+    objectId: string,
+    private readonly style: { mode: 'paint' | 'erase'; width: number } = {
+      mode: 'paint',
+      width: 22,
+    },
+  ) {
     super()
     this.objectIds = [objectId]
     this.points = [event.worldPoint]
   }
 
   override onLButtonDown(_event: CanvasMouseEvent, context: LayerContext): EventResult {
-    context.emit({ type: 'mask-stroke-changed', points: [...this.points] })
+    context.emit({ type: 'mask-stroke-changed', points: [...this.points], style: this.style })
     return { type: 'handled' }
   }
 
   onLButtonMove(event: CanvasMouseEvent, context: LayerContext): EventResult {
     this.points.push(event.worldPoint)
-    context.emit({ type: 'mask-stroke-changed', points: [...this.points] })
+    context.emit({ type: 'mask-stroke-changed', points: [...this.points], style: this.style })
     return { type: 'handled' }
   }
 
@@ -375,6 +382,7 @@ export class MaskPaintMono extends BaseMono {
     context.emit({ type: 'mask-stroke-changed', points: null })
     context.emit({
       type: 'mask-stroke-committed',
+      style: this.style,
       sourceId: this.objectIds[0],
       points: [...this.points],
     })

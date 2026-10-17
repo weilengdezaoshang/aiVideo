@@ -32,17 +32,35 @@ import type {
 } from '../core/types.js'
 import { useImageElement, useVideoElement } from './use-media.js'
 import { exposeRendererDiagnostics } from './perf-diagnostics.js'
+import { preventBrowserGestureZoom } from './browser-gestures.js'
 import type { Theme } from '../theme.js'
 
 const SELECTION_COLOR = '#3478f6'
 
-export type CanvasEditorProps = { className?: string; style?: CSSProperties; theme?: Theme }
+export type CanvasEditorProps = {
+  className?: string
+  style?: CSSProperties
+  theme?: Theme
+  showMask?: boolean
+}
 
-export function CanvasEditor({ className, style, theme = 'light' }: CanvasEditorProps) {
+export function CanvasEditor({
+  className,
+  style,
+  theme = 'light',
+  showMask = true,
+}: CanvasEditorProps) {
   useEffect(exposeRendererDiagnostics, [])
   const view = useCanvasView()
   const snapshot = useCanvasViewSnapshot()
   const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const document = containerRef.current?.ownerDocument
+    if (document) {
+      return preventBrowserGestureZoom(document)
+    }
+  }, [])
 
   useEffect(() => {
     const element = containerRef.current
@@ -79,7 +97,27 @@ export function CanvasEditor({ className, style, theme = 'light' }: CanvasEditor
       worldPoint: view.screenToWorld(point),
       modifiers: modifiersFrom(native),
       target,
-      ...('deltaX' in native ? { wheelDelta: { x: native.deltaX, y: native.deltaY } } : {}),
+      ...('deltaX' in native
+        ? {
+            wheelDelta: {
+              x:
+                native.deltaX *
+                (native.deltaMode === 1
+                  ? 16
+                  : native.deltaMode === 2
+                    ? snapshot.viewport.width
+                    : 1),
+              y:
+                native.deltaY *
+                (native.deltaMode === 1
+                  ? 16
+                  : native.deltaMode === 2
+                    ? snapshot.viewport.height
+                    : 1),
+            },
+            wheelTime: native.timeStamp,
+          }
+        : {}),
     }
     view.dispatchInput(input)
   }
@@ -90,7 +128,17 @@ export function CanvasEditor({ className, style, theme = 'light' }: CanvasEditor
       data-canvas-keyboard-target
       className={className}
       tabIndex={0}
-      style={{ width: '100%', height: '100%', overflow: 'hidden', outline: 'none', ...style }}
+      style={{
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
+        outline: 'none',
+        cursor:
+          snapshot.requestedTool === 'mask'
+            ? maskBrushCursor(snapshot.maskBrush.size, snapshot.maskBrush.mode)
+            : undefined,
+        ...style,
+      }}
       onKeyDown={(event) => {
         if ((event.metaKey || event.ctrlKey) && ['a', 'd', 'z'].includes(event.key.toLowerCase())) {
           event.preventDefault()
@@ -128,11 +176,11 @@ export function CanvasEditor({ className, style, theme = 'light' }: CanvasEditor
           <ConnectionScene theme={theme} />
         </CameraLayer>
         <CameraLayer>
-          <ContentScene />
+          <ContentScene theme={theme} />
         </CameraLayer>
         <CameraLayer>
           <SelectionScene />
-          <EditingScene />
+          <EditingScene showMask={showMask} />
         </CameraLayer>
       </Stage>
     </div>
@@ -155,7 +203,7 @@ function CameraLayer({ children, listening }: { children: ReactNode; listening?:
   )
 }
 
-function ContentScene() {
+function ContentScene({ theme }: { theme: Theme }) {
   const view = useCanvasView()
   const snapshot = useCanvasViewSnapshot()
   const doc = view.getDocument()
@@ -171,6 +219,7 @@ function ContentScene() {
           <ObjectNode
             key={id}
             object={object}
+            theme={theme}
             selected={snapshot.selection.includes(id)}
             hovered={snapshot.hoveredId === id}
           />
@@ -213,7 +262,9 @@ function ObjectNode({
   object,
   selected,
   hovered,
+  theme,
 }: {
+  theme: Theme
   object: CanvasObj
   selected: boolean
   hovered: boolean
@@ -282,11 +333,11 @@ function ObjectNode({
         />
       )}
       {(object.kind === 'image' || object.kind === 'video') && !image && !video && (
-        <Rect {...common} fill="#e8eaed" />
+        <Rect {...common} fill={theme === 'dark' ? '#25262c' : '#e8eaed'} />
       )}
       {(object.kind === 'placeholder' || object.nodeRun) && (
         <>
-          <Rect {...common} fill="#eef3ff" dash={[8, 6]} />
+          <Rect {...common} fill={theme === 'dark' ? '#25262c' : '#eef3ff'} dash={[8, 6]} />
           <Text
             width={object.width}
             height={object.height}
@@ -297,7 +348,7 @@ function ObjectNode({
             }
             align="center"
             verticalAlign="middle"
-            fill="#4771c5"
+            fill={theme === 'dark' ? '#9aa0a8' : '#4771c5'}
           />
         </>
       )}
@@ -319,6 +370,26 @@ function ObjectNode({
         <Label y={-28} listening={false}>
           <Tag fill="#202124" cornerRadius={4} />
           <Text text={object.name} fill="white" fontSize={12} padding={6} />
+        </Label>
+      )}
+      {object.badge && (
+        <Label x={8} y={8} listening={false}>
+          <Tag
+            fill={object.badge === 'review_soft_fail' ? '#9a6700' : '#202124'}
+            cornerRadius={4}
+          />
+          <Text
+            text={
+              object.badge === 'preview'
+                ? '样片预览'
+                : object.badge === 'final'
+                  ? '正片'
+                  : '质量待确认'
+            }
+            fill="white"
+            fontSize={12}
+            padding={6}
+          />
         </Label>
       )}
       <ConnectionPorts object={object} />
@@ -363,7 +434,11 @@ function ConnectionPorts({ object }: { object: CanvasObj }) {
 function SelectionScene() {
   const view = useCanvasView()
   const snapshot = useCanvasViewSnapshot()
-  if (!snapshot.capabilities.canTransform || snapshot.selection.length !== 1) {
+  if (
+    ['mask', 'recognizing'].includes(snapshot.requestedTool) ||
+    !snapshot.capabilities.canTransform ||
+    snapshot.selection.length !== 1
+  ) {
     return null
   }
   const id = snapshot.selection[0]
@@ -421,7 +496,7 @@ function SelectionScene() {
   )
 }
 
-function EditingScene() {
+function EditingScene({ showMask }: { showMask: boolean }) {
   const snapshot = useCanvasViewSnapshot()
   if (
     !snapshot.marquee &&
@@ -455,7 +530,7 @@ function EditingScene() {
           dash={[8 / snapshot.camera.scale, 6 / snapshot.camera.scale]}
         />
       )}
-      {snapshot.maskStroke && snapshot.maskStroke.length > 1 && (
+      {showMask && snapshot.maskStroke && snapshot.maskStroke.length > 1 && (
         <Line
           points={snapshot.maskStroke.flatMap((point) => [point.x, point.y])}
           stroke="rgba(255,72,102,.72)"
@@ -464,16 +539,17 @@ function EditingScene() {
           lineJoin="round"
         />
       )}
-      {snapshot.maskStrokes.map((stroke, index) => (
-        <Line
-          key={`mask-stroke-${index}`}
-          points={stroke.flatMap((point) => [point.x, point.y])}
-          stroke="rgba(255,72,102,.72)"
-          strokeWidth={22 / snapshot.camera.scale}
-          lineCap="round"
-          lineJoin="round"
-        />
-      ))}
+      {showMask &&
+        snapshot.maskStrokes.map((stroke, index) => (
+          <Line
+            key={`mask-stroke-${index}`}
+            points={stroke.flatMap((point) => [point.x, point.y])}
+            stroke="rgba(255,72,102,.72)"
+            strokeWidth={22 / snapshot.camera.scale}
+            lineCap="round"
+            lineJoin="round"
+          />
+        ))}
       {snapshot.inpaintRegion && (
         <Rect
           {...snapshot.inpaintRegion}
@@ -584,4 +660,12 @@ function mediaHeight(media: CanvasImageSource): number {
     return media.displayHeight
   }
   return 'height' in media && typeof media.height === 'number' ? media.height : 0
+}
+
+function maskBrushCursor(size: number, mode: 'paint' | 'erase'): string {
+  const diameter = Math.min(120, Math.max(4, size))
+  const side = diameter + 4
+  const center = side / 2
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${side}"><circle cx="${center}" cy="${center}" r="${diameter / 2}" fill="none" stroke="black" stroke-width="3"/><circle cx="${center}" cy="${center}" r="${diameter / 2}" fill="none" stroke="white" stroke-width="1"/><path d="M${center - 3} ${center}h6${mode === 'paint' ? `M${center} ${center - 3}v6` : ''}" stroke="white"/></svg>`
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${center} ${center}, crosshair`
 }

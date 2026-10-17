@@ -1,7 +1,17 @@
+import { ApiKeySettings } from './api-key-settings.js'
+import { requestIdentity } from './agent/request-context.js'
 import { installSessionFetch } from '../shared/session-fetch.js'
 installSessionFetch()
 
-import { StrictMode, useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes } from 'react'
+import {
+  StrictMode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+} from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { applyTheme, loadTheme, saveTheme, type Theme } from './theme.js'
@@ -47,9 +57,17 @@ import {
   createCanvasRecognition,
   type RecognitionOperation,
 } from './flows/recognition-operation.js'
-import type { CanvasHitTarget, Point, Rect } from './core/types.js'
+import type { CanvasHitTarget, MaskStroke, Point, Rect } from './core/types.js'
 import { CanvasDocumentGate } from './document-gate.js'
+import { MediaPreview } from './media-preview.js'
+import { CutoutControls } from './cutout-controls.js'
+import { CanvasToast, useCanvasNotice } from './canvas-toast.js'
+import { CutoutMaskPreview } from './cutout-mask-preview.js'
+import { paintCutoutMask } from './flows/cutout-mask.js'
+import { openAgentCutout, type AgentCutoutOwner } from './flows/agent-cutout.js'
+import { cutoutPlacement } from './flows/cutout-placement.js'
 import { AgentPanel } from './agent-panel.js'
+import type { AgentRun } from './agent/types.js'
 import { createAgentStore, type AgentStore } from './agent/store.js'
 import { createDocStore, type CanvasDocData, type DocStore } from './state/doc-store.js'
 import {
@@ -62,8 +80,7 @@ import {
 import { emptyStoryboard, newShot, type Storyboard } from './state/storyboard.js'
 import { TimelineStudio } from './timeline-studio.js'
 import { SvgStudio } from './svg-studio.js'
-import { saveNodeDraft, timelineNodeStore, detachReference } from './state/studio-bindings.js'
-import { documentConnections } from './state/connections.js'
+import { saveNodeDraft, timelineNodeStore } from './state/studio-bindings.js'
 import {
   submitGroupGeneration,
   confirmPendingGroup,
@@ -99,7 +116,7 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
   const view = useCanvasView()
   const snapshot = useCanvasViewSnapshot()
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
-  const [notice, setNotice] = useState('')
+  const [notice, setNotice] = useCanvasNotice()
   const [theme, setTheme] = useState<Theme>(() => loadTheme() ?? 'light')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [documentName, setDocumentName] = useState(document.name)
@@ -124,6 +141,7 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
   const draftDirty = useRef(false)
   const [composerNodeId, setComposerNodeId] = useState<string | null>(null)
   const [timelineNodeId, setTimelineNodeId] = useState<string | undefined>()
+  const [apiKeySettingsOpen, setApiKeySettingsOpen] = useState(false)
   const [svgObject, setSvgObject] = useState<CanvasObj | null>(null)
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null)
   const [generationKind, setGenerationKind] = useState<MediaKind>('image')
@@ -140,9 +158,22 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
   const [maskSourceId, setMaskSourceId] = useState<string | null>(null)
   const [maskBaseUrl, setMaskBaseUrl] = useState<string | null>(null)
   const recognition = useRef<RecognitionOperation | null>(null)
-  const [sideTab, setSideTab] = useState<
-    'inspector' | 'library' | 'chat' | 'storyboard' | 'timeline'
-  >('inspector')
+  const [maskError, setMaskError] = useState<string | null>(null)
+  const [showMask, setShowMask] = useState(true)
+  const [cutoutApplying, setCutoutApplying] = useState(false)
+  const maskSession = useRef(0)
+  const cutoutAgent = useRef<AgentCutoutOwner | null>(null)
+  const agentCutoutHandler = useRef<(run: AgentRun, automatic: boolean) => void>(() => {})
+  const onMaskPreviewError = useCallback(() => {
+    setMaskBaseUrl(null)
+    setMaskError('蒙版读取失败，请重新识别或手动涂抹')
+  }, [])
+  const [sideTab, setSideTab] = useState<'library' | 'chat' | 'storyboard' | 'timeline'>('chat')
+  const maskAnchor = cutoutPlacement(
+    maskSourceId ? view.getDocument().objects[maskSourceId] : undefined,
+    snapshot.camera,
+    snapshot.viewport,
+  )
   const selectedObjectId = snapshot.selection.length === 1 ? snapshot.selection[0] : null
   const selectedObjects = snapshot.selection.flatMap((id) => {
     const object = view.getDocument().objects[id]
@@ -239,14 +270,6 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
       setTimelineNodeId(object.id)
     }
   }, [selectedObjectId, surface, store, capabilities])
-  useEffect(
-    () =>
-      view.on('inspector:requested', () => {
-        setSideTab('inspector')
-        setSidebarOpen(true)
-      }),
-    [view],
-  )
   useEffect(() => {
     if (draftDirty.current && composerNodeId && composerNodeId === selectedObjectId) {
       draftDirty.current = false
@@ -273,6 +296,10 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
         docId: document.id,
         getDoc: () => store.doc,
         onStatus: setSaveStatus,
+        onRemoteDocument: (remote) =>
+          store.mutateTransient((doc) => {
+            Object.assign(doc, remote)
+          }),
       }),
     [document.id, store],
   )
@@ -281,8 +308,40 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
     [store, saver],
   )
   const agentStore = useMemo(
-    () => createAgentStore({ documentId: document.id, ensureSaved: () => saver.ensureSaved() }),
-    [document.id, saver],
+    () =>
+      createAgentStore({
+        documentId: document.id,
+        onCanvasAction: (run, automatic) => agentCutoutHandler.current(run, automatic),
+        captureContext: (selection) => {
+          const current = view.getSnapshot()
+          const { x, y, scale } = current.camera
+          return {
+            selection,
+            highlights: current.selection,
+            nodeFingerprints: Object.fromEntries(
+              selection.map((id) => {
+                const node = store.doc.objects[id]
+                return [
+                  id,
+                  JSON.stringify(node ? [node.kind, node.assetId, node.assetVersion] : null),
+                ]
+              }),
+            ),
+            viewport: {
+              bbox: [x, y, x + current.viewport.width / scale, y + current.viewport.height / scale],
+              zoom: scale,
+            },
+            ...requestIdentity(localStorage),
+          }
+        },
+        ensureSaved: async () => {
+          await saver.syncRemote()
+          return saver.ensureSaved()
+        },
+        syncDocument: () => saver.syncRemote(),
+        documentRevision: () => store.doc.revision ?? 0,
+      }),
+    [document.id, saver, view],
   )
   useEffect(() => agentStore.start(), [agentStore])
   useEffect(() => {
@@ -302,6 +361,12 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
         snapshot.selection[0] !== sourceId ||
         !['recognizing', 'mask'].includes(snapshot.requestedTool))
     ) {
+      const owner = cutoutAgent.current
+      cutoutAgent.current = null
+      if (owner && !cutoutApplying) {
+        void agentStore.stop(owner.runId)
+      }
+      maskSession.current += 1
       recognition.current?.cancel()
       recognition.current = null
       setMaskSourceId(null)
@@ -311,7 +376,7 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
         view.activateTool('select')
       }
     }
-  }, [maskSourceId, snapshot.selection, snapshot.requestedTool, view])
+  }, [maskSourceId, snapshot.selection, snapshot.requestedTool, view, agentStore, cutoutApplying])
 
   useEffect(() => {
     const unsubscribe = store.subscribe((event) => event.type !== 'transient' && saver.markDirty())
@@ -364,7 +429,6 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
     () =>
       view.on('feedback:requested', ({ message }) => {
         setNotice(message)
-        window.setTimeout(() => setNotice(''), 2200)
       }),
     [view],
   )
@@ -423,8 +487,108 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
       }),
     [store, view],
   )
+  function closeCutout(reportCancellation = true): void {
+    const owner = cutoutAgent.current
+    cutoutAgent.current = null
+    if (owner && reportCancellation) {
+      void agentStore.stop(owner.runId)
+    }
+    maskSession.current += 1
+    recognition.current?.cancel()
+    recognition.current = null
+    view.clearMaskDraft()
+    setMaskSourceId(null)
+    setMaskBaseUrl(null)
+    setMaskError(null)
+    view.activateTool('select')
+  }
+
+  function startCutout(
+    sourceId = view.getSnapshot().selection[0],
+    owner: typeof cutoutAgent.current = null,
+  ): void {
+    const rawSource = sourceId ? store.doc.objects[sourceId] : undefined
+    const source = sourceId ? view.getDocument().objects[sourceId] : undefined
+    if (!source || source.kind !== 'image') {
+      setNotice('请先选择一张图片')
+      return
+    }
+    if (cutoutAgent.current && cutoutAgent.current.runId !== owner?.runId) {
+      void agentStore.stop(cutoutAgent.current.runId)
+    }
+    cutoutAgent.current = owner
+    maskSession.current += 1
+    setMaskError(null)
+    setShowMask(true)
+    view.setMaskBrush({ mode: 'paint', size: 22 })
+    recognition.current?.cancel()
+    setMaskSourceId(source.id)
+    setMaskBaseUrl(null)
+    view.clearMaskDraft()
+    view.activateTool('recognizing')
+    const operation = createCanvasRecognition(
+      view,
+      source.id,
+      () => store.doc.objects[source.id] === rawSource && recognition.current === operation,
+    )
+    recognition.current = operation
+    void ensureAsset(source, operation.signal)
+      .then((asset) => operation.detect(asset.id))
+      .then((url) => {
+        operation.assertCurrent()
+        setMaskBaseUrl(url)
+        operation.complete()
+        recognition.current = null
+        view.activateTool('mask')
+        setNotice('主体已识别，可继续涂抹修正')
+      })
+      .catch((cause: unknown) => {
+        if (!(cause instanceof DOMException && cause.name === 'AbortError')) {
+          if (recognition.current === operation) {
+            setMaskError(cause instanceof Error ? cause.message : '主体识别失败')
+          }
+        }
+        if (recognition.current === operation) {
+          recognition.current = null
+          operation.cancel()
+          if (view.getSnapshot().requestedTool === 'recognizing') {
+            view.activateTool(
+              cause instanceof DOMException && cause.name === 'AbortError' ? 'select' : 'mask',
+            )
+          }
+        }
+      })
+  }
+
+  useEffect(() => {
+    agentCutoutHandler.current = (run, automatic) =>
+      openAgentCutout({
+        run,
+        automatic,
+        view,
+        applying: cutoutApplying,
+        activeRunId: cutoutAgent.current?.runId,
+        start: startCutout,
+      })
+  })
+  useEffect(
+    () =>
+      agentStore.subscribe(() => {
+        const owner = cutoutAgent.current
+        if (!owner || cutoutApplying) {
+          return
+        }
+        const run = agentStore.getSnapshot().runs.find((item) => item.id === owner.runId)
+        if (run?.status === 'cancelled') {
+          closeCutout(false)
+        }
+      }),
+    [agentStore, cutoutApplying],
+  )
+
   return (
     <main className={`editor-body ${sidebarOpen ? 'chat-open-narrow' : 'chat-collapsed'}`}>
+      {apiKeySettingsOpen && <ApiKeySettings onClose={() => setApiKeySettingsOpen(false)} />}
       {svgObject && <SvgStudio object={svgObject} onClose={() => setSvgObject(null)} />}
       <header className="topbar">
         <a
@@ -520,17 +684,6 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
               <path d="M3 11a9 9 0 112 7M3 5v6h6m3-4v5l3 2" />
             </svg>
           </button>
-          <button
-            className="icon-btn"
-            type="button"
-            aria-label="画布属性"
-            onClick={() => {
-              setSideTab('inspector')
-              setSidebarOpen(true)
-            }}
-          >
-            ⓘ
-          </button>
           <details className="user-menu">
             <summary className="icon-btn user-avatar-trigger" aria-label="用户菜单">
               <span className="user-avatar" aria-hidden="true">
@@ -564,6 +717,9 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
               >
                 <span aria-hidden="true">{theme === 'dark' ? '☼' : '☾'}</span>
                 {theme === 'dark' ? '切换到浅色主题' : '切换到深色主题'}
+              </button>
+              <button type="button" role="menuitem" onClick={() => setApiKeySettingsOpen(true)}>
+                配置 API Key
               </button>
               <div className="user-menu-status">{connected ? '已连接' : '正在重连'}</div>
               <a href="/workspace?tab=canvas">返回我的画布</a>
@@ -719,12 +875,23 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
       <section
         className="canvas-root"
         aria-label="React Konva 画布"
-        onPointerDown={() => setContextMenu(null)}
+        onPointerDown={(event) => {
+          setContextMenu(null)
+          if (snapshot.requestedTool === 'mask' && event.target instanceof HTMLCanvasElement) {
+            setShowMask(true)
+          }
+        }}
       >
-        <CanvasEditor theme={theme} />
+        <CanvasEditor theme={theme} showMask={!maskSourceId} />
         <ViewportControls view={view} tool={snapshot.requestedTool} scale={snapshot.camera.scale} />
+        {maskSourceId && (
+          <div className="next-cutout-mode-label">
+            抠图模式<span>紫色区域将被保留</span>
+          </div>
+        )}
         {['image', 'video', 'text', 'multi', 'board', 'busy', 'error'].includes(surface) &&
-          snapshot.selection.length > 0 && (
+          snapshot.selection.length > 0 &&
+          !maskSourceId && (
             <div
               key={`${selectedObjectId ?? 'multi'}:${surface}`}
               className="canvas-selection-tools"
@@ -780,51 +947,10 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
                     连线
                   </ToolButton>
                   <ToolButton
-                    active={snapshot.requestedTool === 'mask'}
-                    disabled={!snapshot.capabilities.canUseMask}
+                    active={['mask', 'recognizing'].includes(snapshot.requestedTool)}
+                    disabled={!snapshot.capabilities.canUseMask || cutoutApplying}
                     onClick={() => {
-                      const sourceId = snapshot.selection[0]
-                      const rawSource = sourceId ? store.doc.objects[sourceId] : undefined
-                      const source = sourceId ? view.getDocument().objects[sourceId] : undefined
-                      if (!source || source.kind !== 'image') {
-                        setNotice('请先选择一张图片')
-                        return
-                      }
-                      recognition.current?.cancel()
-                      setMaskSourceId(source.id)
-                      setMaskBaseUrl(null)
-                      view.clearMaskDraft()
-                      view.activateTool('recognizing')
-                      const operation = createCanvasRecognition(
-                        view,
-                        source.id,
-                        () =>
-                          store.doc.objects[source.id] === rawSource &&
-                          recognition.current === operation,
-                      )
-                      recognition.current = operation
-                      void ensureAsset(source, operation.signal)
-                        .then((asset) => operation.detect(asset.id))
-                        .then((url) => {
-                          operation.assertCurrent()
-                          setMaskBaseUrl(url)
-                          operation.complete()
-                          recognition.current = null
-                          view.activateTool('mask')
-                          setNotice('主体已识别，可继续涂抹修正')
-                        })
-                        .catch((cause: unknown) => {
-                          if (!(cause instanceof DOMException && cause.name === 'AbortError')) {
-                            setNotice(cause instanceof Error ? cause.message : '主体识别失败')
-                          }
-                          if (recognition.current === operation) {
-                            recognition.current = null
-                            operation.cancel()
-                            if (view.getSnapshot().requestedTool === 'recognizing') {
-                              view.activateTool('select')
-                            }
-                          }
-                        })
+                      startCutout()
                     }}
                   >
                     抠图
@@ -1023,16 +1149,6 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
                     </ToolButton>
                   </>
                 )}
-              {surface !== 'none' && (
-                <ToolButton
-                  onClick={() => {
-                    setSideTab('inspector')
-                    setSidebarOpen(true)
-                  }}
-                >
-                  更多
-                </ToolButton>
-              )}
               {(surface === 'multi' || surface === 'board') && (
                 <ToolButton
                   disabled={!snapshot.capabilities.canEdit}
@@ -1060,17 +1176,52 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
           </div>
         )}
 
-        {maskBaseUrl &&
-          maskSourceId &&
-          store.doc.objects[maskSourceId] &&
+        {maskSourceId &&
+          snapshot.requestedTool === 'recognizing' &&
           (() => {
-            const source = store.doc.objects[maskSourceId]
+            const source = view.getDocument().objects[maskSourceId]
+            if (!source) {
+              return null
+            }
             const point = view.worldToScreen({ x: source.x, y: source.y })
             return (
-              <img
-                className="next-mask-base"
-                src={maskBaseUrl}
-                alt=""
+              <div
+                className="next-cutout-scan"
+                aria-hidden="true"
+                style={{
+                  left: point.x,
+                  top: point.y,
+                  width: source.width * snapshot.camera.scale,
+                  height: source.height * snapshot.camera.scale,
+                  transform: `rotate(${source.rotation ?? 0}deg)`,
+                }}
+              >
+                <span />
+              </div>
+            )
+          })()}
+        {maskSourceId &&
+          snapshot.requestedTool === 'mask' &&
+          (() => {
+            const source = view.getDocument().objects[maskSourceId]
+            if (!source) {
+              return null
+            }
+            const point = view.worldToScreen({ x: source.x, y: source.y })
+            const edits = snapshot.maskStroke
+              ? [
+                  ...snapshot.maskEdits,
+                  { ...snapshot.maskStrokeStyle, points: snapshot.maskStroke },
+                ]
+              : snapshot.maskEdits
+            return (
+              <CutoutMaskPreview
+                key={maskSourceId}
+                source={source}
+                baseUrl={maskBaseUrl}
+                edits={edits}
+                visible={showMask}
+                onError={onMaskPreviewError}
                 style={{
                   left: point.x,
                   top: point.y,
@@ -1203,33 +1354,11 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
           </section>
         )}
         {previewObject && (
-          <dialog
-            ref={(node) => {
-              if (node && !node.open) {
-                node.showModal()
-              }
-            }}
-            onCancel={() => setPreviewObject(null)}
-            className="selection-preview"
-            aria-modal="true"
-            aria-label="媒体全屏预览"
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                setPreviewObject(null)
-              }
-            }}
-          >
-            <button type="button" autoFocus onClick={() => setPreviewObject(null)}>
-              关闭预览
-            </button>
-            {previewObject.kind === 'text' ? (
-              <p>{previewObject.text}</p>
-            ) : previewObject.kind === 'video' ? (
-              <video src={mediaSource(previewObject)} controls />
-            ) : (
-              <img src={mediaSource(previewObject)} alt={previewObject.name || '图片预览'} />
-            )}
-          </dialog>
+          <MediaPreview
+            key={previewObject.id}
+            object={previewObject}
+            onClose={() => setPreviewObject(null)}
+          />
         )}
         <ComposerPresence
           sidebarOpen={
@@ -1554,56 +1683,69 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
             </button>
           </form>
         )}
-        {maskSourceId && (maskBaseUrl || snapshot.maskStrokes.length > 0) && (
-          <div className="next-operation-panel">
-            <strong>手动蒙版</strong>
-            <span>
-              {maskBaseUrl ? '已识别主体' : '手动蒙版'} · {snapshot.maskStrokes.length} 条修正笔画
-            </span>
-            <button
-              type="button"
-              disabled={generating}
-              onClick={() => {
-                setGenerating(true)
-                void submitCutout(store, view, maskSourceId, snapshot.maskStrokes, maskBaseUrl)
-                  .then(() => {
-                    setNotice('抠图已完成')
-                    view.clearMaskDraft()
-                    setMaskSourceId(null)
-                    setMaskBaseUrl(null)
-                    view.activateTool('select')
-                  })
-                  .catch((cause: unknown) => {
-                    setNotice(cause instanceof Error ? cause.message : '抠图失败')
-                  })
-                  .finally(() => setGenerating(false))
-              }}
-            >
-              应用抠图
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                view.clearMaskDraft()
-                setMaskSourceId(null)
-                setMaskBaseUrl(null)
-                recognition.current?.cancel()
-                recognition.current = null
-                view.activateTool('select')
-              }}
-            >
-              清除
-            </button>
-          </div>
+        {maskSourceId && (
+          <CutoutControls
+            phase={
+              cutoutApplying
+                ? 'applying'
+                : snapshot.requestedTool === 'recognizing'
+                  ? 'detecting'
+                  : maskBaseUrl
+                    ? 'ready'
+                    : 'error'
+            }
+            error={maskError}
+            style={maskAnchor}
+            settingsPlacement={maskAnchor.top + 134 <= snapshot.viewport.height ? 'below' : 'above'}
+            brush={snapshot.maskBrush}
+            canRedo={snapshot.canRedoMask}
+            onBrushChange={(brush) => {
+              setShowMask(true)
+              view.setMaskBrush(brush)
+            }}
+            onUndo={() => view.undoMaskStroke()}
+            onRedo={() => view.redoMaskStroke()}
+            strokeCount={snapshot.maskEdits.length}
+            showMask={showMask}
+            onToggleMask={() => setShowMask((current) => !current)}
+            onReset={() => view.clearMaskDraft()}
+            onRetry={() => startCutout(maskSourceId, cutoutAgent.current)}
+            onCancel={() => closeCutout()}
+            onApply={() => {
+              if (cutoutApplying) {
+                return
+              }
+              const session = maskSession.current
+              const owner = cutoutAgent.current
+              setCutoutApplying(true)
+              setMaskError(null)
+              void submitCutout(store, view, maskSourceId, snapshot.maskEdits, maskBaseUrl)
+                .then(async (resultObjectId) => {
+                  setNotice('抠图已完成，已添加到画布')
+                  if (maskSession.current === session) {
+                    closeCutout(false)
+                  }
+                  if (owner) {
+                    // A saved result is retained even when only the chat receipt fails.
+                    await agentStore
+                      .completeCanvasAction(owner.runId, resultObjectId)
+                      .catch(() => {})
+                  }
+                })
+                .catch((cause: unknown) => {
+                  if (maskSession.current === session) {
+                    setMaskError(cause instanceof Error ? cause.message : '抠图失败，请重试')
+                  }
+                })
+                .finally(() => setCutoutApplying(false))
+            }}
+          />
         )}
       </section>
       <SidebarPresence open={sidebarOpen}>
         <header className="chat-head">
           <div className="chat-heading">
-            <b>{sideTab === 'chat' ? '创作对话' : '画布面板'}</b>
-            {sideTab !== 'chat' && (
-              <span className="chat-head-hint">想法、过程与作品，都在这里</span>
-            )}
+            <b>{sideTab === 'chat' ? '创作助手' : '画布面板'}</b>
           </div>
           <button
             className="icon-btn"
@@ -1619,7 +1761,6 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
           <nav className="next-sidebar-tabs" aria-label="侧边栏分类">
             {(
               [
-                ['inspector', '属性'],
                 ['library', '素材'],
                 ['chat', '对话'],
                 ['storyboard', '分镜'],
@@ -1640,15 +1781,13 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
         <div className="next-sidebar-content">
           <SidebarContent
             tab={sideTab}
+            selection={snapshot.selection}
             store={store}
             view={view}
-            selection={snapshot.selection}
-            onConfigureMedia={configureMedia}
             agentStore={agentStore}
             active={sidebarOpen}
             timelineNodeId={timelineNodeId}
             ensureSaved={saver.ensureSaved}
-            onSvg={setSvgObject}
           />
         </div>
       </SidebarPresence>
@@ -1682,37 +1821,29 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
       <footer className="next-debug">
         Layer: {snapshot.effectiveLayer} · 选择 {snapshot.selection.length} 个对象
       </footer>
-      {notice && (
-        <div className="next-toast" role="status">
-          {notice}
-        </div>
-      )}
+      <CanvasToast notice={notice} />
     </main>
   )
 }
 
 function SidebarContent({
   tab,
+  selection,
   store,
   view,
-  selection,
   agentStore,
-  onConfigureMedia,
   active,
   timelineNodeId,
   ensureSaved,
-  onSvg,
 }: {
-  tab: 'inspector' | 'library' | 'chat' | 'storyboard' | 'timeline'
+  tab: 'library' | 'chat' | 'storyboard' | 'timeline'
+  selection: readonly string[]
   store: DocStore
   view: ReturnType<typeof useCanvasView>
-  selection: readonly string[]
   agentStore: AgentStore
   active: boolean
   timelineNodeId?: string
   ensureSaved: () => Promise<unknown>
-  onSvg: (object: CanvasObj) => void
-  onConfigureMedia: (object: CanvasObj) => void
 }) {
   const object = selection.length === 1 ? view.getDocument().objects[selection[0]] : undefined
   const targetTimelineId =
@@ -1723,157 +1854,6 @@ function SidebarContent({
     () => timelineNodeStore(store, targetTimelineId),
     [store, targetTimelineId],
   )
-  const [interactionError, setInteractionError] = useState('')
-  if (tab === 'inspector') {
-    if (!object) {
-      return <p className="next-panel-empty">选择一个对象查看属性</p>
-    }
-    return (
-      <div className="next-panel-body">
-        <h2>{object.name || object.kind}</h2>
-        {object.kind === 'image' && (object.src || object.assetId) && (
-          <button type="button" onClick={() => onSvg(object)}>
-            导出 SVG
-          </button>
-        )}
-        <details>
-          <summary>连线与引用</summary>
-          {documentConnections(store.doc.objects)
-            .filter((edge) => edge.sourceId === object.id || edge.targetId === object.id)
-            .map((edge) => (
-              <div key={`${edge.kind}:${edge.sourceId}:${edge.targetId}`}>
-                <p>
-                  {store.doc.objects[edge.sourceId]?.name || '素材'} →{' '}
-                  {store.doc.objects[edge.targetId]?.name || '节点'}（
-                  {edge.kind === 'lineage' ? '生成来源' : '参考素材'}）
-                </p>
-                {edge.kind === 'reference' && (
-                  <button
-                    type="button"
-                    disabled={Boolean(
-                      store.doc.objects[edge.targetId]?.nodeRun ||
-                      store.doc.objects[edge.targetId]?.generationId,
-                    )}
-                    onClick={() => {
-                      try {
-                        detachReference(store, edge.targetId, edge.sourceId)
-                        setInteractionError('')
-                      } catch (error) {
-                        setInteractionError(error instanceof Error ? error.message : '断开失败')
-                      }
-                    }}
-                  >
-                    断开引用
-                  </button>
-                )}
-              </div>
-            ))}
-          <p role="status">{interactionError}</p>
-        </details>
-
-        {object.kind === 'text' && (
-          <label>
-            文字内容
-            <textarea
-              aria-label="编辑文字内容"
-              value={object.text ?? ''}
-              onChange={(event) =>
-                view.execute(
-                  cmdUpdateObject(object.id, { text: event.target.value }, { text: object.text }),
-                )
-              }
-            />
-          </label>
-        )}
-        {(object.kind === 'image' || object.kind === 'video' || object.mediaType) && (
-          <>
-            <p>{object.mediaType === 'video' || object.kind === 'video' ? '视频' : '图片'}节点</p>
-            <button type="button" onClick={() => onConfigureMedia(object)}>
-              编辑生成参数
-            </button>
-          </>
-        )}
-        {object.kind === 'board' && (
-          <label>
-            画板颜色
-            <input
-              type="color"
-              aria-label="画板颜色"
-              value={object.backgroundColor || '#ffffff'}
-              onChange={(event) =>
-                view.execute(
-                  cmdUpdateObject(
-                    object.id,
-                    { backgroundColor: event.target.value },
-                    { backgroundColor: object.backgroundColor },
-                  ),
-                )
-              }
-            />
-          </label>
-        )}
-
-        <label>
-          X
-          <input
-            type="number"
-            value={Math.round(object.x)}
-            onChange={(event) =>
-              view.execute(
-                cmdUpdateObject(object.id, { x: Number(event.target.value) }, { x: object.x }),
-              )
-            }
-          />
-        </label>
-        <label>
-          Y
-          <input
-            type="number"
-            value={Math.round(object.y)}
-            onChange={(event) =>
-              view.execute(
-                cmdUpdateObject(object.id, { y: Number(event.target.value) }, { y: object.y }),
-              )
-            }
-          />
-        </label>
-        <label>
-          宽度
-          <input
-            type="number"
-            min="1"
-            value={Math.round(object.width)}
-            onChange={(event) =>
-              view.execute(
-                cmdUpdateObject(
-                  object.id,
-                  { width: Math.max(1, Number(event.target.value)) },
-                  { width: object.width },
-                ),
-              )
-            }
-          />
-        </label>
-        <label>
-          高度
-          <input
-            type="number"
-            min="1"
-            value={Math.round(object.height)}
-            onChange={(event) =>
-              view.execute(
-                cmdUpdateObject(
-                  object.id,
-                  { height: Math.max(1, Number(event.target.value)) },
-                  { height: object.height },
-                ),
-              )
-            }
-          />
-        </label>
-      </div>
-    )
-  }
   if (tab === 'library') {
     return <LibraryPanel view={view} />
   }
@@ -1883,6 +1863,7 @@ function SidebarContent({
         store={agentStore}
         history={store.doc.chat ?? []}
         getSelection={() => view.getSnapshot().selection}
+        onArtifact={(nodeId) => view.focusObject(nodeId)}
       />
     )
   }
@@ -2321,9 +2302,9 @@ async function submitCutout(
   store: DocStore,
   view: ReturnType<typeof useCanvasView>,
   sourceId: string,
-  strokes: readonly (readonly Point[])[],
+  strokes: readonly MaskStroke[],
   baseMaskUrl: string | null,
-): Promise<void> {
+): Promise<string> {
   const source = view.getDocument().objects[sourceId]
   if (!source || source.kind !== 'image') {
     throw new Error('抠图源图已不存在')
@@ -2337,34 +2318,8 @@ async function submitCutout(
   if (!context) {
     throw new Error('无法创建蒙版')
   }
-  if (baseMaskUrl) {
-    const baseMask = await loadImage(baseMaskUrl)
-    context.drawImage(baseMask, 0, 0, canvas.width, canvas.height)
-  } else {
-    context.fillStyle = '#000'
-    context.fillRect(0, 0, canvas.width, canvas.height)
-  }
-  context.strokeStyle = '#fff'
-  context.lineCap = 'round'
-  context.lineJoin = 'round'
-  context.lineWidth = (22 / source.width) * canvas.width
-  for (const stroke of strokes) {
-    if (stroke.length === 0) {
-      continue
-    }
-    context.beginPath()
-    context.moveTo(
-      ((stroke[0].x - source.x) / source.width) * canvas.width,
-      ((stroke[0].y - source.y) / source.height) * canvas.height,
-    )
-    for (const point of stroke.slice(1)) {
-      context.lineTo(
-        ((point.x - source.x) / source.width) * canvas.width,
-        ((point.y - source.y) / source.height) * canvas.height,
-      )
-    }
-    context.stroke()
-  }
+  const baseMask = baseMaskUrl ? await loadImage(baseMaskUrl) : null
+  paintCutoutMask(context, source, canvas.width, canvas.height, baseMask, strokes)
   const mask = await (await fetch(canvas.toDataURL('image/png'))).blob()
   const response = await fetch(`/api/cutout/apply/${encodeURIComponent(asset.id)}`, {
     method: 'POST',
@@ -2379,10 +2334,11 @@ async function submitCutout(
   if (!response.ok || !body.asset || !body.mask) {
     throw new Error(body.error || '抠图失败')
   }
+  const resultObjectId = `cutout-${crypto.randomUUID()}`
   store.apply(
     cmdAddObjects([
       {
-        id: `cutout-${crypto.randomUUID()}`,
+        id: resultObjectId,
         kind: 'image',
         x: source.x + source.width + 24,
         y: source.y,
@@ -2400,6 +2356,7 @@ async function submitCutout(
       },
     ]),
   )
+  return resultObjectId
 }
 
 function commitTextEditor(

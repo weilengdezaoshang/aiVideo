@@ -14,9 +14,23 @@ export class AgentApiError extends Error {
 export type AgentApi = {
   models(): Promise<AgentModels>
   snapshot(documentId: string, clientRequestId?: string): Promise<AgentSnapshot>
-  create(documentId: string, request: AgentRequest): Promise<{ run: AgentRun }>
+  create(documentId: string, request: AgentRequest): Promise<{ run: AgentRun; replayed?: boolean }>
   get(runId: string): Promise<{ run: AgentRun }>
   stop(runId: string): Promise<{ run: AgentRun }>
+  retry?(
+    runId: string,
+    requestId: string,
+    stepId: string,
+    index: number,
+  ): Promise<{ run: AgentRun }>
+  eventPath?(documentId: string): string
+  confirm?(runId: string, requestId: string, approved: boolean): Promise<{ run: AgentRun }>
+  completeCanvasAction?(
+    runId: string,
+    resultObjectId: string,
+    baseRevision: number,
+  ): Promise<{ run: AgentRun }>
+  final?(runId: string, requestId: string, baseRevision: number): Promise<{ run: AgentRun }>
 }
 
 export function createAgentApi(fetchImpl: typeof fetch = (...args) => fetch(...args)): AgentApi {
@@ -49,21 +63,91 @@ export function createAgentApi(fetchImpl: typeof fetch = (...args) => fetch(...a
       clearTimeout(timeout)
     }
   }
-  const documentPath = (id: string) => `/api/documents/${encodeURIComponent(id)}/agent`
+  let hostEnabled = false
+  let modeReady: Promise<AgentModels> | undefined
+  const hostModels = () => {
+    modeReady ??= request<AgentModels>('/api/agent/models')
+      .then((result) => {
+        hostEnabled = result.hostEnabled === true
+        return result
+      })
+      .catch((error: unknown) => {
+        modeReady = undefined
+        throw error
+      })
+    return modeReady
+  }
+  const documentPath = (id: string) =>
+    `/api/documents/${encodeURIComponent(id)}/${hostEnabled ? 'host' : 'agent'}`
   return {
-    models: () => request('/api/agent/models'),
-    snapshot: (id, clientRequestId) =>
-      request(
+    models: hostModels,
+    eventPath: (id) => `${documentPath(id)}/events`,
+    snapshot: async (id, clientRequestId) => {
+      await hostModels()
+      return request<AgentSnapshot>(
         documentPath(id) +
           (clientRequestId ? `?clientRequestId=${encodeURIComponent(clientRequestId)}` : ''),
-      ),
-    create: (id, body) =>
-      request(`${documentPath(id)}/runs`, {
+      )
+    },
+    create: async (id, body) => {
+      await hostModels()
+      return request<{ run: AgentRun; replayed?: boolean }>(
+        hostEnabled ? '/api/host/turn' : `${documentPath(id)}/runs`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            hostEnabled
+              ? {
+                  clientRequestId: body.clientRequestId,
+                  documentId: id,
+                  message: body.message,
+                  baseRevision: body.baseRevision,
+                  selectedObjectIds: body.selectedObjectIds,
+                  ...(body.context ? { context: body.context } : {}),
+                  ...(body.supersedeRunId ? { supersedeRunId: body.supersedeRunId } : {}),
+                  ...(body.clarifyOptionId ? { clarifyOptionId: body.clarifyOptionId } : {}),
+                  ...(body.clarifyRunId ? { clarifyRunId: body.clarifyRunId } : {}),
+                }
+              : body,
+          ),
+        },
+      )
+    },
+    completeCanvasAction: (id, resultObjectId, baseRevision) =>
+      request(`/api/host/runs/${encodeURIComponent(id)}/canvas-result`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ resultObjectId, baseRevision }),
       }),
-    get: (id) => request(`/api/agent/runs/${encodeURIComponent(id)}`),
-    stop: (id) => request(`/api/agent/runs/${encodeURIComponent(id)}/stop`, { method: 'POST' }),
+    get: async (id) => {
+      await hostModels()
+      return request(`/api/${hostEnabled ? 'host' : 'agent'}/runs/${encodeURIComponent(id)}`)
+    },
+    retry: (id, clientRequestId, stepId, index) =>
+      request(`/api/host/runs/${encodeURIComponent(id)}/retry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientRequestId, stepId, index }),
+      }),
+    confirm: (id, clientRequestId, approved) =>
+      request(`/api/host/runs/${encodeURIComponent(id)}/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientRequestId, approved }),
+      }),
+    final: (id, clientRequestId, baseRevision) =>
+      request(`/api/host/runs/${encodeURIComponent(id)}/confirm-final`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientRequestId, baseRevision }),
+      }),
+    stop: async (id) => {
+      await hostModels()
+      return request(
+        `/api/${hostEnabled ? 'host' : 'agent'}/runs/${encodeURIComponent(id)}/${hostEnabled ? 'cancel' : 'stop'}`,
+        { method: 'POST' },
+      )
+    },
   }
 }

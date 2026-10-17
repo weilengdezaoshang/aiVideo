@@ -31,6 +31,12 @@ export type CanvasObj = {
   nodeRun?: NodeRun
   textCard?: boolean
   backgroundColor?: string
+  assetVersion?: number
+  busyRunId?: string
+  createdByRunId?: string
+  createdByStepId?: string
+  badge?: 'preview' | 'final' | 'review_soft_fail'
+  qualityIssue?: string
   assetId?: string
   /** 资产是否带缩略图(无则只用原图) */
   hasThumbs?: boolean

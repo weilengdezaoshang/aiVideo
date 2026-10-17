@@ -31,6 +31,8 @@ function isMouse(event: CanvasInputEvent): event is CanvasMouseEvent {
 
 export class CanvasLayer implements EventLayer {
   readonly id = 'canvas' as const
+  private wheelMode: 'pan' | 'zoom' | null = null
+  private lastWheelAt = -Infinity
 
   hit(event: CanvasMouseEvent, context: LayerContext): EventMono | null {
     const wantsPan = event.button === 0 || event.button === 1 || event.modifiers.space
@@ -42,10 +44,21 @@ export class CanvasLayer implements EventLayer {
       return PASS
     }
     if (event.type === 'wheel' && event.wheelDelta) {
-      const isZoom =
-        event.modifiers.ctrl || Math.abs(event.wheelDelta.y) >= Math.abs(event.wheelDelta.x)
+      // Keep a scroll burst in one mode: incidental pinch events must not turn a pan into zoom.
+      const now = event.wheelTime ?? performance.now()
+      if (now - this.lastWheelAt > 200) {
+        this.wheelMode = event.modifiers.ctrl ? 'zoom' : 'pan'
+      }
+      if (!event.modifiers.ctrl) {
+        this.wheelMode = 'pan'
+      }
+      this.lastWheelAt = now
+      const isZoom = this.wheelMode === 'zoom' && event.modifiers.ctrl
       if (isZoom) {
-        const factor = event.wheelDelta.y < 0 ? 1.1 : 1 / 1.1
+        if (event.wheelDelta.y === 0) {
+          return HANDLED
+        }
+        const factor = Math.exp(-Math.max(-100, Math.min(100, event.wheelDelta.y)) / 200)
         const scale = Math.min(8, Math.max(0.05, context.camera.scale * factor))
         const world = event.worldPoint
         context.emit({
@@ -261,14 +274,28 @@ export class TextLayer implements EventLayer {
 export class MaskLayer implements EventLayer {
   readonly id = 'mask' as const
 
-  hit(event: CanvasMouseEvent, _context: LayerContext): EventMono | null {
-    if (event.type === 'lbutton-down' && event.target?.kind === 'object') {
-      return new MaskPaintMono(event, event.target.objectId)
+  hit(event: CanvasMouseEvent, context: LayerContext): EventMono | null {
+    if (
+      event.type === 'lbutton-down' &&
+      event.target?.kind === 'object' &&
+      context.selection.ids.length === 1 &&
+      context.selection.ids[0] === event.target.objectId
+    ) {
+      return new MaskPaintMono(event, event.target.objectId, {
+        mode: context.maskBrush?.mode ?? 'paint',
+        width: (context.maskBrush?.size ?? 22) / context.camera.scale,
+      })
     }
     return null
   }
 
-  onInput(_event: CanvasInputEvent, _context: LayerContext): EventResult {
+  onInput(event: CanvasInputEvent, context: LayerContext): EventResult {
+    if (event.type === 'lbutton-down') {
+      context.emit({
+        type: 'selection-changed',
+        objectIds: event.target?.kind === 'object' ? [event.target.objectId] : [],
+      })
+    }
     return HANDLED
   }
 }

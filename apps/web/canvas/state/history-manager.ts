@@ -26,7 +26,11 @@ export type HistoryManager = {
 
 export function createHistoryManager(
   doc: CommandDoc,
-  options: { limit?: number; onDocumentChange?: () => void } = {},
+  options: {
+    limit?: number
+    onDocumentChange?: () => void
+    canApply?: (command: CanvasCommand) => boolean
+  } = {},
 ): HistoryManager {
   const undoStack: CanvasCommand[] = []
   const redoStack: CanvasCommand[] = []
@@ -42,13 +46,17 @@ export function createHistoryManager(
   }
 
   return {
-    canUndo: () => undoStack.length > 0,
-    canRedo: () => redoStack.length > 0,
+    canUndo: () =>
+      undoStack.length > 0 && (options.canApply?.(invertCommand(undoStack.at(-1)!)) ?? true),
+    canRedo: () => redoStack.length > 0 && (options.canApply?.(redoStack.at(-1)!) ?? true),
     subscribe(listener) {
       listeners.add(listener)
       return () => listeners.delete(listener)
     },
     apply(command, { coalesce = true } = {}) {
+      if (options.canApply?.(command) === false) {
+        throw new Error('node_busy: 请先取消生成任务，再删除或替换节点')
+      }
       applyCommand(doc, command)
       redoStack.length = 0
       const now = Date.now()
@@ -70,6 +78,9 @@ export function createHistoryManager(
       emit('apply', command)
     },
     undo() {
+      if (undoStack.length && options.canApply?.(invertCommand(undoStack.at(-1)!)) === false) {
+        return false
+      }
       const command = undoStack.pop()
       if (!command) {
         return false
@@ -81,6 +92,9 @@ export function createHistoryManager(
       return true
     },
     redo() {
+      if (redoStack.length && options.canApply?.(redoStack.at(-1)!) === false) {
+        return false
+      }
       const command = redoStack.pop()
       if (!command) {
         return false

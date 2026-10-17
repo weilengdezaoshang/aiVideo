@@ -1,3 +1,4 @@
+import { mergeRemoteDocument, sameDocumentValue } from './remote-document.js'
 import { clearLocalDraftIfMatches, draftMatchesDocument, writeLocalDraft } from './document-api.js'
 import type { CanvasDocData } from './doc-store.js'
 
@@ -7,6 +8,7 @@ export type AutoSaverOptions = {
   getDoc: () => CanvasDocData
   fetchImpl?: typeof fetch
   onStatus?: (status: SaveStatus, detail?: string) => void
+  onRemoteDocument?: (document: CanvasDocData) => void
   debounceMs?: number
 }
 export type AutoSaver = {
@@ -14,6 +16,7 @@ export type AutoSaver = {
   flush(options?: { force?: boolean }): Promise<void>
   forceSave(): Promise<void>
   ensureSaved(): Promise<number>
+  syncRemote(): Promise<void>
   readonly inConflict: boolean
   clearConflict(): void
   flushOnUnload(): void
@@ -40,6 +43,7 @@ export function createAutoSaver(options: AutoSaverOptions): AutoSaver {
   let acknowledged = snapshot()
   let timer: ReturnType<typeof setTimeout> | undefined
   let running: Promise<void> | undefined
+  let syncing: Promise<void> | undefined
   let requested = false
   let dirty = false
   let unloading = false
@@ -110,6 +114,67 @@ export function createAutoSaver(options: AutoSaverOptions): AutoSaver {
     return running
   }
 
+  function syncRemote(): Promise<void> {
+    if (syncing) {
+      return syncing
+    }
+    const work = (async () => {
+      if (running) {
+        await running
+      }
+      clearTimer()
+      try {
+        const response = await fetchImpl(url)
+        if (!response.ok) {
+          throw new Error('无法同步最新画布')
+        }
+        const body = (await response.json()) as { document: CanvasDocData }
+        const remote = body.document
+        if (!Number.isInteger(remote.revision) || remote.id !== docId) {
+          throw new Error('画布同步响应无效')
+        }
+        if ((remote.revision ?? 0) <= (getDoc().revision ?? 0)) {
+          return
+        }
+        const merged = mergeRemoteDocument(acknowledged, snapshot(), remote)
+        // Unchanged objects keep their identity, so unrelated Host results do not
+        // invalidate a live cutout/selection operation on another source.
+        for (const [id, node] of Object.entries(merged.objects)) {
+          const current = getDoc().objects[id]
+          if (current && sameDocumentValue(current, node)) {
+            merged.objects[id] = current
+          }
+        }
+        if (options.onRemoteDocument) {
+          options.onRemoteDocument(merged)
+        } else {
+          Object.assign(getDoc(), merged)
+        }
+        acknowledged = structuredClone(remote)
+        inConflict = false
+        lastSaveError = undefined
+        dirty = !draftMatchesDocument(getDoc(), acknowledged)
+        if (dirty) {
+          writeLocalDraft(docId, snapshot())
+          timer = setTimeout(() => {
+            void flush()
+          }, debounceMs)
+        }
+        onStatus(dirty ? 'saving' : 'saved')
+      } catch (cause) {
+        inConflict = true
+        lastSaveError = cause instanceof Error ? cause : new Error('画布同步失败')
+        writeLocalDraft(docId, snapshot())
+        onStatus('conflict', lastSaveError.message)
+        throw lastSaveError
+      }
+    })()
+    syncing = work.finally(() => {
+      syncing = undefined
+    })
+    return syncing
+  }
+
   return {
     markDirty() {
       dirty = true
@@ -128,6 +193,7 @@ export function createAutoSaver(options: AutoSaverOptions): AutoSaver {
       }
     },
     flush,
+    syncRemote,
     async ensureSaved() {
       clearTimer()
       if (running) {

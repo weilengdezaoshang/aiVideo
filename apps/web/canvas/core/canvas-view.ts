@@ -27,6 +27,8 @@ import type {
   InteractionCancelReason,
   InteractionType,
   LayerContext,
+  MaskBrush,
+  MaskStroke,
   LayerOutput,
   ObjectPreview,
   Point,
@@ -54,6 +56,9 @@ export interface CanvasView {
   activateTool(tool: CanvasTool): void
   cancelCurrentOperation(reason?: InteractionCancelReason): void
   clearMaskDraft(): void
+  setMaskBrush(brush: MaskBrush): void
+  undoMaskStroke(): void
+  redoMaskStroke(): void
 
   select(ids: readonly string[], mode?: SelectionMode): void
   clearSelection(): void
@@ -102,7 +107,10 @@ export class CanvasViewImpl implements CanvasView {
   private marquee: CanvasViewSnapshot['marquee'] = null
   private connectionPreview: CanvasViewSnapshot['connectionPreview'] = null
   private maskStroke: CanvasViewSnapshot['maskStroke'] = null
-  private maskStrokes: Array<readonly Point[]> = []
+  private maskEdits: MaskStroke[] = []
+  private maskRedoEdits: MaskStroke[] = []
+  private maskBrush: MaskBrush = { mode: 'paint', size: 22 }
+  private maskStrokeStyle: Omit<MaskStroke, 'points'> = { mode: 'paint', width: 22 }
   private inpaintRegion: CanvasViewSnapshot['inpaintRegion'] = null
   private spacePressed = false
   private snapshot: CanvasViewSnapshot
@@ -157,7 +165,8 @@ export class CanvasViewImpl implements CanvasView {
     this.cancelCurrentOperation('mode-change')
     if (this.requestedTool === 'mask' && tool !== 'mask') {
       this.maskStroke = null
-      this.maskStrokes = []
+      this.maskEdits = []
+      this.maskRedoEdits = []
     }
     if (!this.canActivate(tool)) {
       return
@@ -178,7 +187,32 @@ export class CanvasViewImpl implements CanvasView {
 
   clearMaskDraft(): void {
     this.maskStroke = null
-    this.maskStrokes = []
+    this.maskEdits = []
+    this.maskRedoEdits = []
+    this.publishSnapshot()
+  }
+
+  setMaskBrush(brush: MaskBrush): void {
+    this.cancelCurrentOperation('mode-change')
+    this.maskBrush = { mode: brush.mode, size: Math.max(4, Math.min(120, brush.size)) }
+    this.publishSnapshot()
+  }
+
+  undoMaskStroke(): void {
+    this.cancelCurrentOperation('mode-change')
+    const edit = this.maskEdits.pop()
+    if (edit) {
+      this.maskRedoEdits.push(edit)
+    }
+    this.publishSnapshot()
+  }
+
+  redoMaskStroke(): void {
+    this.cancelCurrentOperation('mode-change')
+    const edit = this.maskRedoEdits.pop()
+    if (edit) {
+      this.maskEdits.push(edit)
+    }
     this.publishSnapshot()
   }
 
@@ -234,7 +268,7 @@ export class CanvasViewImpl implements CanvasView {
     }
     const copies = this.selection.flatMap((id) => {
       const source = this.store.doc.objects[id]
-      if (!source) {
+      if (!source || source.busyRunId) {
         return []
       }
       return [
@@ -387,6 +421,14 @@ export class CanvasViewImpl implements CanvasView {
     if (event.type === 'key-down') {
       const command = event.modifiers.meta || event.modifiers.ctrl
       if (command && event.key.toLowerCase() === 'z') {
+        if (this.requestedTool === 'mask') {
+          if (event.modifiers.shift) {
+            this.redoMaskStroke()
+          } else {
+            this.undoMaskStroke()
+          }
+          return
+        }
         if (event.modifiers.shift) {
           this.redo()
         } else {
@@ -495,6 +537,7 @@ export class CanvasViewImpl implements CanvasView {
       camera: this.camera,
       viewport: this.viewport,
       capabilities: this.capabilities(),
+      maskBrush: this.maskBrush,
       emit: (output) => this.handleLayerOutput(output),
     }
   }
@@ -543,10 +586,17 @@ export class CanvasViewImpl implements CanvasView {
         })
         return
       case 'mask-stroke-changed':
+        if (output.style) {
+          this.maskStrokeStyle = { ...output.style }
+        }
         this.maskStroke = output.points ? [...output.points] : null
         return
       case 'mask-stroke-committed':
-        this.maskStrokes = [...this.maskStrokes, [...output.points]]
+        this.maskEdits = [
+          ...this.maskEdits,
+          { ...(output.style ?? this.maskStrokeStyle), points: [...output.points] },
+        ]
+        this.maskRedoEdits = []
         this.events.emit('mask:stroke-committed', {
           sourceId: output.sourceId,
           points: output.points,
@@ -589,10 +639,14 @@ export class CanvasViewImpl implements CanvasView {
     const edit = this.layers.getState().base !== 'readonly-select'
     return {
       canEdit: this.configuredCapabilities.canEdit ?? edit,
-      canDelete: this.configuredCapabilities.canDelete ?? edit,
+      canDelete:
+        (this.configuredCapabilities.canDelete ?? edit) &&
+        this.selection.every((id) => !this.store.doc.objects[id]?.busyRunId),
       canTransform: this.configuredCapabilities.canTransform ?? edit,
       canConnect: this.configuredCapabilities.canConnect ?? edit,
-      canGenerate: this.configuredCapabilities.canGenerate ?? edit,
+      canGenerate:
+        (this.configuredCapabilities.canGenerate ?? edit) &&
+        this.selection.every((id) => !this.store.doc.objects[id]?.busyRunId),
       canUseMask: this.configuredCapabilities.canUseMask ?? edit,
       canUndo: this.store.canUndo(),
       canRedo: this.store.canRedo(),
@@ -615,7 +669,15 @@ export class CanvasViewImpl implements CanvasView {
         ? Object.freeze({ ...this.connectionPreview })
         : null,
       maskStroke: this.maskStroke ? Object.freeze([...this.maskStroke]) : null,
-      maskStrokes: Object.freeze(this.maskStrokes.map((stroke) => Object.freeze([...stroke]))),
+      maskStrokes: Object.freeze(this.maskEdits.map((edit) => Object.freeze([...edit.points]))),
+      maskEdits: Object.freeze(
+        this.maskEdits.map((edit) =>
+          Object.freeze({ ...edit, points: Object.freeze([...edit.points]) }),
+        ),
+      ),
+      maskBrush: Object.freeze({ ...this.maskBrush }),
+      maskStrokeStyle: Object.freeze({ ...this.maskStrokeStyle }),
+      canRedoMask: this.maskRedoEdits.length > 0,
       inpaintRegion: this.inpaintRegion ? Object.freeze({ ...this.inpaintRegion }) : null,
     })
   }

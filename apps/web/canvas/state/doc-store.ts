@@ -119,7 +119,28 @@ export function createDocStore(initialDoc: CanvasDocData): DocStore {
     }
   }
 
-  const history = createHistoryManager(doc, { onDocumentChange: () => notify('command') })
+  const canApply = (command: CanvasCommand): boolean => {
+    switch (command.type) {
+      case 'batch':
+        return command.commands.every(canApply)
+      case 'removeObjects':
+        return command.entries.every((entry) => !doc.objects[entry.object.id]?.busyRunId)
+      case 'addObjects':
+        return command.objects.every((object) => !doc.objects[object.id]?.busyRunId)
+      case 'generateNode':
+        return !doc.objects[command.objectId]?.busyRunId
+      case 'updateObject':
+        return (
+          !doc.objects[command.id]?.busyRunId ||
+          Object.keys(command.patch).every((key) =>
+            ['x', 'y', 'width', 'height', 'rotation'].includes(key),
+          )
+        )
+      default:
+        return true
+    }
+  }
+  const history = createHistoryManager(doc, { onDocumentChange: () => notify('command'), canApply })
 
   return {
     doc,

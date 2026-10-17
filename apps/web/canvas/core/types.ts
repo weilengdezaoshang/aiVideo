@@ -2,6 +2,8 @@ import type { CanvasCommand, CanvasObj } from '../state/commands.js'
 import type { CanvasDocData } from '../state/doc-store.js'
 
 export type Point = { x: number; y: number }
+export type MaskBrush = { mode: 'paint' | 'erase'; size: number }
+export type MaskStroke = { mode: MaskBrush['mode']; width: number; points: readonly Point[] }
 export type Rect = { x: number; y: number; width: number; height: number }
 export type CameraState = { x: number; y: number; scale: number }
 
@@ -65,6 +67,8 @@ export type CanvasMouseEvent = {
   modifiers: CanvasModifiers
   target: CanvasHitTarget | null
   wheelDelta?: Point
+  /** Monotonic timestamp used to keep one wheel gesture in a consistent mode. */
+  wheelTime?: number
 }
 
 export type CanvasKeyboardEvent = {
@@ -103,6 +107,10 @@ export type CanvasViewSnapshot = {
   connectionPreview: { sourceId: string; start: Point; end: Point } | null
   maskStroke: readonly Point[] | null
   maskStrokes: readonly (readonly Point[])[]
+  maskEdits: readonly MaskStroke[]
+  maskBrush: MaskBrush
+  maskStrokeStyle: Omit<MaskStroke, 'points'>
+  canRedoMask: boolean
   inpaintRegion: Rect | null
 }
 
@@ -140,8 +148,17 @@ export type LayerOutput =
       preview: { sourceId: string; start: Point; end: Point } | null
     }
   | { type: 'connection-requested'; sourceId: string; targetId: string }
-  | { type: 'mask-stroke-changed'; points: readonly Point[] | null }
-  | { type: 'mask-stroke-committed'; sourceId: string; points: readonly Point[] }
+  | {
+      type: 'mask-stroke-changed'
+      points: readonly Point[] | null
+      style?: Omit<MaskStroke, 'points'>
+    }
+  | {
+      type: 'mask-stroke-committed'
+      sourceId: string
+      points: readonly Point[]
+      style?: Omit<MaskStroke, 'points'>
+    }
   | { type: 'inpaint-region-changed'; region: Rect | null }
   | { type: 'inpaint-region-committed'; sourceId: string; region: Rect }
   | {
@@ -163,6 +180,7 @@ export type LayerContext = {
   readonly camera: CameraState
   readonly viewport: { width: number; height: number }
   readonly capabilities: ViewCapabilities
+  readonly maskBrush?: MaskBrush
   emit(output: LayerOutput): void
 }
 

@@ -58,6 +58,41 @@ function setup(readonly = false) {
   }
 }
 
+test('双指滚动在所有方向平移画布并保持缩放比例', () => {
+  const { view } = setup()
+  const initial = view.getSnapshot().camera
+  for (const delta of [
+    { x: 0, y: 60 },
+    { x: 40, y: 0 },
+    { x: -20, y: -80 },
+  ]) {
+    const before = view.getSnapshot().camera
+    view.dispatchInput({ ...pointer('wheel', 100, 100), wheelDelta: delta })
+    assert.deepEqual(view.getSnapshot().camera, {
+      x: before.x + delta.x / before.scale,
+      y: before.y + delta.y / before.scale,
+      scale: initial.scale,
+    })
+  }
+  view.destroy()
+})
+
+test('捏合或 Ctrl 滚动仍围绕指针缩放画布', () => {
+  const { view } = setup()
+  const screenPoint = { x: 100, y: 100 }
+  const worldPoint = view.screenToWorld(screenPoint)
+  const before = view.getSnapshot().camera.scale
+  view.dispatchInput({
+    ...pointer('wheel', 100, 100),
+    worldPoint,
+    modifiers: { ...modifiers, ctrl: true },
+    wheelDelta: { x: 0, y: -60 },
+  })
+  assert.ok(view.getSnapshot().camera.scale > before)
+  assert.deepEqual(view.screenToWorld(screenPoint), worldPoint)
+  view.destroy()
+})
+
 test('CanvasView 通过 Layer/Mono 将拖动提交为单条 Command', () => {
   const { store, view } = setup()
   view.dispatchInput(pointer('lbutton-down', 20, 30, { kind: 'object', objectId: 'one' }))
@@ -196,6 +231,7 @@ test('蒙版笔画高频数据留在 Snapshot，结束时才流向上层', () =>
   const { store, view } = setup()
   const committed: Array<readonly { x: number; y: number }[]> = []
   view.on('mask:stroke-committed', ({ points }) => committed.push(points))
+  view.select(['one'])
   view.activateTool('mask')
   view.dispatchInput(pointer('lbutton-down', 20, 30, { kind: 'object', objectId: 'one' }))
   view.dispatchInput(pointer('move', 24, 35, { kind: 'object', objectId: 'one' }))
@@ -242,5 +278,65 @@ test('Shift 点击切换多选成员', () => {
   view.dispatchInput(event)
   view.dispatchInput(pointer('lbutton-up', 210, 210, { kind: 'object', objectId: 'two' }))
   assert.deepEqual(view.getSnapshot().selection, ['one', 'two'])
+  view.destroy()
+})
+
+test('连续平移中混入 Ctrl wheel 不切换缩放，停顿后可开始捏合', () => {
+  const { view } = setup()
+  const send = (time: number, ctrl: boolean, y: number) =>
+    view.dispatchInput({
+      ...pointer('wheel', 100, 100),
+      worldPoint: view.screenToWorld({ x: 100, y: 100 }),
+      modifiers: { ...modifiers, ctrl },
+      wheelTime: time,
+      wheelDelta: { x: 0, y },
+    })
+  send(0, false, 20)
+  send(16, true, -0.1)
+  send(32, false, -30)
+  assert.equal(view.getSnapshot().camera.scale, 1)
+  send(400, true, 0)
+  assert.equal(view.getSnapshot().camera.scale, 1)
+  send(416, true, -0.1)
+  assert.ok(view.getSnapshot().camera.scale > 1)
+  assert.ok(view.getSnapshot().camera.scale < 1.001, '微小捏合不会跳变 10%')
+  view.destroy()
+})
+
+test('抠图笔刷按下时固定模式与世界宽度，撤销重做不影响文档历史', () => {
+  const { store, view } = setup()
+  view.select(['one'])
+  view.activateTool('mask')
+  view.setMaskBrush({ mode: 'erase', size: 40 })
+  const target = { kind: 'object', objectId: 'one' } as const
+  view.dispatchInput(pointer('lbutton-down', 20, 30, target))
+  view.dispatchInput(pointer('lbutton-up', 30, 40, target))
+  assert.equal(view.getSnapshot().maskEdits[0].mode, 'erase')
+  assert.equal(view.getSnapshot().maskEdits[0].width, 40 / view.getSnapshot().camera.scale)
+  view.dispatchInput(key('z', { meta: true }))
+  assert.equal(view.getSnapshot().maskEdits.length, 0)
+  assert.equal(view.getSnapshot().canRedoMask, true)
+  view.dispatchInput(key('z', { meta: true, shift: true }))
+  assert.equal(view.getSnapshot().maskEdits.length, 1)
+  assert.equal(store.canUndo(), false)
+  view.undoMaskStroke()
+  view.setMaskBrush({ mode: 'paint', size: 12 })
+  view.dispatchInput(pointer('lbutton-down', 20, 30, target))
+  view.dispatchInput(pointer('lbutton-up', 30, 40, target))
+  assert.equal(view.getSnapshot().canRedoMask, false)
+  assert.equal(view.getSnapshot().maskEdits[0].mode, 'paint')
+  view.activateTool('select')
+  assert.equal(view.getSnapshot().maskEdits.length, 0)
+  assert.equal(view.getSnapshot().canRedoMask, false)
+  view.destroy()
+})
+
+test('蒙版模式点击其他对象只切换选择，不把笔画画到其他对象', () => {
+  const { view } = setup()
+  view.select(['one'])
+  view.activateTool('mask')
+  view.dispatchInput(pointer('lbutton-down', 220, 220, { kind: 'object', objectId: 'two' }))
+  assert.deepEqual(view.getSnapshot().selection, ['two'])
+  assert.equal(view.getSnapshot().maskEdits.length, 0)
   view.destroy()
 })
