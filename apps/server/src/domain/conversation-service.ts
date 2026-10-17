@@ -1,3 +1,5 @@
+import { CapabilityError } from '../agent/capabilities.js'
+import { RoutingError, type IntentInput, type ClarificationReply } from '../agent/intent.js'
 import { randomUUID } from 'node:crypto'
 import type { AgentLoop } from '../agent/host.js'
 import type { Ports } from '../ports/index.js'
@@ -93,6 +95,9 @@ export class ConversationService {
     private ports: Ports,
     private host: AgentLoop,
   ) {}
+  capabilities() {
+    return this.host.publicCapabilities()
+  }
   private async allow(key: string) {
     const result = await this.ports.limiter.allow(key)
     if (!result.ok) {
@@ -105,11 +110,18 @@ export class ConversationService {
       throw new RateLimitError('同时执行的任务过多', result.retryAfterMs)
     }
   }
-  async prepare(prompt: string, conversationId?: string) {
+  async prepare(
+    prompt: string,
+    conversationId?: string,
+    imageRefs?: string[],
+    intentContext?: Pick<IntentInput, 'canvas' | 'quota'>,
+  ) {
     const key = conversationId ?? 'anonymous'
     await this.admit(key)
     try {
       const turn = await this.prepareNew(prompt, conversationId)
+      turn.imageRefs = imageRefs
+      turn.intentContext = intentContext
       turn.admissionKey = key
       return turn
     } catch (error) {
@@ -133,9 +145,36 @@ export class ConversationService {
     // 被取消/失败的尝试不能复用队列终态收据；保留计划步骤 ID，仅更换执行 ID。
     for (let index = turn.execution.index; index < turn.execution.calls.length; index++) {
       const call = turn.execution.calls[index]!
-      const job = await this.ports.queue.getByIdempotencyKey(call.id)
+      const job = await this.ports.queue.getByIdempotencyKey(
+        (turn.execution.generationAttempts?.[call.id] ?? 1) === 1
+          ? call.id
+          : `${call.id}:${turn.execution.generationAttempts?.[call.id]}`,
+      )
       if (job?.status === 'cancelled' || job?.status === 'failed') {
-        turn.execution.calls[index] = { ...call, id: randomUUID() }
+        const replacementId = randomUUID()
+        const attempt = turn.execution.generationAttempts?.[call.id]
+        if (attempt !== undefined) {
+          turn.execution.generationAttempts![replacementId] = attempt
+          delete turn.execution.generationAttempts![call.id]
+        }
+        turn.execution.calls[index] = { ...call, id: replacementId }
+        for (const later of turn.execution.calls) {
+          if (later.dag) {
+            later.dag.dependsOn = later.dag.dependsOn.map((id) =>
+              id === call.id ? replacementId : id,
+            )
+          }
+          if (
+            later.args &&
+            typeof later.args === 'object' &&
+            'frameCallIds' in later.args &&
+            Array.isArray(later.args.frameCallIds)
+          ) {
+            later.args.frameCallIds = later.args.frameCallIds.map((id: unknown) =>
+              id === call.id ? replacementId : id,
+            )
+          }
+        }
       }
     }
     // 续用工具 ID 与游标，已完成任务不重复 enqueue；积分审批重新进行。
@@ -156,13 +195,17 @@ export class ConversationService {
         step.status = 'pending'
       }
     }
-    turn.message.parts = [{ kind: 'text', text: '接着上次计划继续。\n' }]
+    turn.message.parts = [
+      { kind: 'text', text: '接着上次计划继续。\n' },
+      ...(draft.messagePartsUseful ?? []),
+    ]
     if (turn.execution.plan) {
       turn.message.parts.push({
         kind: 'plan',
         explanation: turn.execution.plan.explanation,
         steps: turn.execution.plan.steps.map((s) => ({
           id: s.id,
+          title: s.title,
           text: s.title,
           status: s.status,
         })),
@@ -177,10 +220,15 @@ export class ConversationService {
     }
     return turn
   }
-  async prepareResume(conversationId: string, confirmId: string, approved: boolean) {
+  async prepareResume(
+    conversationId: string,
+    confirmId: string,
+    approved: boolean,
+    clarification?: ClarificationReply,
+  ) {
     await this.admit(conversationId)
     try {
-      const prepared = await this.resume(conversationId, confirmId, approved)
+      const prepared = await this.resume(conversationId, confirmId, approved, clarification)
       prepared.turn.admissionKey = conversationId
       return prepared
     } catch (error) {
@@ -192,6 +240,7 @@ export class ConversationService {
     conversationId: string,
     confirmId: string,
     approved: boolean,
+    clarification?: ClarificationReply,
   ): Promise<{ turn: Turn; resume: ResumeContext }> {
     await this.allow(conversationId)
     for (const record of await this.ports.sessions.listTurns(conversationId)) {
@@ -206,6 +255,17 @@ export class ConversationService {
       if (!snapshot?.continuation || snapshot.confirmId !== confirmId) {
         throw new ResumeError('确认已处理或已失效', 409)
       }
+      if (Date.now() - Date.parse(snapshot.savedAt) > 24 * 60 * 60 * 1000) {
+        throw new ResumeError('确认已超过 24 小时，请重新发起', 409)
+      }
+      let continuation = structuredClone(snapshot.continuation)
+      if (approved && snapshot.interrupt_kind === 'clarify') {
+        try {
+          continuation = await this.host.resolveClarification(continuation, clarification)
+        } catch (error) {
+          throw new ResumeError(error instanceof Error ? error.message : '澄清信息不合法', 409)
+        }
+      }
       const claim = await this.ports.sessions.claimInterrupt(record.id, confirmId, approved)
       if (claim !== 'claimed') {
         throw new ResumeError(
@@ -215,7 +275,7 @@ export class ConversationService {
       }
       const turn = restore(record)
       // 唯一恢复来源：SessionStore 的可序列化 snapshot。
-      turn.execution = structuredClone(snapshot.continuation)
+      turn.execution = continuation
       turn.status = approved ? 'running' : 'cancelled'
       turn.message.status = approved ? 'streaming' : 'cancelled'
       const card = turn.message.parts.find((p) => p.kind === 'confirm' && p.confirmId === confirmId)
@@ -226,9 +286,12 @@ export class ConversationService {
       if (interrupt) {
         interrupt.resumed = approved
       }
-      if (approved) {
+      if (approved && snapshot.interrupt_kind !== 'clarify') {
         turn.execution.approvedCallIds.push(
-          ...turn.execution.calls.slice(turn.execution.index).map((c) => c.id),
+          ...turn.execution.calls.slice(turn.execution.index).map((c) => {
+            const attempt = turn.execution!.generationAttempts?.[c.id] ?? 1
+            return attempt === 1 ? c.id : `${c.id}:${attempt}`
+          }),
         )
         for (const call of turn.execution.toolCalls) {
           if (call.status === 'wait_user_response' && call.id !== snapshot.pendingToolCall?.id) {
@@ -241,6 +304,9 @@ export class ConversationService {
           sourceTurnId: turn.turnId,
           originalPrompt: turn.prompt,
           execution: structuredClone(turn.execution),
+          messagePartsUseful: structuredClone(
+            turn.message.parts.filter((p) => p.kind === 'artifact' && p.status === 'success'),
+          ),
           savedAt: new Date().toISOString(),
         })
         const text = turn.message.parts.find((p) => p.kind === 'text')
@@ -278,6 +344,9 @@ export class ConversationService {
         sourceTurnId: turn.turnId,
         originalPrompt: turn.prompt,
         execution: structuredClone(turn.execution),
+        messagePartsUseful: structuredClone(
+          turn.message.parts.filter((p) => p.kind === 'artifact' && p.status === 'success'),
+        ),
         savedAt: new Date().toISOString(),
       })
     }
@@ -309,6 +378,8 @@ export class ConversationService {
       turns: [
         {
           turnId: turn.turnId,
+          intent: state?.intent,
+          planValidation: state?.planValidation,
           agents: (['host', 'planner'] as const)
             .filter((name) => (state?.agents[name] ?? 0) > 0)
             .map((name) => ({ name, steps: state!.agents[name] })),
@@ -407,8 +478,21 @@ export class ConversationService {
       turn.status = signal.aborted ? 'cancelled' : 'failed'
       turn.message.status = turn.status
       failure = signal.aborted ? undefined : error instanceof Error ? error.message : '执行失败'
+      if (error instanceof RoutingError && turn.execution && error.code === 'plan_invalid') {
+        turn.execution.planValidation = {
+          valid: false,
+          code: 'plan_invalid',
+          errors: [error.message],
+        }
+      }
       if (failure) {
-        turn.message.parts.push({ kind: 'error', message: failure })
+        turn.message.parts.push({
+          kind: 'error',
+          message: failure,
+          ...(error instanceof RoutingError || error instanceof CapabilityError
+            ? { code: error.code }
+            : {}),
+        })
       }
       terminalParts(turn)
     }
@@ -471,6 +555,7 @@ export class ConversationService {
             kind: 'system',
             type: 'interrupt_approval',
             confirmId: card.confirmId,
+            interrupt_kind: card.interrupt_kind,
             title: card.title,
             estimateCredits: card.estimateCredits,
             summary: card.summary,

@@ -419,7 +419,7 @@ test('取消保存 draft；继续跨轮恢复同一计划并重新确认，明�
   assert.equal(finalMessage(fresh).parts.filter((p) => p.kind === 'artifact').length, 1)
   assert.equal(
     finalMessage(fresh).parts.some((p) => p.kind === 'plan'),
-    false,
+    true,
   )
 })
 
@@ -571,16 +571,20 @@ test('S4 异步队列并发幂等、取消、超时与背压', async () => {
     /队列已满/,
   )
   controller.abort()
+  // 不合作 handler 仍占容量，enqueue 必须等待实际结束再交回槽位。
+  await assert.rejects(
+    queue.enqueue({ name: 'slow', payload: {}, idempotencyKey: 'cancel-pending' }),
+    /队列已满/,
+  )
+  release?.()
   await settled
   assert.equal((await queue.getByIdempotencyKey('one'))?.status, 'cancelled')
-  // 不合作 handler 仍占容量，直到实际结束；迟到成功不能覆写取消。
-  release?.()
   await new Promise<void>((resolve) => setImmediate(resolve))
   assert.equal((await queue.getByIdempotencyKey('one'))?.status, 'cancelled')
   const timeout = queue.enqueue({ name: 'slow', payload: {}, idempotencyKey: 'timeout' })
+  setTimeout(() => release?.(), 20)
   await assert.rejects(timeout, /任务超时/)
   assert.equal((await queue.getByIdempotencyKey('timeout'))?.status, 'failed')
-  release?.()
 })
 
 test('review 回归：生成中停止后继续使用新执行 ID，原计划步骤 ID 保留', async () => {

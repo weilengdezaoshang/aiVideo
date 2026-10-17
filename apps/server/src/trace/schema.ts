@@ -1,8 +1,13 @@
+import { intentResultSchema } from '../agent/intent.js'
+import { planValidationSchema } from '../agent/plan.js'
 import { z } from 'zod'
+import { evidenceSchema } from '../agent/reflection.js'
 
 /** 冻结的 AgentTraceV1（PORTS_AND_TRACE §5） */
 export const agentTraceTurnV1Schema = z.object({
   turnId: z.string().min(1),
+  intent: intentResultSchema.optional(),
+  planValidation: planValidationSchema.optional(),
   agents: z.array(
     z.object({
       name: z.string().min(1),
@@ -33,6 +38,18 @@ export const agentTraceTurnV1Schema = z.object({
       ]),
       credits: z.number().nonnegative().optional(),
       jobId: z.string().optional(),
+      capabilityId: z.string().optional(),
+      tier: z.enum(['preview', 'final']).optional(),
+      bindingVersion: z.string().optional(),
+      adapter: z.enum(['mock', 'cloud', 'comfyui']).optional(),
+      modelId: z.string().optional(),
+      dependsOn: z.array(z.string()).optional(),
+      targetNodes: z.array(z.string()).optional(),
+      parallelGroup: z.string().optional(),
+      evidence: evidenceSchema.optional(),
+      reviewHistory: z.array(evidenceSchema).optional(),
+      reviewAttempts: z.number().int().nonnegative().optional(),
+      reviewOutcome: z.enum(['accepted', 'retried', 'escalated']).optional(),
     }),
   ),
   interrupts: z.array(

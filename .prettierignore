@@ -15,3 +15,8 @@ docs/performance/
 .ruff_cache
 
 .web-build/
+
+# 词表使用 JSON 子集，运行时由 JSON.parse 读取，不能改写为 YAML 语法。
+config/intent_lexicon.yaml
+# 外部只读例句依据保留原始格式。
+docs/intent/exemplars/exemplars.yaml

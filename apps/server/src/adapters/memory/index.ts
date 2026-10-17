@@ -1,3 +1,4 @@
+import { IntentGate } from '../../agent/intent.js'
 import { randomUUID } from 'node:crypto'
 import { setTimeout as sleep } from 'node:timers/promises'
 import type {
@@ -487,6 +488,19 @@ export class MemoryTaskQueue implements TaskQueue {
       signal?.throwIfAborted()
       await this.complete(jobId, result)
     } catch (error: unknown) {
+      // Abort cannot forcibly stop a native provider. Retain its slot and late receipt
+      // until the handler settles; callers must never publish a cancelled artifact.
+      if (controller.signal.aborted) {
+        try {
+          const lateResult = await work
+          const receipt = this.jobs.get(jobId)
+          if (receipt) {
+            receipt.result = structuredClone(lateResult)
+          }
+        } catch {
+          /* the provider acknowledged cancellation or failed */
+        }
+      }
       if (signal?.aborted) {
         const j = this.jobs.get(jobId)
         if (j) {
@@ -667,6 +681,7 @@ export class MemoryAsyncQueue extends MemoryTaskQueue {
       maxPending?: number
       retentionMs?: number
       maxRecords?: number
+      clock?: () => number
     } = {},
   ) {
     super({ ...options, async: true })
@@ -677,6 +692,41 @@ export class StubLlmProvider implements LlmProvider {
   constructor(private delayMs = 35) {}
   async act(input: { agent: 'host' | 'planner'; messages: unknown[]; tools: unknown[] }) {
     const prompt = extractPrompt(input.messages)
+    if (
+      input.tools.some(
+        (tool) =>
+          tool && typeof tool === 'object' && 'name' in tool && tool.name === 'intent_result',
+      )
+    ) {
+      const payload: unknown = JSON.parse(prompt)
+      if (
+        !payload ||
+        typeof payload !== 'object' ||
+        !('prompt' in payload) ||
+        typeof payload.prompt !== 'string'
+      ) {
+        throw new Error('意图输入不合法')
+      }
+      const imageRefs =
+        'imageRefs' in payload && Array.isArray(payload.imageRefs)
+          ? payload.imageRefs.filter((ref): ref is string => typeof ref === 'string')
+          : []
+      const intent = await new IntentGate().resolve({ prompt: payload.prompt, imageRefs })
+      return {
+        toolCalls: [
+          {
+            id: randomUUID(),
+            name: 'intent_result',
+            args: {
+              ...intent,
+              source: 'llm',
+              needsClarification: true,
+              clarification: `是否按 ${intent.path} 创作？`,
+            },
+          },
+        ],
+      }
+    }
     const complex =
       /广告|镜头|套图|分镜|多段视频|(?:[2-9]|[二两三四五六七八九多])\s*段.*视频|视频.*(?:[2-9]|[二两三四五六七八九多])\s*段/.test(
         prompt,

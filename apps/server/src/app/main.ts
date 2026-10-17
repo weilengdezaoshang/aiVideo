@@ -1,5 +1,13 @@
+import { routingOptionsFromEnv } from '../agent/intent.js'
+import { reviewerOptionsFromEnv } from '../adapters/reviewer/factory.js'
 import { serve } from '@hono/node-server'
 import { createApplication } from './create-app.js'
+import { assertMemoryDrivers } from './drivers.js'
+if (process.env.NODE_ENV === 'production') {
+  throw new Error(
+    '创作 Host 当前依赖内存队列和 Mock 工具，禁止作为生产服务启动；生产服务请使用 PostgreSQL/Celery API',
+  )
+}
 const port = Number(process.env.PORT ?? 8787)
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error('PORT 必须为有效端口')
@@ -11,9 +19,7 @@ if (![creditThreshold, imageCredits].every((value) => Number.isFinite(value) && 
 }
 const queueDriver = process.env.QUEUE_DRIVER ?? 'memory'
 const rateDriver = process.env.RATE_LIMIT_DRIVER ?? 'memory'
-if (queueDriver !== 'memory' || rateDriver !== 'memory') {
-  throw new Error('BullMQ/Redis 为显式未实现的扩展骨架；本地请使用 memory 异步队列，不能静默回退')
-}
+assertMemoryDrivers(queueDriver, rateDriver)
 function positive(name: string, fallback: number) {
   const value = Number(process.env[name] ?? fallback)
   if (!Number.isSafeInteger(value) || value < 1) {
@@ -22,6 +28,7 @@ function positive(name: string, fallback: number) {
   return value
 }
 const { api } = createApplication({
+  ...routingOptionsFromEnv(),
   queueOptions: {
     async: true,
     timeoutMs: positive('JOB_TIMEOUT_MS', 30000),
@@ -35,6 +42,7 @@ const { api } = createApplication({
     concurrency: positive('MAX_RUNNING_TURNS', 2),
     maxKeys: positive('RATE_LIMIT_MAX_KEYS', 10000),
   },
+  ...reviewerOptionsFromEnv(),
   creditThreshold,
   imageCredits,
   publicBaseUrl: process.env.PUBLIC_BASE_URL ?? `http://localhost:${port}`,

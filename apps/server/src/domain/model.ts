@@ -1,6 +1,11 @@
+import type { IntentResult, IntentInput } from '../agent/intent.js'
+import type { PlanValidation } from '../agent/plan.js'
+import type { Evidence } from '../agent/reflection.js'
 import type { AgentTraceTurnV1 } from '../trace/schema.js'
 export type Part =
   | { kind: 'text'; text: string }
+  | { kind: 'thinking'; text: string; summary?: string }
+  | { kind: 'tool_call' | 'tool_result'; summary: string; detail: string }
   | {
       kind: 'tool_status'
       callId: string
@@ -14,21 +19,33 @@ export type Part =
       type: 'image' | 'video'
       url: string
       status: 'success' | 'failed'
+      qualityIssue?: string
+      tier?: 'preview' | 'final'
+      createdByStepId?: string
     }
   | {
       kind: 'plan'
       explanation?: string
-      steps: { id: string; text: string; status: TodoPlanStep['status'] }[]
+      steps: {
+        id: string
+        title: string
+        text?: string
+        detail?: string
+        status: TodoPlanStep['status']
+        dependsOn?: string[]
+        parallelGroup?: string
+      }[]
     }
   | {
       kind: 'confirm'
       confirmId: string
+      interrupt_kind?: 'credit' | 'clarify'
       title: string
       estimateCredits: number
       summary: string
       state: 'pending' | 'accepted' | 'rejected' | 'expired'
     }
-  | { kind: 'error'; message: string }
+  | { kind: 'error'; message: string; code?: string }
 export interface AssistantMessage {
   id: string
   role: 'assistant'
@@ -42,6 +59,8 @@ export interface Turn {
   turnId: string
   runId: string
   prompt: string
+  imageRefs?: string[]
+  intentContext?: Pick<IntentInput, 'canvas' | 'quota'>
   status: 'running' | 'interrupted' | 'completed' | 'failed' | 'cancelled'
   message: AssistantMessage
   createdAt: string
@@ -65,6 +84,7 @@ export type EventData =
       kind: 'system'
       type: 'interrupt_approval'
       confirmId: string
+      interrupt_kind?: 'credit' | 'clarify'
       title: string
       estimateCredits: number
       summary: string
@@ -80,6 +100,14 @@ export type LoggedEvent = EventData & {
   timestamp: string
 }
 export interface ToolCall {
+  dag?: {
+    title: string
+    capabilityId: string
+    dependsOn: string[]
+    targetNodes: string[]
+    tier: 'preview' | 'final'
+    parallelGroup?: string
+  }
   id: string
   name: string
   args: unknown
@@ -89,16 +117,35 @@ export interface GeneratedToolResult {
   need_user?: false
   artifact: Extract<Part, { kind: 'artifact' }>
   credits: number
+  evidence?: Evidence
+  metadata?: {
+    width: number
+    height: number
+    bytes: number
+    expectedWidth?: number
+    expectedHeight?: number
+    expectedRatio?: number
+    reviewPass?: boolean
+    localPath?: string
+    fixtureId?: string
+  }
 }
 export type ToolResult =
   | GeneratedToolResult
   | { need_user: true; estimateCredits: number; summary: string; pendingToolCall?: ToolCall }
 export interface ExecutionState {
+  intentInput?: IntentInput
+  intent?: IntentResult
+  imageRefs?: string[]
+  planValidation?: PlanValidation
+  clarificationAccepted?: boolean
   phase: 'host' | 'planner' | 'generating' | 'summary' | 'done'
   activeAgent: 'host' | 'planner'
   calls: ToolCall[]
   index: number
   approvedCallIds: string[]
+  generationAttempts?: Record<string, number>
+  creditedGenerationKeys?: string[]
   plan?: TodoPlan
   agents: { host: number; planner: number }
   toolCalls: AgentTraceTurnV1['toolCalls']
@@ -131,6 +178,8 @@ export interface ConversationRecord {
   updatedAt: string
 }
 export interface InterruptSnapshot {
+  status?: 'awaiting_user'
+  interrupt_kind?: 'credit' | 'clarify'
   confirmId: string
   reason: 'credits' | 'approval' | string
   estimateCredits?: number
@@ -145,7 +194,7 @@ export interface InterruptSnapshot {
 export interface TodoPlanStep {
   id: string
   title: string
-  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled'
+  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled' | 'skipped'
 }
 export interface TodoPlan {
   explanation?: string

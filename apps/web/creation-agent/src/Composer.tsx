@@ -18,6 +18,7 @@ export function Composer() {
         <textarea
           ref={input}
           aria-label="创作需求"
+          title="Enter 发送，Shift + Enter 换行"
           placeholder={busy ? '助手正在处理，请等待或停止…' : '描述你的创作需求…'}
           value={draft}
           disabled={busy}
@@ -42,9 +43,6 @@ export function Composer() {
           }}
         />
         <div className="composer-toolbar">
-          <span className="muted">
-            {status === 'awaiting_user' ? '请先确认本次创作' : 'Enter 发送 · Shift + Enter 换行'}
-          </span>
           {busy ? (
             <button onClick={() => agentStore.getState().stop()}>
               ■ {status === 'sending' ? '取消连接' : '停止'}
@@ -60,7 +58,6 @@ export function Composer() {
           )}
         </div>
       </div>
-      <p className="footer-note">灵感由你决定，创作交给助手</p>
     </footer>
   )
 }

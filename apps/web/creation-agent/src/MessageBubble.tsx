@@ -7,6 +7,8 @@ export function MessageBubble({
   message: Message
   open: (part: Extract<Part, { kind: 'artifact' }>, trigger: HTMLElement) => void
 }) {
+  const records = message.parts.filter((part) => part.kind === 'tool_status')
+  const latest = records.at(-1)
   let number = 0
   return (
     <article
@@ -19,7 +21,25 @@ export function MessageBubble({
         </div>
       )}
       <div className="parts">
+        {latest && (
+          <details className="process-log">
+            <summary>
+              <span>{latest.label}</span>
+              <span className="process-chevron" aria-hidden="true">
+                ›
+              </span>
+            </summary>
+            <div className="process-history">
+              {records.map((part, index) => (
+                <PartView key={`${message.id}-tool-${index}`} part={part} number={0} open={open} />
+              ))}
+            </div>
+          </details>
+        )}
         {message.parts.map((part, index) => {
+          if (part.kind === 'tool_status') {
+            return null
+          }
           if (part.kind === 'artifact') {
             number++
           }

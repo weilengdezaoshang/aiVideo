@@ -1,3 +1,7 @@
+import { CapabilityCatalog, type Capability } from '../agent/capabilities.js'
+import type { RoutingOptions } from '../agent/intent.js'
+import { createReviewer, type ReviewerConfig } from '../adapters/reviewer/factory.js'
+import { validateReflectionOptions, type ReflectionOptions } from '../agent/reflection.js'
 import { fileURLToPath } from 'node:url'
 import { AgentLoop } from '../agent/host.js'
 import { createApi } from '../api/routes.js'
@@ -12,9 +16,12 @@ import {
 import { ConversationService } from '../domain/conversation-service.js'
 import type { Ports, Tool } from '../ports/index.js'
 import { FileTraceWriter } from '../trace/file-writer.js'
-import { createText2Image, placeholderSvg, toolName } from '../tools/text2image.js'
+import { createText2Image, placeholderSvg } from '../tools/text2image.js'
 
-export interface AppOptions {
+export interface AppOptions extends ReflectionOptions, RoutingOptions {
+  environment?: 'development' | 'production'
+  capabilities?: readonly Capability[]
+  reviewer?: ReviewerConfig
   queueOptions?: {
     async?: boolean
     timeoutMs?: number
@@ -37,6 +44,18 @@ export interface AppOptions {
 
 // 唯一 composition root，api/domain/agent 仅依赖 ports。
 export function createApplication(options: AppOptions = {}) {
+  if (options.environment === 'production' || process.env.NODE_ENV === 'production') {
+    throw new Error('创作 Host 尚未接入持久化生产 ports，禁止以生产模式启动')
+  }
+  validateReflectionOptions(options)
+  if (
+    options.maxParallelSteps !== undefined &&
+    (!Number.isSafeInteger(options.maxParallelSteps) ||
+      options.maxParallelSteps < 1 ||
+      options.maxParallelSteps > 32)
+  ) {
+    throw new Error('maxParallelSteps 必须为 1–32 整数')
+  }
   const queue =
     options.ports?.queue ??
     (options.queueOptions?.async
@@ -59,18 +78,8 @@ export function createApplication(options: AppOptions = {}) {
       return tool.execute(input, ctx.signal ?? new AbortController().signal)
     })
   }
-  // 确保默认生图名已注册（自定义 tools 覆盖时仍可按名 enqueue）
-  if (!tools.some((t) => t.name === toolName)) {
-    const fallback = createText2Image(
-      options.publicBaseUrl ?? 'http://localhost:8787',
-      options.toolDelayMs,
-    )
-    queue.register(fallback.name, async (payload, ctx) =>
-      fallback.execute(payload as { prompt: string }, ctx.signal ?? new AbortController().signal),
-    )
-  }
-
   const ports: Ports = {
+    reviewer: options.ports?.reviewer ?? createReviewer(options.reviewer),
     sessions: options.ports?.sessions ?? new MemorySessionStore(),
     events: options.ports?.events ?? new MemoryEventLog(),
     queue,
@@ -90,6 +99,9 @@ export function createApplication(options: AppOptions = {}) {
       tools,
       options.streamCharDelayMs ?? options.llmDelayMs ?? 35,
       options.creditThreshold ?? 50,
+      options,
+      options,
+      options.capabilities ? new CapabilityCatalog(options.capabilities) : undefined,
     ),
   )
   const api = createApi(

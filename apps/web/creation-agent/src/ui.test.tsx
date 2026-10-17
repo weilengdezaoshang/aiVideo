@@ -4,7 +4,7 @@ import { afterEach, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { render, fireEvent, cleanup, act } from '@testing-library/react'
 import { Composer } from './Composer.js'
-import { ConfirmPart } from './parts/PartView.js'
+import { ConfirmPart, PartView } from './parts/PartView.js'
 import { MessageList } from './MessageList.js'
 import { App } from './App.js'
 import { agentStore } from './store.js'
@@ -137,4 +137,78 @@ test('已取消计划不显示进行中 spinner，并明确展示取消状态', 
   assert.equal(view.queryByLabelText('进行中'), null)
   assert.equal(view.container.querySelectorAll('.spinner').length, 0)
   assert.match(view.getByRole('heading').textContent ?? '', /已取消/)
+})
+
+test('计划 title 默认可见，thinking/工具默认折叠且可展开', async () => {
+  const { PartView } = await import('./parts/PartView.js')
+  const open = () => {}
+  const plan = render(
+    <PartView
+      part={{
+        kind: 'plan',
+        steps: [{ id: 'a', title: '生成关键帧并合成视频', status: 'pending' }],
+      }}
+      number={0}
+      open={open}
+    />,
+  )
+  assert.ok(plan.getByText('生成关键帧并合成视频'))
+  for (const part of [
+    { kind: 'thinking' as const, text: '详细推理', summary: '思考中' },
+    { kind: 'tool_call' as const, summary: '调用视频工具', detail: '调用参数' },
+    { kind: 'tool_result' as const, summary: '视频工具完成', detail: '返回结果' },
+    {
+      kind: 'tool_status' as const,
+      callId: 'v',
+      toolName: 'video_generate',
+      label: '生成视频',
+      state: 'loading' as const,
+    },
+  ]) {
+    const view = render(<PartView part={part} number={0} open={open} />)
+    const details = view.container.querySelector('details')!
+    assert.equal(details.open, false)
+    assert.ok(details.querySelector('summary')?.textContent)
+    details.open = true
+    fireEvent(details, new Event('toggle'))
+    assert.equal(details.open, true)
+    view.unmount()
+  }
+})
+
+test('并行进程显示真实完成数，跳过步骤与样片角标可见', () => {
+  const view = render(
+    <PartView
+      part={{
+        kind: 'plan',
+        steps: [
+          { id: 'a', title: '正面', status: 'completed' },
+          { id: 'b', title: '背面', status: 'in_progress' },
+          { id: 'c', title: '左侧', status: 'in_progress' },
+          { id: 'd', title: '合成', status: 'skipped' },
+        ],
+      }}
+      number={0}
+      open={() => {}}
+    />,
+  )
+  assert.ok(view.getByText('进程 1/4'))
+  assert.ok(view.getByText('正在并行执行 2 个步骤'))
+  assert.ok(view.getByText('· 依赖失败，未执行'))
+  assert.equal((view.getByRole('progressbar') as HTMLProgressElement).value, 1)
+  view.rerender(
+    <PartView
+      part={{
+        kind: 'artifact',
+        id: 'preview',
+        type: 'image',
+        url: '/fixture.png',
+        status: 'success',
+        tier: 'preview',
+      }}
+      number={1}
+      open={() => {}}
+    />,
+  )
+  assert.ok(view.getByText('样片预览'))
 })

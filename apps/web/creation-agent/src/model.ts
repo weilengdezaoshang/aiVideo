@@ -1,10 +1,16 @@
 export type Step = {
   id: string
-  text: string
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'failed'
+  title?: string
+  text?: string
+  detail?: string
+  dependsOn?: string[]
+  parallelGroup?: string
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'failed' | 'skipped'
 }
 export type Part =
   | { kind: 'text'; text: string }
+  | { kind: 'thinking'; text: string; summary?: string }
+  | { kind: 'tool_call' | 'tool_result'; summary: string; detail: string }
   | {
       kind: 'tool_status'
       callId: string
@@ -18,17 +24,21 @@ export type Part =
       type: 'image' | 'video'
       url: string
       status: 'success' | 'failed'
+      qualityIssue?: string
+      tier?: 'preview' | 'final'
+      createdByStepId?: string
     }
   | { kind: 'plan'; explanation?: string; steps: Step[] }
   | {
       kind: 'confirm'
       confirmId: string
+      interrupt_kind?: 'credit' | 'clarify'
       title: string
       estimateCredits: number
       summary: string
       state: 'pending' | 'accepted' | 'rejected' | 'expired'
     }
-  | { kind: 'error'; message: string }
+  | { kind: 'error'; message: string; code?: string }
 export interface Message {
   id: string
   role: 'user' | 'assistant'

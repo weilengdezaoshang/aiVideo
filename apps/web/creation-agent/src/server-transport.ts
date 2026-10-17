@@ -1,13 +1,20 @@
 import { z } from 'zod'
 import type { Message, StreamEvent, Transport } from './model.js'
-const stepSchema = z.object({
-  id: z.string(),
-  text: z.string(),
-  status: z.enum(['pending', 'in_progress', 'completed', 'failed', 'cancelled']),
-})
+const stepSchema = z
+  .object({
+    id: z.string(),
+    title: z.string().optional(),
+    text: z.string().optional(),
+    detail: z.string().optional(),
+    status: z.enum(['pending', 'in_progress', 'completed', 'failed', 'cancelled', 'skipped']),
+    dependsOn: z.array(z.string()).optional(),
+    parallelGroup: z.string().optional(),
+  })
+  .refine((step) => Boolean(step.title?.trim() || step.text?.trim()), '计划步骤缺少文案')
 const confirmSchema = z.object({
   kind: z.literal('confirm'),
   confirmId: z.string(),
+  interrupt_kind: z.enum(['credit', 'clarify']).optional(),
   title: z.string(),
   estimateCredits: z.number(),
   summary: z.string(),
@@ -15,6 +22,9 @@ const confirmSchema = z.object({
 })
 const partSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('text'), text: z.string() }),
+  z.object({ kind: z.literal('thinking'), text: z.string(), summary: z.string().optional() }),
+  z.object({ kind: z.literal('tool_call'), summary: z.string(), detail: z.string() }),
+  z.object({ kind: z.literal('tool_result'), summary: z.string(), detail: z.string() }),
   z.object({
     kind: z.literal('tool_status'),
     callId: z.string(),
@@ -28,6 +38,9 @@ const partSchema = z.discriminatedUnion('kind', [
     type: z.enum(['image', 'video']),
     url: z.string(),
     status: z.enum(['success', 'failed']),
+    qualityIssue: z.string().optional(),
+    tier: z.enum(['preview', 'final']).optional(),
+    createdByStepId: z.string().optional(),
   }),
   z.object({
     kind: z.literal('plan'),
@@ -35,7 +48,7 @@ const partSchema = z.discriminatedUnion('kind', [
     steps: z.array(stepSchema),
   }),
   confirmSchema,
-  z.object({ kind: z.literal('error'), message: z.string() }),
+  z.object({ kind: z.literal('error'), message: z.string(), code: z.string().optional() }),
 ])
 const messageSchema = z.object({
   id: z.string(),
@@ -64,6 +77,7 @@ const systemSchema = z.discriminatedUnion('type', [
   z.object({
     kind: z.literal('system'),
     type: z.literal('interrupt_approval'),
+    interrupt_kind: z.enum(['credit', 'clarify']).optional(),
     confirmId: z.string(),
     title: z.string(),
     estimateCredits: z.number(),
@@ -191,6 +205,7 @@ export function createServerTransport(baseUrl = 'http://127.0.0.1:8787'): Transp
                 confirm: {
                   kind: 'confirm',
                   confirmId: event.confirmId,
+                  interrupt_kind: event.interrupt_kind,
                   title: event.title,
                   estimateCredits: event.estimateCredits,
                   summary: event.summary,

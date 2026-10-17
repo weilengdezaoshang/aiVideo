@@ -1,3 +1,5 @@
+import type { Evidence } from '../agent/reflection.js'
+import type { GeneratedToolResult } from '../domain/model.js'
 import type {
   AgentEvent,
   ConversationRecord,
@@ -90,10 +92,36 @@ export interface RateLimiter {
 }
 
 export interface LlmProvider {
-  act(input: { agent: 'host' | 'planner'; messages: unknown[]; tools: unknown[] }): Promise<{
+  act(input: {
+    agent: 'host' | 'planner'
+    messages: unknown[]
+    tools: unknown[]
+    temperature?: number
+  }): Promise<{
     text?: string
     toolCalls?: { id: string; name: string; args: unknown }[]
   }>
+}
+
+export interface ReviewContext {
+  conversationId?: string
+  turnId?: string
+  toolCallId?: string
+}
+export interface ReviewInput {
+  artifact: { url: string; localPath?: string; fixtureId?: string }
+  result: GeneratedToolResult
+  prompt: string
+  taskType: 'image' | 'video'
+  rubricId: string
+  rubric: string[]
+  attempt: number
+  context: ReviewContext
+  signal: AbortSignal
+}
+export type ReviewResult = NonNullable<Evidence['review']>
+export interface ReviewerProvider {
+  review(input: ReviewInput): Promise<ReviewResult>
 }
 
 export interface TraceWriter {
@@ -101,9 +129,23 @@ export interface TraceWriter {
 }
 
 export interface Tool {
+  /** Parallel workers must not return need_user; approvals happen before dispatch. */
+  parallelSafe?: boolean
+  adapter?: 'mock' | 'cloud' | 'comfyui'
   name: string
   estimateCredits?: number
-  execute(input: { prompt: string; approved?: boolean }, signal: AbortSignal): Promise<ToolResult>
+  execute(
+    input: {
+      prompt: string
+      approved?: boolean
+      tier?: 'preview' | 'final'
+      attempt?: number
+      imageRefs?: string[]
+      frameCallIds?: string[]
+      frameUrls?: string[]
+    },
+    signal: AbortSignal,
+  ): Promise<ToolResult>
 }
 
 export interface Ports {
@@ -112,5 +154,6 @@ export interface Ports {
   queue: TaskQueue
   limiter: RateLimiter
   llm: LlmProvider
+  reviewer?: ReviewerProvider
   traces: TraceWriter
 }

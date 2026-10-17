@@ -5,6 +5,8 @@ export const toolName = 'creative_agent_mcp_gen_text2image_v3'
 export function createText2Image(baseUrl: string, delayMs = 700, credits = 40): Tool {
   return {
     name: toolName,
+    parallelSafe: true,
+    adapter: 'mock',
     estimateCredits: credits,
     async execute(_input, signal) {
       await sleep(delayMs, undefined, { signal })
@@ -17,6 +19,7 @@ export function createText2Image(baseUrl: string, delayMs = 700, credits = 40): 
           status: 'success',
         },
         credits,
+        metadata: { width: 560, height: 700, bytes: placeholderSvg.length },
       }
     },
   }

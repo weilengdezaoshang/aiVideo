@@ -8,9 +8,27 @@ import {
   ResumeError,
   type ConversationService,
 } from '../domain/conversation-service.js'
+const canvasSchema = z
+  .object({
+    projectId: z.string(),
+    nodeId: z.string().optional(),
+    nodeType: z.string().optional(),
+    assetUrls: z.array(z.string()).max(16).optional(),
+    assetVersions: z.array(z.string()).optional(),
+    hasImage: z.boolean(),
+    selectedGroupIds: z.array(z.string()).optional(),
+    width: z.number().positive().optional(),
+    height: z.number().positive().optional(),
+  })
+  .strict()
 const conversationSchema = z.union([
   z
-    .object({ prompt: z.string().trim().min(1).max(4000), conversation_id: z.uuid().optional() })
+    .object({
+      prompt: z.string().trim().min(1).max(4000),
+      conversation_id: z.uuid().optional(),
+      imageRefs: z.array(z.string().min(1)).max(16).optional(),
+      canvas: canvasSchema.optional(),
+    })
     .strict(),
   z
     .object({
@@ -18,6 +36,13 @@ const conversationSchema = z.union([
       conversation_id: z.uuid(),
       confirmId: z.string().min(1),
       approved: z.boolean(),
+      clarification: z
+        .object({
+          imageRefs: z.array(z.string().min(1)).min(1).max(1).optional(),
+          goal: z.enum(['image', 'video']).optional(),
+        })
+        .strict()
+        .optional(),
     })
     .strict(),
 ])
@@ -36,6 +61,7 @@ export function createApi(service: ConversationService, origins: string[], place
     '/v1/*',
     bodyLimit({ maxSize: 32 * 1024, onError: (c) => c.json({ error: '请求体过大' }, 413) }),
   )
+  api.get('/v1/capabilities', (c) => c.json({ capabilities: service.capabilities() }))
   api.get('/health', (c) => c.json({ status: 'ok', stage: 'S3', provider: 'stub' }))
   api.get('/mock/image.svg', (c) => {
     c.header('Content-Type', 'image/svg+xml')
@@ -53,9 +79,15 @@ export function createApi(service: ConversationService, origins: string[], place
               parsed.data.conversation_id,
               parsed.data.confirmId,
               parsed.data.approved,
+              parsed.data.clarification,
             )
           : {
-              turn: await service.prepare(parsed.data.prompt, parsed.data.conversation_id),
+              turn: await service.prepare(
+                parsed.data.prompt,
+                parsed.data.conversation_id,
+                parsed.data.imageRefs,
+                { canvas: parsed.data.canvas },
+              ),
               resume: undefined,
             }
       const { turn, resume } = prepared

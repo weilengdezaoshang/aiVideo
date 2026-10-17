@@ -16,7 +16,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "npm run typecheck && npm run build:web && npm run lint && npm run test && npm run verify:backend",
+    "verify": "npm run typecheck && npm run build:web && npm run lint && npm run test && npm run verify:creation-server && npm run verify:backend",
     "prepare": "husky",
     "verify:backend": "python3 scripts/backend.py verify",
     "build:web": "tsc -p tsconfig.web.json && npm run build:react",
@@ -26,7 +26,8 @@
     "dev:stack": "python3 scripts/dev_stack.py up",
     "dev:stack:down": "python3 scripts/dev_stack.py down",
     "dev:creation-server": "npm run dev --workspace @frayune/creation-server",
-    "migrate:trace-v1": "npm run migrate:trace-v1 --workspace @frayune/creation-server"
+    "migrate:trace-v1": "npm run migrate:trace-v1 --workspace @frayune/creation-server",
+    "verify:creation-server": "npm run typecheck --workspace @frayune/creation-server && npm run test --workspace @frayune/creation-server"
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,cjs,css,yml,yaml,json}": [
