@@ -27,6 +27,9 @@ if args and args[0] == "verify":
             "scripts/dev_stack.py",
             "deploy/dev/oidc_fixture.py",
             "scripts/eval.py",
+            "scripts/eval_intent.py",
+            "scripts/intent_exemplars.py",
+            "scripts/intent_embed_server.py",
         ],
         [str(python), "-m", "pytest", "-q"],
     ]:

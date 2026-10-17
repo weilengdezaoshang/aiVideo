@@ -10,15 +10,14 @@ from .policy import Operation, ProviderFailure, classify_failure
 
 
 def resolve_model(config, reference=False):
-    if config.cloudVendor == "aliyun" and config.cloudModel == "qwen-image-2.0" and reference:
-        return "qwen-image-edit-plus"
+    # Qwen Image 2.0 accepts reference images; never silently change the pinned model.
     return config.cloudModel
 
 
 # 通义万相视频:DashScope 异步任务协议(创建返回 task_id → 轮询 /tasks/{id} → 下载 video_url)。
 # 协议形状与档位以官方文档与实测为准,未实测前视为待验证(技术方案 v0.1 §5.3)。
 VIDEO_SYNTHESIS_PATH = "/services/aigc/video-generation/video-synthesis"
-VIDEO_SIZES = {(1280, 720), (720, 1280), (960, 960)}
+VIDEO_SIZES = {(1280, 720), (720, 1280), (960, 960), (1920, 1080)}
 VIDEO_DURATIONS = (5,)
 VIDEO_POLL_SEC = 3
 
@@ -74,7 +73,7 @@ class CloudProvider(Provider):
         # DashScope 账号级密钥:视频 Key 优先,未单独配置时回退图像 Key。
         return self.config.videoApiKey or self.config.imageApiKey
 
-    def video_request(self, p):
+    def video_request(self, p, image=None):
         c = self.config
         if not c.videoModel:
             raise ValueError("请先在设置中配置视频模型(如 wanx2.1-t2v-turbo)")
@@ -83,7 +82,8 @@ class CloudProvider(Provider):
             supported = "、".join(f"{w}*{h}" for w, h in sorted(VIDEO_SIZES, reverse=True))
             raise ValueError(f"不支持的画幅 {size},当前支持:{supported}")
         duration = int(round(p.durationSec))
-        if duration not in VIDEO_DURATIONS:
+        allowed_durations = range(2, 16) if c.videoModel.startswith("wan2.7-") else VIDEO_DURATIONS
+        if duration not in allowed_durations:
             supported = "、".join(str(x) for x in VIDEO_DURATIONS)
             raise ValueError(f"不支持的时长 {duration} 秒,当前支持:{supported} 秒")
         body = {
@@ -91,6 +91,16 @@ class CloudProvider(Provider):
             "input": {"prompt": p.prompt},
             "parameters": {"size": size, "duration": duration},
         }
+        if c.videoModel.startswith("wan2.7-"):
+            body["parameters"] = {"resolution": "1080P" if max(p.width, p.height) >= 1920 else "720P", "duration": duration}
+            if "-i2v" in c.videoModel:
+                if not image:
+                    raise ValueError("图生视频需要一张首帧参考图")
+                body["input"]["media"] = [{"type": "first_frame", "url": image.data_url()}]
+            else:
+                body["parameters"]["ratio"] = "9:16" if p.height > p.width else "1:1" if p.width == p.height else "16:9"
+        elif image:
+            raise ValueError("当前视频模型未接通首帧协议")
         if p.negativePrompt:
             body["input"]["negative_prompt"] = p.negativePrompt
         return self.vendor_base(VIDEO_SYNTHESIS_PATH), body
@@ -123,8 +133,8 @@ class CloudProvider(Provider):
         return output
 
     async def generate_video(self, params, progress, image, mask, external, external_task_id):
-        if image or mask:
-            raise ValueError("云端图生视频暂未开放:请使用文字生成视频或切换本地后端")
+        if mask:
+            raise ValueError("视频不支持蒙版输入")
         key = self.video_key()
         if not key:
             raise ValueError("未配置视频 API Key")
@@ -134,7 +144,7 @@ class CloudProvider(Provider):
                 task_id = external_task_id
                 progress(0.1, "查询上游任务")
             else:
-                url, body = self.video_request(params)
+                url, body = self.video_request(params, image)
                 progress(0.05, "创建视频任务")
                 response = await self.client.post(
                     url,

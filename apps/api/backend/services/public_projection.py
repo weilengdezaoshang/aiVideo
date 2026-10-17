@@ -52,6 +52,9 @@ def project_job(row) -> dict:
     elif row.phase in {"poll", "reconcile"} and row.error_code:
         message = "查询暂不可用，保留原任务继续确认"
     params = {k: v for k, v in row.params.items() if k not in {"referenceStorage", "maskStorage", "submittedBy", "sources"}}
+    if row.params.get("hostRunId"):
+        params = {key: value for key, value in params.items() if key in {
+            "kind", "width", "height", "durationSec", "fps", "documentId", "clientRef", "requestId", "hostTier"}}
     images = []
     if row.status == "completed" and row.phase_payload.get("assetId"):
         asset_id = row.phase_payload["assetId"]

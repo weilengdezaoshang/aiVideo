@@ -25,3 +25,6 @@ openai>=1.100,<4
 
 # MP4 时间线导出，提供跨平台 FFmpeg 运行时。
 imageio-ffmpeg==0.6.0
+
+# 意图例句审校与批量索引。
+PyYAML>=6.0.3,<7

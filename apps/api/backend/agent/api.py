@@ -18,9 +18,21 @@ def encode_event(event: dict) -> str:
 
 
 def install_agent_routes(app, read_json):
+    def configured_routes(identity):
+        routes = list(app.state.agent_routes)
+        if app.state.settings.runtime_environment == "development":
+            from backend.agent.local_config import dialogue_route
+            local = dialogue_route(app.state.settings.media_root, identity.workspace_id)
+            if local:
+                routes.insert(0, local)
+        return routes
+
     @app.get("/api/agent/models")
     async def models(identity: Identity = Depends(authenticated)):
-        configured = [route.public() for route in app.state.agent_routes]
+        if app.state.host.catalog.config.enabled:
+            return {"models": [{"id": "host", "provider": "host", "model": "", "label": "创作助手"}],
+                    "defaultModelId": "host", "hostEnabled": True}
+        configured = [route.public() for route in configured_routes(identity)]
         preferred = next((model['id'] for model in configured if model['provider'] == 'deepseek'), None)
         return {"models": configured, "defaultModelId": preferred or (configured[0]['id'] if configured else None)}
 
@@ -32,7 +44,7 @@ def install_agent_routes(app, read_json):
     @app.post("/api/documents/{ident}/agent/runs")
     async def create(ident: uuid.UUID, request: Request, identity: Identity = Depends(authenticated)):
         body = await read_json(request)
-        route = next((item for item in app.state.agent_routes if item.id == body.get("modelId")), None)
+        route = next((item for item in configured_routes(identity) if item.id == body.get("modelId")), None)
         from backend.agent.persona import resolve
         persona = resolve(app.state.agent_personas, route.persona_id) if route else None
         result = await app.state.agent.create_run(identity.workspace_id, ident, body, route,
@@ -41,11 +53,11 @@ def install_agent_routes(app, read_json):
 
     @app.get("/api/agent/runs/{ident}")
     async def run(ident: uuid.UUID, identity: Identity = Depends(authenticated)):
-        return {"run": await app.state.agent.get_run(identity.workspace_id, ident)}
+        return {"run": await app.state.agent.get_run(identity.workspace_id, ident, identity.principal)}
 
     @app.post("/api/agent/runs/{ident}/stop")
     async def stop(ident: uuid.UUID, identity: Identity = Depends(authenticated)):
-        return {"run": await app.state.agent.stop_run(identity.workspace_id, ident)}
+        return {"run": await app.state.agent.stop_run(identity.workspace_id, ident, identity.principal)}
 
     @app.get("/api/documents/{ident}/agent/events")
     async def events(ident: uuid.UUID, request: Request, identity: Identity = Depends(authenticated)):

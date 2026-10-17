@@ -1,0 +1,411 @@
+{
+  "source": "docs/intent/CASES_INTENT_SEQUENTIAL.md",
+  "cases": [
+    {
+      "id": "C-01",
+      "utterance": "把衣服换成红的，整体水彩风",
+      "expected_p0": "image_edit",
+      "expected_p2": "同左",
+      "notes": "多槽位同 L2"
+    },
+    {
+      "id": "C-02",
+      "utterance": "去背景，透明底，尽量保留发丝",
+      "expected_p0": "image_edit (matting)",
+      "expected_p2": "同左",
+      "notes": "抠图"
+    },
+    {
+      "id": "C-03",
+      "utterance": "别做成视频，换成油画质感",
+      "expected_p0": "image_edit",
+      "expected_p2": "同左",
+      "notes": "否定视频"
+    },
+    {
+      "id": "C-04",
+      "utterance": "动画风格海报",
+      "expected_p0": "image_edit 或 t2i + style",
+      "expected_p2": "同左",
+      "notes": "风格≠视频"
+    },
+    {
+      "id": "C-05",
+      "utterance": "5 秒赛博朋克视频",
+      "expected_p0": "multiframe + duration+style（有图）/ t2v（无图）",
+      "expected_p2": "同左",
+      "notes": "单步视频"
+    },
+    {
+      "id": "C-06",
+      "utterance": "画一只橘猫，水彩风（无选中图）",
+      "expected_p0": "t2i",
+      "expected_p2": "同左",
+      "notes": ""
+    },
+    {
+      "id": "C-07",
+      "utterance": "不要背景只要人物抠出来",
+      "expected_p0": "image_edit (matting)",
+      "expected_p2": "同左",
+      "notes": ""
+    },
+    {
+      "id": "C-08",
+      "utterance": "remove background and keep hair detail",
+      "expected_p0": "image_edit (matting)",
+      "expected_p2": "同左",
+      "notes": "英文"
+    },
+    {
+      "id": "C-09",
+      "utterance": "把左下角 logo 去掉，颜色再鲜艳一点",
+      "expected_p0": "image_edit",
+      "expected_p2": "同左",
+      "notes": "局部+全局"
+    },
+    {
+      "id": "C-10",
+      "utterance": "白底商品图，阴影淡一点",
+      "expected_p0": "image_edit (matting/白底)",
+      "expected_p2": "同左",
+      "notes": "电商抠图"
+    },
+    {
+      "id": "C-11",
+      "utterance": "换成日系动漫风，不要动构图",
+      "expected_p0": "image_edit + style",
+      "expected_p2": "同左",
+      "notes": "style_as_art"
+    },
+    {
+      "id": "C-12",
+      "utterance": "只要静图水彩，不要任何动画",
+      "expected_p0": "image_edit",
+      "expected_p2": "同左",
+      "notes": "双否定动态"
+    },
+    {
+      "id": "C-13",
+      "utterance": "make this watercolor, keep the face",
+      "expected_p0": "image_edit",
+      "expected_p2": "同左",
+      "notes": "英文改图"
+    },
+    {
+      "id": "C-14",
+      "utterance": "抠成 PNG 透明底，边缘干净点",
+      "expected_p0": "image_edit (matting)",
+      "expected_p2": "同左",
+      "notes": ""
+    },
+    {
+      "id": "C-15",
+      "utterance": "人物换成西装，背景虚化",
+      "expected_p0": "image_edit",
+      "expected_p2": "同左",
+      "notes": "多约束"
+    },
+    {
+      "id": "C-16",
+      "utterance": "生成一张赛博朋克街头夜景（无图）",
+      "expected_p0": "t2i",
+      "expected_p2": "同左",
+      "notes": ""
+    },
+    {
+      "id": "C-17",
+      "utterance": "把这张做成竖版海报排版",
+      "expected_p0": "image_edit 或 unsupported",
+      "expected_p2": "同左",
+      "notes": "排版若未产品化可 unsupported"
+    },
+    {
+      "id": "C-18",
+      "utterance": "cut out the product on white background",
+      "expected_p0": "image_edit (matting)",
+      "expected_p2": "同左",
+      "notes": ""
+    },
+    {
+      "id": "C-19",
+      "utterance": "别生成视频，帮我修一下曝光",
+      "expected_p0": "image_edit",
+      "expected_p2": "同左",
+      "notes": ""
+    },
+    {
+      "id": "C-20",
+      "utterance": "anime style portrait poster",
+      "expected_p0": "image_edit/t2i",
+      "expected_p2": "同左",
+      "notes": "硬负例：非视频"
+    },
+    {
+      "id": "W-01",
+      "utterance": "动起来",
+      "expected_p0": "clarify",
+      "expected_p2": "clarify（禁止自动两步）",
+      "notes": "E01"
+    },
+    {
+      "id": "W-02",
+      "utterance": "活一点",
+      "expected_p0": "clarify",
+      "expected_p2": "同左",
+      "notes": ""
+    },
+    {
+      "id": "W-03",
+      "utterance": "animate this",
+      "expected_p0": "clarify 或视频族",
+      "expected_p2": "同左",
+      "notes": "E04"
+    },
+    {
+      "id": "W-04",
+      "utterance": "让人物稍微动一动",
+      "expected_p0": "clarify",
+      "expected_p2": "同左",
+      "notes": ""
+    },
+    {
+      "id": "W-05",
+      "utterance": "有点动态的感觉",
+      "expected_p0": "clarify",
+      "expected_p2": "同左",
+      "notes": "极弱"
+    },
+    {
+      "id": "W-06",
+      "utterance": "生动一些",
+      "expected_p0": "clarify",
+      "expected_p2": "同左",
+      "notes": "也可被理解成改图氛围"
+    },
+    {
+      "id": "W-07",
+      "utterance": "make it more alive",
+      "expected_p0": "clarify",
+      "expected_p2": "同左",
+      "notes": ""
+    },
+    {
+      "id": "W-08",
+      "utterance": "给我弄动一点",
+      "expected_p0": "clarify",
+      "expected_p2": "同左",
+      "notes": "口语"
+    },
+    {
+      "id": "W-09",
+      "utterance": "眼睛会眨一下那种",
+      "expected_p0": "clarify",
+      "expected_p2": "同左",
+      "notes": "细节动态"
+    },
+    {
+      "id": "W-10",
+      "utterance": "add a bit of motion",
+      "expected_p0": "clarify",
+      "expected_p2": "同左",
+      "notes": ""
+    },
+    {
+      "id": "Q-01",
+      "utterance": "先抠图去背景，再做成 5 秒视频",
+      "expected_p0": "clarify / 拆步",
+      "expected_p2": "matting → multiframe",
+      "notes": "白名单；见 handoff JSON"
+    },
+    {
+      "id": "Q-02",
+      "utterance": "先改成水彩，再做成视频",
+      "expected_p0": "clarify",
+      "expected_p2": "image_edit → multiframe",
+      "notes": ""
+    },
+    {
+      "id": "Q-03",
+      "utterance": "先画一只猫，再生成视频",
+      "expected_p0": "clarify 或引导补图",
+      "expected_p2": "t2i → multiframe",
+      "notes": "无图"
+    },
+    {
+      "id": "Q-04",
+      "utterance": "改完油画再动起来",
+      "expected_p0": "clarify",
+      "expected_p2": "edit → multiframe 或第二段再 clarify",
+      "notes": "「动起来」仍弱"
+    },
+    {
+      "id": "Q-05",
+      "utterance": "先做成视频再改水彩",
+      "expected_p0": "clarify / reject",
+      "expected_p2": "**reject**（非白名单）",
+      "notes": "禁止视频→改图"
+    },
+    {
+      "id": "Q-06",
+      "utterance": "先抠图，再水彩，再视频",
+      "expected_p0": "clarify 拆分",
+      "expected_p2": "≤2 步或 clarify",
+      "notes": "max_steps=2"
+    },
+    {
+      "id": "Q-07",
+      "utterance": "抠完透明底然后 animate",
+      "expected_p0": "clarify",
+      "expected_p2": "matting → multiframe",
+      "notes": ""
+    },
+    {
+      "id": "Q-08",
+      "utterance": "first cut out the subject, then make a 5s video",
+      "expected_p0": "clarify",
+      "expected_p2": "matting → multiframe",
+      "notes": "英文"
+    },
+    {
+      "id": "Q-09",
+      "utterance": "先修脸再出 5 秒短片",
+      "expected_p0": "clarify",
+      "expected_p2": "image_edit → multiframe",
+      "notes": ""
+    },
+    {
+      "id": "Q-10",
+      "utterance": "帮我去个背景，然后做成会动的",
+      "expected_p0": "clarify",
+      "expected_p2": "matting → multiframe",
+      "notes": "口语顺位"
+    },
+    {
+      "id": "Q-11",
+      "utterance": "先文生一张海报，再转成视频",
+      "expected_p0": "clarify",
+      "expected_p2": "t2i → multiframe",
+      "notes": ""
+    },
+    {
+      "id": "Q-12",
+      "utterance": "水彩改完之后生成视频看看",
+      "expected_p0": "clarify",
+      "expected_p2": "edit → multiframe",
+      "notes": ""
+    },
+    {
+      "id": "Q-13",
+      "utterance": "remove bg first, then animate it",
+      "expected_p0": "clarify",
+      "expected_p2": "matting → multiframe",
+      "notes": ""
+    },
+    {
+      "id": "Q-14",
+      "utterance": "先做成视频，再抠图导出",
+      "expected_p0": "clarify / reject",
+      "expected_p2": "**reject**",
+      "notes": "非白名单"
+    },
+    {
+      "id": "Q-15",
+      "utterance": "一键：抠图+做视频",
+      "expected_p0": "clarify（是否两步）",
+      "expected_p2": "确认后 matting → multiframe",
+      "notes": "需确认"
+    },
+    {
+      "id": "Q-16",
+      "utterance": "改成赛博朋克做成视频（无「先/再」）",
+      "expected_p0": "单步 multiframe+style **或** clarify",
+      "expected_p2": "同左（不强制两步）",
+      "notes": "S08：非真顺位"
+    },
+    {
+      "id": "Q-17",
+      "utterance": "先放大清晰度，再生成 3 秒视频",
+      "expected_p0": "clarify",
+      "expected_p2": "edit → multiframe",
+      "notes": ""
+    },
+    {
+      "id": "Q-18",
+      "utterance": "先画个logo，再让它转起来",
+      "expected_p0": "clarify",
+      "expected_p2": "t2i → multiframe",
+      "notes": ""
+    },
+    {
+      "id": "Q-19",
+      "utterance": "把人抠出来以后做个走路视频",
+      "expected_p0": "clarify",
+      "expected_p2": "matting → multiframe",
+      "notes": ""
+    },
+    {
+      "id": "Q-20",
+      "utterance": "edit to watercolor first, then video",
+      "expected_p0": "clarify",
+      "expected_p2": "edit → multiframe",
+      "notes": ""
+    },
+    {
+      "id": "Q-21",
+      "utterance": "先视频后改图再视频",
+      "expected_p0": "reject / clarify",
+      "expected_p2": "**reject**",
+      "notes": "超长+非法序"
+    },
+    {
+      "id": "Q-22",
+      "utterance": "只要抠图，暂时不要视频",
+      "expected_p0": "image_edit (matting)",
+      "expected_p2": "同左",
+      "notes": "顺位否决→单步"
+    },
+    {
+      "id": "Q-23",
+      "utterance": "先问清楚：是要改图还是视频？（元话）",
+      "expected_p0": "other / clarify",
+      "expected_p2": "同左",
+      "notes": "非执行句"
+    },
+    {
+      "id": "Q-24",
+      "utterance": "抠图后直接出片，5 秒",
+      "expected_p0": "clarify",
+      "expected_p2": "matting → multiframe",
+      "notes": "「出片」=视频"
+    },
+    {
+      "id": "B-01",
+      "utterance": "做成视频（视频能力关）",
+      "expected_p0": "明确失败",
+      "expected_p2": "同左；多步则第二步能力失败且不降级静图",
+      "notes": "E06"
+    },
+    {
+      "id": "B-02",
+      "utterance": "先抠再视频（无有效图）",
+      "expected_p0": "不能硬 edit；引导补图或 t2i 路径",
+      "expected_p2": "若走 t2i→multiframe 须无图可行",
+      "notes": ""
+    },
+    {
+      "id": "B-03",
+      "utterance": "embedding 挂了 +「动起来」",
+      "expected_p0": "clarify/兜底，不赌视频",
+      "expected_p2": "同左",
+      "notes": "E05"
+    },
+    {
+      "id": "B-04",
+      "utterance": "INTENT_MULTI_STEP=false + Q-01",
+      "expected_p0": "clarify",
+      "expected_p2": "（N/A，同 p0）",
+      "notes": "S01"
+    }
+  ]
+}

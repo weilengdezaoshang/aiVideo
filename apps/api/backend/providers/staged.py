@@ -51,9 +51,9 @@ class StagedProvider:
             return StageResult("submit", {})
         if self.config.provider == "cloud":
             if params.kind == "video":
-                if image or mask:
-                    raise ValueError("云端图生视频暂未开放")
-                self.cloud.video_request(params)
+                if mask:
+                    raise ValueError("视频不支持蒙版输入")
+                self.cloud.video_request(params, image)
             else:
                 self.cloud.request(params, seed, image, mask)
             return StageResult("submit", {})
@@ -80,7 +80,7 @@ class StagedProvider:
             task_id = response.json()["prompt_id"]
             return StageResult("poll", {}, external_id=task_id)
         if params.kind == "video":
-            url, body = self.cloud.video_request(params)
+            url, body = self.cloud.video_request(params, image)
             response = await self.client.post(url, json=body, headers={
                 "Authorization": f"Bearer {self.cloud.video_key()}", "X-DashScope-Async": "enable"})
             response.raise_for_status()

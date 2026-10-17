@@ -5,12 +5,13 @@
 生产环境(npm run stack:up + .env.production.example)不经过本脚本。
 
 用法:
-  python3 scripts/dev_stack.py up     # 幂等启动:缺什么补什么,已在跑的跳过
+  python3 scripts/dev_stack.py up     # 幂等启动:构建当前代码并刷新 API/OIDC，保留开发数据
   python3 scripts/dev_stack.py down   # 停止宿主机进程并下线容器(保留数据卷)
 """
 from __future__ import annotations
 
 import os
+import json
 import shutil
 import subprocess
 import sys
@@ -53,19 +54,59 @@ def ensure_certificates() -> None:
               "删除 data/dev/tls.* 重跑可生成受信证书,内嵌浏览器即可打开。")
 
 
+def ensure_host_catalog() -> None:
+    """A usable development Host with no paid route and no production catalog edits."""
+    target = RUNTIME / "host-catalog.json"
+    if target.exists():
+        config = json.loads(target.read_text(encoding="utf-8"))
+    else:
+        config = json.loads((ROOT / "deploy/host-catalog.development.json").read_text(encoding="utf-8"))
+        config["enabled"] = True
+        for capability in config["capabilities"]:
+            capability["enabled"] = bool(capability.get("binding"))
+    if config.get("environment") != "development" or any(
+        cap.get("enabled") and cap.get("binding", {}).get("engine", "provider") != "frames"
+        and cap.get("binding", {}).get("providerSnapshot", {}).get("provider") != "mock"
+        for cap in config.get("capabilities", [])
+    ):
+        sys.exit("dev:stack 仅允许 development Mock Host；真实模型请使用显式部署环境")
+    if not target.exists():
+        target.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
 def ensure_api_env() -> None:
     target = RUNTIME / "api.env"
     if target.exists():
-        return
-    text = (ROOT / "deploy/dev/api.env.example").read_text(encoding="utf-8")
-    target.write_text(text.replace("<ROOT>", str(ROOT)), encoding="utf-8")
-    print("已生成 data/dev/api.env,可按需编辑")
+        text = target.read_text(encoding="utf-8")
+    else:
+        text = (ROOT / "deploy/dev/api.env.example").read_text(encoding="utf-8").replace("<ROOT>", str(ROOT))
+    key = "AIVERO_PRODUCTION_HOST_CATALOG_FILE"
+    previous = str(ROOT / "deploy/host-catalog.development.json")
+    lines = text.splitlines()
+    configured = next((line.split("=", 1)[1].strip() for line in lines if line.startswith(key + "=")), None)
+    if configured not in (None, previous, str(RUNTIME / "host-catalog.json")):
+        sys.exit("dev:stack Host 指向自定义目录；请先确认它是独立 Mock 配置，未覆盖已有配置")
+    lines = [line for line in lines if not line.startswith(key + "=")]
+    lines.append(f"{key}={RUNTIME / 'host-catalog.json'}")
+    target.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def ensure_compose_files() -> None:
     (RUNTIME / "compose.env").write_text(COMPOSE_ENV, encoding="utf-8")
     (RUNTIME / "compose.override.yaml").write_text(f"""# 由 scripts/dev_stack.py 生成;修改端口/绑定请改脚本后重跑。
 services:
+  agent-worker:
+    environment:
+      AIVERO_RUNTIME_ENVIRONMENT: development
+      AIVERO_PRODUCTION_HOST_CATALOG_FILE: /run/config/host-catalog.json
+    volumes:
+      - {RUNTIME / "host-catalog.json"}:/run/config/host-catalog.json:ro
+  image-worker:
+    environment:
+      AIVERO_RUNTIME_ENVIRONMENT: development
+  video-worker:
+    environment:
+      AIVERO_RUNTIME_ENVIRONMENT: development
   postgres:
     ports: ["127.0.0.1:{DB_PORT}:5432"]
   rabbitmq:
@@ -96,6 +137,8 @@ def load_env() -> dict[str, str]:
         if line and not line.startswith("#") and "=" in line:
             key, value = line.split("=", 1)
             values[key.strip()] = value.strip()
+    values["AIVERO_RUNTIME_ENVIRONMENT"] = "development"
+    values["AIVERO_PRODUCTION_RUNTIME_ENVIRONMENT"] = "development"
     values["PYTHONPATH"] = str(ROOT / "apps/api") + os.pathsep + str(ROOT)
     return values
 
@@ -128,6 +171,11 @@ def stop_children() -> None:
         pid = pidfile.read_text().strip() if pidfile.exists() else ""
         if alive(pid):
             os.kill(int(pid), 15)
+            deadline = time.monotonic() + 10
+            while alive(pid) and time.monotonic() < deadline:
+                time.sleep(0.1)
+            if alive(pid):
+                sys.exit(f"{name} 尚未退出，请等待当前请求结束后重试；未强制终止")
             print(f"已停止 {name}(pid {pid})")
         pidfile.unlink(missing_ok=True)
 
@@ -140,7 +188,21 @@ def ensure_workspace_member() -> None:
          "--issuer", f"https://localhost:{OIDC_PORT}", "--subject", "dev-user",
          "--role", "admin", "--actor", "dev_stack"],
         cwd=ROOT, env=load_env(), check=True, capture_output=True)
-    print("dev-user 已加入开发工作区(admin)")
+    run([str(PYTHON), "-c", """
+import asyncio, uuid
+from backend.infrastructure.database import create_async_database_engine, create_async_session_factory
+from backend.agent.media.credits import grant
+async def main():
+    engine = create_async_database_engine()
+    try:
+        async with create_async_session_factory(engine).begin() as db:
+            await grant(db, uuid.uuid5(uuid.NAMESPACE_URL, 'https://localhost:8443/#dev'),
+                'dev-stack-mock-initial-v1', 1000, 'dev_stack_mock')
+    finally:
+        await engine.dispose()
+asyncio.run(main())
+"""], env=load_env(), capture_output=True)
+    print("dev-user 已加入开发工作区(admin)，Mock 测试积分已初始化(幂等)")
 
 
 def wait_healthy() -> bool:
@@ -168,17 +230,15 @@ def up() -> None:
     if not PYTHON.exists():
         sys.exit("缺少 .venv,请先: python3 -m venv .venv && .venv/bin/python -m pip install -r requirements-dev.txt")
     ensure_certificates()
+    ensure_host_catalog()
     ensure_api_env()
     ensure_compose_files()
-    try:
-        compose("up", "-d", "--build")
-    except subprocess.CalledProcessError:
-        # 镜像仓库不可达(如系统代理)时,回退到现有本地镜像;首次使用仍需能拉取基础镜像。
-        print("镜像构建失败(可能无法访问镜像仓库),改用现有本地镜像启动")
-        compose("up", "-d")
-    if not (ROOT / ".web-build" / "workspace" / "app.js").exists():
-        print("首次构建前端…")
-        run(["npm", "run", "build:web"])
+    # A failed build must not silently start a stale image with another schema.
+    compose("build", "migrate")
+    compose("up", "-d", "--no-build")
+    print("构建当前主干前端…")
+    run(["npm", "run", "build:web"])
+    stop_children()
     env = load_env()
     tls = ["--ssl-keyfile", str(RUNTIME / "tls.key"),
            "--ssl-certfile", str(RUNTIME / "tls.pem")]

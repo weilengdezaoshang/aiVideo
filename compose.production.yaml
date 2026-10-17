@@ -21,9 +21,25 @@ services:
       AIVERO_PRODUCTION_PROVIDER_ROUTES_FILE: /run/config/provider-routes.json
       AIVERO_PRODUCTION_AGENT_ROUTES_FILE: /run/config/agent-routes.json
       AIVERO_PRODUCTION_AGENT_PERSONAS_FILE: /run/config/agent-personas.json
+      AIVERO_PRODUCTION_HOST_CATALOG_FILE: /run/config/host-catalog.json
+      AIVERO_PRODUCTION_RUNTIME_ENVIRONMENT: production
+      AIVERO_PRODUCTION_HOST_CREDIT_GRANT_TOKEN: ${AIVERO_HOST_CREDIT_GRANT_TOKEN:-}
       AIVERO_PRODUCTION_MEDIA_ROOT: /app/data
       AIVERO_PRODUCTION_METRICS_TOKEN: ${AIVERO_METRICS_TOKEN:-}
+      INTENT_RAG: ${INTENT_RAG:-false}
+      INTENT_MULTI_STEP: ${INTENT_MULTI_STEP:-false}
+      INTENT_RAG_SHADOW: ${INTENT_RAG_SHADOW:-false}
+      INTENT_DIRECT_I2V: ${INTENT_DIRECT_I2V:-false}
+      INTENT_EMBED_URL: ${INTENT_EMBED_URL:-http://intent-embedder:8091/v1/embeddings}
+      INTENT_EMBED_MODEL_ID: ${INTENT_EMBED_MODEL_ID:-pending}
+      INTENT_EXEMPLARS: ${INTENT_EXEMPLARS:-/app/apps/api/backend/agent/media/intent/exemplars.yaml}
+      INTENT_INDEX: ${INTENT_INDEX:-}
+      INTENT_T_STRONG: ${INTENT_T_STRONG:-0.82}
+      INTENT_T_MARGIN: ${INTENT_T_MARGIN:-0.12}
+      INTENT_T_MIN: ${INTENT_T_MIN:-0.55}
     volumes:
+      - ${INTENT_ARTIFACTS_DIR:-./deploy/intent}:/run/config/intent:ro
+      - ${AIVERO_HOST_CATALOG_FILE:-./deploy/host-catalog.disabled.json}:/run/config/host-catalog.json:ro
       - media:/app/data
       - ${AIVERO_ROUTES_FILE:?required absolute provider routes path}:/run/config/provider-routes.json:ro
       - ${AIVERO_AGENT_ROUTES_FILE:-./deploy/agent-routes.disabled.json}:/run/config/agent-routes.json:ro
@@ -40,7 +56,11 @@ services:
     secrets:
       - provider_credentials
   agent-worker:
+    volumes:
+      - ${AIVERO_HOST_CATALOG_FILE:-./deploy/host-catalog.disabled.json}:/run/config/host-catalog.json:ro
     environment:
+      AIVERO_PRODUCTION_HOST_CATALOG_FILE: /run/config/host-catalog.json
+      AIVERO_RUNTIME_ENVIRONMENT: production
       AIVERO_CREDENTIALS_FILE: /run/secrets/provider_credentials
     secrets:
       - provider_credentials

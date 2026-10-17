@@ -21,16 +21,22 @@ async def execute_export(job_id: uuid.UUID, factory, root: Path, policy=None):
     if claim.phase == "persist":
         await asyncio.to_thread(spool.verify, claim.payload)
         return {"completed": await store.complete(claim, claim.payload)}
-    def source(url):
-        key = claim.params["sources"][url]
-        path = (root / key).resolve()
-        if not path.is_relative_to(root.resolve()) or not path.is_file():
-            raise ValueError("Export source unavailable")
-        return path
-    renderer = Exports(root, durable=True, source_resolver=source,
-                       work_root=root / "export-work" / str(job_id) / str(claim.epoch))
-    local = {"id": str(job_id), "status": "queued", "timeline": claim.params["timeline"]}
-    task = asyncio.create_task(renderer.render(local, ffmpeg_binary()))
+    frame_composition = claim.params.get("hostFrameComposition") is True
+    if frame_composition:
+        from backend.agent.media.frame_composition import render_frames
+        task = asyncio.create_task(render_frames(root, claim, ffmpeg_binary()))
+        renderer, local = None, None
+    else:
+        def source(url):
+            key = claim.params["sources"][url]
+            path = (root / key).resolve()
+            if not path.is_relative_to(root.resolve()) or not path.is_file():
+                raise ValueError("Export source unavailable")
+            return path
+        renderer = Exports(root, durable=True, source_resolver=source,
+                           work_root=root / "export-work" / str(job_id) / str(claim.epoch))
+        local = {"id": str(job_id), "status": "queued", "timeline": claim.params["timeline"]}
+        task = asyncio.create_task(renderer.render(local, ffmpeg_binary()))
     async def heartbeat():
         while True:
             await asyncio.sleep(policy.heartbeat_s)
@@ -44,10 +50,13 @@ async def execute_export(job_id: uuid.UUID, factory, root: Path, policy=None):
     alive = asyncio.create_task(heartbeat())
     try:
         async with asyncio.timeout(remaining_seconds(claim.deadline)):
-            await task
-        if local["status"] != "completed":
-            raise ValueError("Export did not complete")
-        path = renderer.root / str(job_id) / "output.mp4"
+            rendered = await task
+        if frame_composition:
+            path = rendered
+        else:
+            if local["status"] != "completed":
+                raise ValueError("Export did not complete")
+            path = renderer.root / str(job_id) / "output.mp4"
         artifact = await asyncio.to_thread(spool.save_file, job_id, claim.epoch, path, "mp4")
         return {"completed": await store.complete(claim, artifact)}
     except (ValueError, TimeoutError):

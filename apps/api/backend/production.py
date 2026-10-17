@@ -96,6 +96,11 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
     from backend.agent.config import load_routes as load_agent_routes
     from backend.agent.runtime import AgentService
     agent_routes = load_agent_routes(settings.agent_routes_file)
+    from backend.agent.media.catalog import Catalog
+    from backend.agent.media.service import MediaHost
+    host_catalog = Catalog.load(settings.host_catalog_file)
+    if host_catalog.config.enabled and host_catalog.config.environment != settings.runtime_environment:
+        raise ValueError("Host catalog environment must match the explicit deployment environment")
     from backend.agent.persona import load_personas
     agent_personas = load_personas(settings.agent_personas_file)
     for route in agent_routes:
@@ -108,6 +113,7 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
         app.state.factory = create_async_session_factory(engine)
         app.state.documents = DatabaseDocuments(app.state.factory)
         app.state.agent = AgentService(app.state.factory)
+        app.state.host = MediaHost(app.state.factory, host_catalog, settings.media_root)
         app.state.recognition = Recognition(os.environ.get("CUTOUT_MODEL", "birefnet-portrait"), cutout_infer)
         app.state.redis = Redis.from_url(os.environ.get("AIVERO_REDIS_URL", "redis://127.0.0.1:6379/0"),
             socket_timeout=2, socket_connect_timeout=2)
@@ -286,13 +292,15 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
     async def scoped_job(ident, identity):
         async with app.state.factory() as session:
             row = await session.get(Job, ident)
-            if row is None or row.workspace_id != identity.workspace_id:
+            if (row is None or row.workspace_id != identity.workspace_id or
+                    (row.params.get("hostRunId") and row.params.get("submittedBy") != identity.principal)):
                 raise HTTPException(404, "任务不存在")
             return await job_view(session, row)
 
     async def job_list(identity, limit=100):
         async with app.state.factory() as session:
-            base = select(Job).where(Job.workspace_id == identity.workspace_id, Job.parent_id.is_(None))
+            base = select(Job).where(Job.workspace_id == identity.workspace_id, Job.parent_id.is_(None),
+                Job.params["hostRunId"].astext.is_(None) | (Job.params["submittedBy"].astext == identity.principal))
             active = list(await session.scalars(base.where(Job.status.in_(["queued", "running", "unknown"]))
                 .order_by(Job.created_at.desc())))
             finished = list(await session.scalars(base.where(Job.status.in_(["completed", "failed"]))
@@ -362,7 +370,7 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
         if refs:
             async with app.state.factory() as session:
                 asset = await session.get(Asset, uuid.UUID(refs[0]))
-                if asset is None or asset.workspace_id != identity.workspace_id or asset.kind != "image":
+                if asset is None or asset.workspace_id != identity.workspace_id or asset.kind != "image" or asset.details.get("hostBlocked"):
                     raise HTTPException(404, "参考素材不可用")
                 stored["referenceStorage"] = {"key": asset.storage_key, "ext": asset.ext}
         for input_name, storage_name in (("initImage", "referenceStorage"), ("maskImage", "maskStorage")):
@@ -387,9 +395,9 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
             marker = InitImage(b"", "png")
             provider = CloudProvider(Config.model_validate(snapshot), None)
             if params.kind == "video":
-                if stored.get("referenceStorage"):
-                    raise HTTPException(400, "云端图生视频暂未开放")
-                _, body = provider.video_request(params)
+                if stored.get("maskStorage"):
+                    raise HTTPException(400, "视频不支持蒙版输入")
+                _, body = provider.video_request(params, marker if stored.get("referenceStorage") else None)
             else:
                 _, body = provider.request(params, params.seed,
                     marker if stored.get("referenceStorage") else None,
@@ -471,6 +479,8 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
 
     @app.post("/api/documents", status_code=201)
     async def create_document(request: Request, identity: Identity = Depends(authenticated)):
+        from backend.agent.media.api import editor
+        editor(identity)
         raw = await read_json(request)
         return {"document": await app.state.documents.create(identity.workspace_id, raw.get("name"),
             request.headers.get("idempotency-key"))}
@@ -481,6 +491,8 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
 
     @app.post("/api/documents/{ident}")
     async def save_document(ident: uuid.UUID, request: Request, identity: Identity = Depends(authenticated)):
+        from backend.agent.media.api import editor
+        editor(identity)
         saved, conflict = await app.state.documents.save(identity.workspace_id, ident, await read_json(request))
         if conflict:
             return JSONResponse({"error": "文档已被其他会话更新", "code": "CONFLICT", "document": conflict}, status_code=409)
@@ -488,6 +500,8 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
 
     @app.put("/api/documents/{ident}/rename")
     async def rename_document(ident: uuid.UUID, request: Request, identity: Identity = Depends(authenticated)):
+        from backend.agent.media.api import editor
+        editor(identity)
         raw = await read_json(request)
         async with app.state.factory.begin() as session:
             row = await session.get(Document, ident, with_for_update=True)
@@ -500,6 +514,8 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
 
     @app.delete("/api/documents/{ident}")
     async def delete_document(ident: uuid.UUID, identity: Identity = Depends(authenticated)):
+        from backend.agent.media.api import editor
+        editor(identity)
         async with app.state.factory.begin() as session:
             row = await session.get(Document, ident, with_for_update=True)
             if row is None or row.workspace_id != identity.workspace_id:
@@ -512,7 +528,12 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
         return {"removed": True}
 
     def asset_view(row):
-        return {"asset": {**row.details, "id": str(row.id), "kind": row.kind, "ext": row.ext,
+        details = dict(row.details)
+        if details.get("params", {}).get("hostRunId"):
+            details["params"] = {key: value for key, value in details["params"].items() if key in {
+                "kind", "width", "height", "durationSec", "fps", "hostTier"}}
+            details.pop("provider", None)
+        return {"asset": {**details, "id": str(row.id), "kind": row.kind, "ext": row.ext,
             "width": row.width, "height": row.height, "bytes": row.bytes, "hasThumbs": False,
             "createdAt": row.created_at.isoformat()}, "urls": {
                 "original": f"/api/assets/{row.id}/content", "thumb256": None, "thumb1024": None,
@@ -521,14 +542,14 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
     async def owned_asset(ident, identity):
         async with app.state.factory() as session:
             row = await session.get(Asset, ident)
-            if row is None or row.workspace_id != identity.workspace_id:
+            if row is None or row.workspace_id != identity.workspace_id or row.details.get("hostBlocked"):
                 raise HTTPException(404, "资产不存在")
             return row
 
     @app.get("/api/assets")
     async def assets(identity: Identity = Depends(authenticated)):
         async with app.state.factory() as session:
-            rows = await session.scalars(select(Asset).where(Asset.workspace_id == identity.workspace_id)
+            rows = await session.scalars(select(Asset).where(Asset.workspace_id == identity.workspace_id, Asset.details["hostBlocked"].as_boolean().is_not(True))
                 .order_by(Asset.created_at.desc()).limit(500))
             return {"assets": [asset_view(row) for row in rows]}
 
@@ -546,7 +567,7 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
         raw = await read_json(request)
         async with app.state.factory.begin() as session:
             row = await session.get(Asset, ident, with_for_update=True)
-            if row is None or row.workspace_id != identity.workspace_id:
+            if row is None or row.workspace_id != identity.workspace_id or row.details.get("hostBlocked"):
                 raise HTTPException(404, "资产不存在")
             if row.kind != "video":
                 raise HTTPException(400, "只允许补充视频元数据")
@@ -658,9 +679,14 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
                 Asset.details["history"].as_boolean().is_(True)).order_by(Asset.created_at.desc()).limit(500)))
             result = []
             for row in rows:
-                if row.details.get("hidden"):
+                if row.details.get("hidden") or row.details.get("hostBlocked"):
                     continue
                 params = row.details.get("params", {})
+                if params.get("hostRunId"):
+                    if params.get("hostPrincipal") != identity.principal:
+                        continue
+                    params = {key: value for key, value in params.items() if key in {
+                        "kind", "width", "height", "durationSec", "fps", "hostTier"}}
                 if request.query_params.get("q", "").lower() not in str(params.get("prompt", "")).lower():
                     continue
                 if request.query_params.get("kind") and request.query_params["kind"] != row.kind:
@@ -821,6 +847,10 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
 
     from backend.agent.api import install_agent_routes
     install_agent_routes(app, read_json)
+    from backend.agent.local_config import install_local_config_routes
+    install_local_config_routes(app, read_json)
+    from backend.agent.media.api import install_host_routes
+    install_host_routes(app, read_json)
 
     @app.api_route("/canvas-next", methods=["GET", "HEAD"], include_in_schema=False)
     @app.api_route("/canvas-next/", methods=["GET", "HEAD"], include_in_schema=False)

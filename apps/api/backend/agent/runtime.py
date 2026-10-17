@@ -49,9 +49,31 @@ class AgentService(Kernel):
     def limits(self) -> Limits:
         return Limits(MAX_MODEL_CALLS, MAX_TOOL_CALLS, TOOL_TIMEOUT_S, TOOL_HEARTBEAT_S)
 
+    async def advance(self, run_id, owner, model_client, tools=None, media_root=None):
+        async with self.factory() as db:
+            run = await db.get(AgentRun, run_id)
+            media = run is not None and run.phase == "media"
+        if media:
+            import os
+            from pathlib import Path
+            from backend.agent.media.catalog import Catalog
+            from backend.agent.media.service import MediaHost
+            path = os.environ.get("AIVERO_PRODUCTION_HOST_CATALOG_FILE")
+            host = MediaHost(self.factory, Catalog.load(Path(path) if path else None), media_root)
+            from backend.agent.media.reviewer import review_one
+            if await review_one(host, run_id, model_client):
+                return {"reviewed": True}
+            return await host.tick(run_id)
+        return await super().advance(run_id, owner, model_client, tools, media_root)
+
+    async def recover_due(self, limit=100):
+        from backend.agent.media.service import MediaHost
+        media = await MediaHost(self.factory).recover_due(limit)
+        return media + await super().recover_due(limit)
+
     async def _session(self, db, workspace, document, *, lock=False):
         query = select(AgentSession).where(AgentSession.workspace_id == workspace,
-            AgentSession.source_document_id == document)
+            AgentSession.source_document_id == document, AgentSession.principal == "")
         if lock:
             query = query.with_for_update()
         return await db.scalar(query)
@@ -140,9 +162,11 @@ class AgentService(Kernel):
             projected = await self._event(db, session, run, "run.created")
             return {"run": projected, "sessionId": str(session.id), "replayed": False}
 
-    async def get_run(self, workspace_id, run_id):
+    async def get_run(self, workspace_id, run_id, principal=None):
         async with self.factory.begin() as db:
             _, run = await self._lock_run(db, run_id, workspace_id)
+            if run.phase == "media" and principal is not None and run.principal != principal:
+                raise HTTPException(404, "创作运行不存在")
             return await self._project(db, run)
 
     async def snapshot(self, workspace_id, document_id, client_request_id=None, after_seq=0):
@@ -182,9 +206,11 @@ class AgentService(Kernel):
             return {"events": [v.payload for v in values],
                 "cursor": values[-1].seq if values else min(after_seq, session.cursor)}
 
-    async def stop_run(self, workspace_id, run_id):
+    async def stop_run(self, workspace_id, run_id, principal=None):
         async with self.factory.begin() as db:
             session, run = await self._lock_run(db, run_id, workspace_id)
+            if run.phase == "media" and principal is not None and run.principal != principal:
+                raise HTTPException(404, "创作运行不存在")
             return await self._stop(db, session, run)
 
     async def close_document(self, db, document_id, workspace_id=None):
@@ -192,12 +218,11 @@ class AgentService(Kernel):
         query = select(AgentSession).where(AgentSession.document_id == document_id).with_for_update()
         if workspace_id is not None:
             query = query.where(AgentSession.workspace_id == workspace_id)
-        session = await db.scalar(query)
-        if session is None:
-            return
-        for run in await db.scalars(select(AgentRun).where(AgentRun.session_id == session.id,
-                AgentRun.status.in_(ACTIVE)).order_by(AgentRun.id).with_for_update()):
-            await self._stop(db, session, run, "DOCUMENT_DELETED")
-        session.closed_at, session.document_id = now(), None
-        # Source id, call history and agent_run asset pins are retained for audit.
-
+        sessions = list(await db.scalars(query.order_by(AgentSession.id)))
+        for session in sessions:
+            for run in await db.scalars(select(AgentRun).where(AgentRun.session_id == session.id,
+                    AgentRun.status.in_([*ACTIVE, "canceling", "awaiting_confirm", "awaiting_user_final"]))
+                    .order_by(AgentRun.id).with_for_update()):
+                await self._stop(db, session, run, "DOCUMENT_DELETED")
+            session.closed_at, session.document_id = now(), None
+        # Source ids, call history and run asset pins remain available for audit.

@@ -325,7 +325,7 @@ def test_cloud_edit_and_error_redaction(png):
             provider = CloudProvider(config, client)
             p = GenParams(prompt="x", model="x")
             url, payload = provider.request(p, 5, InitImage(png, "png"), None)
-            assert payload["model"] == "qwen-image-edit-plus"
+            assert payload["model"] == "qwen-image-2.0"
             assert payload["input"]["messages"][0]["content"][0]["image"].startswith("data:")
             with pytest.raises(ProviderFailure) as error:
                 await provider.generate(p, 5, lambda *_: None)

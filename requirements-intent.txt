@@ -1,0 +1,2 @@
+# 可选：仅本机/内网 embedding 侧车需要；应用 API 无此依赖。
+sentence-transformers>=3,<6

@@ -305,3 +305,141 @@ def test_canvas_node_drafts_and_independent_timelines_roundtrip(tmp_path):
             assert loaded['objects']['timeline-a']['timeline']['width'] == 640
             assert loaded['objects']['timeline-b']['timeline']['width'] == 1280
     asyncio.run(scenario())
+
+
+def test_host_context_http_uses_canonical_auth_idempotency_and_revision(tmp_path, monkeypatch):
+    monkeypatch.setenv("AIVERO_RUNTIME_ENVIRONMENT", "development")
+    async def scenario():
+        from backend.agent.media.catalog import Catalog
+        from backend.agent.media.contracts import CatalogConfig
+        from backend.agent.media.credits import grant
+        from backend.agent.media.service import MediaHost
+        raw_catalog = {"version": "context-http", "environment": "development", "enabled": True,
+            "capabilities": [{"id": "text_to_image", "enabled": True, "outputType": "image",
+                "tiers": {"preview": {"credits": 10}}, "binding": {"version": "context-http",
+                    "providerSnapshot": {"provider": "mock", "configVersion": "context-http", "cloudModel": "mock"}}}]}
+        async with api(tmp_path) as (app, client, workspace):
+            app.state.host = MediaHost(app.state.factory, Catalog(CatalogConfig.model_validate(raw_catalog)), tmp_path / "media")
+            async with app.state.factory.begin() as db:
+                await grant(db, workspace, "context-http-credit", 100, str(workspace))
+            doc = (await client.post("/api/documents", json={"name": "context-http"})).json()["document"]
+            ident = str(uuid.uuid4())
+            request = {"clientRequestId": ident, "documentId": doc["id"], "message": "画一只狗",
+                "baseRevision": doc["revision"], "selectedObjectIds": []}
+            request["context"] = {"schema_version": 1, "request_id": ident, "conversation_id": str(uuid.uuid4()),
+                "doc_id": doc["id"], "doc_version": doc["revision"], "client_ts": 1,
+                "client_id": "client", "tab_id": "tab", "message_text": request["message"],
+                "selection": {"ids": [], "count": 0, "truncated": False},
+                "viewport": {"bbox": [0, 0, 1024, 720], "zoom": 1}}
+            denied = await client.post("/api/host/turn", json=request, headers={"x-csrf-token": "wrong"})
+            assert denied.status_code == 403
+            created = await client.post("/api/host/turn", json=request)
+            assert created.status_code == 202, created.text
+            replay = await client.post("/api/host/turn", json=request)
+            assert replay.status_code == 200 and replay.json()["run"]["id"] == created.json()["run"]["id"]
+            forged = {**request, "context": {**request["context"], "role": "admin"}}
+            assert (await client.post("/api/host/turn", json=forged)).status_code == 400
+            stale_id = str(uuid.uuid4())
+            stale = {**request, "clientRequestId": stale_id, "context": {**request["context"], "request_id": stale_id}}
+            response = await client.post("/api/host/turn", json=stale)
+            assert response.status_code == 409 and response.json()["code"] == "STALE_VERSION"
+    asyncio.run(scenario())
+
+
+def test_local_dialogue_settings_auth_csrf_redaction_and_persistence(tmp_path):
+    async def scenario():
+        async with api(tmp_path) as (app, client, workspace):
+            url = "/api/creation/v1/llm-config"
+            body = {"baseUrl": "https://model.example/v1", "model": "test-model", "apiKey": "isolated-test-only", "timeoutMs": 45000}
+            assert (await client.get(url)).status_code == 403
+            app.state.settings = app.state.settings.model_copy(update={"runtime_environment": "development"})
+            denied = await client.post(url, json=body, headers={"x-csrf-token": "wrong"})
+            assert denied.status_code == 403
+            saved = await client.post(url, json=body)
+            assert saved.status_code == 200 and saved.json()["keyConfigured"]
+            assert "isolated-test-only" not in saved.text
+            del body["apiKey"]
+            body["model"] = "updated-test-model"
+            assert (await client.post(url, json=body)).status_code == 200
+            assert (await client.get(url)).json()["model"] == "updated-test-model"
+            assert (await client.get(url, headers={"x-workspace-id": str(uuid.uuid4())})).status_code == 403
+            models = (await client.get("/api/agent/models")).json()
+            assert any(route["id"] == "local-dialogue" for route in models["models"])
+    asyncio.run(scenario())
+
+
+def test_agent_cutout_http_waits_for_canvas_confirmation_and_returns_saved_result(tmp_path, monkeypatch):
+    import base64
+    import io
+    from PIL import Image
+    from backend.agent.media.catalog import Catalog
+    from backend.agent.media.contracts import CatalogConfig
+
+    redis_url = os.environ.get("AIVERO_DURABLE_TEST_REDIS")
+    if not redis_url:
+        pytest.skip("explicit isolated Redis required")
+    monkeypatch.setenv("AIVERO_REDIS_URL", redis_url)
+    infer_calls = []
+    source_bytes, mask_bytes = io.BytesIO(), io.BytesIO()
+    Image.new("RGB", (64, 64), "red").save(source_bytes, format="PNG")
+    Image.new("L", (64, 64), 255).save(mask_bytes, format="PNG")
+
+    def infer(data):
+        infer_calls.append(data)
+        return mask_bytes.getvalue()
+
+    async def scenario():
+        async with api(tmp_path, cutout_infer=infer) as (app, client, workspace):
+            # Local editing needs no provider catalog entries or paid credentials.
+            app.state.host.catalog = Catalog(CatalogConfig.model_validate({
+                "version": "cutout-http", "environment": "development", "enabled": True, "capabilities": []}))
+            assert (await client.get("/api/agent/models")).json()["hostEnabled"] is True
+            uploaded = (await client.post("/api/assets?kind=image", content=source_bytes.getvalue())).json()["asset"]
+            doc = (await client.post("/api/documents", json={"name": "agent-cutout"})).json()["document"]
+            source = {"id": "source", "kind": "image", "assetId": uploaded["id"], "ext": "png", "x": 0, "y": 0, "width": 64, "height": 64}
+            saved = await client.post(f"/api/documents/{doc['id']}", json={"objects": {"source": source}, "order": ["source"], "baseRevision": doc["revision"]})
+            revision = saved.json()["document"]["revision"]
+            request_id = str(uuid.uuid4())
+            raw = {"clientRequestId": request_id, "documentId": doc["id"], "message": "帮我抠图，提取主体", "baseRevision": revision, "selectedObjectIds": ["source"]}
+            raw["context"] = {"schema_version": 1, "request_id": request_id, "conversation_id": str(uuid.uuid4()),
+                "doc_id": doc["id"], "doc_version": revision, "client_ts": 1, "client_id": "client", "tab_id": "tab",
+                "message_text": raw["message"], "selection": {"ids": ["source"], "count": 1, "truncated": False},
+                "viewport": {"bbox": [0, 0, 1024, 720], "zoom": 1}}
+            missing_id = str(uuid.uuid4())
+            missing = {**raw, "clientRequestId": missing_id, "selectedObjectIds": [], "context": {
+                **raw["context"], "request_id": missing_id, "selection": {"ids": [], "count": 0, "truncated": False}}}
+            clarification = await client.post("/api/host/turn", json=missing)
+            assert clarification.status_code == 202, clarification.text
+            clarification_run = clarification.json()["run"]
+            assert clarification_run["status"] == "waiting_input" and not clarification_run.get("canvasAction")
+            raw.update(message="选好了", clarifyRunId=clarification_run["id"])
+            raw["context"].update(message_text="选好了", conversation_id=clarification_run["sessionId"])
+            response = await client.post("/api/host/turn", json=raw)
+            assert response.status_code == 202, response.text
+            run = response.json()["run"]
+            assert run["status"] == "waiting_approval" and run["canvasAction"]["sourceObjectId"] == "source"
+            assert infer_calls == []
+            replay = await client.post("/api/host/turn", json=raw)
+            assert replay.status_code == 200 and replay.json()["replayed"]
+            assert (await client.get(f"/api/documents/{doc['id']}/host")).json()["runs"][-1]["canvasAction"] == run["canvasAction"]
+            denied = await client.post(f"/api/host/runs/{run['id']}/canvas-result", json={"resultObjectId": "result", "baseRevision": revision}, headers={"x-csrf-token": "wrong"})
+            assert denied.status_code == 403
+            rejected = await client.post(f"/api/host/runs/{run['id']}/canvas-result", json={"resultObjectId": "result", "baseRevision": revision})
+            assert rejected.status_code == 422
+            detection = await client.post(f"/api/cutout/detect/{uploaded['id']}?operationId={uuid.uuid4().hex}")
+            assert detection.status_code == 200, detection.text
+            assert len(infer_calls) == 1
+            mask = base64.b64decode(detection.json()["urls"]["original"].split(",", 1)[1])
+            applied = await client.post(f"/api/cutout/apply/{uploaded['id']}", content=mask, headers={"content-type": "image/png"})
+            assert applied.status_code == 201, applied.text
+            result = {**source, "id": "result", "assetId": applied.json()["asset"]["id"],
+                "lineage": {"fromId": "source", "params": {"operation": "cutout"}},
+                "cutout": {"originalAssetId": uploaded["id"], "originalExt": "png", "maskAssetId": ""}}
+            saved = await client.post(f"/api/documents/{doc['id']}", json={"objects": {"source": source, "result": result}, "order": ["source", "result"], "baseRevision": revision})
+            receipt = {"resultObjectId": "result", "baseRevision": saved.json()["document"]["revision"]}
+            completed = await client.post(f"/api/host/runs/{run['id']}/canvas-result", json=receipt)
+            assert completed.status_code == 200, completed.text
+            assert completed.json()["run"]["status"] == "completed"
+            assert completed.json()["run"]["canvasAction"]["resultAssetId"] == result["assetId"]
+            assert (await client.post(f"/api/host/runs/{run['id']}/canvas-result", json=receipt)).json()["replayed"]
+    asyncio.run(scenario())

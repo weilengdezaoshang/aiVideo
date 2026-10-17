@@ -1,0 +1,4272 @@
+exemplars_version: 0.2.0
+embed_model_id: pending
+description: P0 intent RAG exemplar library for aiVideo canvas Agent v0.2.0. Adds matting/cutout and compound utterances.
+  weak_motion / conflict / multi_step_hint use l2=null + l2_candidates + certainty_expected=weak. Human-reviewed before promote.
+l2_enum:
+- text_to_image
+- image_edit
+- text_to_video
+- image_to_multiframe
+- image_to_video
+- other
+- unsupported
+schema_notes:
+  l2_null: Allowed only for weak_motion ambiguous items; use l2_candidates + certainty_expected.
+  style_as_art: 'Hard negatives: art/style words must stay image path, never video.'
+  one_step_i2v: image_to_video path is feature-gated; default video-from-image is image_to_multiframe.
+items:
+- id: ie_zh_001
+  lang: zh
+  text: 把这张改成水彩风格
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: watercolor
+  tags:
+  - style_transfer
+  needs_image: true
+  notes: 改图+风格
+- id: ie_zh_002
+  lang: zh
+  text: 换成油画质感
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: oil_painting
+  tags:
+  - style_transfer
+  needs_image: true
+- id: ie_zh_003
+  lang: zh
+  text: 改成日系动漫风
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: anime
+  tags:
+  - style_transfer
+  - style_as_art
+  needs_image: true
+  notes: 风格词，非做视频
+- id: ie_zh_004
+  lang: zh
+  text: 做成赛博朋克风格
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: cyberpunk
+  tags:
+  - style_transfer
+  - style_as_art
+  needs_image: true
+  notes: 静图风格
+- id: ie_zh_005
+  lang: zh
+  text: 换成黑白素描
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: sketch
+  tags:
+  - style_transfer
+  needs_image: true
+- id: ie_zh_006
+  lang: zh
+  text: 改成中国水墨画
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: ink_wash
+  tags:
+  - style_transfer
+  needs_image: true
+- id: ie_zh_007
+  lang: zh
+  text: 变成像素风
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: pixel
+  tags:
+  - style_transfer
+  needs_image: true
+- id: ie_zh_008
+  lang: zh
+  text: 换成二次元插画风格
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: anime
+  tags:
+  - style_transfer
+  - style_as_art
+  needs_image: true
+- id: ie_zh_009
+  lang: zh
+  text: 改成写实照片质感
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: photorealistic
+  tags:
+  - style_transfer
+  needs_image: true
+- id: ie_zh_010
+  lang: zh
+  text: 做成波普艺术风格
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: pop_art
+  tags:
+  - style_transfer
+  needs_image: true
+- id: ie_zh_011
+  lang: zh
+  text: 把背景换成海边
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: background
+  tags:
+  - local_edit
+  needs_image: true
+- id: ie_zh_012
+  lang: zh
+  text: 换一个天空背景
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: background
+  tags:
+  - local_edit
+  needs_image: true
+- id: ie_zh_013
+  lang: zh
+  text: 把背景去掉换成纯白
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: background
+  tags:
+  - local_edit
+  - remove_bg
+  needs_image: true
+- id: ie_zh_014
+  lang: zh
+  text: 换成夜景背景
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: background
+  tags:
+  - local_edit
+  needs_image: true
+- id: ie_zh_015
+  lang: zh
+  text: 把人物衣服改成红色
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: clothing
+  tags:
+  - local_edit
+  needs_image: true
+- id: ie_zh_016
+  lang: zh
+  text: 把头发改成金色长发
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: hair
+  tags:
+  - local_edit
+  needs_image: true
+- id: ie_zh_017
+  lang: zh
+  text: 去掉图里的水印
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: watermark
+  tags:
+  - local_edit
+  - cleanup
+  needs_image: true
+- id: ie_zh_018
+  lang: zh
+  text: 把脸上的痘痘修掉
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: face
+  tags:
+  - local_edit
+  - retouch
+  needs_image: true
+- id: ie_zh_019
+  lang: zh
+  text: 美颜一下，皮肤光滑点
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: face
+  tags:
+  - retouch
+  needs_image: true
+- id: ie_zh_020
+  lang: zh
+  text: 把这张图变清晰一点
+  l1: image
+  l2: image_edit
+  tags:
+  - enhance
+  - upscale
+  needs_image: true
+- id: ie_zh_021
+  lang: zh
+  text: 提高分辨率，放大细节
+  l1: image
+  l2: image_edit
+  tags:
+  - enhance
+  - upscale
+  needs_image: true
+- id: ie_zh_022
+  lang: zh
+  text: 给这张图加个滤镜，暖色调
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: warm_filter
+  tags:
+  - style_transfer
+  needs_image: true
+- id: ie_zh_023
+  lang: zh
+  text: 把亮度调高一点
+  l1: image
+  l2: image_edit
+  tags:
+  - adjust
+  needs_image: true
+- id: ie_zh_024
+  lang: zh
+  text: 修一下构图，裁成方形
+  l1: image
+  l2: image_edit
+  tags:
+  - crop
+  needs_image: true
+- id: ie_zh_025
+  lang: zh
+  text: 把左边那个人去掉
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: object_remove
+  tags:
+  - local_edit
+  needs_image: true
+- id: ie_zh_026
+  lang: zh
+  text: 在右下角加一只猫
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: object_add
+  tags:
+  - local_edit
+  needs_image: true
+- id: ie_zh_027
+  lang: zh
+  text: 把文字改成「欢迎光临」
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: text
+  tags:
+  - local_edit
+  needs_image: true
+- id: ie_zh_028
+  lang: zh
+  text: 改成竖版海报构图
+  l1: image
+  l2: image_edit
+  tags:
+  - layout
+  needs_image: true
+- id: ie_zh_029
+  lang: zh
+  text: 把这张图改成插画风
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: illustration
+  tags:
+  - style_transfer
+  - style_as_art
+  needs_image: true
+- id: ie_zh_030
+  lang: zh
+  text: 换成蒸汽波风格
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: vaporwave
+  tags:
+  - style_transfer
+  needs_image: true
+- id: ie_zh_031
+  lang: zh
+  text: 把饱和度提高，颜色更鲜艳
+  l1: image
+  l2: image_edit
+  tags:
+  - adjust
+  needs_image: true
+- id: ie_zh_032
+  lang: zh
+  text: 修图：去噪、锐化
+  l1: image
+  l2: image_edit
+  tags:
+  - enhance
+  - retouch
+  needs_image: true
+- id: ie_zh_033
+  lang: zh
+  text: 把人物表情改成微笑
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: face
+  tags:
+  - local_edit
+  needs_image: true
+- id: ie_zh_034
+  lang: zh
+  text: 换成冬天下雪的场景
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: background
+  tags:
+  - local_edit
+  needs_image: true
+- id: ie_zh_035
+  lang: zh
+  text: 把这张做成盲盒潮玩风格静图
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: blind_box
+  tags:
+  - style_transfer
+  - style_as_art
+  needs_image: true
+  notes: 强调静图
+- id: ie_zh_036
+  lang: zh
+  text: 局部重绘：只改帽子
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: hat
+  tags:
+  - local_edit
+  - inpaint
+  needs_image: true
+- id: ie_zh_037
+  lang: zh
+  text: 把照片变成漫画分镜单帧静图
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: comic
+  tags:
+  - style_transfer
+  - style_as_art
+  needs_image: true
+  notes: 单帧静图非视频
+- id: ie_en_001
+  lang: en
+  text: Turn this into a watercolor painting
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: watercolor
+  tags:
+  - style_transfer
+  needs_image: true
+- id: ie_en_002
+  lang: en
+  text: Make it oil painting style
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: oil_painting
+  tags:
+  - style_transfer
+  needs_image: true
+- id: ie_en_003
+  lang: en
+  text: Change the background to a beach
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: background
+  tags:
+  - local_edit
+  needs_image: true
+- id: ie_en_004
+  lang: en
+  text: Remove the watermark
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: watermark
+  tags:
+  - cleanup
+  needs_image: true
+- id: ie_en_005
+  lang: en
+  text: Upscale and sharpen this image
+  l1: image
+  l2: image_edit
+  tags:
+  - enhance
+  - upscale
+  needs_image: true
+- id: ie_en_006
+  lang: en
+  text: Retouch the face, smoother skin
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: face
+  tags:
+  - retouch
+  needs_image: true
+- id: ie_en_007
+  lang: en
+  text: Change her hair to blonde
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: hair
+  tags:
+  - local_edit
+  needs_image: true
+- id: ie_en_008
+  lang: en
+  text: Convert to black and white sketch
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: sketch
+  tags:
+  - style_transfer
+  needs_image: true
+- id: ie_en_009
+  lang: en
+  text: Make this cyberpunk style still image
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: cyberpunk
+  tags:
+  - style_transfer
+  - style_as_art
+  needs_image: true
+- id: ie_en_010
+  lang: en
+  text: Replace the sky with sunset
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: background
+  tags:
+  - local_edit
+  needs_image: true
+- id: ie_en_011
+  lang: en
+  text: Add a cat in the corner
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: object_add
+  tags:
+  - local_edit
+  needs_image: true
+- id: ie_en_012
+  lang: en
+  text: Crop to square poster layout
+  l1: image
+  l2: image_edit
+  tags:
+  - crop
+  - layout
+  needs_image: true
+- id: t2i_zh_001
+  lang: zh
+  text: 画一只戴墨镜的橘猫
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_002
+  lang: zh
+  text: 生成一张赛博朋克城市夜景
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: cyberpunk
+  tags:
+  - generation
+  - style_as_art
+  needs_image: false
+- id: t2i_zh_003
+  lang: zh
+  text: 帮我画一个二次元少女立绘
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: anime
+  tags:
+  - generation
+  - style_as_art
+  needs_image: false
+- id: t2i_zh_004
+  lang: zh
+  text: 文生图：雪山脚下的木屋
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_005
+  lang: zh
+  text: 画一张产品海报，极简白底
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  - poster
+  needs_image: false
+- id: t2i_zh_006
+  lang: zh
+  text: 生成一张中国风山水插画
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: ink_wash
+  tags:
+  - generation
+  - style_as_art
+  needs_image: false
+- id: t2i_zh_007
+  lang: zh
+  text: 画一个可爱的盲盒潮玩角色
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: blind_box
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_008
+  lang: zh
+  text: 出一张科幻机甲概念图
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_009
+  lang: zh
+  text: 画一张咖啡店室内效果图
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_010
+  lang: zh
+  text: 生成一张星空下的帐篷露营
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_011
+  lang: zh
+  text: 画一个logo：字母J，极简线条
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  - logo
+  needs_image: false
+- id: t2i_zh_012
+  lang: zh
+  text: 出图：未来感地铁站
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_013
+  lang: zh
+  text: 画一张美食摄影：日式拉面特写
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: photorealistic
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_014
+  lang: zh
+  text: 生成一张儿童绘本风格插图
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: children_book
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_015
+  lang: zh
+  text: 画一张蒸汽波美学海报静图
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: vaporwave
+  tags:
+  - generation
+  - style_as_art
+  - poster
+  needs_image: false
+- id: t2i_zh_016
+  lang: zh
+  text: 帮我生成一张办公室场景人像
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_017
+  lang: zh
+  text: 画一只在月球上的宇航员猫
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_018
+  lang: zh
+  text: 出一张抽象几何构成图
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_019
+  lang: zh
+  text: 生成一张春季樱花大道
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_020
+  lang: zh
+  text: 画一张游戏角色三视图概念
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_021
+  lang: zh
+  text: 文生图 4K 写实人像写真
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: photorealistic
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_022
+  lang: zh
+  text: 画一张节日促销banner静图
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  - banner
+  needs_image: false
+- id: t2i_zh_023
+  lang: zh
+  text: 生成一张水下珊瑚与热带鱼
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_024
+  lang: zh
+  text: 画一张复古港风街景插画
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: retro_hk
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_025
+  lang: zh
+  text: 出一张极简室内设计效果图
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_026
+  lang: zh
+  text: 画一张龙与城堡奇幻场景
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_zh_027
+  lang: zh
+  text: 生成一张卡通表情包：开心脸
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  - emoji
+  needs_image: false
+- id: t2i_zh_028
+  lang: zh
+  text: 画一张产品渲染：无线耳机白底
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  - product
+  needs_image: false
+- id: t2i_en_001
+  lang: en
+  text: Generate an image of a cat wearing sunglasses
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_en_002
+  lang: en
+  text: Create a cyberpunk city night scene
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: cyberpunk
+  tags:
+  - generation
+  - style_as_art
+  needs_image: false
+- id: t2i_en_003
+  lang: en
+  text: Draw an anime-style girl character sheet
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: anime
+  tags:
+  - generation
+  - style_as_art
+  needs_image: false
+- id: t2i_en_004
+  lang: en
+  text: 'Text to image: wooden cabin under snow mountains'
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_en_005
+  lang: en
+  text: Make a minimalist product poster on white background
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  - poster
+  needs_image: false
+- id: t2i_en_006
+  lang: en
+  text: Generate a fantasy dragon and castle scene
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_en_007
+  lang: en
+  text: Create a photorealistic ramen close-up food shot
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: photorealistic
+  tags:
+  - generation
+  needs_image: false
+- id: t2i_en_008
+  lang: en
+  text: Draw a logo with letter J in clean lines
+  l1: image
+  l2: text_to_image
+  tags:
+  - generation
+  - logo
+  needs_image: false
+- id: t2i_en_009
+  lang: en
+  text: Generate a vaporwave aesthetic still poster
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: vaporwave
+  tags:
+  - generation
+  - style_as_art
+  needs_image: false
+- id: t2i_en_010
+  lang: en
+  text: Create a children's book style illustration of a fox
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: children_book
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_zh_001
+  lang: zh
+  text: 用文字生成一段海浪拍打礁石的视频
+  l1: video
+  l2: text_to_video
+  slots_hint:
+    duration_sec: 5
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_zh_002
+  lang: zh
+  text: 文生视频：小猫在草地上奔跑
+  l1: video
+  l2: text_to_video
+  slots_hint:
+    duration_sec: 5
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_zh_003
+  lang: zh
+  text: 生成一段城市延时摄影风格短视频
+  l1: video
+  l2: text_to_video
+  slots_hint:
+    duration_sec: 5
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_zh_004
+  lang: zh
+  text: 做一段科幻飞船飞过星空的视频
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_zh_005
+  lang: zh
+  text: 文生视频 8 秒：咖啡倒入杯子特写
+  l1: video
+  l2: text_to_video
+  slots_hint:
+    duration_sec: 8
+  tags:
+  - generation
+  - duration
+  needs_image: false
+- id: t2v_zh_006
+  lang: zh
+  text: 生成一段火焰燃烧的慢动作视频
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_zh_007
+  lang: zh
+  text: 用提示词做一个下雨天街道行人视频
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_zh_008
+  lang: zh
+  text: 文生视频：樱花飘落的空镜
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_zh_009
+  lang: zh
+  text: 生成一段无人机俯拍海岸线视频
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_zh_010
+  lang: zh
+  text: 做一段抽象流体色彩流动短片
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_zh_011
+  lang: zh
+  text: 文字生成视频：火车穿过隧道
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_zh_012
+  lang: zh
+  text: 生成一段人物走路的侧面镜头视频
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_zh_013
+  lang: zh
+  text: 文生视频：落日海岸 5 秒
+  l1: video
+  l2: text_to_video
+  slots_hint:
+    duration_sec: 5
+  tags:
+  - generation
+  - duration
+  needs_image: false
+- id: t2v_zh_014
+  lang: zh
+  text: 做一段蒸汽从茶杯升起的短视频
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_zh_015
+  lang: zh
+  text: 生成一段雪花缓缓落下的空镜视频
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_zh_016
+  lang: zh
+  text: 文生视频：机械齿轮运转特写
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_zh_017
+  lang: zh
+  text: 生成一段霓虹灯夜市人群走动视频
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_zh_018
+  lang: zh
+  text: 用文字做一个产品旋转展示短视频
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  - product
+  needs_image: false
+- id: t2v_zh_019
+  lang: zh
+  text: 文生视频：蝴蝶从花丛飞过
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_zh_020
+  lang: zh
+  text: 生成一段云层快速流动的延时视频
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_en_001
+  lang: en
+  text: Generate a video of ocean waves hitting rocks
+  l1: video
+  l2: text_to_video
+  slots_hint:
+    duration_sec: 5
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_en_002
+  lang: en
+  text: 'Text to video: a kitten running on grass'
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_en_003
+  lang: en
+  text: Create a short cyberpunk street walking clip
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_en_004
+  lang: en
+  text: Make an 8-second video of coffee pouring
+  l1: video
+  l2: text_to_video
+  slots_hint:
+    duration_sec: 8
+  tags:
+  - generation
+  - duration
+  needs_image: false
+- id: t2v_en_005
+  lang: en
+  text: Generate a timelapse of clouds moving over mountains
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_en_006
+  lang: en
+  text: 'Text-to-video: steam rising from a teacup'
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: t2v_en_007
+  lang: en
+  text: Create a product spin showcase video from text
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  - product
+  needs_image: false
+- id: t2v_en_008
+  lang: en
+  text: Generate a short clip of cherry blossoms falling
+  l1: video
+  l2: text_to_video
+  tags:
+  - generation
+  needs_image: false
+- id: i2m_zh_001
+  lang: zh
+  text: 把这张图做成视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  needs_image: true
+  notes: 明确图生视频
+- id: i2m_zh_002
+  lang: zh
+  text: 根据这张图生成一段视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  needs_image: true
+- id: i2m_zh_003
+  lang: zh
+  text: 让画面里的人物动起来，做成短视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - motion
+  needs_image: true
+- id: i2m_zh_004
+  lang: zh
+  text: 把这张静图动画化成视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  needs_image: true
+- id: i2m_zh_005
+  lang: zh
+  text: 从图生成多帧视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  needs_image: true
+- id: i2m_zh_006
+  lang: zh
+  text: 让她眨眨眼、微微笑，输出视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - motion
+  needs_image: true
+- id: i2m_zh_007
+  lang: zh
+  text: 把这张海报动起来做成 5 秒视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  slots_hint:
+    duration_sec: 5
+  tags:
+  - clear_video
+  - duration
+  needs_image: true
+- id: i2m_zh_008
+  lang: zh
+  text: 图生视频：云彩飘动、镜头缓慢推进
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - camera
+  needs_image: true
+- id: i2m_zh_009
+  lang: zh
+  text: 基于选中图片生成一段短片
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  needs_image: true
+- id: i2m_zh_010
+  lang: zh
+  text: 把这张变成可以播放的视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  needs_image: true
+- id: i2m_zh_011
+  lang: zh
+  text: 让头发随风飘动，做成视频片段
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - motion
+  needs_image: true
+- id: i2m_zh_012
+  lang: zh
+  text: 把静帧扩展成多帧动画视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  needs_image: true
+- id: i2m_zh_013
+  lang: zh
+  text: 用这张图做一段产品展示视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - product
+  needs_image: true
+- id: i2m_zh_014
+  lang: zh
+  text: 给这张图加镜头推拉，输出视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - camera
+  needs_image: true
+- id: i2m_zh_015
+  lang: zh
+  text: 把人物做成走路循环短视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - motion
+  needs_image: true
+- id: i2m_zh_016
+  lang: zh
+  text: 图转视频，时长大约 5 秒
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  slots_hint:
+    duration_sec: 5
+  tags:
+  - clear_video
+  - duration
+  needs_image: true
+- id: i2m_zh_017
+  lang: zh
+  text: 让水面波光粼粼，生成视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - motion
+  needs_image: true
+- id: i2m_zh_018
+  lang: zh
+  text: 把这张风景图做成缓慢平移的视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - camera
+  needs_image: true
+- id: i2m_zh_019
+  lang: zh
+  text: 选中图 → 生成短视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  needs_image: true
+- id: i2m_zh_020
+  lang: zh
+  text: 把角色做成呼吸待机动画视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - motion
+  needs_image: true
+- id: i2m_zh_021
+  lang: zh
+  text: 基于这张首帧生成后续视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - first_frame
+  needs_image: true
+  notes: 首帧→多帧
+- id: i2m_zh_022
+  lang: zh
+  text: 把这张照片做成电影感短镜头视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  needs_image: true
+- id: i2m_zh_023
+  lang: zh
+  text: 让火焰跳动起来，输出成视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - motion
+  needs_image: true
+- id: i2m_zh_024
+  lang: zh
+  text: 图生多帧：人物转头看向镜头
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - motion
+  needs_image: true
+- id: i2m_zh_025
+  lang: zh
+  text: 把插画做成会动的短视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  needs_image: true
+- id: i2m_zh_026
+  lang: zh
+  text: 用当前图片生成 8 秒视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  slots_hint:
+    duration_sec: 8
+  tags:
+  - clear_video
+  - duration
+  needs_image: true
+- id: i2m_zh_027
+  lang: zh
+  text: 把这张做成带运镜的视频片段
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - camera
+  needs_image: true
+- id: i2m_zh_028
+  lang: zh
+  text: 静图转视频，人物轻微点头
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - motion
+  needs_image: true
+- id: i2m_zh_029
+  lang: zh
+  text: 把这张封面图做成开场短视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  needs_image: true
+- id: i2m_zh_030
+  lang: zh
+  text: 根据选中帧继续生成视频画面
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - first_frame
+  needs_image: true
+- id: i2m_en_001
+  lang: en
+  text: Turn this image into a video
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  needs_image: true
+- id: i2m_en_002
+  lang: en
+  text: Generate a short video from this picture
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  needs_image: true
+- id: i2m_en_003
+  lang: en
+  text: Make the character move and export as video
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - motion
+  needs_image: true
+- id: i2m_en_004
+  lang: en
+  text: Animate this still into a multiframe clip
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  needs_image: true
+- id: i2m_en_005
+  lang: en
+  text: Create a 5-second video from the selected image
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  slots_hint:
+    duration_sec: 5
+  tags:
+  - clear_video
+  - duration
+  needs_image: true
+- id: i2m_en_006
+  lang: en
+  text: Add camera push-in and output a video
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - camera
+  needs_image: true
+- id: i2m_en_007
+  lang: en
+  text: Make her blink and smile as a video
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - motion
+  needs_image: true
+- id: i2m_en_008
+  lang: en
+  text: Use this as first frame and generate the rest of the video
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - first_frame
+  needs_image: true
+- id: i2m_en_009
+  lang: en
+  text: Convert this poster into a playable short video
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  needs_image: true
+- id: i2m_en_010
+  lang: en
+  text: 'Image to multiframe: hair blowing in the wind'
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - motion
+  needs_image: true
+- id: i2m_en_011
+  lang: en
+  text: Turn this landscape into a slow pan video
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - clear_video
+  - camera
+  needs_image: true
+- id: i2m_en_012
+  lang: en
+  text: Generate an 8s product showcase video from this image
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  slots_hint:
+    duration_sec: 8
+  tags:
+  - clear_video
+  - product
+  needs_image: true
+- id: i2v_zh_001
+  lang: zh
+  text: 一步图生视频，直接出成片
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  tags:
+  - one_step_i2v
+  needs_image: true
+  notes: 一步 I2V，需 feature flag
+- id: i2v_zh_002
+  lang: zh
+  text: 用一步 I2V 把这张图生成视频
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  tags:
+  - one_step_i2v
+  needs_image: true
+  notes: 一步 I2V，需 feature flag
+- id: i2v_zh_003
+  lang: zh
+  text: 开启一步图生视频模式跑这张
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  tags:
+  - one_step_i2v
+  needs_image: true
+  notes: 一步 I2V，需 feature flag
+- id: i2v_zh_004
+  lang: zh
+  text: 直接图生视频，不要多步分镜
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  tags:
+  - one_step_i2v
+  needs_image: true
+  notes: 一步 I2V，需 feature flag
+- id: i2v_zh_005
+  lang: zh
+  text: one-step image to video 这张图
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  tags:
+  - one_step_i2v
+  needs_image: true
+  notes: 一步 I2V，需 feature flag
+- id: i2v_zh_006
+  lang: zh
+  text: 用单步 I2V 管道生成短视频
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  tags:
+  - one_step_i2v
+  needs_image: true
+  notes: 一步 I2V，需 feature flag
+- id: i2v_zh_007
+  lang: zh
+  text: 图生视频（一步出片）
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  tags:
+  - one_step_i2v
+  needs_image: true
+  notes: 一步 I2V，需 feature flag
+- id: i2v_zh_008
+  lang: zh
+  text: 走一步式图生视频能力
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  tags:
+  - one_step_i2v
+  needs_image: true
+  notes: 一步 I2V，需 feature flag
+- id: i2v_zh_009
+  lang: zh
+  text: 直接 I2V，别走多帧路径
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  tags:
+  - one_step_i2v
+  needs_image: true
+  notes: 一步 I2V，需 feature flag
+- id: i2v_zh_010
+  lang: zh
+  text: 调用一步图转视频模型
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  tags:
+  - one_step_i2v
+  needs_image: true
+  notes: 一步 I2V，需 feature flag
+- id: i2v_zh_011
+  lang: zh
+  text: 单阶段图生视频，时长 5 秒
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  slots_hint:
+    duration_sec: 5
+  tags:
+  - one_step_i2v
+  - duration
+  needs_image: true
+  notes: 一步 I2V，需 feature flag
+- id: i2v_zh_012
+  lang: zh
+  text: 用一步 I2V 把选中图做成视频
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  tags:
+  - one_step_i2v
+  needs_image: true
+  notes: 一步 I2V，需 feature flag
+- id: i2v_en_001
+  lang: en
+  text: One-step image-to-video from this frame
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  tags:
+  - one_step_i2v
+  needs_image: true
+  notes: one-step I2V; feature-gated
+- id: i2v_en_002
+  lang: en
+  text: Run single-pass I2V on the selected image
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  tags:
+  - one_step_i2v
+  needs_image: true
+  notes: one-step I2V; feature-gated
+- id: i2v_en_003
+  lang: en
+  text: Direct image to video, not multiframe pipeline
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  tags:
+  - one_step_i2v
+  needs_image: true
+  notes: one-step I2V; feature-gated
+- id: i2v_en_004
+  lang: en
+  text: Use one-shot I2V to make a clip
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  tags:
+  - one_step_i2v
+  needs_image: true
+  notes: one-step I2V; feature-gated
+- id: i2v_en_005
+  lang: en
+  text: Single-stage image-to-video, 5 seconds
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  slots_hint:
+    duration_sec: 5
+  tags:
+  - one_step_i2v
+  - duration
+  needs_image: true
+  notes: one-step I2V; feature-gated
+- id: i2v_en_006
+  lang: en
+  text: Enable one-step I2V mode for this picture
+  l1: video
+  l2: image_to_video
+  path_hint: image_to_video
+  tags:
+  - one_step_i2v
+  needs_image: true
+  notes: one-step I2V; feature-gated
+- id: sa_zh_001
+  lang: zh
+  text: 动画风格海报
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: anime
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: false
+  notes: E02：风格≠视频
+- id: sa_zh_002
+  lang: zh
+  text: 做一张二次元风静图封面
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: anime
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: false
+  notes: 封面静图
+- id: sa_zh_003
+  lang: zh
+  text: 赛博朋克风格封面图
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: cyberpunk
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: false
+- id: sa_zh_004
+  lang: zh
+  text: 把这张改成动画风格海报
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: anime
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: true
+  notes: E02 变体：有图改风格
+- id: sa_zh_005
+  lang: zh
+  text: 换成日漫插画风格的静帧
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: anime
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: true
+- id: sa_zh_006
+  lang: zh
+  text: 生成一张吉卜力风格风景静图
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: ghibli
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: false
+- id: sa_zh_007
+  lang: zh
+  text: 画一张厚涂油画风角色立绘
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: oil_painting
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: false
+- id: sa_zh_008
+  lang: zh
+  text: 做成像素游戏封面静图
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: pixel
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: false
+- id: sa_zh_009
+  lang: zh
+  text: 改成美漫漫画风单页
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: comic
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: true
+- id: sa_zh_010
+  lang: zh
+  text: 生成蒸汽波美学壁纸静图
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: vaporwave
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: false
+- id: sa_zh_011
+  lang: zh
+  text: 做一张 3D 渲染风产品静物图
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: 3d_render
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: false
+- id: sa_zh_012
+  lang: zh
+  text: 换成水墨国风海报构图
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: ink_wash
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: true
+- id: sa_zh_013
+  lang: zh
+  text: 画一张扁平插画风格图标集
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: flat
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: false
+- id: sa_zh_014
+  lang: zh
+  text: 生成一张霓虹赛博招牌静帧
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: cyberpunk
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: false
+- id: sa_zh_015
+  lang: zh
+  text: 把照片改成手办摄影棚风格静图
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: figure
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: true
+- id: sa_zh_016
+  lang: zh
+  text: 出一张韩系清新写真风格封面
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: korean_photo
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: false
+- id: sa_zh_017
+  lang: zh
+  text: 做成 Lo-Fi 插画风桌面壁纸
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: lofi
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: false
+- id: sa_zh_018
+  lang: zh
+  text: 改成线稿+赛璐璐上色静图
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: cel_shading
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: true
+- id: sa_en_001
+  lang: en
+  text: Anime-style poster still image
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: anime
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: false
+  notes: E02 EN
+- id: sa_en_002
+  lang: en
+  text: Make a cyberpunk cover art, still frame
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: cyberpunk
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: false
+- id: sa_en_003
+  lang: en
+  text: Change this to Ghibli-style still illustration
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: ghibli
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: true
+- id: sa_en_004
+  lang: en
+  text: Generate a vaporwave wallpaper still
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: vaporwave
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: false
+- id: sa_en_005
+  lang: en
+  text: Comic-book style single-page still
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: comic
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: false
+- id: sa_en_006
+  lang: en
+  text: Turn into pixel-art game cover, not a video
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: pixel
+  tags:
+  - style_as_art
+  - hard_negative_video
+  needs_image: true
+- id: wm_zh_001
+  lang: zh
+  text: 活一点
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: E01：弱动态，线上应 clarify
+- id: wm_zh_002
+  lang: zh
+  text: 动起来
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: E01：弱动态，线上应 clarify
+- id: wm_zh_003
+  lang: zh
+  text: 更有生命力一点
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_zh_004
+  lang: zh
+  text: 让它活泼一些
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_zh_005
+  lang: zh
+  text: 感觉太死板了，灵动一点
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_zh_006
+  lang: zh
+  text: 再生动些
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_zh_007
+  lang: zh
+  text: 有点呆，让画面活起来
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_zh_008
+  lang: zh
+  text: 给点动态感
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_zh_009
+  lang: zh
+  text: 看起来更鲜活
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_zh_010
+  lang: zh
+  text: 别这么静止
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态；注意与否定视频区分
+- id: wm_zh_011
+  lang: zh
+  text: 加点动感
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_zh_012
+  lang: zh
+  text: 更有气息一点
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_zh_013
+  lang: zh
+  text: 让人物精神一点、活一点
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_zh_014
+  lang: zh
+  text: 画面太平了，动感一点
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_zh_015
+  lang: zh
+  text: 生机勃勃一些
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_zh_016
+  lang: zh
+  text: 让表情更生动
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态；也可能是改图表情
+- id: wm_zh_017
+  lang: zh
+  text: 整体灵动起来
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_zh_018
+  lang: zh
+  text: 有呼吸感一点
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_en_001
+  lang: en
+  text: animate
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: E04：弱/强交界，有图应视频族或 clarify
+- id: wm_en_002
+  lang: en
+  text: animate this
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_en_003
+  lang: en
+  text: animate this image
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: E04 对齐
+- id: wm_en_004
+  lang: en
+  text: make it more lively
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_en_005
+  lang: en
+  text: give it some life
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_en_006
+  lang: en
+  text: make it less static
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_en_007
+  lang: en
+  text: more dynamic please
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: wm_en_008
+  lang: en
+  text: bring it to life
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - weak_motion_ambiguous
+  needs_image: true
+  notes: 弱动态
+- id: neg_zh_001
+  lang: zh
+  text: 别做成视频，换成水彩
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: watercolor
+  tags:
+  - negation
+  - negation_video
+  needs_image: true
+  notes: E03
+- id: neg_zh_002
+  lang: zh
+  text: 不要视频，只要静图
+  l1: image
+  l2: image_edit
+  tags:
+  - negation
+  - negation_video
+  needs_image: true
+- id: neg_zh_003
+  lang: zh
+  text: 别动，就改个风格
+  l1: image
+  l2: image_edit
+  tags:
+  - negation
+  - negation_video
+  needs_image: true
+- id: neg_zh_004
+  lang: zh
+  text: 不要做成视频，改成油画
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: oil_painting
+  tags:
+  - negation
+  - negation_video
+  needs_image: true
+- id: neg_zh_005
+  lang: zh
+  text: 只要静态图，不要动画视频
+  l1: image
+  l2: image_edit
+  tags:
+  - negation
+  - negation_video
+  needs_image: true
+- id: neg_zh_006
+  lang: zh
+  text: 别生成视频，把背景换掉就行
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: background
+  tags:
+  - negation
+  - negation_video
+  needs_image: true
+- id: neg_zh_007
+  lang: zh
+  text: 不要动起来，修一下脸就行
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: face
+  tags:
+  - negation
+  - negation_video
+  needs_image: true
+- id: neg_zh_008
+  lang: zh
+  text: 别出视频，换成二次元静图风格
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: anime
+  tags:
+  - negation
+  - negation_video
+  needs_image: true
+- id: neg_zh_009
+  lang: zh
+  text: 不需要视频，提高清晰度即可
+  l1: image
+  l2: image_edit
+  tags:
+  - negation
+  - negation_video
+  needs_image: true
+- id: neg_zh_010
+  lang: zh
+  text: 不要多帧，就出一张静图改稿
+  l1: image
+  l2: image_edit
+  tags:
+  - negation
+  - negation_video
+  needs_image: true
+- id: neg_zh_011
+  lang: zh
+  text: 别做成短片，改成黑白素描
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: sketch
+  tags:
+  - negation
+  - negation_video
+  needs_image: true
+- id: neg_zh_012
+  lang: zh
+  text: 只要改图，不要图生视频
+  l1: image
+  l2: image_edit
+  tags:
+  - negation
+  - negation_video
+  needs_image: true
+- id: neg_en_001
+  lang: en
+  text: Don't make a video, just watercolor edit
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: watercolor
+  tags:
+  - negation
+  - negation_video
+  needs_image: true
+  notes: E03 EN
+- id: neg_en_002
+  lang: en
+  text: No video, still image only
+  l1: image
+  l2: image_edit
+  tags:
+  - negation
+  - negation_video
+  needs_image: true
+- id: neg_en_003
+  lang: en
+  text: Don't animate, only change the style
+  l1: image
+  l2: image_edit
+  tags:
+  - negation
+  - negation_video
+  needs_image: true
+- id: neg_en_004
+  lang: en
+  text: Not a video — retouch the face please
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: face
+  tags:
+  - negation
+  - negation_video
+  needs_image: true
+- id: neg_en_005
+  lang: en
+  text: Skip video, just upscale the image
+  l1: image
+  l2: image_edit
+  tags:
+  - negation
+  - negation_video
+  needs_image: true
+- id: gr_zh_001
+  lang: zh
+  text: 你好
+  l1: other
+  l2: other
+  tags:
+  - greeting
+  needs_image: false
+- id: gr_zh_002
+  lang: zh
+  text: 在吗
+  l1: other
+  l2: other
+  tags:
+  - greeting
+  needs_image: false
+- id: gr_zh_003
+  lang: zh
+  text: 嗨
+  l1: other
+  l2: other
+  tags:
+  - greeting
+  needs_image: false
+- id: gr_zh_004
+  lang: zh
+  text: 早上好
+  l1: other
+  l2: other
+  tags:
+  - greeting
+  needs_image: false
+- id: gr_zh_005
+  lang: zh
+  text: 谢谢
+  l1: other
+  l2: other
+  tags:
+  - greeting
+  - thanks
+  needs_image: false
+- id: gr_zh_006
+  lang: zh
+  text: 好的
+  l1: other
+  l2: other
+  tags:
+  - ack
+  needs_image: false
+- id: gr_zh_007
+  lang: zh
+  text: 收到
+  l1: other
+  l2: other
+  tags:
+  - ack
+  needs_image: false
+- id: gr_zh_008
+  lang: zh
+  text: 帮我看看
+  l1: other
+  l2: other
+  tags:
+  - vague
+  - other
+  needs_image: false
+- id: gr_zh_009
+  lang: zh
+  text: 嗯
+  l1: other
+  l2: other
+  tags:
+  - ack
+  needs_image: false
+- id: gr_zh_010
+  lang: zh
+  text: 你是谁
+  l1: other
+  l2: other
+  tags:
+  - meta
+  needs_image: false
+- id: gr_en_001
+  lang: en
+  text: hi
+  l1: other
+  l2: other
+  tags:
+  - greeting
+  needs_image: false
+- id: gr_en_002
+  lang: en
+  text: hello
+  l1: other
+  l2: other
+  tags:
+  - greeting
+  needs_image: false
+- id: gr_en_003
+  lang: en
+  text: thanks
+  l1: other
+  l2: other
+  tags:
+  - greeting
+  - thanks
+  needs_image: false
+- id: gr_en_004
+  lang: en
+  text: ok
+  l1: other
+  l2: other
+  tags:
+  - ack
+  needs_image: false
+- id: gr_en_005
+  lang: en
+  text: who are you
+  l1: other
+  l2: other
+  tags:
+  - meta
+  needs_image: false
+- id: un_zh_001
+  lang: zh
+  text: 今天天气怎么样
+  l1: other
+  l2: unsupported
+  tags:
+  - out_of_scope
+  - unsupported
+  needs_image: false
+- id: un_zh_002
+  lang: zh
+  text: 帮我写一段 Python 代码
+  l1: other
+  l2: unsupported
+  tags:
+  - out_of_scope
+  - coding
+  - unsupported
+  needs_image: false
+- id: un_zh_003
+  lang: zh
+  text: 推荐附近的餐厅
+  l1: other
+  l2: unsupported
+  tags:
+  - out_of_scope
+  - unsupported
+  needs_image: false
+- id: un_zh_004
+  lang: zh
+  text: 帮我翻译这段英文
+  l1: other
+  l2: unsupported
+  tags:
+  - out_of_scope
+  - unsupported
+  needs_image: false
+- id: un_zh_005
+  lang: zh
+  text: 现在几点了
+  l1: other
+  l2: unsupported
+  tags:
+  - out_of_scope
+  - unsupported
+  needs_image: false
+- id: un_zh_006
+  lang: zh
+  text: 讲个笑话
+  l1: other
+  l2: unsupported
+  tags:
+  - out_of_scope
+  - unsupported
+  needs_image: false
+- id: un_zh_007
+  lang: zh
+  text: 帮我下单买东西
+  l1: other
+  l2: unsupported
+  tags:
+  - out_of_scope
+  - unsupported
+  needs_image: false
+- id: un_zh_008
+  lang: zh
+  text: 查一下股票行情
+  l1: other
+  l2: unsupported
+  tags:
+  - out_of_scope
+  - unsupported
+  needs_image: false
+- id: un_zh_009
+  lang: zh
+  text: 设置明天早上的闹钟
+  l1: other
+  l2: unsupported
+  tags:
+  - out_of_scope
+  - unsupported
+  needs_image: false
+- id: un_zh_010
+  lang: zh
+  text: 帮我写周报
+  l1: other
+  l2: unsupported
+  tags:
+  - out_of_scope
+  - unsupported
+  needs_image: false
+- id: un_en_001
+  lang: en
+  text: What's the weather today?
+  l1: other
+  l2: unsupported
+  tags:
+  - out_of_scope
+  - unsupported
+  needs_image: false
+- id: un_en_002
+  lang: en
+  text: Write a Python function for me
+  l1: other
+  l2: unsupported
+  tags:
+  - out_of_scope
+  - coding
+  - unsupported
+  needs_image: false
+- id: un_en_003
+  lang: en
+  text: Recommend a restaurant nearby
+  l1: other
+  l2: unsupported
+  tags:
+  - out_of_scope
+  - unsupported
+  needs_image: false
+- id: un_en_004
+  lang: en
+  text: What time is it?
+  l1: other
+  l2: unsupported
+  tags:
+  - out_of_scope
+  - unsupported
+  needs_image: false
+- id: un_en_005
+  lang: en
+  text: Tell me a joke
+  l1: other
+  l2: unsupported
+  tags:
+  - out_of_scope
+  - unsupported
+  needs_image: false
+- id: mat_zh_001
+  lang: zh
+  text: 把这张图抠出来
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  needs_image: true
+  notes: 抠主体
+- id: mat_zh_002
+  lang: zh
+  text: 去背景
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - remove_bg
+  needs_image: true
+- id: mat_zh_003
+  lang: zh
+  text: 去掉背景，留人物
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - remove_bg
+  needs_image: true
+- id: mat_zh_004
+  lang: zh
+  text: 扣人像
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  needs_image: true
+- id: mat_zh_005
+  lang: zh
+  text: 把人像抠出来
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  needs_image: true
+- id: mat_zh_006
+  lang: zh
+  text: 换成透明底
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - transparent
+  needs_image: true
+- id: mat_zh_007
+  lang: zh
+  text: 抠图成透明背景
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - transparent
+  needs_image: true
+- id: mat_zh_008
+  lang: zh
+  text: 去底，换成白底
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - white_bg
+  needs_image: true
+- id: mat_zh_009
+  lang: zh
+  text: 把背景换成纯白
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: background
+  tags:
+  - matting
+  - cutout
+  - white_bg
+  needs_image: true
+- id: mat_zh_010
+  lang: zh
+  text: 抠出主体，背景透明
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - transparent
+  needs_image: true
+- id: mat_zh_011
+  lang: zh
+  text: 帮我抠图
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  needs_image: true
+- id: mat_zh_012
+  lang: zh
+  text: 去掉杂乱背景，只留产品
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - product
+  needs_image: true
+- id: mat_zh_013
+  lang: zh
+  text: 产品抠图，透明底 PNG
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - transparent
+  - product
+  needs_image: true
+- id: mat_zh_014
+  lang: zh
+  text: 把宠物抠出来放到透明背景
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - transparent
+  needs_image: true
+- id: mat_zh_015
+  lang: zh
+  text: 精细抠头发丝，去背景
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - remove_bg
+  needs_image: true
+  notes: 精细抠图
+- id: mat_zh_016
+  lang: zh
+  text: 一键抠图去背景
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - remove_bg
+  needs_image: true
+- id: mat_zh_017
+  lang: zh
+  text: 把前景人物单独抠出来
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  needs_image: true
+- id: mat_zh_018
+  lang: zh
+  text: 去掉背景换成灰色工作室背景
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: background
+  tags:
+  - matting
+  - cutout
+  needs_image: true
+- id: mat_zh_019
+  lang: zh
+  text: 扣掉背景只要人
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - remove_bg
+  needs_image: true
+- id: mat_zh_020
+  lang: zh
+  text: 给这张做蒙版抠图
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  needs_image: true
+- id: mat_zh_021
+  lang: zh
+  text: 提取主体，背景删掉
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  needs_image: true
+- id: mat_zh_022
+  lang: zh
+  text: 换成透明底方便后期叠加
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - transparent
+  needs_image: true
+- id: mat_zh_023
+  lang: zh
+  text: 商品白底图：去背景换白色
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - white_bg
+  - product
+  needs_image: true
+- id: mat_zh_024
+  lang: zh
+  text: 把路人抠掉只留主角…不对，去背景留主角
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  needs_image: true
+  notes: 口语纠错仍是抠图
+- id: mat_zh_025
+  lang: zh
+  text: 选中区域抠出来
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - ref_utterance
+  needs_image: true
+- id: mat_en_001
+  lang: en
+  text: Cut out the subject
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  needs_image: true
+- id: mat_en_002
+  lang: en
+  text: Remove the background
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - remove_bg
+  needs_image: true
+- id: mat_en_003
+  lang: en
+  text: Extract the person, transparent background
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - transparent
+  needs_image: true
+- id: mat_en_004
+  lang: en
+  text: Make a white-background product cutout
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - white_bg
+  - product
+  needs_image: true
+- id: mat_en_005
+  lang: en
+  text: 'Matting: keep the subject only'
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  needs_image: true
+- id: mat_en_006
+  lang: en
+  text: Remove bg and export with alpha
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - transparent
+  needs_image: true
+- id: mat_en_007
+  lang: en
+  text: Cut out the portrait cleanly
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  needs_image: true
+- id: mat_en_008
+  lang: en
+  text: Knock out the background to pure white
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - white_bg
+  needs_image: true
+- id: mat_en_009
+  lang: en
+  text: Isolate the product on transparent PNG
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  - transparent
+  - product
+  needs_image: true
+- id: mat_en_010
+  lang: en
+  text: Extract subject from this image
+  l1: image
+  l2: image_edit
+  tags:
+  - matting
+  - cutout
+  needs_image: true
+- id: cx_zh_001
+  lang: zh
+  text: 把衣服换成红的，整体改成水彩
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: clothing
+    style: watercolor
+  tags:
+  - compound
+  - local_edit
+  - style_transfer
+  needs_image: true
+  notes: image_edit
+- id: cx_zh_002
+  lang: zh
+  text: 头发改金色，再做成油画质感
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: hair
+    style: oil_painting
+  tags:
+  - compound
+  - local_edit
+  - style_transfer
+  needs_image: true
+- id: cx_zh_003
+  lang: zh
+  text: 背景换成海边，画面改成日系动漫风
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: background
+    style: anime
+  tags:
+  - compound
+  - local_edit
+  - style_transfer
+  - style_as_art
+  needs_image: true
+- id: cx_zh_004
+  lang: zh
+  text: 去掉水印，同时提亮一点
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: watermark
+  tags:
+  - compound
+  - cleanup
+  - adjust
+  needs_image: true
+- id: cx_zh_005
+  lang: zh
+  text: 美颜磨皮，再改成暖色滤镜
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: face
+    style: warm_filter
+  tags:
+  - compound
+  - retouch
+  - style_transfer
+  needs_image: true
+- id: cx_zh_006
+  lang: zh
+  text: 把左边路人去掉，整体改成水墨风
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: object_remove
+    style: ink_wash
+  tags:
+  - compound
+  - local_edit
+  - style_transfer
+  needs_image: true
+- id: cx_zh_007
+  lang: zh
+  text: 衣服换成西装，表情改微笑，保持原构图
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: clothing
+  tags:
+  - compound
+  - local_edit
+  needs_image: true
+- id: cx_zh_008
+  lang: zh
+  text: 局部重绘帽子，并提高清晰度
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: hat
+  tags:
+  - compound
+  - inpaint
+  - upscale
+  needs_image: true
+- id: cx_zh_009
+  lang: zh
+  text: 换成夜景背景，再加一层赛博朋克静图风格
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: background
+    style: cyberpunk
+  tags:
+  - compound
+  - style_as_art
+  - local_edit
+  needs_image: true
+  notes: 仍为改图非视频
+- id: cx_zh_010
+  lang: zh
+  text: 裁成竖版，改成极简插画风静图
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: illustration
+  tags:
+  - compound
+  - crop
+  - style_as_art
+  - layout
+  needs_image: true
+- id: cx_en_001
+  lang: en
+  text: Change the shirt to red and make the whole image watercolor
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: clothing
+    style: watercolor
+  tags:
+  - compound
+  - local_edit
+  - style_transfer
+  needs_image: true
+- id: cx_en_002
+  lang: en
+  text: Remove the watermark and brighten the photo
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: watermark
+  tags:
+  - compound
+  - cleanup
+  - adjust
+  needs_image: true
+- id: cx_en_003
+  lang: en
+  text: Swap background to beach, keep anime still style
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: background
+    style: anime
+  tags:
+  - compound
+  - style_as_art
+  - local_edit
+  needs_image: true
+- id: cx_en_004
+  lang: en
+  text: Retouch face smoother and apply a warm filter
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: face
+    style: warm_filter
+  tags:
+  - compound
+  - retouch
+  needs_image: true
+- id: cx_zh_011
+  lang: zh
+  text: 不要视频，只要把背景抠掉
+  l1: image
+  l2: image_edit
+  tags:
+  - compound
+  - negation
+  - negation_video
+  - matting
+  - cutout
+  needs_image: true
+  notes: 否定+抠图
+- id: cx_zh_012
+  lang: zh
+  text: 别做成视频，去背景换成透明底
+  l1: image
+  l2: image_edit
+  tags:
+  - compound
+  - negation_video
+  - matting
+  - cutout
+  - transparent
+  needs_image: true
+- id: cx_zh_013
+  lang: zh
+  text: 不要动起来，就抠个人像出来
+  l1: image
+  l2: image_edit
+  tags:
+  - compound
+  - negation_video
+  - matting
+  - cutout
+  needs_image: true
+- id: cx_zh_014
+  lang: zh
+  text: 只要静图：扣掉背景换白底
+  l1: image
+  l2: image_edit
+  tags:
+  - compound
+  - negation_video
+  - matting
+  - white_bg
+  needs_image: true
+- id: cx_zh_015
+  lang: zh
+  text: 别出短片，把水印去掉并变清晰
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: watermark
+  tags:
+  - compound
+  - negation_video
+  - cleanup
+  - upscale
+  needs_image: true
+- id: cx_en_005
+  lang: en
+  text: No video — just remove the background
+  l1: image
+  l2: image_edit
+  tags:
+  - compound
+  - negation_video
+  - matting
+  - cutout
+  needs_image: true
+- id: cx_en_006
+  lang: en
+  text: Don't animate; cut out the portrait on transparent bg
+  l1: image
+  l2: image_edit
+  tags:
+  - compound
+  - negation_video
+  - matting
+  - transparent
+  needs_image: true
+- id: cx_en_007
+  lang: en
+  text: 'Still image only: knock out bg to white'
+  l1: image
+  l2: image_edit
+  tags:
+  - compound
+  - negation_video
+  - matting
+  - white_bg
+  needs_image: true
+- id: cx_zh_016
+  lang: zh
+  text: 活一点，日系风
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - compound
+  - style_as_art
+  needs_image: true
+  notes: 弱动态+风格，P0 应 clarify
+- id: cx_zh_017
+  lang: zh
+  text: 动起来，顺便赛博朋克一点
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - compound
+  - style_as_art
+  needs_image: true
+  notes: P0 应 clarify 或拆步
+- id: cx_zh_018
+  lang: zh
+  text: 更有生命力，水彩质感
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - compound
+  needs_image: true
+  notes: P0 应 clarify
+- id: cx_zh_019
+  lang: zh
+  text: 灵动一点，别改画风
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - compound
+  - preserve_style
+  needs_image: true
+  notes: 动起来但别改画风
+- id: cx_zh_020
+  lang: zh
+  text: 加点动感，保持现在的插画风格
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - compound
+  - preserve_style
+  needs_image: true
+  notes: P0 应 clarify
+- id: cx_zh_021
+  lang: zh
+  text: 画面太平了，日漫风再活泼些
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - compound
+  - style_as_art
+  needs_image: true
+  notes: P0 应 clarify
+- id: cx_en_008
+  lang: en
+  text: make it livelier in anime style
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - compound
+  - style_as_art
+  needs_image: true
+  notes: clarify
+- id: cx_en_009
+  lang: en
+  text: animate a bit but don't change the art style
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - compound
+  - preserve_style
+  needs_image: true
+  notes: P0 clarify / 拆步
+- id: cx_en_010
+  lang: en
+  text: bring it to life, watercolor feel
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - compound
+  needs_image: true
+  notes: clarify
+- id: cx_zh_022
+  lang: zh
+  text: 做成 5 秒视频，赛博朋克
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  slots_hint:
+    duration_sec: 5
+    style: cyberpunk
+  tags:
+  - compound
+  - clear_video
+  - duration
+  needs_image: true
+  notes: image_to_multiframe
+- id: cx_zh_023
+  lang: zh
+  text: 把这张做成 8 秒短视频，电影感运镜
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  slots_hint:
+    duration_sec: 8
+    style: cinematic
+  tags:
+  - compound
+  - clear_video
+  - camera
+  - duration
+  needs_image: true
+- id: cx_zh_024
+  lang: zh
+  text: 图生视频 5 秒，让头发飘动，保持原画风
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  slots_hint:
+    duration_sec: 5
+  tags:
+  - compound
+  - clear_video
+  - motion
+  - preserve_style
+  - duration
+  needs_image: true
+- id: cx_zh_025
+  lang: zh
+  text: 基于这张首帧生成 5 秒视频，缓慢推进镜头
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  slots_hint:
+    duration_sec: 5
+  tags:
+  - compound
+  - clear_video
+  - first_frame
+  - camera
+  - duration
+  needs_image: true
+- id: cx_zh_026
+  lang: zh
+  text: 做成短视频，日系清新，大约五秒
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  slots_hint:
+    duration_sec: 5
+    style: japanese_fresh
+  tags:
+  - compound
+  - clear_video
+  - duration
+  needs_image: true
+- id: cx_zh_027
+  lang: zh
+  text: 把海报做成可播放的 5s 视频，霓虹灯闪烁
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  slots_hint:
+    duration_sec: 5
+  tags:
+  - compound
+  - clear_video
+  - motion
+  - duration
+  needs_image: true
+- id: cx_en_011
+  lang: en
+  text: Make a 5-second video, cyberpunk vibe
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  slots_hint:
+    duration_sec: 5
+    style: cyberpunk
+  tags:
+  - compound
+  - clear_video
+  - duration
+  needs_image: true
+- id: cx_en_012
+  lang: en
+  text: Turn this into an 8s cinematic clip with slow push-in
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  slots_hint:
+    duration_sec: 8
+    style: cinematic
+  tags:
+  - compound
+  - clear_video
+  - camera
+  - duration
+  needs_image: true
+- id: cx_en_013
+  lang: en
+  text: Image to multiframe 5s, hair blowing, keep original style
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  slots_hint:
+    duration_sec: 5
+  tags:
+  - compound
+  - clear_video
+  - motion
+  - preserve_style
+  - duration
+  needs_image: true
+- id: cx_zh_028
+  lang: zh
+  text: 一张竖版海报，标题留白，极简
+  l1: image
+  l2: text_to_image
+  tags:
+  - compound
+  - generation
+  - poster
+  - layout
+  needs_image: false
+  notes: text_to_image
+- id: cx_zh_029
+  lang: zh
+  text: 生成横版 banner，白底，产品居中，少文字
+  l1: image
+  l2: text_to_image
+  tags:
+  - compound
+  - generation
+  - banner
+  - product
+  needs_image: false
+- id: cx_zh_030
+  lang: zh
+  text: 画一张方形封面：二次元少女，干净背景，留 logo 位
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: anime
+  tags:
+  - compound
+  - generation
+  - style_as_art
+  - poster
+  needs_image: false
+- id: cx_zh_031
+  lang: zh
+  text: 出一张 4K 写实室内效果图，暖光，无人物
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: photorealistic
+  tags:
+  - compound
+  - generation
+  needs_image: false
+- id: cx_zh_032
+  lang: zh
+  text: 生成一张电商主图：白底、耳机特写、顶部留标题区
+  l1: image
+  l2: text_to_image
+  tags:
+  - compound
+  - generation
+  - product
+  - white_bg
+  needs_image: false
+- id: cx_zh_033
+  lang: zh
+  text: 画一张儿童绘本内页：狐狸，柔和配色，右侧留文案空白
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: children_book
+  tags:
+  - compound
+  - generation
+  - layout
+  needs_image: false
+- id: cx_en_014
+  lang: en
+  text: A vertical poster, leave space for title, minimalist
+  l1: image
+  l2: text_to_image
+  tags:
+  - compound
+  - generation
+  - poster
+  - layout
+  needs_image: false
+- id: cx_en_015
+  lang: en
+  text: 'Square cover art: anime girl, clean bg, logo margin'
+  l1: image
+  l2: text_to_image
+  slots_hint:
+    style: anime
+  tags:
+  - compound
+  - generation
+  - style_as_art
+  needs_image: false
+- id: cx_en_016
+  lang: en
+  text: 'E-commerce hero shot: white bg, headset close-up, top title band'
+  l1: image
+  l2: text_to_image
+  tags:
+  - compound
+  - generation
+  - product
+  - white_bg
+  needs_image: false
+- id: cx_zh_034
+  lang: zh
+  text: 动起来但别改画风
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - compound
+  - preserve_style
+  needs_image: true
+  notes: 有图：clarify；候选改图↔视频
+- id: cx_zh_035
+  lang: zh
+  text: 做成视频，但画风不要变
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - compound
+  - clear_video
+  - preserve_style
+  needs_image: true
+  notes: 明确要视频+保风格
+- id: cx_en_017
+  lang: en
+  text: Animate this but keep the same art style
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - weak_motion
+  - needs_clarify_candidate
+  - compound
+  - preserve_style
+  needs_image: true
+  notes: clarify
+- id: cx_en_018
+  lang: en
+  text: Make a video from this image without changing the style
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - compound
+  - clear_video
+  - preserve_style
+  needs_image: true
+- id: cx_zh_036
+  lang: zh
+  text: 用上面那张
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  - text_to_image
+  certainty_expected: weak
+  tags:
+  - ref_utterance
+  - vague
+  - needs_clarify_candidate
+  needs_image: true
+  notes: 仅指代，P0 应 clarify 或等下句
+- id: cx_zh_037
+  lang: zh
+  text: 选中的这张去背景
+  l1: image
+  l2: image_edit
+  tags:
+  - ref_utterance
+  - matting
+  - cutout
+  - remove_bg
+  needs_image: true
+- id: cx_zh_038
+  lang: zh
+  text: 就刚才那张，换成水彩
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: watercolor
+  tags:
+  - ref_utterance
+  - style_transfer
+  needs_image: true
+- id: cx_zh_039
+  lang: zh
+  text: 用画布上选中的图抠人像
+  l1: image
+  l2: image_edit
+  tags:
+  - ref_utterance
+  - matting
+  - cutout
+  needs_image: true
+- id: cx_zh_040
+  lang: zh
+  text: 上面那张变清晰一点
+  l1: image
+  l2: image_edit
+  tags:
+  - ref_utterance
+  - upscale
+  - enhance
+  needs_image: true
+- id: cx_zh_041
+  lang: zh
+  text: 把选中节点做成视频
+  l1: video
+  l2: image_to_multiframe
+  path_hint: image_to_multiframe
+  tags:
+  - ref_utterance
+  - clear_video
+  needs_image: true
+  notes: 指代+明确视频
+- id: cx_en_019
+  lang: en
+  text: Use the selected image and remove the background
+  l1: image
+  l2: image_edit
+  tags:
+  - ref_utterance
+  - matting
+  - cutout
+  needs_image: true
+- id: cx_en_020
+  lang: en
+  text: That one above — make it watercolor
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: watercolor
+  tags:
+  - ref_utterance
+  - style_transfer
+  needs_image: true
+- id: cx_en_021
+  lang: en
+  text: 'The selected node: upscale and sharpen'
+  l1: image
+  l2: image_edit
+  tags:
+  - ref_utterance
+  - upscale
+  - enhance
+  needs_image: true
+- id: cx_en_022
+  lang: en
+  text: Remove the background then make it a cinematic still
+  l1: image
+  l2: image_edit
+  slots_hint:
+    style: cinematic
+  tags:
+  - compound
+  - matting
+  - cutout
+  - style_transfer
+  - hard_negative_video
+  needs_image: true
+  notes: remove bg + cinematic STILL → 改图，非视频
+- id: cx_en_023
+  lang: en
+  text: Cut out the subject and apply a film-still grade, not a video
+  l1: image
+  l2: image_edit
+  tags:
+  - compound
+  - matting
+  - negation_video
+  - style_transfer
+  needs_image: true
+- id: cx_en_024
+  lang: en
+  text: Knock out bg, white backdrop, product hero still
+  l1: image
+  l2: image_edit
+  tags:
+  - compound
+  - matting
+  - white_bg
+  - product
+  needs_image: true
+- id: cx_zh_042
+  lang: zh
+  text: 做成视频但不要动
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - conflict
+  - needs_clarify_candidate
+  - compound
+  needs_image: true
+  notes: 冲突，P0 应 clarify
+- id: cx_zh_043
+  lang: zh
+  text: 要视频，但又别有动态
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - conflict
+  - needs_clarify_candidate
+  - compound
+  needs_image: true
+  notes: 冲突
+- id: cx_zh_044
+  lang: zh
+  text: 生成短片，画面保持完全静止
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - conflict
+  - needs_clarify_candidate
+  - compound
+  needs_image: true
+  notes: 冲突；或理解为轻微呼吸感需澄清
+- id: cx_en_025
+  lang: en
+  text: Make a video but don't move anything
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - conflict
+  - needs_clarify_candidate
+  - compound
+  needs_image: true
+  notes: conflict → clarify
+- id: cx_en_026
+  lang: en
+  text: I want a clip that stays completely static
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - conflict
+  - needs_clarify_candidate
+  - compound
+  needs_image: true
+  notes: conflict → clarify
+- id: cx_zh_045
+  lang: zh
+  text: 去皱，皮肤光滑一点
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: face
+  tags:
+  - retouch
+  needs_image: true
+- id: cx_zh_046
+  lang: zh
+  text: 美颜，瘦一点脸
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: face
+  tags:
+  - retouch
+  needs_image: true
+- id: cx_zh_047
+  lang: zh
+  text: 提亮暗部，别过曝
+  l1: image
+  l2: image_edit
+  tags:
+  - adjust
+  - retouch
+  needs_image: true
+- id: cx_zh_048
+  lang: zh
+  text: 去掉脸上的斑点
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: face
+  tags:
+  - retouch
+  - local_edit
+  needs_image: true
+- id: cx_zh_049
+  lang: zh
+  text: 去水印并稍微锐化
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: watermark
+  tags:
+  - cleanup
+  - enhance
+  needs_image: true
+- id: cx_zh_050
+  lang: zh
+  text: 祛痘美颜一键修图
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: face
+  tags:
+  - retouch
+  needs_image: true
+- id: cx_en_027
+  lang: en
+  text: Remove wrinkles, smoother skin
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: face
+  tags:
+  - retouch
+  needs_image: true
+- id: cx_en_028
+  lang: en
+  text: Brighten the shadows without blowing highlights
+  l1: image
+  l2: image_edit
+  tags:
+  - adjust
+  - retouch
+  needs_image: true
+- id: cx_en_029
+  lang: en
+  text: Remove acne and lightly retouch
+  l1: image
+  l2: image_edit
+  slots_hint:
+    edit_target: face
+  tags:
+  - retouch
+  needs_image: true
+- id: cx_zh_051
+  lang: zh
+  text: 向外扩图，补全左右两边
+  l1: image
+  l2: image_edit
+  tags:
+  - outpaint
+  needs_image: true
+- id: cx_zh_052
+  lang: zh
+  text: 扩成更宽的横构图
+  l1: image
+  l2: image_edit
+  tags:
+  - outpaint
+  - layout
+  needs_image: true
+- id: cx_zh_053
+  lang: zh
+  text: 把画布向外延展一圈
+  l1: image
+  l2: image_edit
+  tags:
+  - outpaint
+  needs_image: true
+- id: cx_zh_054
+  lang: zh
+  text: 变清晰，放大到高清
+  l1: image
+  l2: image_edit
+  tags:
+  - upscale
+  - enhance
+  needs_image: true
+- id: cx_zh_055
+  lang: zh
+  text: 超分辨率，细节更清楚
+  l1: image
+  l2: image_edit
+  tags:
+  - upscale
+  - enhance
+  needs_image: true
+- id: cx_zh_056
+  lang: zh
+  text: 扩图成竖版，同时提高清晰度
+  l1: image
+  l2: image_edit
+  tags:
+  - outpaint
+  - upscale
+  - compound
+  needs_image: true
+- id: cx_zh_057
+  lang: zh
+  text: outpaint 补全头顶被裁掉的部分
+  l1: image
+  l2: image_edit
+  tags:
+  - outpaint
+  needs_image: true
+- id: cx_en_030
+  lang: en
+  text: Outpaint to widen the frame
+  l1: image
+  l2: image_edit
+  tags:
+  - outpaint
+  needs_image: true
+- id: cx_en_031
+  lang: en
+  text: Extend the canvas on all sides
+  l1: image
+  l2: image_edit
+  tags:
+  - outpaint
+  needs_image: true
+- id: cx_en_032
+  lang: en
+  text: Upscale to HD and sharpen details
+  l1: image
+  l2: image_edit
+  tags:
+  - upscale
+  - enhance
+  needs_image: true
+- id: cx_en_033
+  lang: en
+  text: Outpaint vertically and upscale
+  l1: image
+  l2: image_edit
+  tags:
+  - outpaint
+  - upscale
+  - compound
+  needs_image: true
+- id: cx_zh_058
+  lang: zh
+  text: 文生视频：雨夜霓虹街道，行人撑伞，大约 5 秒
+  l1: video
+  l2: text_to_video
+  slots_hint:
+    duration_sec: 5
+  tags:
+  - compound
+  - generation
+  - duration
+  needs_image: false
+- id: cx_en_034
+  lang: en
+  text: 'Text to video: rainy neon street, 5 seconds, slow dolly'
+  l1: video
+  l2: text_to_video
+  slots_hint:
+    duration_sec: 5
+  tags:
+  - compound
+  - generation
+  - duration
+  - camera
+  needs_image: false
+- id: cx_zh_059
+  lang: zh
+  text: 先改成水彩再做成视频
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - compound
+  - multi_step_hint
+  - needs_clarify_candidate
+  needs_image: true
+  notes: P0 应 clarify 或拆步；禁止当真复合可执行路径
+- id: cx_zh_060
+  lang: zh
+  text: 抠完背景再让人物动起来做成视频
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - compound
+  - multi_step_hint
+  - matting
+  - needs_clarify_candidate
+  needs_image: true
+  notes: P0 应 clarify 或拆步
+- id: cx_en_035
+  lang: en
+  text: First remove the background, then animate it into a video
+  l1: other
+  l2_candidates:
+  - image_edit
+  - image_to_multiframe
+  certainty_expected: weak
+  tags:
+  - compound
+  - multi_step_hint
+  - matting
+  - needs_clarify_candidate
+  needs_image: true
+  notes: P0 clarify / split steps; not true multi-step path
+changelog:
+  0.2.0: Add matting/cutout (≥20zh+≥6en) and complex/compound scenario buckets; bump review doc.
+  0.1.0: Initial P0 coverage across L2 + E01–E04 + style_as_art + weak_motion + negation.

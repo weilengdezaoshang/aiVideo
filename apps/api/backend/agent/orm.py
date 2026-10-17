@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, Uuid, func, text
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.infrastructure.orm import Base, JSONVariant
@@ -15,10 +15,11 @@ class AgentSession(Base):
     workspace_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("workspaces.id"))
     document_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("documents.id", ondelete="SET NULL"))
     source_document_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    principal: Mapped[str] = mapped_column(String(200), default="", server_default="")
     cursor: Mapped[int] = mapped_column(Integer, default=0)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    __table_args__ = (Index("uq_agent_session_document", "workspace_id", "source_document_id", unique=True),)
+    __table_args__ = (Index("uq_agent_session_document", "workspace_id", "source_document_id", "principal", unique=True),)
 
 
 class AgentRun(Base):
@@ -48,6 +49,7 @@ class AgentRun(Base):
     next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     stop_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     claims: Mapped[dict | None] = mapped_column(JSONVariant)
+    execution: Mapped[dict | None] = mapped_column(JSONVariant)
     persona: Mapped[dict | None] = mapped_column(JSONVariant)
     stage: Mapped[str] = mapped_column(String(16), default="plan")
     plan: Mapped[dict | None] = mapped_column(JSONVariant)
@@ -58,8 +60,8 @@ class AgentRun(Base):
     __table_args__ = (
         Index("uq_agent_run_request", "session_id", "client_request_id", unique=True),
         Index("uq_agent_run_active", "session_id", unique=True,
-              postgresql_where=text("status IN ('queued', 'running')"),
-              sqlite_where=text("status IN ('queued', 'running')")),
+              postgresql_where=text("status IN ('queued', 'running') AND phase <> 'media'"),
+              sqlite_where=text("status IN ('queued', 'running') AND phase <> 'media'")),
         Index("ix_agent_runs_due", "status", "next_run_at", "lease_until"),
     )
 
@@ -77,6 +79,7 @@ class AgentStep(Base):
     depends_on: Mapped[list] = mapped_column(JSONVariant, default=list)
     done_when: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(16), default="pending")
+    execution: Mapped[dict | None] = mapped_column(JSONVariant)
     summary: Mapped[str | None] = mapped_column(Text)
     evidence_refs: Mapped[list] = mapped_column(JSONVariant, default=list)
     retries: Mapped[int] = mapped_column(Integer, default=0)
@@ -151,3 +154,52 @@ class AgentEvent(Base):
     type: Mapped[str] = mapped_column(String(64))
     payload: Mapped[dict] = mapped_column(JSONVariant)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class HostCreditAccount(Base):
+    __tablename__ = "host_credit_accounts"
+    workspace_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("workspaces.id"), primary_key=True)
+    available: Mapped[int] = mapped_column(BigInteger, default=0)
+    __table_args__ = (CheckConstraint("available >= 0", name="ck_host_credit_nonnegative"),)
+
+
+class HostCreditGrant(Base):
+    __tablename__ = "host_credit_grants"
+    workspace_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("workspaces.id"), primary_key=True)
+    request_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    amount: Mapped[int] = mapped_column(BigInteger)
+    principal: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (CheckConstraint("amount > 0", name="ck_host_credit_grant_positive"),)
+
+
+class HostCreditLedger(Base):
+    __tablename__ = "host_credit_ledger"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("workspaces.id"), index=True)
+    run_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("agent_runs.id"), index=True)
+    step_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("agent_steps.id"))
+    child_index: Mapped[int] = mapped_column(Integer)
+    attempt: Mapped[int] = mapped_column(Integer, default=1)
+    idempotency_key: Mapped[str] = mapped_column(String(128), unique=True)
+    job_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("jobs.id"))
+    quoted: Mapped[int] = mapped_column(BigInteger)
+    charged: Mapped[int] = mapped_column(BigInteger, default=0)
+    refunded: Mapped[int] = mapped_column(BigInteger, default=0)
+    state: Mapped[str] = mapped_column(String(24), default="reserved")
+    details: Mapped[dict] = mapped_column(JSONVariant, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (Index("uq_host_credit_step_attempt", "run_id", "step_id", "child_index", "attempt", unique=True),
+        CheckConstraint("quoted >= 0 AND charged >= 0 AND refunded >= 0 AND charged + refunded <= quoted",
+                        name="ck_host_credit_conservation"))
+
+
+class HostNodeLease(Base):
+    __tablename__ = "host_node_leases"
+    document_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True)
+    node_id: Mapped[str] = mapped_column(String(200), primary_key=True)
+    run_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("agent_runs.id"), index=True)
+    step_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("agent_steps.id"))
+    expected_version: Mapped[int] = mapped_column(Integer)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

@@ -1,0 +1,1014 @@
+{
+  "scope": "fixed_safety_gates",
+  "production_calibrated": false,
+  "high_cost_denominator": 4,
+  "baseline_high_cost_errors": 2,
+  "shadow_high_cost_errors": 0,
+  "results": [
+    {
+      "id": "E01",
+      "expected": "clarify",
+      "baseline": "image",
+      "shadow": "clarify",
+      "passed": true,
+      "trace": {
+        "request_id": "E01",
+        "message_hash": "6fcc9a3f54a65e3a6f4925f2c07565f38f1602f302d0f5be4008a53f3dabbc4d",
+        "possibleL2": [
+          "text_to_image",
+          "text_to_video",
+          "other",
+          "unsupported",
+          "image_edit",
+          "image_to_multiframe"
+        ],
+        "topK": [],
+        "certainty": "weak",
+        "decided_l2": null,
+        "path": null,
+        "clarify_id": "d7bc9af7-240e-453c-b0c9-1bc064813c6a",
+        "embed_model_id": "pending",
+        "embed_degraded": true,
+        "rule_version": "layered-1.2-sequential-1",
+        "exemplars_version": "0.2.0",
+        "gates_hit": ["weak_motion"],
+        "executable": {
+          "capabilityOk": {
+            "text_to_image": true,
+            "image_edit": true,
+            "text_to_video": true,
+            "image_to_video": false,
+            "image_to_multiframe": true
+          }
+        },
+        "intent_multi_step_enabled": false,
+        "multi_step": false,
+        "steps": [],
+        "step_results": [],
+        "thresholds": {
+          "strong": 0.82,
+          "margin": 0.12,
+          "min": 0.55
+        },
+        "exemplar_id": null
+      }
+    },
+    {
+      "id": "E02",
+      "expected": "image",
+      "baseline": "video",
+      "shadow": "image",
+      "passed": true,
+      "trace": {
+        "request_id": "E02",
+        "message_hash": "b2ac6aabdd2ac4b4221e892c346eed41083e3a9af914a1f417b03885024ccbfe",
+        "possibleL2": [
+          "text_to_image",
+          "text_to_video",
+          "other",
+          "unsupported",
+          "image_edit",
+          "image_to_multiframe"
+        ],
+        "topK": [],
+        "certainty": "strong",
+        "decided_l2": "image_edit",
+        "path": "image_edit",
+        "clarify_id": null,
+        "embed_model_id": "pending",
+        "embed_degraded": false,
+        "rule_version": "layered-1.2-sequential-1",
+        "exemplars_version": "0.2.0",
+        "gates_hit": ["style_as_art"],
+        "executable": {
+          "capabilityOk": {
+            "text_to_image": true,
+            "image_edit": true,
+            "text_to_video": true,
+            "image_to_video": false,
+            "image_to_multiframe": true
+          }
+        },
+        "intent_multi_step_enabled": false,
+        "multi_step": false,
+        "steps": [
+          {
+            "id": "s1",
+            "l2": "image_edit",
+            "path": "image_edit",
+            "input_from": "selection",
+            "depends_on": [],
+            "slots_digest": "c8056a8211b07f88cdfee8e83e68aba8a180c57cddbd2523e17dc3da81ea5631"
+          }
+        ],
+        "step_results": [],
+        "thresholds": {
+          "strong": 0.82,
+          "margin": 0.12,
+          "min": 0.55
+        },
+        "exemplar_id": null
+      }
+    },
+    {
+      "id": "E03",
+      "expected": "image",
+      "baseline": "video",
+      "shadow": "image",
+      "passed": true,
+      "trace": {
+        "request_id": "E03",
+        "message_hash": "af447892ce8929e5cb53168f3f54d42f3077fad0be358f3a6f741d7b5fb1d011",
+        "possibleL2": [
+          "text_to_image",
+          "text_to_video",
+          "other",
+          "unsupported",
+          "image_edit",
+          "image_to_multiframe"
+        ],
+        "topK": [],
+        "certainty": "strong",
+        "decided_l2": "image_edit",
+        "path": "image_edit",
+        "clarify_id": null,
+        "embed_model_id": "pending",
+        "embed_degraded": false,
+        "rule_version": "layered-1.2-sequential-1",
+        "exemplars_version": "0.2.0",
+        "gates_hit": ["negative_video"],
+        "executable": {
+          "capabilityOk": {
+            "text_to_image": true,
+            "image_edit": true,
+            "text_to_video": true,
+            "image_to_video": false,
+            "image_to_multiframe": true
+          }
+        },
+        "intent_multi_step_enabled": false,
+        "multi_step": false,
+        "steps": [
+          {
+            "id": "s1",
+            "l2": "image_edit",
+            "path": "image_edit",
+            "input_from": "selection",
+            "depends_on": [],
+            "slots_digest": "2c345add29373ef2a878f32d4cf10819d9a1abf906d6e56c580c8d8dede9a916"
+          }
+        ],
+        "step_results": [],
+        "thresholds": {
+          "strong": 0.82,
+          "margin": 0.12,
+          "min": 0.55
+        },
+        "exemplar_id": null
+      }
+    },
+    {
+      "id": "E04",
+      "expected": "clarify",
+      "baseline": "image",
+      "shadow": "clarify",
+      "passed": true,
+      "trace": {
+        "request_id": "E04",
+        "message_hash": "78db001e812a87e4772693239a4097056cde57baf7e5f8bdb34b889246623e45",
+        "possibleL2": [
+          "text_to_image",
+          "text_to_video",
+          "other",
+          "unsupported",
+          "image_edit",
+          "image_to_multiframe"
+        ],
+        "topK": [],
+        "certainty": "weak",
+        "decided_l2": null,
+        "path": null,
+        "clarify_id": "75f6214b-9bec-4da5-a219-adb44e534251",
+        "embed_model_id": "pending",
+        "embed_degraded": true,
+        "rule_version": "layered-1.2-sequential-1",
+        "exemplars_version": "0.2.0",
+        "gates_hit": ["weak_motion"],
+        "executable": {
+          "capabilityOk": {
+            "text_to_image": true,
+            "image_edit": true,
+            "text_to_video": true,
+            "image_to_video": false,
+            "image_to_multiframe": true
+          }
+        },
+        "intent_multi_step_enabled": false,
+        "multi_step": false,
+        "steps": [],
+        "step_results": [],
+        "thresholds": {
+          "strong": 0.82,
+          "margin": 0.12,
+          "min": 0.55
+        },
+        "exemplar_id": null
+      }
+    },
+    {
+      "id": "E05",
+      "expected": "clarify",
+      "baseline": "intent_clarify",
+      "shadow": "clarify",
+      "passed": true,
+      "trace": {
+        "request_id": "E05",
+        "message_hash": "242d0f85c6dc3fdcd4c2cefbc90894209c46dbca4dc23b50544411dec9ca3967",
+        "possibleL2": [
+          "text_to_image",
+          "text_to_video",
+          "other",
+          "unsupported",
+          "image_edit",
+          "image_to_multiframe"
+        ],
+        "topK": [],
+        "certainty": "weak",
+        "decided_l2": null,
+        "path": null,
+        "clarify_id": "b59ee90f-1075-4418-906b-4424c403cff2",
+        "embed_model_id": "pending",
+        "embed_degraded": true,
+        "rule_version": "layered-1.2-sequential-1",
+        "exemplars_version": "0.2.0",
+        "gates_hit": ["weak_motion"],
+        "executable": {
+          "capabilityOk": {
+            "text_to_image": true,
+            "image_edit": true,
+            "text_to_video": true,
+            "image_to_video": false,
+            "image_to_multiframe": true
+          }
+        },
+        "intent_multi_step_enabled": false,
+        "multi_step": false,
+        "steps": [],
+        "step_results": [],
+        "thresholds": {
+          "strong": 0.82,
+          "margin": 0.12,
+          "min": 0.55
+        },
+        "exemplar_id": null
+      }
+    },
+    {
+      "id": "E06",
+      "expected": "capability_unavailable",
+      "baseline": "capability_unavailable",
+      "shadow": "capability_unavailable",
+      "passed": true,
+      "trace": {
+        "request_id": "E06",
+        "message_hash": "2d3668cdd3a4ad43b5687d34cd39503a624f70ebac28d398894a3fc4a93bb875",
+        "possibleL2": [
+          "text_to_image",
+          "text_to_video",
+          "other",
+          "unsupported",
+          "image_edit",
+          "image_to_multiframe"
+        ],
+        "topK": [],
+        "certainty": "strong",
+        "decided_l2": "image_to_multiframe",
+        "path": "image_to_multiframe",
+        "clarify_id": null,
+        "embed_model_id": "pending",
+        "embed_degraded": false,
+        "rule_version": "layered-1.2-sequential-1",
+        "exemplars_version": "0.2.0",
+        "gates_hit": ["strong_video"],
+        "executable": {
+          "capabilityOk": {
+            "text_to_image": true,
+            "image_edit": true,
+            "text_to_video": false,
+            "image_to_video": false,
+            "image_to_multiframe": false
+          }
+        },
+        "intent_multi_step_enabled": false,
+        "multi_step": false,
+        "steps": [
+          {
+            "id": "s1",
+            "l2": "image_to_multiframe",
+            "path": "image_to_multiframe",
+            "input_from": "selection",
+            "depends_on": [],
+            "slots_digest": "c1aef65ea59ec6e1031ac71958aef78626c182c4550423e04db65944e119e085"
+          }
+        ],
+        "step_results": [],
+        "thresholds": {
+          "strong": 0.82,
+          "margin": 0.12,
+          "min": 0.55
+        },
+        "exemplar_id": null
+      }
+    },
+    {
+      "id": "E07",
+      "expected": "video",
+      "baseline": "video",
+      "shadow": "video",
+      "passed": true,
+      "trace": {
+        "request_id": "E07",
+        "message_hash": "2d3668cdd3a4ad43b5687d34cd39503a624f70ebac28d398894a3fc4a93bb875",
+        "possibleL2": [
+          "text_to_image",
+          "text_to_video",
+          "other",
+          "unsupported",
+          "image_edit",
+          "image_to_multiframe"
+        ],
+        "topK": [],
+        "certainty": "strong",
+        "decided_l2": "image_to_multiframe",
+        "path": "image_to_multiframe",
+        "clarify_id": null,
+        "embed_model_id": "pending",
+        "embed_degraded": false,
+        "rule_version": "layered-1.2-sequential-1",
+        "exemplars_version": "0.2.0",
+        "gates_hit": ["strong_video"],
+        "executable": {
+          "capabilityOk": {
+            "text_to_image": true,
+            "image_edit": true,
+            "text_to_video": true,
+            "image_to_video": false,
+            "image_to_multiframe": true
+          }
+        },
+        "intent_multi_step_enabled": false,
+        "multi_step": false,
+        "steps": [
+          {
+            "id": "s1",
+            "l2": "image_to_multiframe",
+            "path": "image_to_multiframe",
+            "input_from": "selection",
+            "depends_on": [],
+            "slots_digest": "c1aef65ea59ec6e1031ac71958aef78626c182c4550423e04db65944e119e085"
+          }
+        ],
+        "step_results": [],
+        "thresholds": {
+          "strong": 0.82,
+          "margin": 0.12,
+          "min": 0.55
+        },
+        "exemplar_id": null
+      }
+    },
+    {
+      "id": "E08",
+      "expected": "clarify",
+      "baseline": "image",
+      "shadow": "clarify",
+      "passed": true,
+      "trace": {
+        "request_id": "E08",
+        "message_hash": "507813b5ad38c41a7cfe893eff28f8fa1fb4edfb9dfc2d54c144817a1201464d",
+        "possibleL2": ["text_to_image", "text_to_video", "other", "unsupported"],
+        "topK": [],
+        "certainty": "weak",
+        "decided_l2": null,
+        "path": null,
+        "clarify_id": "6b73dc49-859f-4edd-9f2f-082419fb3632",
+        "embed_model_id": "pending",
+        "embed_degraded": true,
+        "rule_version": "layered-1.2-sequential-1",
+        "exemplars_version": "0.2.0",
+        "gates_hit": [],
+        "executable": {
+          "capabilityOk": {
+            "text_to_image": true,
+            "image_edit": true,
+            "text_to_video": true,
+            "image_to_video": false,
+            "image_to_multiframe": true
+          }
+        },
+        "intent_multi_step_enabled": false,
+        "multi_step": false,
+        "steps": [],
+        "step_results": [],
+        "thresholds": {
+          "strong": 0.82,
+          "margin": 0.12,
+          "min": 0.55
+        },
+        "exemplar_id": null
+      }
+    },
+    {
+      "id": "S01",
+      "expected": "clarify",
+      "baseline": "intent_clarify",
+      "shadow": "clarify",
+      "passed": true,
+      "trace": {
+        "request_id": "S01",
+        "message_hash": "a2e3e92947ee37522a729c0f542360cbc382dfdc991e292dee4d0c4c21229c99",
+        "possibleL2": [
+          "text_to_image",
+          "text_to_video",
+          "other",
+          "unsupported",
+          "image_edit",
+          "image_to_multiframe"
+        ],
+        "topK": [],
+        "certainty": "weak",
+        "decided_l2": null,
+        "path": null,
+        "clarify_id": "4e35088e-b815-4b6d-861b-a6166890bcec",
+        "embed_model_id": "pending",
+        "embed_degraded": true,
+        "rule_version": "layered-1.2-sequential-1",
+        "exemplars_version": "0.2.0",
+        "gates_hit": ["sequential", "strong_video"],
+        "executable": {
+          "capabilityOk": {
+            "text_to_image": true,
+            "image_edit": true,
+            "text_to_video": true,
+            "image_to_video": false,
+            "image_to_multiframe": true
+          }
+        },
+        "intent_multi_step_enabled": false,
+        "multi_step": false,
+        "steps": [],
+        "step_results": [],
+        "thresholds": {
+          "strong": 0.82,
+          "margin": 0.12,
+          "min": 0.55
+        },
+        "step_decisions": [
+          {
+            "l2": "image_edit",
+            "certainty": "strong",
+            "possibleL2": [
+              "text_to_image",
+              "text_to_video",
+              "other",
+              "unsupported",
+              "image_edit",
+              "image_to_multiframe"
+            ],
+            "topK": [],
+            "capabilityOk": {
+              "text_to_image": true,
+              "image_edit": true,
+              "text_to_video": true,
+              "image_to_video": false,
+              "image_to_multiframe": true
+            }
+          },
+          {
+            "l2": "image_to_multiframe",
+            "certainty": "strong",
+            "possibleL2": [
+              "text_to_image",
+              "text_to_video",
+              "other",
+              "unsupported",
+              "image_edit",
+              "image_to_multiframe"
+            ],
+            "topK": [],
+            "capabilityOk": {
+              "text_to_image": true,
+              "image_edit": true,
+              "text_to_video": true,
+              "image_to_video": false,
+              "image_to_multiframe": true
+            }
+          }
+        ],
+        "exemplar_id": null
+      }
+    },
+    {
+      "id": "S02",
+      "expected": "multi",
+      "baseline": "intent_clarify",
+      "shadow": "multi",
+      "passed": true,
+      "trace": {
+        "request_id": "S02",
+        "message_hash": "a2e3e92947ee37522a729c0f542360cbc382dfdc991e292dee4d0c4c21229c99",
+        "possibleL2": [
+          "text_to_image",
+          "text_to_video",
+          "other",
+          "unsupported",
+          "image_edit",
+          "image_to_multiframe"
+        ],
+        "topK": [],
+        "certainty": "strong",
+        "decided_l2": "image_edit",
+        "path": "image_edit",
+        "clarify_id": null,
+        "embed_model_id": "pending",
+        "embed_degraded": true,
+        "rule_version": "layered-1.2-sequential-1",
+        "exemplars_version": "0.2.0",
+        "gates_hit": ["sequential", "strong_video"],
+        "executable": {
+          "capabilityOk": {
+            "text_to_image": true,
+            "image_edit": true,
+            "text_to_video": true,
+            "image_to_video": false,
+            "image_to_multiframe": true
+          }
+        },
+        "intent_multi_step_enabled": true,
+        "multi_step": true,
+        "steps": [
+          {
+            "id": "s1",
+            "l2": "image_edit",
+            "path": "image_edit",
+            "input_from": "selection",
+            "depends_on": [],
+            "slots_digest": "a223fd6ba3292529a7e063aa0a581cb770d8bb1e2daf32762f331dc85d177c56"
+          },
+          {
+            "id": "s2",
+            "l2": "image_to_multiframe",
+            "path": "image_to_multiframe",
+            "input_from": "step:s1",
+            "depends_on": ["s1"],
+            "slots_digest": "c1aef65ea59ec6e1031ac71958aef78626c182c4550423e04db65944e119e085"
+          }
+        ],
+        "step_results": [],
+        "thresholds": {
+          "strong": 0.82,
+          "margin": 0.12,
+          "min": 0.55
+        },
+        "step_decisions": [
+          {
+            "l2": "image_edit",
+            "certainty": "strong",
+            "possibleL2": [
+              "text_to_image",
+              "text_to_video",
+              "other",
+              "unsupported",
+              "image_edit",
+              "image_to_multiframe"
+            ],
+            "topK": [],
+            "capabilityOk": {
+              "text_to_image": true,
+              "image_edit": true,
+              "text_to_video": true,
+              "image_to_video": false,
+              "image_to_multiframe": true
+            }
+          },
+          {
+            "l2": "image_to_multiframe",
+            "certainty": "strong",
+            "possibleL2": [
+              "text_to_image",
+              "text_to_video",
+              "other",
+              "unsupported",
+              "image_edit",
+              "image_to_multiframe"
+            ],
+            "topK": [],
+            "capabilityOk": {
+              "text_to_image": true,
+              "image_edit": true,
+              "text_to_video": true,
+              "image_to_video": false,
+              "image_to_multiframe": true
+            }
+          }
+        ],
+        "exemplar_id": null
+      }
+    },
+    {
+      "id": "S03",
+      "expected": "multi",
+      "baseline": "video",
+      "shadow": "multi",
+      "passed": true,
+      "trace": {
+        "request_id": "S03",
+        "message_hash": "38afd00df41557c9f28830f957ca0a14f5ec7dfdec7e2157b2f4f4ecb8649f46",
+        "possibleL2": ["text_to_image", "text_to_video", "other", "unsupported"],
+        "topK": [],
+        "certainty": "strong",
+        "decided_l2": "text_to_image",
+        "path": "text_to_image",
+        "clarify_id": null,
+        "embed_model_id": "pending",
+        "embed_degraded": true,
+        "rule_version": "layered-1.2-sequential-1",
+        "exemplars_version": "0.2.0",
+        "gates_hit": ["sequential", "strong_video"],
+        "executable": {
+          "capabilityOk": {
+            "text_to_image": true,
+            "image_edit": true,
+            "text_to_video": true,
+            "image_to_video": false,
+            "image_to_multiframe": true
+          }
+        },
+        "intent_multi_step_enabled": true,
+        "multi_step": true,
+        "steps": [
+          {
+            "id": "s1",
+            "l2": "text_to_image",
+            "path": "text_to_image",
+            "input_from": "selection",
+            "depends_on": [],
+            "slots_digest": "659ba568d1170ca00a2205face9565429dea28fd9825eca8c563b97db80701b0"
+          },
+          {
+            "id": "s2",
+            "l2": "image_to_multiframe",
+            "path": "image_to_multiframe",
+            "input_from": "step:s1",
+            "depends_on": ["s1"],
+            "slots_digest": "a09919a60cf82a3ed153feacb97dedaaba6ce4f11228a3de52f4a49e0442c27f"
+          }
+        ],
+        "step_results": [],
+        "thresholds": {
+          "strong": 0.82,
+          "margin": 0.12,
+          "min": 0.55
+        },
+        "step_decisions": [
+          {
+            "l2": "text_to_image",
+            "certainty": "strong",
+            "possibleL2": ["text_to_image", "text_to_video", "other", "unsupported"],
+            "topK": [],
+            "capabilityOk": {
+              "text_to_image": true,
+              "image_edit": true,
+              "text_to_video": true,
+              "image_to_video": false,
+              "image_to_multiframe": true
+            }
+          },
+          {
+            "l2": "image_to_multiframe",
+            "certainty": "strong",
+            "possibleL2": [
+              "text_to_image",
+              "text_to_video",
+              "other",
+              "unsupported",
+              "image_edit",
+              "image_to_multiframe"
+            ],
+            "topK": [],
+            "capabilityOk": {
+              "text_to_image": true,
+              "image_edit": true,
+              "text_to_video": true,
+              "image_to_video": false,
+              "image_to_multiframe": true
+            }
+          }
+        ],
+        "exemplar_id": null
+      }
+    },
+    {
+      "id": "S04",
+      "expected": "clarify",
+      "baseline": "video",
+      "shadow": "clarify",
+      "passed": true,
+      "trace": {
+        "request_id": "S04",
+        "message_hash": "91256264414fbb9cf7e7473d04a8159ee3dfa3153d550a5b5eb9645f35d29de1",
+        "possibleL2": [
+          "text_to_image",
+          "text_to_video",
+          "other",
+          "unsupported",
+          "image_edit",
+          "image_to_multiframe"
+        ],
+        "topK": [],
+        "certainty": "weak",
+        "decided_l2": null,
+        "path": null,
+        "clarify_id": "9af3d621-d317-48db-a6a3-1a6ff959e0c1",
+        "embed_model_id": "pending",
+        "embed_degraded": true,
+        "rule_version": "layered-1.2-sequential-1",
+        "exemplars_version": "0.2.0",
+        "gates_hit": ["sequential", "strong_video"],
+        "executable": {
+          "capabilityOk": {
+            "text_to_image": true,
+            "image_edit": true,
+            "text_to_video": true,
+            "image_to_video": false,
+            "image_to_multiframe": true
+          }
+        },
+        "intent_multi_step_enabled": true,
+        "multi_step": false,
+        "steps": [],
+        "step_results": [],
+        "thresholds": {
+          "strong": 0.82,
+          "margin": 0.12,
+          "min": 0.55
+        },
+        "step_decisions": [
+          {
+            "l2": "image_to_multiframe",
+            "certainty": "strong",
+            "possibleL2": [
+              "text_to_image",
+              "text_to_video",
+              "other",
+              "unsupported",
+              "image_edit",
+              "image_to_multiframe"
+            ],
+            "topK": [],
+            "capabilityOk": {
+              "text_to_image": true,
+              "image_edit": true,
+              "text_to_video": true,
+              "image_to_video": false,
+              "image_to_multiframe": true
+            }
+          },
+          {
+            "l2": null,
+            "certainty": "none",
+            "possibleL2": [
+              "text_to_image",
+              "text_to_video",
+              "other",
+              "unsupported",
+              "image_edit",
+              "image_to_multiframe"
+            ],
+            "topK": [],
+            "capabilityOk": {
+              "text_to_image": true,
+              "image_edit": true,
+              "text_to_video": true,
+              "image_to_video": false,
+              "image_to_multiframe": true
+            }
+          }
+        ],
+        "exemplar_id": null
+      }
+    },
+    {
+      "id": "S05",
+      "expected": "clarify",
+      "baseline": "intent_clarify",
+      "shadow": "clarify",
+      "passed": true,
+      "trace": {
+        "request_id": "S05",
+        "message_hash": "18dec403c93feda40524376f6e9f995975aebcdee3cde7d3ba96d677ef042342",
+        "possibleL2": [
+          "text_to_image",
+          "text_to_video",
+          "other",
+          "unsupported",
+          "image_edit",
+          "image_to_multiframe"
+        ],
+        "topK": [],
+        "certainty": "weak",
+        "decided_l2": null,
+        "path": null,
+        "clarify_id": "3ef9eb52-f290-4225-9e02-1cf75ab6401e",
+        "embed_model_id": "pending",
+        "embed_degraded": false,
+        "rule_version": "layered-1.2-sequential-1",
+        "exemplars_version": "0.2.0",
+        "gates_hit": ["sequential"],
+        "executable": {
+          "capabilityOk": {
+            "text_to_image": true,
+            "image_edit": true,
+            "text_to_video": true,
+            "image_to_video": false,
+            "image_to_multiframe": true
+          }
+        },
+        "intent_multi_step_enabled": true,
+        "multi_step": false,
+        "steps": [],
+        "step_results": [],
+        "thresholds": {
+          "strong": 0.82,
+          "margin": 0.12,
+          "min": 0.55
+        },
+        "exemplar_id": null
+      }
+    },
+    {
+      "id": "S06",
+      "expected": "capability_unavailable",
+      "baseline": "intent_clarify",
+      "shadow": "capability_unavailable",
+      "passed": true,
+      "trace": {
+        "request_id": "S06",
+        "message_hash": "a2e3e92947ee37522a729c0f542360cbc382dfdc991e292dee4d0c4c21229c99",
+        "possibleL2": [
+          "text_to_image",
+          "text_to_video",
+          "other",
+          "unsupported",
+          "image_edit",
+          "image_to_multiframe"
+        ],
+        "topK": [],
+        "certainty": "strong",
+        "decided_l2": "image_edit",
+        "path": "image_edit",
+        "clarify_id": null,
+        "embed_model_id": "pending",
+        "embed_degraded": true,
+        "rule_version": "layered-1.2-sequential-1",
+        "exemplars_version": "0.2.0",
+        "gates_hit": ["sequential", "strong_video"],
+        "executable": {
+          "capabilityOk": {
+            "text_to_image": true,
+            "image_edit": true,
+            "text_to_video": false,
+            "image_to_video": false,
+            "image_to_multiframe": false
+          }
+        },
+        "intent_multi_step_enabled": true,
+        "multi_step": true,
+        "steps": [
+          {
+            "id": "s1",
+            "l2": "image_edit",
+            "path": "image_edit",
+            "input_from": "selection",
+            "depends_on": [],
+            "slots_digest": "a223fd6ba3292529a7e063aa0a581cb770d8bb1e2daf32762f331dc85d177c56"
+          },
+          {
+            "id": "s2",
+            "l2": "image_to_multiframe",
+            "path": "image_to_multiframe",
+            "input_from": "step:s1",
+            "depends_on": ["s1"],
+            "slots_digest": "c1aef65ea59ec6e1031ac71958aef78626c182c4550423e04db65944e119e085"
+          }
+        ],
+        "step_results": [],
+        "thresholds": {
+          "strong": 0.82,
+          "margin": 0.12,
+          "min": 0.55
+        },
+        "step_decisions": [
+          {
+            "l2": "image_edit",
+            "certainty": "strong",
+            "possibleL2": [
+              "text_to_image",
+              "text_to_video",
+              "other",
+              "unsupported",
+              "image_edit",
+              "image_to_multiframe"
+            ],
+            "topK": [],
+            "capabilityOk": {
+              "text_to_image": true,
+              "image_edit": true,
+              "text_to_video": false,
+              "image_to_video": false,
+              "image_to_multiframe": false
+            }
+          },
+          {
+            "l2": "image_to_multiframe",
+            "certainty": "strong",
+            "possibleL2": [
+              "text_to_image",
+              "text_to_video",
+              "other",
+              "unsupported",
+              "image_edit",
+              "image_to_multiframe"
+            ],
+            "topK": [],
+            "capabilityOk": {
+              "text_to_image": true,
+              "image_edit": true,
+              "text_to_video": false,
+              "image_to_video": false,
+              "image_to_multiframe": false
+            }
+          }
+        ],
+        "exemplar_id": null
+      }
+    },
+    {
+      "id": "S08",
+      "expected": "video",
+      "baseline": "video",
+      "shadow": "video",
+      "passed": true,
+      "trace": {
+        "request_id": "S08",
+        "message_hash": "aed279aab36652d06a04f5f9012f6c5fb9854317312713aa2f1b8a0bc4b957bb",
+        "possibleL2": [
+          "text_to_image",
+          "text_to_video",
+          "other",
+          "unsupported",
+          "image_edit",
+          "image_to_multiframe"
+        ],
+        "topK": [],
+        "certainty": "strong",
+        "decided_l2": "image_to_multiframe",
+        "path": "image_to_multiframe",
+        "clarify_id": null,
+        "embed_model_id": "pending",
+        "embed_degraded": false,
+        "rule_version": "layered-1.2-sequential-1",
+        "exemplars_version": "0.2.0",
+        "gates_hit": ["strong_video"],
+        "executable": {
+          "capabilityOk": {
+            "text_to_image": true,
+            "image_edit": true,
+            "text_to_video": true,
+            "image_to_video": false,
+            "image_to_multiframe": true
+          }
+        },
+        "intent_multi_step_enabled": true,
+        "multi_step": false,
+        "steps": [
+          {
+            "id": "s1",
+            "l2": "image_to_multiframe",
+            "path": "image_to_multiframe",
+            "input_from": "selection",
+            "depends_on": [],
+            "slots_digest": "1b69bf836e5e38ef7cbb8a93f026e4f9942f1480f545eefdadb174a18346580a"
+          }
+        ],
+        "step_results": [],
+        "thresholds": {
+          "strong": 0.82,
+          "margin": 0.12,
+          "min": 0.55
+        },
+        "exemplar_id": null
+      }
+    }
+  ]
+}

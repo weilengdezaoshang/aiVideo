@@ -9,15 +9,18 @@
 | Provider | mock(`deploy/provider-routes.mock.json`,零付费) | 自选(Cloud/ComfyUI/Mock) |
 | 身份 | 本地 OIDC fixture(8444,自动放行) | 真实 OIDC(IdP) |
 | 进程 | 基础设施+worker 跑 docker(`aivideo-dev` 项目);API(8443, TLS)与 OIDC 跑宿主机 | 全部 docker,含 Caddy HTTPS 网关 |
-| 画布助手 | 默认禁用;见下文启用方法 | 按 `.env` 配置路由与凭据 |
+| 画布助手 | 默认 Mock Host；只读模型助手按需配置 | 按 `.env` 配置路由与凭据 |
 
 ## 开发环境
 
 ```sh
-npm run dev:stack        # 幂等:生成证书/env/compose 覆盖 → 起 12 个容器 → 起 OIDC + API → 授权 dev-user
+npm run dev:stack        # 幂等:生成证书/env/compose 覆盖 → 构建当前代码 → 起容器 → 刷新 OIDC + API → 授权 dev-user 与 Mock 测试积分
 npm run dev:stack:down   # 停止宿主机进程并下线容器,数据卷保留
 ```
 
+- 日常只运行主工作区 `aiVideo` 的 8443；不再启动独立的 8445/8798 Host。
+- 启动器从禁用的开发模板生成 `data/dev/host-catalog.json`，仅允许 development Mock/本地合成绑定；给固定开发工作区幂等授予一次 1000 Mock 测试积分。生产模板仍禁用，不自动充值、不使用真实凭据。
+- 每次启动重新构建前端并刷新 API/OIDC，避免已有构建文件或旧进程掩盖源码更新。自定义 Host 路径不会被覆盖，启动器会停止并提示。
 - 入口 `https://localhost:8443/`;登录经本地 OIDC 自动完成(dev-user,已自动加入开发工作区并授予 admin)。
 - 证书优先用 mkcert(系统信任,内嵌浏览器可开):`brew install mkcert && sudo mkcert -install` 一次即可;
   未安装 mkcert 时回退 openssl 自签,此时内嵌浏览器会整页拦截(无"继续前往"),请用 Safari/Chrome 打开。

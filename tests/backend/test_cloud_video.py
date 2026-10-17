@@ -138,7 +138,7 @@ def test_video_i2v_not_offered(root):
             },
         )
         job = finish(c, response.json()["jobId"])
-        assert job["status"] == "failed" and "图生视频暂未开放" in job["error"]
+        assert job["status"] == "failed" and "未接通首帧协议" in job["error"]
 
 
 def test_video_task_failure_message(root):
@@ -361,3 +361,40 @@ def test_video_model_can_be_saved_from_settings(root, monkeypatch):
         assert response.json()["config"]["videoModel"] == MODEL
         assert c.get("/api/generation-capabilities").json()["video"]["supported"] is True
         assert json.loads((root / "config.json").read_text())["videoModel"] == MODEL
+
+
+def test_wan27_first_frame_request_is_frozen_and_uses_media():
+    from backend.config import Config
+    from backend.models import GenParams, InitImage
+    from backend.providers.cloud import CloudProvider
+    provider = CloudProvider(Config.model_validate({**VIDEO_CONFIG, "videoModel": "wan2.7-i2v-2026-04-25"}), None)
+    params = GenParams(model="wan2.7-i2v-2026-04-25", prompt="女孩骑马", kind="video", width=1280, height=720, durationSec=2)
+    _, body = provider.video_request(params, InitImage(b"png", "png"))
+    assert body["parameters"] == {"resolution": "720P", "duration": 2}
+    assert body["input"]["media"][0]["type"] == "first_frame"
+    assert body["input"]["media"][0]["url"].startswith("data:image/png;base64,")
+    with pytest.raises(ValueError, match="需要一张首帧"):
+        provider.video_request(params)
+
+
+def test_wan27_durable_stages_keep_first_frame_and_provider_task_id():
+    import asyncio
+    from backend.config import Config
+    from backend.models import GenParams, InitImage
+    from backend.providers.staged import StagedProvider
+
+    async def scenario():
+        submitted = []
+        def upstream(request):
+            submitted.append(json.loads(request.content))
+            return httpx.Response(200, json={"output": {"task_id": "first-frame-task"}})
+        async with httpx.AsyncClient(transport=httpx.MockTransport(upstream)) as client:
+            provider = StagedProvider(Config.model_validate({**VIDEO_CONFIG, "videoModel": "wan2.7-i2v-2026-04-25"}), client)
+            params = GenParams(model="wan2.7-i2v-2026-04-25", prompt="骑马", kind="video", width=1280, height=720, durationSec=2)
+            reference = InitImage(b"first-frame", "png")
+            prepared = await provider.prepare(params, 1, reference)
+            assert submitted == []
+            result = await provider.submit(params, 1, prepared.payload, "request-1", reference)
+            assert result.external_id == "first-frame-task"
+            assert submitted[0]["input"]["media"][0]["url"] == reference.data_url()
+    asyncio.run(scenario())

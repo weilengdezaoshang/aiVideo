@@ -26,7 +26,9 @@ def advance_agent(run_id: str) -> dict:
             credentials = {}
         if not isinstance(credentials, dict):
             credentials = {}
-        model = ChatCompletionsProvider(credentials, client=runtime.http())
+        model = ChatCompletionsProvider(credentials, client=runtime.http(),
+            local_config_root=Path(os.environ["SWARMUI_DATA_DIR"])
+                if os.environ.get("AIVERO_RUNTIME_ENVIRONMENT") == "development" else None)
         return await AgentService(runtime.session_factory()).advance(
             ident, uuid.uuid4().hex, model, media_root=Path(os.environ['SWARMUI_DATA_DIR']))
 

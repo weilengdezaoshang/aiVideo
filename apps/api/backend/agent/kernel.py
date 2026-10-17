@@ -73,7 +73,7 @@ class Kernel:
             if c.kind == "read":
                 reads += 1
                 numbers[c.id] = ev.evidence_id(reads)
-        return {"id": str(run.id), "sessionId": str(run.session_id),
+        value = {"id": str(run.id), "sessionId": str(run.session_id),
             "clientRequestId": run.client_request_id, "status": run.status, "phase": run.phase,
             "message": run.message, "reply": run.reply, "error": public_error(run.error),
             "errorCode": run.error.get("code") if run.error else None,
@@ -103,6 +103,11 @@ class Kernel:
                 "status": c.status, "output": c.output, "error": public_error(c.error),
                 "createdAt": stamp(c.created_at), "finishedAt": stamp(c.finished_at)} for c in tools]}
 
+        if run.phase == "media" and run.execution:
+            from backend.agent.media.service import project_media
+            return await project_media(db, run, value)
+        return value
+
     async def _event(self, db, session, run, kind):
         run.state_version += 1
         run.updated_at = now()
@@ -125,6 +130,11 @@ class Kernel:
         run.execution_epoch += 1
 
     async def _stop(self, db, session, run, code="STOPPED"):
+        if run.phase == "media":
+            from backend.agent.media.service import MediaHost
+            await MediaHost(self.factory)._cancel_locked(db, session, run,
+                "document_deleted" if code == "DOCUMENT_DELETED" else "user_cancel")
+            return await self._project(db, run)
         if run.status not in ACTIVE:
             return await self._project(db, run)
         run.stop_requested_at = now()
@@ -417,7 +427,7 @@ class Kernel:
             ready_without_owner = (AgentRun.lease_owner.is_(None)
                 & or_(AgentRun.dispatched_until.is_(None), AgentRun.dispatched_until <= now())
                 & or_(AgentRun.next_run_at.is_(None), AgentRun.next_run_at <= now()))
-            ids = list(await db.scalars(select(AgentRun.id).where(AgentRun.status.in_(ACTIVE),
+            ids = list(await db.scalars(select(AgentRun.id).where(AgentRun.phase != "media", AgentRun.status.in_(ACTIVE),
                 or_(AgentRun.lease_until <= now(), ready_without_owner))
                 .order_by(AgentRun.created_at, AgentRun.id).limit(limit)))
         dispatched = 0

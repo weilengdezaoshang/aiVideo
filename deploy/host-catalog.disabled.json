@@ -1,0 +1,6 @@
+{
+  "version": "disabled-v1",
+  "environment": "production",
+  "enabled": false,
+  "capabilities": []
+}

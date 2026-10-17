@@ -1,0 +1,108 @@
+{
+  "version": "operator-pin-v1",
+  "environment": "production",
+  "enabled": false,
+  "confirmCreditsAbove": 50,
+  "maxConcurrency": 4,
+  "capabilities": [
+    {
+      "id": "text_to_image",
+      "enabled": false,
+      "outputType": "image",
+      "maxRefImages": 0,
+      "tiers": {
+        "preview": {
+          "credits": 10
+        },
+        "final": {
+          "credits": 20,
+          "width": 768,
+          "height": 768
+        }
+      },
+      "binding": {
+        "version": "operator-pin-v1",
+        "providerSnapshot": {
+          "provider": "comfyui",
+          "configVersion": "operator-pin-v1",
+          "comfyUrl": "http://comfyui:8188",
+          "cloudModel": "REPLACE_WITH_IMAGE_CHECKPOINT",
+          "videoModel": "REPLACE_WITH_VIDEO_CHECKPOINT"
+        }
+      }
+    },
+    {
+      "id": "image_edit",
+      "enabled": false,
+      "outputType": "image",
+      "maxRefImages": 1,
+      "tiers": {
+        "preview": {
+          "credits": 10
+        },
+        "final": {
+          "credits": 20,
+          "width": 768,
+          "height": 768
+        }
+      },
+      "binding": {
+        "version": "operator-pin-v1",
+        "providerSnapshot": {
+          "provider": "comfyui",
+          "configVersion": "operator-pin-v1",
+          "comfyUrl": "http://comfyui:8188",
+          "cloudModel": "REPLACE_WITH_IMAGE_CHECKPOINT",
+          "videoModel": "REPLACE_WITH_VIDEO_CHECKPOINT"
+        }
+      }
+    },
+    {
+      "id": "text_to_video",
+      "enabled": false,
+      "outputType": "video",
+      "maxRefImages": 0,
+      "tiers": {
+        "preview": {
+          "credits": 10
+        },
+        "final": {
+          "credits": 20,
+          "width": 768,
+          "height": 768
+        }
+      },
+      "binding": {
+        "version": "operator-pin-v1",
+        "providerSnapshot": {
+          "provider": "comfyui",
+          "configVersion": "operator-pin-v1",
+          "comfyUrl": "http://comfyui:8188",
+          "cloudModel": "REPLACE_WITH_IMAGE_CHECKPOINT",
+          "videoModel": "REPLACE_WITH_VIDEO_CHECKPOINT"
+        }
+      }
+    },
+    {
+      "id": "frames_to_video",
+      "enabled": false,
+      "outputType": "video",
+      "maxRefImages": 16,
+      "tiers": {
+        "preview": {
+          "credits": 10
+        },
+        "final": {
+          "credits": 20,
+          "width": 768,
+          "height": 768
+        }
+      },
+      "binding": {
+        "version": "flow-v1",
+        "engine": "frames",
+        "chargePolicy": "on_success"
+      }
+    }
+  ]
+}

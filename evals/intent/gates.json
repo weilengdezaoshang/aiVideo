@@ -1,0 +1,54 @@
+[
+  { "id": "E01", "message": "活一点", "image": true, "expected": "clarify" },
+  { "id": "E02", "message": "动画风格海报", "image": true, "expected": "image" },
+  { "id": "E03", "message": "别做成视频，换成水彩", "image": true, "expected": "image" },
+  { "id": "E04", "message": "animate this image", "image": true, "expected": "clarify" },
+  { "id": "E05", "message": "动起来", "image": true, "expected": "clarify" },
+  {
+    "id": "E06",
+    "message": "做成视频",
+    "image": true,
+    "video_enabled": false,
+    "expected": "capability_unavailable"
+  },
+  { "id": "E07", "message": "做成视频", "image": true, "expected": "video" },
+  { "id": "E08", "message": "改成水彩", "image": false, "expected": "clarify" },
+  {
+    "id": "S01",
+    "message": "先抠图再做成视频",
+    "image": true,
+    "expected": "clarify",
+    "multi": false
+  },
+  { "id": "S02", "message": "先抠图再做成视频", "image": true, "expected": "multi", "multi": true },
+  {
+    "id": "S03",
+    "message": "先画一只猫再生成视频",
+    "image": false,
+    "expected": "multi",
+    "multi": true
+  },
+  {
+    "id": "S04",
+    "message": "先做成视频再改水彩",
+    "image": true,
+    "expected": "clarify",
+    "multi": true
+  },
+  {
+    "id": "S05",
+    "message": "先抠图再水彩再视频",
+    "image": true,
+    "expected": "clarify",
+    "multi": true
+  },
+  {
+    "id": "S06",
+    "message": "先抠图再做成视频",
+    "image": true,
+    "video_enabled": false,
+    "expected": "capability_unavailable",
+    "multi": true
+  },
+  { "id": "S08", "message": "改成水彩做成视频", "image": true, "expected": "video", "multi": true }
+]

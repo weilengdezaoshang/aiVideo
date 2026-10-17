@@ -5,6 +5,7 @@ from contextlib import suppress
 from datetime import datetime, timezone
 import hashlib
 import logging
+import os
 import time
 from pathlib import Path
 import uuid
@@ -59,6 +60,10 @@ async def execute_phase(job_id: uuid.UUID, factory, client: httpx.AsyncClient,
         # Snapshot owns routing; credential registry may supply only secret values.
         config = Config.model_validate({**snapshot, **{
             key: secrets[key] for key in ("imageApiKey", "videoApiKey") if key in secrets}})
+        if (claim.params.get("hostRunId") and config.provider == "mock"
+                and (claim.params.get("hostEnvironment") != "development"
+                     or os.environ.get("AIVERO_RUNTIME_ENVIRONMENT", "production") != "development")):
+            raise ProviderFailure(ErrorCode.INVALID_PARAM, operation=operation, certainty=Certainty.REJECTED)
         provider = StagedProvider(config, client)
         params = GenParams.model_validate(claim.params)
         seed = params.seed if params.seed >= 0 else int(hashlib.sha256(str(job_id).encode()).hexdigest()[:8], 16) % (2**31)
@@ -191,8 +196,8 @@ async def execute_phase(job_id: uuid.UUID, factory, client: httpx.AsyncClient,
     except asyncio.CancelledError:
         # Recovery owns uncertain submissions; never turn cancellation into safe retry.
         raise
-    except (httpx.HTTPError, TimeoutError, ProviderFailure, ValueError, KeyError) as exc:
-        if isinstance(exc, (ValueError, KeyError)):
+    except (httpx.HTTPError, TimeoutError, ProviderFailure, ValueError, KeyError, OSError) as exc:
+        if isinstance(exc, (ValueError, KeyError, OSError)):
             failure = ProviderFailure(ErrorCode.INVALID_PARAM, operation=operation,
                 certainty=Certainty.UNKNOWN if operation == Operation.SUBMIT and submit_started else Certainty.REJECTED)
         else:

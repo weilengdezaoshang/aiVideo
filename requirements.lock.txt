@@ -69,3 +69,5 @@ vine==5.1.0
 
 # MP4 时间线导出，提供跨平台 FFmpeg 运行时。
 imageio-ffmpeg==0.6.0
+
+PyYAML==6.0.3

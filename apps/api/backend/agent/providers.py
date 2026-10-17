@@ -5,6 +5,7 @@ import asyncio
 import json
 from dataclasses import dataclass
 from typing import Mapping
+from pathlib import Path
 
 import httpx
 
@@ -117,11 +118,18 @@ def _parse_response(raw: object, request_id: str | None) -> ModelResponse:
 
 
 class ChatCompletionsProvider:
-    def __init__(self, credentials: Mapping[str, object], client: httpx.AsyncClient | None = None):
+    def __init__(self, credentials: Mapping[str, object], client: httpx.AsyncClient | None = None,
+                 local_config_root: Path | None = None):
         self.credentials, self.client = credentials, client
+        self.local_config_root = local_config_root
 
     async def complete(self, route: AgentRoute, messages: list[dict], tools: list[dict]) -> ModelResponse:
         secret = self.credentials.get(route.credential_ref)
+        if self.local_config_root is not None and route.credential_ref.startswith("local-dialogue:"):
+            import uuid
+            from .local_config import load_config
+            config = load_config(self.local_config_root, uuid.UUID(route.credential_ref.split(":", 1)[1]))
+            secret = {"apiKey": config.apiKey.get_secret_value()} if config and config.apiKey else None
         api_key = secret.get("apiKey") if isinstance(secret, dict) else None
         if not isinstance(api_key, str) or not api_key.strip():
             raise ModelCallError("MODEL_CREDENTIAL_MISSING", "模型凭据尚未配置")
@@ -130,7 +138,7 @@ class ChatCompletionsProvider:
         # Official non-thinking switches differ even though both use Chat Completions.
         if route.provider == "deepseek":
             payload["thinking"] = {"type": "disabled"}
-        else:
+        elif route.id != "local-dialogue" or route.model.lower().startswith("qwen"):
             payload["enable_thinking"] = False
         encoded = json.dumps(payload, ensure_ascii=False, allow_nan=False).encode()
         if len(encoded) > route.context_max_bytes:

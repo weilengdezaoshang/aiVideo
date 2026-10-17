@@ -29,3 +29,24 @@ groups:
           severity: warning
         annotations:
           summary: 'Outbox 有死信；必须核对任务阶段后审计恢复'
+      - alert: AiVideoHostReservationStuck
+        expr: aivideo_host_reservation_oldest_seconds > 900
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Host 积分预占长时间未结算；核对上游收据，禁止直接退款后重提'
+      - alert: AiVideoHostLeaseRecovery
+        expr: aivideo_host_expired_node_leases > 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Host 节点租约过期；检查 Agent Worker 和 Scheduler'
+      - alert: AiVideoHostNeedsAttention
+        expr: aivideo_host_runs{status="needs_attention"} > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Host 上游结果未知；等待对账或显式取消，禁止重复付费提交'

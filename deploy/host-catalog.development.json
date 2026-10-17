@@ -1,0 +1,80 @@
+{
+  "version": "development-v1",
+  "environment": "development",
+  "enabled": false,
+  "confirmCreditsAbove": 50,
+  "maxConcurrency": 4,
+  "capabilities": [
+    {
+      "id": "text_to_image",
+      "enabled": false,
+      "outputType": "image",
+      "maxRefImages": 0,
+      "tiers": {
+        "preview": {
+          "credits": 10
+        },
+        "final": {
+          "credits": 20,
+          "width": 768,
+          "height": 768
+        }
+      },
+      "binding": {
+        "version": "development-v1",
+        "providerSnapshot": {
+          "provider": "mock",
+          "configVersion": "development-v1",
+          "cloudModel": "mock-image",
+          "videoModel": "mock-video"
+        }
+      }
+    },
+    {
+      "id": "image_edit",
+      "enabled": false,
+      "outputType": "image",
+      "maxRefImages": 1,
+      "tiers": {
+        "preview": {
+          "credits": 10
+        },
+        "final": {
+          "credits": 20,
+          "width": 768,
+          "height": 768
+        }
+      },
+      "binding": {
+        "version": "development-v1",
+        "providerSnapshot": {
+          "provider": "mock",
+          "configVersion": "development-v1",
+          "cloudModel": "mock-image",
+          "videoModel": "mock-video"
+        }
+      }
+    },
+    {
+      "id": "frames_to_video",
+      "enabled": false,
+      "outputType": "video",
+      "maxRefImages": 16,
+      "tiers": {
+        "preview": {
+          "credits": 10
+        },
+        "final": {
+          "credits": 20,
+          "width": 768,
+          "height": 768
+        }
+      },
+      "binding": {
+        "version": "flow-v1",
+        "engine": "frames",
+        "chargePolicy": "on_success"
+      }
+    }
+  ]
+}
