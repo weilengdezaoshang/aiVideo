@@ -72,3 +72,31 @@ def test_fake_artifacts_preserve_video_audio_and_mask_types(tmp_path):
         with Image.open(io.BytesIO(data)) as mask:
             assert mask.mode == "L"
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("scope_key,allowed", [("readable_assets", True), ("readable_asset_ids", False)])
+def test_asset_scope_accepts_only_current_contract(scope_key, allowed):
+    import uuid
+    from types import SimpleNamespace
+    from backend.core.execution.engine import Worker
+
+    async def scenario():
+        asset_id, workspace_id = uuid.uuid4(), uuid.uuid4()
+        asset = SimpleNamespace(id=asset_id, workspace_id=workspace_id, kind="image", details={},
+            storage_key="owned/image.png", ext="png", sha256="test")
+        class Session:
+            async def scalars(self, query):
+                return []
+            async def get(self, model, ident):
+                assert ident == asset_id
+                return asset
+        task = SimpleNamespace(id=uuid.uuid4(), parameters={"image": {"asset_id": str(asset_id)}})
+        run = SimpleNamespace(scope={scope_key: [str(asset_id)]}, workspace_id=workspace_id)
+        worker = object.__new__(Worker)
+        if allowed:
+            result = await worker.references(Session(), task, run)
+            assert result["image"]["storage_key"] == asset.storage_key
+        else:
+            with pytest.raises(ValueError, match="out of scope"):
+                await worker.references(Session(), task, run)
+    asyncio.run(scenario())

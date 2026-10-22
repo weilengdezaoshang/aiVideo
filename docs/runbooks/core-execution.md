@@ -28,7 +28,7 @@
 
 ## 画布、取消和费用
 
-范围键采用 `tools`（工具名或 name@version）、`readable_assets`、`writable_regions`。命名区域的几何边界从冻结 snapshot.regions/objects 读取，不能由模型传坐标；显式全画布授权可用 `write_canvas=true`，也可附 `writable_region` 收紧几何范围。空白范围不会默认放行工具或画布写入。
+范围键采用 `tools`（工具名或 name@version）、`readable_assets`、`writable_regions`。仅支持当前字段契约，`readable_asset_ids` 等旧字段不会授予访问权限。命名区域的几何边界从冻结 snapshot.regions/objects 读取，不能由模型传坐标；显式全画布授权可用 `write_canvas=true`，也可附 `writable_region` 收紧几何范围。空白范围不会默认放行工具或画布写入。
 
 位置只由 `layout.py` 根据相对描述计算。替换检查锚点 assetVersion/busy 标记；文档行锁与持久写入凭证使区域检查和落点在同一事务。冲突时在配置的网格范围内查找最近空位，并发 conflict；落点不得超出 Run 的可写区域。找不到合法空位则仅保留产物。一个 Task 只产生一份 CanvasWrite 凭证，重复消息不会重复发布。
 

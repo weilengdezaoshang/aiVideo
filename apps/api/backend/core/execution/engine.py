@@ -166,7 +166,7 @@ class Worker:
                 result = {k: await resolve(v) for k, v in value.items()}
                 if "asset_id" in result:
                     asset = await tx.get(Asset, uuid.UUID(result["asset_id"]))
-                    allowed = set(run.scope.get("readable_assets", run.scope.get("readable_asset_ids", [])))
+                    allowed = set(run.scope.get("readable_assets", []))
                     generated = {str((t.output or {}).get("asset_id")) for t in by_key.values()}
                     if asset is None or asset.workspace_id != run.workspace_id or asset.details.get("hostBlocked") or str(asset.id) not in allowed | generated:
                         raise ValueError("asset unavailable or out of scope")
