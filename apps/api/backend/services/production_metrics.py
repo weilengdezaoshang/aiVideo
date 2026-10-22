@@ -45,4 +45,6 @@ async def render_metrics(factory):
         lines.append(f"aivideo_host_cancel_timeouts {cancelled}")
     from backend.core.events.metrics import render_event_metrics
     lines.extend(await render_event_metrics(factory))
+    from backend.core.diagnostics.metrics import render
+    lines.extend(await render(factory))
     return "\n".join(lines) + "\n"

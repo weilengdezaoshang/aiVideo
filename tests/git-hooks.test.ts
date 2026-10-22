@@ -91,30 +91,31 @@ test('正文可携带英文技术标识符,不影响主题校验', () => {
 /* ---------- pre-commit-test:路径选测 ---------- */
 
 test('选测:后端路径选中 backend 套件', () => {
-  assert.deepEqual(pickSuites(['apps/api/backend/jobs.py']), ['backend'])
-  assert.deepEqual(pickSuites(['tests/backend/test_api.py']), ['backend'])
-  assert.deepEqual(pickSuites(['requirements.txt']), ['backend'])
+  assert.deepEqual(pickSuites(['apps/api/backend/jobs.py']), ['backend', 'reliability'])
+  assert.deepEqual(pickSuites(['tests/backend/test_api.py']), ['backend', 'reliability'])
+  assert.deepEqual(pickSuites(['requirements.txt']), ['backend', 'reliability'])
 })
 
 test('选测:前端路径选中 web 套件,tests/backend 不误入 web', () => {
-  assert.deepEqual(pickSuites(['apps/web/canvas/app.ts']), ['web'])
-  assert.deepEqual(pickSuites(['tests/canvas-state.test.ts']), ['web'])
-  assert.deepEqual(pickSuites(['package.json', 'tsconfig.json']), ['web'])
+  assert.deepEqual(pickSuites(['apps/web/canvas/app.ts']), ['web', 'reliability'])
+  assert.deepEqual(pickSuites(['tests/canvas-state.test.ts']), ['web', 'reliability'])
+  assert.deepEqual(pickSuites(['package.json', 'tsconfig.json']), ['web', 'reliability'])
 })
 
 test('选测:公共基础设施变更扩大到 web 套件(hook 脚本测试随全量前端运行)', () => {
-  assert.deepEqual(pickSuites(['scripts/commit-lint.mjs']), ['web'])
-  assert.deepEqual(pickSuites(['.husky/pre-commit']), ['web'])
+  assert.deepEqual(pickSuites(['scripts/commit-lint.mjs']), ['web', 'reliability'])
+  assert.deepEqual(pickSuites(['.husky/pre-commit']), ['web', 'reliability'])
 })
 
 test('选测:删除与重命名路径参与匹配,空格与中文文件名不漏检', () => {
-  assert.deepEqual(pickSuites(['apps/web/canvas/画布 应用.ts']), ['web'])
-  assert.deepEqual(pickSuites(['apps/api/backend/old storage.py']), ['backend'])
+  assert.deepEqual(pickSuites(['apps/web/canvas/画布 应用.ts']), ['web', 'reliability'])
+  assert.deepEqual(pickSuites(['apps/api/backend/old storage.py']), ['backend', 'reliability'])
 })
 
-test('选测:纯文档变更无需测试,返回空列表', () => {
-  assert.deepEqual(pickSuites(['docs/engineering/tdd-progress.md', 'README.md']), [])
-  assert.deepEqual(pickSuites(['LICENSE']), [])
+test('选测:每次提交包含可靠性回归，文档变更也不跳过', () => {
+  assert.deepEqual(pickSuites(['docs/engineering/tdd-progress.md', 'README.md']), ['reliability'])
+  assert.deepEqual(pickSuites(['LICENSE']), ['reliability'])
+  assert.deepEqual(pickSuites([]), ['reliability'])
 })
 
 test('readStagedFiles:NUL 分隔读取,覆盖删除与中文空格文件名', () => {
@@ -174,6 +175,7 @@ test('pre-commit --print:删除 Python 文件跳过 Ruff 路径但仍选中后�
     const deletionOnly = printCommands()
     assert.match(deletionOnly, /-m pytest -q -x tests\/backend/)
     assert.doesNotMatch(deletionOnly, /ruff|removed\.py/)
+    assert.match(deletionOnly, /backend\.evaluation\.reliability\.cli/)
 
     // 只存在于临时工作区的新增文件，确保路径检查使用暂存仓库而非脚本目录。
     writeFileSync(join(backend, 'new-hook-regression.py'), 'x = 2\n')

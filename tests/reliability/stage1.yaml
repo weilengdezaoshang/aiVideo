@@ -1,0 +1,583 @@
+version: 1
+timeout_seconds: 300
+case_timeout_seconds: 120
+timer_lock_seconds: 30
+scenarios:
+  - id: empty_migration_cycle
+    covers:
+      - block1_empty_migrate_rollback_reupgrade
+    planner: &id002
+      - plan:
+          goal: 改图后生成视频
+          steps:
+            - id: t1
+              tool: edit
+              parameters: &id005
+                prompt: edit
+                image:
+                  asset_id: $asset
+                  media_type: image
+            - &id006
+              id: t2
+              tool: video
+              parameters:
+                prompt: video
+                image: $t1.output
+              depends_on:
+                - t1
+        confidence: 1
+        tokens: 2
+    probe: migration_cycle
+    provider: &id003
+      actual_credits: 3
+    expect: &id004
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+  - id: diagnostics_contract
+    covers:
+      - trace_pagination_auth_redaction
+      - metrics_alerts
+      - invariant_negative_controls
+    planner:
+      - plan: &id001
+          goal: 改图后生成视频
+          steps:
+            - id: t1
+              tool: edit
+              parameters:
+                prompt: edit
+                image:
+                  asset_id: $asset
+                  media_type: image
+            - id: t2
+              tool: video
+              parameters:
+                prompt: video
+                image: $t1.output
+              depends_on:
+                - t1
+        confidence: 1
+        tokens: 2
+        raw_output:
+          api_key: sensitive-marker
+          plan: *id001
+    probe: diagnostics_contract
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+  - id: core_contracts
+    covers:
+      - all_state_edges
+      - optimistic_lock
+      - state_outbox_transaction
+    planner: *id002
+    probe: contracts
+    provider: *id003
+    expect: *id004
+  - id: tool_and_asset_contracts
+    covers:
+      - typed_chain
+      - unknown_error_alert
+      - immutable_asset_versions
+    planner: *id002
+    probe: tool_contracts
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+  - id: event_order
+    covers:
+      - event_order
+    planner: *id002
+    probe: event_order
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+  - id: event_parallel
+    covers:
+      - event_parallel
+    planner: *id002
+    probe: event_parallel
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+  - id: dead_replay
+    covers:
+      - dead_replay
+    planner: *id002
+    probe: dead_replay
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+  - id: timer_restart
+    covers:
+      - timer_restart
+    planner: *id002
+    probe: timer_restart
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+    fault:
+      checkpoint: timer_scheduled
+      action: kill_process
+  - id: timer_locked
+    covers:
+      - timer_locked
+    planner: *id002
+    probe: timer_locked
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+  - id: db_outage
+    covers:
+      - db_outage
+    planner: *id002
+    probe: db_outage
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+  - id: queue_backlog
+    covers:
+      - queue_backlog
+    planner: *id002
+    probe: queue_backlog
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+  - id: kill_wake
+    covers:
+      - kill_wake
+    planner: *id002
+    probe: none
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+    fault:
+      checkpoint: wake
+      action: kill_process
+  - id: kill_planner
+    covers:
+      - kill_planner
+    planner: *id002
+    probe: none
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+    fault:
+      checkpoint: planner
+      action: kill_process
+  - id: kill_plan
+    covers:
+      - kill_plan
+    planner: *id002
+    probe: none
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+    fault:
+      checkpoint: plan
+      action: kill_process
+  - id: kill_provider_accepted
+    covers:
+      - kill_provider_accepted
+    planner: *id002
+    probe: none
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+    fault:
+      checkpoint: provider_accepted
+      action: kill_process
+  - id: kill_t1
+    covers:
+      - kill_t1
+    planner: *id002
+    probe: none
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+    fault:
+      checkpoint: t1
+      action: kill_process
+  - id: kill_t2
+    covers:
+      - kill_t2
+    planner: *id002
+    probe: none
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+    fault:
+      checkpoint: t2
+      action: kill_process
+  - id: publisher_after_send
+    covers:
+      - publisher_after_send
+    planner: *id002
+    probe: publisher_crash
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+    fault:
+      checkpoint: publisher_sent
+      action: kill_process
+  - id: duplicate_callbacks
+    covers:
+      - duplicate_callbacks
+    planner: *id002
+    probe: callbacks
+    provider:
+      actual_credits: 3
+      callback_copies: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+  - id: expiring_transfer
+    covers:
+      - lost_callback_poll
+      - link_expiry
+      - transfer_retry
+    planner: *id002
+    probe: transfer_retry
+    provider:
+      actual_credits: 3
+      link_ttl_seconds: 60
+      download_failures: 1
+      callback_copies: 0
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+  - id: blocked_refund
+    covers:
+      - blocked_refund
+    planner: *id002
+    probe: none
+    provider:
+      actual_credits: 3
+      outcome: blocked_by_model
+    expect:
+      run: failed
+      canvas_artifacts: 0
+      charged: 0
+      submissions: 1
+      tasks:
+        t1: blocked_by_model
+        t2: cancelled
+  - id: retry_exhausted
+    covers:
+      - retry_exhausted
+    planner: *id002
+    probe: none
+    provider:
+      actual_credits: 3
+      outcome: retryable
+    expect:
+      run: failed
+      canvas_artifacts: 0
+      charged: 0
+      submissions: 3
+  - id: unsupported_idempotency
+    covers:
+      - unsupported_idempotency
+    planner: *id002
+    probe: none
+    provider:
+      actual_credits: 3
+      outcome: timeout
+      idempotent: false
+      query_registration: true
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+  - id: cancel_true
+    covers:
+      - cancel_true
+    planner: *id002
+    probe: inflight_stop
+    provider:
+      actual_credits: 3
+      cancellable: true
+      complete_after_seconds: 60
+    expect:
+      run: cancelled
+      canvas_artifacts: 0
+      charged: 0
+      submissions: 1
+  - id: cancel_false
+    covers:
+      - cancel_false
+    planner: *id002
+    probe: inflight_stop
+    provider:
+      actual_credits: 3
+      cancellable: false
+      complete_after_seconds: 0.5
+    expect:
+      run: cancelled
+      canvas_artifacts: 0
+      charged: 3
+      submissions: 1
+  - id: canvas_anchor_conflict
+    covers:
+      - canvas_anchor_conflict
+    planner:
+      - plan:
+          goal: 改图后生成视频
+          steps:
+            - id: t1
+              tool: edit
+              parameters: *id005
+              placement:
+                mode: replace
+                anchor_id: source
+            - *id006
+        confidence: 1
+        tokens: 2
+    probe: canvas_conflict
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 2
+      charged: 6
+      submissions: 2
+  - id: second_task_failed
+    covers:
+      - second_task_failed
+    planner: *id002
+    probe: none
+    provider:
+      actual_credits: 3
+    expect:
+      run: failed
+      canvas_artifacts: 1
+      charged: 3
+      submissions: 2
+    second_provider:
+      actual_credits: 3
+      outcome: param_invalid
+  - id: three_review_rejections
+    covers:
+      - three_review_rejections
+    planner:
+      - plan:
+          goal: 改图后生成视频
+          steps:
+            - id: t1
+              tool: unknown
+              parameters: {}
+        confidence: 1
+    probe: planner_rejected
+    provider:
+      actual_credits: 3
+    expect:
+      run: failed
+      canvas_artifacts: 0
+      charged: 0
+      submissions: 0
+  - id: round_limit
+    covers:
+      - round_limit
+    planner: *id002
+    probe: planner_limit
+    provider:
+      actual_credits: 3
+    expect:
+      run: failed
+      canvas_artifacts: 1
+      charged: 3
+      submissions: 1
+  - id: token_limit
+    covers:
+      - token_limit
+    planner: *id002
+    probe: planner_tokens
+    provider:
+      actual_credits: 3
+    expect:
+      run: failed
+      canvas_artifacts: 0
+      charged: 0
+      submissions: 0
+  - id: single_subject
+    covers:
+      - single_subject
+    planner: []
+    probe: mask
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 1
+      charged: 0
+      submissions: 0
+    subjects:
+      - 白色杯子
+    message: 抠图
+    choice: null
+    mode: auto
+  - id: target_subject
+    covers:
+      - target_subject
+    planner: []
+    probe: mask
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 1
+      charged: 0
+      submissions: 0
+    subjects:
+      - 白色杯子
+      - 盘子
+    message: 把杯子抠出来
+    choice: null
+    mode: auto
+  - id: multi_single
+    covers:
+      - multi_single
+    planner: []
+    probe: mask
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 1
+      charged: 0
+      submissions: 0
+    subjects:
+      - 白色杯子
+      - 盘子
+    message: 抠图
+    choice: '0'
+    mode: auto
+  - id: multi_all
+    covers:
+      - multi_all
+    planner: []
+    probe: mask
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 1
+      charged: 0
+      submissions: 0
+    subjects:
+      - 白色杯子
+      - 盘子
+    message: 抠图
+    choice: all
+    mode: auto
+  - id: no_subject
+    covers:
+      - no_subject
+    planner: []
+    probe: mask
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 0
+      charged: 0
+      submissions: 0
+    subjects: []
+    message: 抠图
+    choice: null
+    mode: auto
+  - id: plan_subject
+    covers:
+      - plan_subject
+    planner: []
+    probe: mask
+    provider:
+      actual_credits: 3
+    expect:
+      run: completed
+      canvas_artifacts: 1
+      charged: 0
+      submissions: 0
+    subjects:
+      - 白色杯子
+    message: 抠图
+    choice: '0'
+    mode: plan
+
+  - id: event_integrity
+    covers:
+      - block2_cleaned_receipt_duplicate_ack
+      - block2_missing_dependency_quarantine_and_alert
+      - block2_publisher_receiver_lock_contention
+      - block2_timer_claim_and_integrity_repair
+    probe: event_integrity
+    planner: *id002

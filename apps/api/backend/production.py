@@ -885,6 +885,8 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
     install_execution_routes(app)
     from backend.core.supervisor.api import install as install_supervisor_routes
     install_supervisor_routes(app)
+    from backend.core.diagnostics.api import install as install_diagnostics_routes
+    install_diagnostics_routes(app)
 
     @app.api_route("/canvas-next", methods=["GET", "HEAD"], include_in_schema=False)
     @app.api_route("/canvas-next/", methods=["GET", "HEAD"], include_in_schema=False)

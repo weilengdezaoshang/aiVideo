@@ -94,7 +94,9 @@ async def main(args):
         supervisor = Supervisor(factory)
         async def supervise():
             return await asyncio.gather(*(supervisor.tick() for _ in range(SupervisorSettings().concurrency)))
-        workers = {"supervisor": lambda: supervise, "processor": lambda: Processor(factory, settings, Registry().load(settings.handler_modules)).tick,
+        from backend.core.diagnostics.metrics import monitor
+        from backend.core.diagnostics.contracts import Settings as DiagnosticsSettings
+        workers = {"monitor": lambda: lambda: monitor(factory), "supervisor": lambda: supervise, "processor": lambda: Processor(factory, settings, Registry().load(settings.handler_modules)).tick,
             "timer": lambda: Timers(factory, settings).tick,
             "recovery": lambda: lambda: watchdog(factory, settings),
             "publisher": lambda: Publisher(factory, settings, transport).tick,
@@ -110,7 +112,7 @@ async def main(args):
             except Exception:
                 logging.exception("core event daemon tick failed: %s", args.role)
             try:
-                await asyncio.wait_for(stop.wait(), settings.poll_seconds)
+                await asyncio.wait_for(stop.wait(), DiagnosticsSettings().poll_seconds if args.role == "monitor" else settings.poll_seconds)
             except TimeoutError:
                 pass
     finally:
@@ -120,7 +122,7 @@ async def main(args):
 def cli():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="role", required=True)
-    for role in ("publisher", "receiver", "processor", "timer", "recovery", "supervisor", "list"):
+    for role in ("publisher", "receiver", "processor", "timer", "recovery", "supervisor", "monitor", "list"):
         commands.add_parser(role)
     for role in ("inspect", "replay", "quarantine-replay"):
         child = commands.add_parser(role)

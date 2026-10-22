@@ -123,6 +123,12 @@ services:
         condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
+  core-monitor:
+    <<: *runtime
+    command: ['python', '-m', 'backend.workers.core_events', 'monitor']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
   core-supervisor:
     <<: *runtime
     command: ['python', '-m', 'backend.workers.core_events', 'supervisor']

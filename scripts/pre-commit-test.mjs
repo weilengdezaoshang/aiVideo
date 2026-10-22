@@ -1,4 +1,4 @@
-// pre-commit 按暂存路径选取快速测试:lint-staged 管格式修复,本脚本管测试选择。
+// pre-commit 按暂存路径选测，并始终执行可靠性门禁；lint-staged 管格式修复。
 // 限制(明确声明):测试运行于工作区状态而非暂存快照(工作区可能含未暂存修改);
 // 干净 checkout 的最终门禁由 CI 承担。不用 git add .,不修改暂存区。
 // 文件清单用 NUL 分隔(git diff --cached --name-only -z),覆盖新增/修改/删除/重命名,
@@ -6,6 +6,7 @@
 
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -55,6 +56,7 @@ export function pickSuites(files) {
       }
     }
   }
+  selected.add('reliability')
   return [...selected]
 }
 
@@ -84,6 +86,19 @@ function suiteCommands(name, stagedFiles, cwd) {
     commands.push({ cmd: pythonExe(), args: ['-m', 'pytest', '-q', '-x', 'tests/backend'] })
     return commands
   }
+  if (name === 'reliability') {
+    return [
+      {
+        cmd: pythonExe(),
+        args: [
+          '-m',
+          'backend.evaluation.reliability.cli',
+          '--output',
+          join(tmpdir(), 'aivideo-reliability-hook-' + Date.now()),
+        ],
+      },
+    ]
+  }
   if (name === 'web') {
     return [{ cmd: 'npm', args: ['test'] }]
   }
@@ -109,15 +124,12 @@ function main(argv) {
   const suites = pickSuites(files)
   // Git hooks export repository-local variables. Tests that create temporary
   // repositories must not inherit the caller's index, worktree or Git directory.
-  const testEnvironment = { ...process.env }
+  /** @type {NodeJS.ProcessEnv} */
+  const testEnvironment = { ...process.env, PYTHONPATH: join(ROOT, 'apps', 'api') }
   for (const key of Object.keys(testEnvironment)) {
     if (key.startsWith('GIT_')) {
       delete testEnvironment[key]
     }
-  }
-  if (suites.length === 0) {
-    console.log('pre-commit:暂存变更无需运行测试(纯文档或无匹配路径)')
-    return 0
   }
   for (const name of suites) {
     for (const { cmd, args } of suiteCommands(name, files, cwd)) {

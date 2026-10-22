@@ -42,7 +42,14 @@ async def stop(tx, run, status, text_value, key):
     for task in await tx.scalars(select(CoreTask).where(CoreTask.run_id == run.id)):
         if task.status in {"pending", "validated", "queued", "waiting_user"}:
             await transition(tx, "task", task.id, task.version, "cancelled")
-    if run.status not in TERMINAL:
+    inflight = await tx.scalar(select(CoreTask.id).where(CoreTask.run_id == run.id, CoreTask.status == "submitted").limit(1))
+    if inflight:
+        run.error = {**(run.error or {}), "pending_terminal": status}
+        if run.status == "paused" and run.pause_reason != "waiting_info":
+            await transition(tx, "run", run.id, run.version, run.resume_state)
+        if run.status != "paused":
+            await transition(tx, "run", run.id, run.version, "paused", reason="waiting_info")
+    elif run.status not in TERMINAL:
         await transition(tx, "run", run.id, run.version, status)
     await message(tx, run, text_value, key)
 
@@ -85,7 +92,21 @@ class Supervisor:
             if run.status in TERMINAL:
                 invocation.status = "done"
                 return True
+            if (run.error or {}).get("pending_terminal"):
+                unfinished = await tx.scalar(select(CoreTask.id).where(CoreTask.run_id == run.id,
+                    CoreTask.status.not_in(TASK_TERMINAL)).limit(1))
+                if not unfinished:
+                    await transition(tx, "run", run.id, run.version, run.error["pending_terminal"], causation_id=invocation.event_id)
+                    await message(tx, run, "在途任务已完成结算，本次运行已结束。", "settled-stop:" + str(run.id))
+                invocation.status = "done"
+                return True
             event = await tx.get(CoreEvent, invocation.event_id)
+            if event.event_type == "timeout" and event.task_id:
+                timed_task = await tx.get(CoreTask, event.task_id)
+                if timed_task and (timed_task.error or {}).get("code") == "submission_unknown":
+                    # A lost submit response is a reconciliation wakeup, not proof of failure.
+                    invocation.status = "done"
+                    return True
             if event.event_type in {"timeout", "user_cancelled", "user_interrupt"}:
                 await stop(tx, run, "cancelled" if event.event_type != "timeout" else "failed",
                     "本次运行已停止；已提交任务将按服务商实际结果结算。", "stopped:" + str(run.id))
@@ -117,6 +138,7 @@ class Supervisor:
             if not invocation.result:
                 if not invocation.context.get("invocation_key"):
                     invocation.context = await self.context(tx, run, invocation)
+                invocation.started_at = invocation.started_at or now()
                 invocation.status = "calling"
                 invocation.lease_token, invocation.lease_until = token, now() + timedelta(seconds=max(self.settings.lease_seconds, self.settings.planner_timeout_seconds))
                 ident, context = invocation.id, invocation.context
@@ -145,6 +167,7 @@ class Supervisor:
             invocation = await tx.get(Invocation, ident, with_for_update=True)
             if invocation.lease_token != token:
                 return True
+            invocation.returned_at = now()
             invocation.result = result.model_dump(mode="json")
             invocation.status = "returned"
             invocation.lease_token = invocation.lease_until = None
@@ -171,6 +194,7 @@ class Supervisor:
         if result.invariants != run.invariants:
             verdict["verdict"] = "reject"
             verdict["reasons"].append({"gate": "intent", "code": "invariants_changed"})
+        invocation.reviewed_at = now()
         invocation.review = verdict
         invocation.status = "done"
         if verdict["verdict"] != "pass":

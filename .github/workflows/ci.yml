@@ -41,3 +41,55 @@ jobs:
       - run: .venv/bin/python -m pip install -r requirements-dev.txt
       - run: npm ci
       - run: npm run verify
+
+  reliability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: reliability-test
+          POSTGRES_DB: reliability_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s
+          --health-timeout 2s --health-retries 30
+      rabbitmq:
+        image: rabbitmq:3.13-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: test
+          RABBITMQ_DEFAULT_PASS: reliability-test
+        ports: ['5672:5672']
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping" --health-interval 3s
+          --health-timeout 3s --health-retries 30
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 2s
+          --health-timeout 2s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: python -m venv .venv
+      - run: .venv/bin/pip install -r requirements-dev.txt
+      - name: 阶段一 YAML 可靠性回归（硬预算五分钟）
+        timeout-minutes: 5
+        env:
+          PYTHONPATH: apps/api
+          AIVERO_RELIABILITY_DB: postgresql+psycopg://postgres:reliability-test@127.0.0.1:5432/reliability_test
+          AIVERO_RELIABILITY_BROKER: amqp://test:reliability-test@127.0.0.1:5672//
+          AIVERO_RELIABILITY_REDIS: redis://127.0.0.1:6379/0
+        run: .venv/bin/python -m backend.evaluation.reliability.cli --external --output /tmp/reliability-report
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage1-reliability
+          path: /tmp/reliability-report
+          if-no-files-found: error
