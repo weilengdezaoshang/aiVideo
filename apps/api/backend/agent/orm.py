@@ -3,10 +3,11 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, Uuid, func, text
+from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, ForeignKeyConstraint, Index, Integer, String, Text, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.infrastructure.orm import Base, JSONVariant
+from backend.core import orm as core_orm  # noqa: F401 — register credit association targets
 
 
 class AgentSession(Base):
@@ -175,6 +176,8 @@ class HostCreditGrant(Base):
 
 class HostCreditLedger(Base):
     __tablename__ = "host_credit_ledger"
+    core_run_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("core_runs.id", name="fk_credit_core_run"))
+    core_task_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     workspace_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("workspaces.id"), index=True)
     run_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("agent_runs.id"), index=True)
@@ -190,7 +193,11 @@ class HostCreditLedger(Base):
     details: Mapped[dict] = mapped_column(JSONVariant, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    __table_args__ = (Index("uq_host_credit_step_attempt", "run_id", "step_id", "child_index", "attempt", unique=True),
+    __table_args__ = (ForeignKeyConstraint(["core_run_id", "workspace_id"], ["core_runs.id", "core_runs.workspace_id"], name="fk_credit_core_workspace"),
+        ForeignKeyConstraint(["core_task_id", "core_run_id"], ["core_tasks.id", "core_tasks.run_id"], name="fk_credit_core_task"),
+        CheckConstraint("(core_run_id IS NULL) = (core_task_id IS NULL)", name="ck_credit_core_pair"),
+        Index("ix_credit_core_run_task", "core_run_id", "core_task_id"),
+        Index("uq_host_credit_step_attempt", "run_id", "step_id", "child_index", "attempt", unique=True),
         CheckConstraint("quoted >= 0 AND charged >= 0 AND refunded >= 0 AND charged + refunded <= quoted",
                         name="ck_host_credit_conservation"))
 
