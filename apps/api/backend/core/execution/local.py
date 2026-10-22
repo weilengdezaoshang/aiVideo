@@ -3,6 +3,11 @@ import asyncio
 import uuid
 import json
 from dataclasses import asdict, replace
+import hashlib
+import io
+from PIL import Image
+from fastapi import HTTPException
+from .masks import save_mask, selected_mask
 from backend.infrastructure.artifacts import ArtifactSpool
 from backend.providers.base import Generated
 from types import SimpleNamespace
@@ -11,6 +16,18 @@ from backend.agent.media.frame_composition import render_frames
 from backend.exports import Exports, ffmpeg_binary
 from backend.storage import apply_mask
 from .contracts import ProviderResult, WorkerSettings
+
+
+_recognition = None
+
+
+def recognition_service(timeout):
+    global _recognition
+    if _recognition is None:
+        import os
+        from backend.cutout import Recognition
+        _recognition = Recognition(os.environ.get("CUTOUT_MODEL", "u2net"), timeout=timeout)
+    return _recognition
 
 
 class LocalAdapter:
@@ -33,6 +50,10 @@ class LocalAdapter:
             marker.parent.mkdir(parents=True, exist_ok=True)
             ArtifactSpool._atomic(marker, json.dumps(asdict(result)).encode())
             return result
+        except HTTPException as exc:
+            from backend.core.tools.errors import normalize_legacy_cutout
+            failure = normalize_legacy_cutout(exc.status_code)
+            return ProviderResult("failed", registration_id, failure=failure.kind)
         except (ValueError, KeyError):
             return ProviderResult("failed", registration_id, failure="param_invalid")
 
@@ -43,9 +64,33 @@ class LocalAdapter:
             if not path.is_relative_to(self.root.resolve()):
                 raise ValueError("invalid MediaHost source")
             return path
+        if adapter == "recognition.detect":
+            from backend.core.tools.detection import ImageIdentity, normalize_rembg
+            source_data = source(params["image"]).read_bytes()
+            with Image.open(io.BytesIO(source_data)) as image:
+                identity = ImageIdentity(asset_id=params["image"]["asset_id"],
+                    sha256=hashlib.sha256(source_data).hexdigest(), width=image.width, height=image.height)
+            recognition = recognition_service(self.tool.execution.sla_seconds)
+            try:
+                mask = await recognition.detect(registration_id, source_data)
+                handle = registration_id + ":foreground"
+                result = normalize_rembg(mask, identity, registration_id, handle)
+                if result.candidate_count:
+                    save_mask(self.root, handle, mask)
+                return ProviderResult("succeeded", registration_id, output=result.model_dump(mode="json"))
+            finally:
+                recognition.finish(registration_id)
+
         if adapter == "storage.apply_mask":
             # The host must resolve an explicitly approved mask asset, never a model path.
-            data = await asyncio.to_thread(apply_mask, source(params["image"]).read_bytes(), source(params["mask"]).read_bytes())
+            source_data = source(params["image"]).read_bytes()
+            from backend.core.tools.detection import MaskReference, ImageIdentity, validate_mask_source
+            ref = params["mask"]
+            with Image.open(io.BytesIO(source_data)) as image:
+                identity = ImageIdentity(asset_id=params["image"]["asset_id"], sha256=hashlib.sha256(source_data).hexdigest(),
+                    width=image.width, height=image.height)
+            validate_mask_source(MaskReference.model_validate({k: v for k, v in ref.items() if not k.startswith("_")}), identity)
+            data = await asyncio.to_thread(apply_mask, source_data, selected_mask(self.root, ref))
             return ProviderResult("succeeded", registration_id, data=data,
                                   actual_credits=self.tool.price.credits)
         if adapter == "frames_to_video":
@@ -103,6 +148,8 @@ class LocalAdapter:
     async def query(self, task_id, registration_id):
         for marker in (self.root / "export-work" / registration_id).glob("*/execution-ready.json"):
             result = ProviderResult(**json.loads(marker.read_text()))
+            if result.output is not None:
+                return result
             path = (self.root / result.locator["local_file"]).resolve()
             if path.is_relative_to(self.root.resolve()) and path.is_file():
                 return result

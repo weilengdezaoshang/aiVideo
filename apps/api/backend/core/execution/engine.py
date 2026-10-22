@@ -80,7 +80,7 @@ async def enqueue(tx, task_id, settings=None):
     if tool.name not in run.scope.get("tools", []) and f"{tool.name}@{tool.version}" not in run.scope.get("tools", []):
         raise ValueError("tool outside Run scope")
     output = next((p.media_type for p in tool.outputs if p.media_type in {"image", "video", "audio"}), None)
-    if output is None:
+    if output is None and tool.name != "detect_subject":
         raise ValueError("this executor requires an artifact-producing tool")
     job = Job(workspace_id=run.workspace_id, document_id=(await tx.get(CoreSession, run.session_id)).canvas_id,
         kind="export" if tool.execution.adapter in {"frames_to_video", "export.timeline"} else "video" if output == "video" else "image", params={"coreTaskId": str(task.id)},
@@ -152,14 +152,20 @@ class Worker:
                 match = re.fullmatch(r"\$([a-z][a-z0-9_]*)\.(output|candidates\[\d+\]\.mask)", value)
                 if not match or match[1] not in by_key:
                     raise ValueError("invalid dependency reference")
-                output = by_key[match[1]].output
+                upstream_task = by_key[match[1]]
+                output = ((upstream_task.waiting or {}).get("selected_output") if upstream_task.tool_ref == "detect_subject" and match[2] == "output" else upstream_task.output)
+                if output is None:
+                    raise HostError("dependencies_pending", "等待主体选择")
                 if match[2] != "output":
                     from backend.agent.admission.tool_types import _read
                     try:
                         output = _read(output, match[2])
                     except (KeyError, IndexError, TypeError, ValueError):
                         raise ValueError("approved output reference no longer exists") from None
-                return await resolve(output)
+                resolved_output = await resolve(output)
+                if upstream_task.tool_ref == "detect_subject" and match[2] == "output":
+                    resolved_output = {**resolved_output, "_members": upstream_task.waiting["selected_handles"]}
+                return resolved_output
             if isinstance(value, list):
                 return [await resolve(item) for item in value]
             if isinstance(value, dict):
@@ -282,7 +288,7 @@ class Worker:
             artifact = execution.artifact
             can_cancel = tool.execution.cancellable and self.provider.cancellable
             can_idempotent = (tool.execution.provider_idempotent or tool.mode == "deterministic") and self.provider.idempotent
-            kind = next(p.media_type for p in tool.outputs if p.media_type in {"image", "video", "audio"})
+            kind = next((p.media_type for p in tool.outputs if p.media_type in {"image", "video", "audio"}), "mask")
         heartbeat = asyncio.create_task(self.heartbeat(job_id, token))
         try:
             measured = None
@@ -476,6 +482,24 @@ class Worker:
                 execution.phase = "unknown"
                 execution.deadline = now()
                 await alert(tx, "unapproved_cost", None, f"cost:{task.id}", context={"task_id": str(task.id), "actual": result.actual_credits, "reserved": task.credits_reserved})
+                return
+            if result.output is not None:
+                if task.tool_ref != "detect_subject" or result.actual_credits != 0:
+                    raise ValueError("unexpected structured result")
+                from backend.core.tools.detection import DetectionResult
+                from jsonschema import Draft202012Validator
+                result_catalog = await load_catalog(tx, run.version_lock["tool_catalog"]["version"],
+                    expected_lock=VersionLock.model_validate(run.version_lock["tool_catalog"]))
+                definition = result_catalog.get_tool(task.tool_ref, result_catalog.lock.version)
+                if not Draft202012Validator(definition.result_schema).is_valid(result.output):
+                    await self.finish(tx, rows, "failed", 0, "recognition_output_invalid")
+                    return
+                try:
+                    task.output = DetectionResult.model_validate(result.output).model_dump(mode="json")
+                except ValueError:
+                    await self.finish(tx, rows, "failed", 0, "recognition_output_invalid")
+                    return
+                await self.finish(tx, rows, "succeeded", 0)
                 return
             execution.result_credits = result.actual_credits
             execution.ticket = self.seal(result.locator or {})

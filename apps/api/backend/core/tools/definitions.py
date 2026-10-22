@@ -73,8 +73,9 @@ def build_catalog(legacy: Catalog, version: str, settings: ToolSettings | None =
 
     local = dict(result_url_policy="authenticated_asset", sla_seconds=settings.local_timeout_seconds)
     add("detect_subject", "识别图片前景候选并返回临时蒙版；rembg 仅返回合并前景，置信度未知。需要合成时使用 cutout。",
-        object_schema({"image": reference_schema("image")}), [Port(path="image", media_type="image")],
-        [Port(path="candidates[*].mask", media_type="mask", when={"result_type": "detected"})],
+        object_schema({"image": reference_schema("image"), "target_description": {"type": "string"}}, required=["image"]), [Port(path="image", media_type="image")],
+        [Port(path="candidates[*].mask", media_type="mask", when={"result_type": "detected"}),
+         Port(path="output", media_type="mask", when={"result_type": "detected"})],
         "read_only", Price(kind="fixed", credits=0),
         Execution(adapter="recognition.detect", cancellable=True, cancellation="cooperative",
             result_url_policy="transient", sla_seconds=settings.recognition_timeout_seconds),
@@ -82,7 +83,7 @@ def build_catalog(legacy: Catalog, version: str, settings: ToolSettings | None =
             "candidate_count": {"type": "integer", "minimum": 0, "maximum": settings.max_candidates},
             "candidates": {**DETECT_RESULT["properties"]["candidates"], "maxItems": settings.max_candidates}}}, limits={"max_candidates": settings.max_candidates,
             "max_mask_bytes": settings.max_mask_bytes, "max_image_pixels": settings.max_image_pixels,
-            "confidence_nullable": True, "mask_persistence": "transient"})
+            "confidence_nullable": True, "mask_persistence": "transient"}, tool_version="2")
     add("cutout", "按用户或任务单指定的一个蒙版合成新图片并保留原图；没有蒙版时先使用 detect_subject。",
         object_schema({"image": reference_schema("image"), "mask": reference_schema("mask")}),
         [Port(path="image", media_type="image"), Port(path="mask", media_type="mask")],

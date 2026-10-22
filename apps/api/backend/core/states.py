@@ -84,7 +84,7 @@ def validate_transition(entity, source, target, *, task_kind=None, reason=None, 
     else:
         if task_kind not in set(TaskKind):
             raise InvalidTransition("unknown task kind")
-        if target == "waiting_user" and task_kind != "wait_user":
-            raise InvalidTransition("only wait_user can wait for a reply")
-        if task_kind == "wait_user" and target in {"queued", "submitted"}:
+        if target == "waiting_user" and task_kind not in {"wait_user", "ask_user"}:
+            raise InvalidTransition("only interaction tasks can wait for a reply")
+        if task_kind in {"wait_user", "ask_user"} and target in {"queued", "submitted"}:
             raise InvalidTransition("wait_user cannot enter the execution queue")

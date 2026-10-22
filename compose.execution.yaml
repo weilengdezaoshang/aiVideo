@@ -83,6 +83,54 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+  core-publisher:
+    <<: *runtime
+    command: ['python', '-m', 'backend.workers.core_events', 'publisher']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+  core-receiver:
+    <<: *runtime
+    command: ['python', '-m', 'backend.workers.core_events', 'receiver']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+  core-processor:
+    <<: *runtime
+    command: ['python', '-m', 'backend.workers.core_events', 'processor']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+  core-timer:
+    <<: *runtime
+    command: ['python', '-m', 'backend.workers.core_events', 'timer']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+  core-recovery:
+    <<: *runtime
+    command: ['python', '-m', 'backend.workers.core_events', 'recovery']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+  core-supervisor:
+    <<: *runtime
+    command: ['python', '-m', 'backend.workers.core_events', 'supervisor']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
   bridge:
     <<: *runtime
     command: ['python', '-m', 'backend.workers.daemon', 'bridge']

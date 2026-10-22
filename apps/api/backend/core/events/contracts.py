@@ -61,7 +61,7 @@ class EventSettings(BaseSettings):
     timer_backoff_jitter: float = Field(default=0.2, ge=0, lt=1)
     timer_skip_alert_threshold: int = Field(default=20, gt=0)
     timer_accuracy_seconds: float = Field(default=1, gt=0)
-    handler_modules: list[str] = Field(default_factory=list)
+    handler_modules: list[str] = Field(default_factory=lambda: ["backend.core.supervisor.engine"])
 
     @model_validator(mode="after")
     def consistent(self):

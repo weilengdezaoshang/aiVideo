@@ -39,6 +39,7 @@ class ProviderResult:
     actual_credits: int = 0
     failure: str | None = None
     data: bytes | None = None
+    output: dict | None = None
     ext: str = "png"
     submission_accepted: bool = True
 

@@ -39,7 +39,8 @@ PHASE_QUEUE = Queue(
     queue_arguments={"x-queue-type": "quorum", "x-dead-letter-exchange": "aivideo.dlx"},
 )
 NOTIFICATION_QUEUE = Queue(
-    "aivideo.notifications", exchange=JOBS_EXCHANGE, routing_key="job.changed", durable=True,
+    "aivideo.notifications", exchange=JOBS_EXCHANGE,
+    bindings=[binding(JOBS_EXCHANGE, routing_key="job.changed"), binding(JOBS_EXCHANGE, routing_key="core.changed")], durable=True,
     queue_arguments={"x-queue-type": "quorum", "x-dead-letter-exchange": "aivideo.dlx"},
 )
 AGENT_PHASE_QUEUE = Queue(

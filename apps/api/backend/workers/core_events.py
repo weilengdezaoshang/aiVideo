@@ -89,7 +89,12 @@ async def main(args):
                             for a in attempts]}, ensure_ascii=False))
             return
         transport = RabbitTransport(os.environ["AIVERO_BROKER_URL"], settings) if args.role in {"publisher", "receiver"} else None
-        workers = {"processor": lambda: Processor(factory, settings, Registry().load(settings.handler_modules)).tick,
+        from backend.core.supervisor.engine import Supervisor
+        from backend.core.supervisor.contracts import Settings as SupervisorSettings
+        supervisor = Supervisor(factory)
+        async def supervise():
+            return await asyncio.gather(*(supervisor.tick() for _ in range(SupervisorSettings().concurrency)))
+        workers = {"supervisor": lambda: supervise, "processor": lambda: Processor(factory, settings, Registry().load(settings.handler_modules)).tick,
             "timer": lambda: Timers(factory, settings).tick,
             "recovery": lambda: lambda: watchdog(factory, settings),
             "publisher": lambda: Publisher(factory, settings, transport).tick,
@@ -115,7 +120,7 @@ async def main(args):
 def cli():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="role", required=True)
-    for role in ("publisher", "receiver", "processor", "timer", "recovery", "list"):
+    for role in ("publisher", "receiver", "processor", "timer", "recovery", "supervisor", "list"):
         commands.add_parser(role)
     for role in ("inspect", "replay", "quarantine-replay"):
         child = commands.add_parser(role)

@@ -816,6 +816,7 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
     async def events(request: Request, identity: Identity = Depends(authenticated)):
         async def stream():
             versions = {}
+            core_versions = {}
             images = set()
             pubsub = app.state.redis.pubsub()
             subscribed = False
@@ -855,6 +856,12 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
                                 if image["id"] not in images:
                                     images.add(image["id"])
                                     yield "event: image\ndata: " + json.dumps(image) + "\n\n"
+                    from backend.core.supervisor.api import workspace_progress
+                    for core_run in await workspace_progress(app.state.factory, current_identity):
+                        stamp = json.dumps(core_run, sort_keys=True)
+                        if core_versions.get(core_run["id"]) != stamp:
+                            core_versions[core_run["id"]] = stamp
+                            yield "event: core_run\ndata: " + json.dumps(core_run) + "\n\n"
                     visible = {job["id"] for job in current_jobs}
                     versions = {ident: version for ident, version in versions.items() if ident in visible}
                     images = {image["id"] for job in current_jobs for image in job["images"]}
@@ -876,6 +883,8 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
     install_host_routes(app, read_json)
     from backend.core.execution.api import install as install_execution_routes
     install_execution_routes(app)
+    from backend.core.supervisor.api import install as install_supervisor_routes
+    install_supervisor_routes(app)
 
     @app.api_route("/canvas-next", methods=["GET", "HEAD"], include_in_schema=False)
     @app.api_route("/canvas-next/", methods=["GET", "HEAD"], include_in_schema=False)

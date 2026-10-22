@@ -36,6 +36,8 @@ WORK_QUEUE = PHASE_QUEUE
 async def schedule_once(factory, root: Path, limit: int = 100) -> int:
     from backend.core.execution.engine import scan_ready
     await scan_ready(factory)
+    from backend.core.execution.projection import project_pending
+    await project_pending(factory, limit)
     from backend.agent.runtime import AgentService
     await AgentService(factory).recover_due(limit=limit)
     await ExecutionStore(factory).recover_expired(spool=ArtifactSpool(root))
@@ -155,17 +157,23 @@ def main():
 
 def notify_once(connection, runtime):
     def callback(body, message):
-        if not isinstance(body, dict) or body.get("schemaVersion") != "1" or body.get("eventType") != "job.changed":
+        if not isinstance(body, dict) or body.get("schemaVersion") != "1" or body.get("eventType") not in {"job.changed", "core.changed"}:
             message.reject(requeue=False)
             return
         try:
-            ident = uuid.UUID(body["payload"]["jobId"])
+            ident = uuid.UUID(body["payload"]["runId" if body["eventType"] == "core.changed" else "jobId"])
         except (KeyError, ValueError, TypeError):
             message.reject(requeue=False)
             return
         import json
         async def publish():
             async with runtime.session_factory()() as session:
+                if body["eventType"] == "core.changed":
+                    from backend.core.orm import CoreRun
+                    run = await session.get(CoreRun, ident)
+                    if run is not None:
+                        await runtime.redis().publish("aivideo:notify:" + str(run.workspace_id), json.dumps({"runId": str(run.id)}))
+                    return
                 job = await session.get(Job, ident)
                 if job is not None:
                     # Read the latest version: duplicate/old notifications cannot regress state.

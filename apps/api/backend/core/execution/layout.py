@@ -58,6 +58,9 @@ def choose(data: dict, placement: dict, settings: WorkerSettings):
 
 async def place(doc, task_id, asset, placement, settings):
     data = copy.deepcopy(doc.data)
+    placeholder = "generated-" + str(task_id)
+    if data.get("objects", {}).get(placeholder, {}).get("corePlaceholder"):
+        data["objects"].pop(placeholder)
     rect, conflict, replacement = await asyncio.to_thread(choose, data, placement, settings)
     if rect is None:
         return None, conflict, {}
