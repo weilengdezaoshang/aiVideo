@@ -888,6 +888,13 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
     from backend.core.diagnostics.api import install as install_diagnostics_routes
     install_diagnostics_routes(app)
 
+    @app.get("/internal/runs", include_in_schema=False)
+    async def diagnostics_page(request: Request):
+        identity = await authenticated(request)
+        if identity.role not in {"owner", "admin"}:
+            raise HTTPException(403, "需要工作区管理员权限")
+        return FileResponse(root / "apps/web/evaluation/index.html", headers={"Cache-Control": "no-store"})
+
     @app.api_route("/canvas-next", methods=["GET", "HEAD"], include_in_schema=False)
     @app.api_route("/canvas-next/", methods=["GET", "HEAD"], include_in_schema=False)
     async def previous_canvas_entry(request: Request):

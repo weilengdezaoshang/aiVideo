@@ -1,3 +1,4 @@
+import { RunDiagnostics } from './RunDiagnostics.js'
 import { EvaluationTable } from './EvaluationTable.js'
 import {
   defaultReviewSampling,
@@ -40,7 +41,8 @@ import {
   type TrialView,
 } from './api.js'
 
-type Tab = 'datasets' | 'overview' | 'new' | 'runs' | 'reviews' | 'compare' | 'cost' | 'ops'
+type Tab =
+  'datasets' | 'overview' | 'new' | 'runs' | 'reviews' | 'compare' | 'cost' | 'ops' | 'diagnostics'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview', label: '评测总览' },
@@ -51,6 +53,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'compare', label: '批次比较' },
   { id: 'cost', label: '成本与压缩' },
   { id: 'ops', label: '运营状态' },
+  { id: 'diagnostics', label: 'Run 排障' },
 ]
 
 const ACTIVE_STATUSES = new Set(['queued', 'running', 'stopping'])
@@ -2262,7 +2265,10 @@ export function EvaluationApp() {
       }),
   )
   const [tab, setTab] = useState<Tab>(() => {
-    const requested = new URLSearchParams(location.search).get('tab')
+    const requested =
+      location.pathname === '/internal/runs'
+        ? 'diagnostics'
+        : new URLSearchParams(location.search).get('tab')
     return TABS.some((item) => item.id === requested) ? (requested as Tab) : 'overview'
   })
   const [reviewScope, setReviewScope] = useState('')
@@ -2316,7 +2322,9 @@ export function EvaluationApp() {
           </a>
           <h2>评测工作台</h2>
           <nav>
-            {TABS.map((item) => (
+            {TABS.filter(
+              (item) => location.pathname !== '/internal/runs' || item.id === 'diagnostics',
+            ).map((item) => (
               <button
                 key={item.id}
                 type="button"
@@ -2376,6 +2384,7 @@ export function EvaluationApp() {
             />
           )}
           {tab === 'ops' && <OpsTab />}
+          {tab === 'diagnostics' && <RunDiagnostics />}
         </main>
       </div>
     </QueryClientProvider>
