@@ -28,3 +28,6 @@ imageio-ffmpeg==0.6.0
 
 # 意图例句审校与批量索引。
 PyYAML>=6.0.3,<7
+
+# Versioned tool parameter schemas shared by model exports and admission.
+jsonschema>=4.26,<5
