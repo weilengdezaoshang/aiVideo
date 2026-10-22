@@ -11,6 +11,8 @@ from .catalog import HostError
 
 
 async def allocate(db, doc, run, steps, plan, catalog):
+    from backend.agent.admission.service import require_admission
+    await require_admission(db, run)
     data = copy.deepcopy(doc.data)
     objects, order = data.setdefault("objects", {}), data.setdefault("order", [])
     anchor_x = max((float(obj.get("x", 0)) + float(obj.get("width", 0)) for obj in objects.values()), default=0) + 80
@@ -52,6 +54,8 @@ async def allocate(db, doc, run, steps, plan, catalog):
 
 
 async def write_asset(db, doc, run, node_id, asset, *, quality_issue=None):
+    from backend.agent.admission.service import require_admission
+    await require_admission(db, run)
     lease = await db.get(HostNodeLease, (doc.id, node_id), with_for_update=True)
     node = doc.data.get("objects", {}).get(node_id)
     if node is None:

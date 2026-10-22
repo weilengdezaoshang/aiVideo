@@ -32,6 +32,8 @@ async def grant(db, workspace, request_id, amount, principal):
 
 
 async def reserve(db, run, steps, plan, catalog):
+    from backend.agent.admission.service import require_admission
+    await require_admission(db, run)
     account = await account_locked(db, run.workspace_id)
     existing = list(await db.scalars(select(HostCreditLedger).where(HostCreditLedger.run_id == run.id)))
     if existing:

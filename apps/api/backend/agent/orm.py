@@ -203,3 +203,35 @@ class HostNodeLease(Base):
     step_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("agent_steps.id"))
     expected_version: Mapped[int] = mapped_column(Integer)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class AgentPlanVersion(Base):
+    __tablename__ = "agent_plan_versions"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    run_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("agent_runs.id"), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    writer: Mapped[str] = mapped_column(String(16))
+    proposal: Mapped[dict] = mapped_column(JSONVariant)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    intent: Mapped[dict] = mapped_column(JSONVariant)
+    bindings: Mapped[dict] = mapped_column(JSONVariant)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (Index("uq_agent_plan_version", "run_id", "version", unique=True),)
+
+
+class AgentPlanReview(Base):
+    __tablename__ = "agent_plan_reviews"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    plan_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("agent_plan_versions.id"), unique=True)
+    result: Mapped[dict] = mapped_column(JSONVariant)
+    input_hash: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AgentExecutionAdmission(Base):
+    __tablename__ = "agent_execution_admissions"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    review_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("agent_plan_reviews.id"), unique=True)
+    plan_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("agent_plan_versions.id"), unique=True)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

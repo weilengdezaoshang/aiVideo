@@ -141,7 +141,14 @@ class Capability(Contract):
         return self
 
 
+class ReviewSettings(Contract):
+    maxTasks: int = Field(default=32, ge=1, le=32)
+    maxExpandedTasks: int = Field(default=64, ge=1, le=64)
+    maxCredits: int = Field(default=1_000_000, ge=0)
+
+
 class CatalogConfig(Contract):
+    admission: ReviewSettings = Field(default_factory=ReviewSettings)
     version: str = Field(min_length=1, max_length=128)
     environment: Literal["production", "development"] = "production"
     enabled: bool = False

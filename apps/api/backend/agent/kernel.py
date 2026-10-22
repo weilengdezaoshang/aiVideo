@@ -52,10 +52,10 @@ class Kernel:
         session_id = await db.scalar(select(AgentRun.session_id).where(AgentRun.id == ident))
         if session_id is None:
             raise HTTPException(404, "Agent 运行不存在")
-        session = await db.get(AgentSession, session_id, with_for_update=True)
+        session = await db.get(AgentSession, session_id, with_for_update=True, populate_existing=True)
         if workspace is not None and session.workspace_id != workspace:
             raise HTTPException(404, "Agent 运行不存在")
-        run = await db.get(AgentRun, ident, with_for_update=True)
+        run = await db.get(AgentRun, ident, with_for_update=True, populate_existing=True)
         return session, run
 
     async def _project(self, db, run):

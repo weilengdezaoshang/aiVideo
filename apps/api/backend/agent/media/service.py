@@ -22,6 +22,8 @@ from backend.agent.util import encoded, error, now
 from backend.infrastructure.orm import Asset, AssetReference, Document, Job
 from backend.services.acceptance import accept_generation
 from . import canvas, credits
+from backend.agent.admission.policy import IntentContract, Proposal, digest
+from backend.agent.admission.service import propose, require_admission
 from .catalog import Catalog, HostError
 from .canvas_actions import is_cutout_request, prepare_cutout, validate_cutout_result
 from .request_context import resolve_context
@@ -92,7 +94,8 @@ class MediaHost(Kernel):
         return doc, session, run
 
     async def _steps(self, db, run):
-        return list(await db.scalars(select(AgentStep).where(AgentStep.run_id == run.id)
+        return list(await db.scalars(select(AgentStep).where(AgentStep.run_id == run.id,
+                                    AgentStep.plan_version == run.plan["version"])
                                    .order_by(AgentStep.ordinal).with_for_update()))
 
     async def _sources(self, db, workspace, ids):
@@ -281,7 +284,8 @@ class MediaHost(Kernel):
                 db.add(session)
                 await db.flush()
             return await self._admit(db, doc, session, principal, request.clientRequestId, fingerprint,
-                                     plan, sources, selected=request.selectedObjectIds, context_snapshot=context_snapshot)
+                                     plan, sources, selected=request.selectedObjectIds, context_snapshot=context_snapshot, intent_message=message,
+                                     intent_confirmed=clarification is not None)
 
     async def _create_layered(self, db, doc, session, principal, request, fingerprint):
         if request.context is None:
@@ -357,7 +361,8 @@ class MediaHost(Kernel):
                 db.add(session)
                 await db.flush()
             result = await self._admit(db, doc, session, principal, request.clientRequestId, fingerprint,
-                plan, sources, selected=selected, context_snapshot=context_snapshot, decision=decision, feedback=feedback)
+                plan, sources, selected=selected, context_snapshot=context_snapshot, decision=decision, feedback=feedback, intent_message=message,
+                intent_confirmed=clarification is not None)
         if clarification:
             clarification.status, clarification.stage, clarification.waiting = "completed", "done", None
             if feedback:
@@ -366,7 +371,7 @@ class MediaHost(Kernel):
         return result
 
     async def _admit(self, db, doc, session, principal, request_id, fingerprint, plan, sources,
-                     *, selected=(), preview_run=None, preview_refs=None, seeds=None, context_snapshot=None, decision=None, feedback=None):
+                     *, selected=(), preview_run=None, preview_refs=None, seeds=None, context_snapshot=None, decision=None, feedback=None, intent_message=None, intent_confirmed=False):
         for item in plan.steps:
             cap = self.catalog.resolve(item.capabilityId, item.tier)
             references = len(item.inputFrom) if item.inputFrom else (1 if (preview_refs or {}).get(item.id) else len(sources))
@@ -390,6 +395,7 @@ class MediaHost(Kernel):
                 "cancelReason": None, "confirmReceipts": {}, "retryReceipts": {},
                 "reviewer": self.catalog.config.reviewer.snapshot() if self.catalog.config.reviewer else None,
                 "reviewThreshold": self.catalog.config.reviewThreshold,
+                "admissionSettings": self.catalog.config.admission.model_dump(mode="json"),
                 "cancelGraceSeconds": self.catalog.config.cancelGraceSeconds,
                 "previewReferences": preview_refs or {}, "seedByStep": seeds or {},
                 "finalMode": "reference_image" if preview_refs else "rerender" if preview_run else None,
@@ -397,18 +403,42 @@ class MediaHost(Kernel):
                 "intentFeedback": [feedback] if feedback else []})
         db.add(run)
         await db.flush()
-        steps = []
-        for ordinal, item in enumerate(plan.steps):
-            step = AgentStep(run_id=run.id, plan_version=1, key=item.id, ordinal=ordinal, title=item.title,
-                intent=item.prompt, allowed_tools=[item.capabilityId], depends_on=item.dependsOn,
-                done_when="有效产物写入目标画布节点", status="pending", evidence_refs=[], retries=0,
-                execution={"spec": item.model_dump(mode="json"), "children": [
-                    {"index": index, "status": "pending", "attempt": 1, "jobId": None,
-                     "assetId": None, "errorCode": None, "targetNode": item.targetNodes[index]}
-                    for index in range(item.fanOut)]})
-            db.add(step)
-            steps.append(step)
-        await db.flush()
+        # The Host freezes intent from existing deterministic planners, independently of
+        # subsequent proposals. Models never receive a write/admission tool.
+        message = intent_message or plan.goal
+        if preview_run:
+            await require_admission(db, preview_run)
+            expected = plan  # final transformation above is code-owned and user-confirmed
+        elif decision:
+            expected = (plan_from_multi(decision, list(sources), self.catalog)
+                if len(decision.steps or []) > 1 else plan_from_decision(decision, list(sources), self.catalog))
+        else:
+            expected = plan_intent(message, list(sources), self.catalog)
+        readable = list(dict.fromkeys([*sources, *plan.sourceAssetIds]))
+        result = await propose(db, run, Proposal(writer="rule", plan=plan.model_dump(mode="json")),
+            IntentContract(message=message, expectedPlan=expected.model_dump(mode="json"),
+                readableAssets=readable,
+                inputReferences={item.id: (1 if (preview_refs or {}).get(item.id) else len(sources)) for item in plan.steps},
+                writableNodes=[node for step in plan.steps for node in step.targetNodes],
+                ambiguous=bool(decision and (decision.clarify or decision.certainty != "strong")),
+                confirmedType=plan.goalType if intent_confirmed or preview_run else None),
+            self.catalog, expected_version=run.state_version)
+        if result.verdict != "approved":
+            run.status = "waiting_input" if result.verdict == "clarify" else "failed"
+            run.stage = "route" if result.verdict == "clarify" else "done"
+            run.error = error("plan_review_failed", "计划未通过执行前审核")
+            run.reply = "请明确希望生成图片还是视频。" if result.verdict == "clarify" else "计划未通过审核，未启动生成。"
+            if result.verdict == "clarify":
+                run.waiting = {"question": run.reply, "stage": "intent"}
+                if decision:
+                    clarified = self.intent._clarify(message, readable, request_id,
+                        reference_snapshot(doc, list(selected)), copy.deepcopy(decision.trace), question=run.reply)
+                    run.execution = {**run.execution, "intentDecision": clarified.model_dump(mode="json"),
+                        "intentTrace": clarified.trace}
+                    run.waiting = {**run.waiting, "options": [
+                        {"id": item.id, "label": item.label} for item in clarified.clarify.options]}
+            return {"run": await self._event(db, session, run, "host.plan_reviewed"), "replayed": False}
+        steps = await self._steps(db, run)
         for asset in sources.values():
             db.add(AssetReference(asset_id=asset.id, owner_type="agent_run", owner_id=str(run.id)))
         if not waiting:
@@ -425,6 +455,7 @@ class MediaHost(Kernel):
         from .contracts import CatalogConfig
         return Catalog(CatalogConfig(version=run.execution["catalogVersion"],
             environment=run.execution.get("environment", "production"), enabled=True,
+            admission=run.execution.get("admissionSettings", {}),
             maxConcurrency=run.execution["plan"]["maxConcurrency"],
             reviewer=run.execution.get("reviewer"), reviewMode=run.execution["plan"]["reviewMode"],
             reviewThreshold=run.execution.get("reviewThreshold", 0.7),
@@ -447,6 +478,7 @@ class MediaHost(Kernel):
                 if current is None or any(current.get(key) != value for key, value in source.items()):
                     raise HostError("node_version_conflict", "参考节点已变化，请重新规划")
             if approved:
+                await require_admission(db, run)
                 frozen = self._frozen_catalog(run)
                 plan, steps = MediaPlan.model_validate(run.execution["plan"]), await self._steps(db, run)
                 if not run.execution.get("retryAwaiting"):
@@ -594,6 +626,7 @@ class MediaHost(Kernel):
             child = target.execution["children"][request.index]
             if child["status"] != "failed" or child["errorCode"] in {"content_blocked", "capability_unavailable", "asset_forbidden", "node_missing", "node_version_conflict", "UPSTREAM_AUTH", "INVALID_PARAM"}:
                 raise HostError("retry_not_allowed", "此失败需要调整目标后重新创作")
+            await require_admission(db, run)
             frozen, plan = self._frozen_catalog(run), MediaPlan.model_validate(run.execution["plan"])
             cap = frozen.resolve(target.execution["spec"]["capabilityId"], plan.tier)
             if child["attempt"] >= cap.binding.maxAttempts:
@@ -610,6 +643,10 @@ class MediaHost(Kernel):
                            for item in step.execution["children"] if item["status"] == "skipped")
             total = sum(frozen.resolve(step.execution["spec"]["capabilityId"], plan.tier).tiers[plan.tier].credits
                         for step, _ in restart)
+            committed = list(await db.scalars(select(HostCreditLedger).where(HostCreditLedger.run_id == run.id)))
+            budget_used = sum(row.quoted if row.state == "reserved" else row.charged for row in committed)
+            if budget_used + total > frozen.config.admission.maxCredits:
+                raise HostError("credit_budget_exceeded", "重试将超出本次运行的积分预算", status=409)
             account = await credits.account_locked(db, workspace)
             if account.available < total:
                 raise HostError("quota_exceeded", "额度不足，无法重试本步骤", status=402)
@@ -685,6 +722,14 @@ class MediaHost(Kernel):
             ledgers = list(await db.scalars(select(HostCreditLedger).where(HostCreditLedger.run_id == run.id)
                 .order_by(HostCreditLedger.step_id, HostCreditLedger.child_index).with_for_update()))
             ledger_map = {(row.step_id, row.child_index, row.attempt): row for row in ledgers}
+            if run.status != "canceling":
+                try:
+                    await require_admission(db, run)
+                except HostError as exc:
+                    run.status = "needs_attention"
+                    run.error = error(exc.code, exc.message)
+                    run.next_run_at = run.dispatched_until = None
+                    return await self._event(db, session, run, "host.admission_required")
             if doc is None or session.closed_at:
                 run.status = "canceling"
                 run.execution = {**run.execution, "cancelReason": "document_deleted"}
@@ -871,6 +916,7 @@ class MediaHost(Kernel):
         return result
 
     async def _dispatch(self, db, doc, run, steps, plan, catalog, ledgers):
+        await require_admission(db, run)
         if run.execution.get("inputReviewCallId"):
             from .reviewer import result_for
             verdict = await result_for(db, run.execution["inputReviewCallId"])
@@ -910,7 +956,7 @@ class MediaHost(Kernel):
                     "denoise": tier.denoise if input_rows else 1,
                     "seed": run.execution.get("seedByStep", {}).get(step.key, [-1] * len(execution["children"]))[child["index"]],
                     "documentId": str(doc.id), "clientRef": child["targetNode"],
-                    "hostBinding": scope, "hostRunId": str(run.id), "hostStepId": step.key,
+                    "hostBinding": scope, "hostRunId": str(run.id), "hostAdmissionId": run.execution["admissionId"], "hostStepId": step.key,
                     "hostChildIndex": child["index"], "hostTier": plan.tier, "hostPrincipal": run.principal, "hostEnvironment": run.execution.get("environment", "production"),
                     "sourceAssetIds": plan.sourceAssetIds, "referenceAssetIds": list(input_rows),
                     "traceId": str(run.id), "requestId": ledger.idempotency_key}
@@ -926,10 +972,18 @@ class MediaHost(Kernel):
                     params.update(model="frame-interpolation", hostFrameComposition=True,
                         frameSources=[{"key": input_rows[asset_id].storage_key, "assetId": asset_id}
                                       for asset_id in inputs])
+                ledger.details = {**ledger.details, "admittedInputs": {
+                    ident: {"kind": asset.kind, "sha256": asset.sha256, "bytes": asset.bytes, "storage": asset.storage_key}
+                    for ident, asset in input_rows.items()}, "admittedRequestHash": digest({"params": params,
+                    "kind": kind, "provider": snapshot, "principal": run.principal})}
+                await db.flush()
                 accepted = await accept_generation(self.factory, session=db, workspace_id=run.workspace_id,
                     request_id=ledger.idempotency_key, request_hash=hashlib.sha256(encoded(params).encode()).hexdigest(),
                     params=params, kind=kind, provider_snapshot=snapshot, principal=run.principal)
                 ledger.job_id = accepted["jobId"]
+                job = await db.get(Job, ledger.job_id)
+                ledger.details = {**ledger.details, "admittedJobHash": digest({"params": job.params,
+                    "provider": job.provider_snapshot, "kind": job.kind})}
                 child.update(status="queued", jobId=str(ledger.job_id))
                 capacity -= 1
                 binding_capacity -= 1
@@ -971,6 +1025,8 @@ class MediaHost(Kernel):
 
 
 async def project_media(db, run, value):
+    if run.execution.get("planReview"):
+        value["planReview"] = run.execution["planReview"]
     if run.execution.get("intentTrace"):
         value["intentTrace"] = run.execution["intentTrace"]
     if run.execution.get("canvasAction"):
@@ -978,7 +1034,14 @@ async def project_media(db, run, value):
     if not run.execution.get("plan"):
         value["media"] = None
         return value
-    steps = list(await db.scalars(select(AgentStep).where(AgentStep.run_id == run.id).order_by(AgentStep.ordinal)))
+    from pydantic import ValidationError
+    try:
+        MediaPlan.model_validate(run.execution["plan"])
+    except ValidationError:
+        value["media"] = None
+        return value
+    steps = list(await db.scalars(select(AgentStep).where(AgentStep.run_id == run.id,
+        AgentStep.plan_version == run.plan["version"]).order_by(AgentStep.ordinal)))
     ledgers = list(await db.scalars(select(HostCreditLedger).where(HostCreditLedger.run_id == run.id)))
     children = [child for step in steps for child in (step.execution or {}).get("children", [])]
     doc = await db.get(Document, uuid.UUID(run.snapshot["id"]))

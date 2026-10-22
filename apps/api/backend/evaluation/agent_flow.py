@@ -85,6 +85,10 @@ _TOP_TYPES = {
     "duplicateIdempotent": "bool",
     "conflictStatus": "int",
     "draftCleared": "bool",
+    "admissionVerdict": "str",
+    "admissionLegal": "bool",
+    "admissionTypes": "bool",
+    "admissionIntent": "bool",
     "reviewOutcome": "str",
     "reviewAttempts": "int",
     "reviewRun": "bool",
@@ -253,6 +257,11 @@ def _tool_check_id(name: str) -> str:
 def checks_for_expect(expect: dict) -> list[dict]:
     """把 expect 收成现有类型化检查项。reason 码即检查项 ID。"""
     checks: list[dict] = []
+    from .plan_admission import admission_check_id
+    for key in ("admissionVerdict", "admissionLegal", "admissionTypes", "admissionIntent"):
+        if key in expect:
+            checks.append(_check(admission_check_id(key), "text" if key == "admissionVerdict" else "boolean",
+                f"执行准入 {key} 是否符合预期?", expect[key]))
     for key, check_id, kind in [("reviewOutcome", "review_outcome", "text"), ("reviewAttempts", "unexpected_retry", "integer"), ("reviewRun", "review_not_run", "boolean"), ("escalationText", "missing_escalation", "boolean")]:
         if key in expect:
             checks.append(_check(check_id, kind, f"Reflection {key} 是否符合预期?", expect[key]))
@@ -393,7 +402,8 @@ def normalize_agent_flow_payload(data: dict) -> dict:
     data["input"] = {
         "prompt": prompt,
         "referenceArtifactIds": list(raw_input.get("referenceArtifactIds") or []),
-        "params": {"kind": "agent_flow", "steps": steps, "expect": expect, "mocks": mocks},
+        "params": {"kind": "agent_flow", "steps": steps, "expect": expect, "mocks": mocks,
+            **({"admission": params["admission"]} if "admission" in params else {})},
     }
     if not data.get("checks"):
         data["checks"] = checks_for_expect(expect)
@@ -460,6 +470,9 @@ def execute_flow_case(root: Path, case: Any, out_dir: Path, node: str | None = N
     """跑一条用例。适配器只收到 steps/mocks，不接收 expect。"""
     out_dir.mkdir(parents=True, exist_ok=True)
     params = case.input.params
+    if "admission" in params:
+        from .plan_admission import execute_admission_case
+        return execute_admission_case(params["admission"], out_dir)
     payload = {"caseId": case.caseId, "steps": params["steps"], "mocks": params.get("mocks") or {"imageProvider": "stub"}}
     case_path = out_dir / "case.json"
     case_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
@@ -707,6 +720,10 @@ def observe_agent_flow(case: Any, observation: dict) -> tuple[dict[str, Answer],
         answers[check_id] = _answer(check_id, observed, evidence.replace("{id}", check_id))
 
     answers: dict[str, Answer] = {}
+    from .plan_admission import review_observations, admission_check_id
+    for key, value in review_observations(observation.get("planReview") or {}).items():
+        if key in expect:
+            put(admission_check_id(key), value)
     generation_calls = [call for document in traces for trace_turn in document.get("turns", []) for call in trace_turn.get("toolCalls", []) if call.get("name") == "creative_agent_mcp_gen_text2image_v3"]
     latest = generation_calls[-1] if generation_calls else {}
     if "reviewOutcome" in expect:

@@ -153,9 +153,24 @@ class ExecutionStore:
 
     async def begin_submit(self, claim: ExecutionClaim, scope: str, limit: int) -> bool:
         async with AsyncUnitOfWork(self.factory) as uow:
+            host_run = None
+            if claim.params.get("hostRunId"):
+                from backend.agent.admission.service import lock_job_run
+                host_run = await lock_job_run(uow.session, claim.params)
             row = await self._owned(uow, claim)
             if row is None or row.cancel_requested_at or row.phase != "submit":
                 return False
+            if host_run is not None:
+                from backend.agent.admission.service import require_job_admission
+                from backend.agent.media.catalog import HostError
+                try:
+                    await require_job_admission(uow.session, host_run, row)
+                except HostError:
+                    row.phase, row.status, row.error_code = "failed", "failed", "ADMISSION_REQUIRED"
+                    row.finished_at = utcnow()
+                    row.next_poll_at = row.lease_owner = row.lease_until = None
+                    await self._event(uow, row)
+                    return False
             if not await uow.jobs.try_acquire_slot(row.id, scope=scope, limit=limit):
                 row.next_poll_at = utcnow() + timedelta(seconds=2)
                 row.lease_owner = row.lease_until = None

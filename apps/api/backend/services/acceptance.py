@@ -76,6 +76,9 @@ async def _accept_generation(
         target = doc.data.get("objects", {}).get(params.get("clientRef", ""))
         if target and target.get("busyRunId") and target["busyRunId"] != params.get("hostRunId"):
             raise ConflictError("node_busy: 目标节点正在由其他任务生成")
+    if any(key.startswith("host") for key in params):
+        from backend.agent.admission.service import authorize_submission
+        await authorize_submission(uow.session, workspace_id, params, request_id, principal, kind, provider_snapshot)
     refs = [uuid.UUID(value) for value in params.get("referenceAssetIds", [])]
     for ident in sorted(set(refs)):
         asset = await uow.session.get(Asset, ident, with_for_update=True)
