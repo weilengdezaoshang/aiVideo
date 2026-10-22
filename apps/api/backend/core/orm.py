@@ -331,7 +331,8 @@ class CoreEvent(Record, Base):
     __tablename__ = "core_event_outbox"
     aggregate_type: Mapped[str] = mapped_column(String(8))
     aggregate_id: Mapped[uuid.UUID] = mapped_column(Uuid)
-    aggregate_version: Mapped[int] = mapped_column(BigInteger)
+    event_kind: Mapped[str] = mapped_column(String(8), default="state", server_default="state")
+    aggregate_version: Mapped[int | None] = mapped_column(BigInteger)
     run_sequence: Mapped[int] = mapped_column(BigInteger)
     event_type: Mapped[str] = mapped_column(String(64))
     run_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("core_runs.id"))
@@ -341,7 +342,7 @@ class CoreEvent(Record, Base):
     causation_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("core_event_outbox.id"))
     correlation_id: Mapped[uuid.UUID] = mapped_column(Uuid)
     from_state: Mapped[str | None] = mapped_column(String(24))
-    to_state: Mapped[str] = mapped_column(String(24))
+    to_state: Mapped[str | None] = mapped_column(String(24))
     reason: Mapped[str | None] = mapped_column(Text)
     payload: Mapped[dict] = mapped_column(JSONVariant)
     delivery_status: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending")
@@ -354,6 +355,7 @@ class CoreEvent(Record, Base):
         ForeignKeyConstraint(["task_id", "run_id"], ["core_tasks.id", "core_tasks.run_id"]),
         ForeignKeyConstraint(["plan_id", "run_id", "plan_version"], ["core_plans.id", "core_plans.run_id", "core_plans.version"]),
         CheckConstraint("aggregate_type IN ('run','task') AND aggregate_version >= 0 AND attempts >= 0"),
+        CheckConstraint("(event_kind = 'state' AND aggregate_version IS NOT NULL AND to_state IS NOT NULL) OR (event_kind = 'domain' AND aggregate_version IS NULL AND from_state IS NULL AND to_state IS NULL AND causation_id IS NOT NULL)", name="ck_core_event_kind"),
         CheckConstraint("delivery_status IN ('pending','claimed','published','failed')"),
         CheckConstraint("(plan_id IS NULL) = (plan_version IS NULL)"),
         Index("ix_core_event_run", "run_id", "created_at", "id"), Index("ix_core_event_task", "task_id"),

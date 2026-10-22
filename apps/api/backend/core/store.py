@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .contracts import AssetContent, CoreSettings, RunInput, TaskInput
 from .orm import CoreAsset, CoreAssetLineage, CoreAssetVersion, CoreEvent, CoreRun, CoreTask
+from .event_context import current_event_id
 from .states import EntityNotFound, InvalidTransition, RunState, TaskState, VersionConflict
 
 
@@ -50,7 +51,7 @@ async def transition(tx: AsyncSession, entity_type: str, entity_id: UUID, expect
             event_id = await tx.scalar(text("""SELECT core_transition(:entity, :ident, :expected,
                 :target, :reason, :cause, :correlation)"""), {
                     "entity": entity_type, "ident": entity_id, "expected": expected_version,
-                    "target": target_state, "reason": reason, "cause": causation_id,
+                    "target": target_state, "reason": reason, "cause": causation_id or current_event_id.get(),
                     "correlation": correlation_id})
             event = await tx.get(CoreEvent, event_id)
             model = CoreRun if entity_type == "run" else CoreTask

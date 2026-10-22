@@ -43,4 +43,6 @@ async def render_metrics(factory):
         lines.append(f"aivideo_host_expired_node_leases {expired}")
         cancelled = await session.scalar(select(func.count()).select_from(AgentRun).where(AgentRun.phase == "media", AgentRun.error["code"].astext == "cancel_timeout"))
         lines.append(f"aivideo_host_cancel_timeouts {cancelled}")
+    from backend.core.events.metrics import render_event_metrics
+    lines.extend(await render_event_metrics(factory))
     return "\n".join(lines) + "\n"

@@ -50,3 +50,15 @@ groups:
           severity: warning
         annotations:
           summary: 'Host 上游结果未知；等待对账或显式取消，禁止重复付费提交'
+      - alert: AiVideoCoreEventDeadLetter
+        expr: aivideo_core_alerts{kind="dead_letter"} > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Core 事件进入死信并阻塞该 Run；修复后使用审计重放命令'
+      - alert: AiVideoCoreEventDelivery
+        expr: aivideo_core_alerts{kind=~"publish_failure|backlog|missing_handler|invalid_claim"} > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Core 事件投递、处理器注册或消费积压异常'
