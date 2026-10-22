@@ -34,6 +34,8 @@ WORK_QUEUE = PHASE_QUEUE
 
 
 async def schedule_once(factory, root: Path, limit: int = 100) -> int:
+    from backend.core.execution.engine import scan_ready
+    await scan_ready(factory)
     from backend.agent.runtime import AgentService
     await AgentService(factory).recover_due(limit=limit)
     await ExecutionStore(factory).recover_expired(spool=ArtifactSpool(root))

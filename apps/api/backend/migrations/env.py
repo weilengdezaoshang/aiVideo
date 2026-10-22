@@ -12,6 +12,7 @@ from sqlalchemy import engine_from_config, pool
 
 from backend.infrastructure.orm import Base
 from backend.core.events import orm as core_events_orm  # noqa: F401 — event collaboration tables
+from backend.core.execution import orm as execution_orm  # noqa: F401 — durable worker receipts
 from backend.core.tools import orm as tools_orm  # noqa: F401 — versioned tool catalog
 from backend.core import orm as core_orm  # noqa: F401 — register isolated core contracts
 from backend.agent import orm as agent_orm  # noqa: F401 — register Agent tables in the shared metadata

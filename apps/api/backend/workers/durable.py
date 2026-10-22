@@ -18,6 +18,9 @@ async def phase_budget(factory, job_id: uuid.UUID) -> float:
         job = await session.get(Job, job_id)
         if job is None:
             return 30
+        if job.params.get("coreTaskId"):
+            from backend.core.execution.contracts import WorkerSettings
+            return WorkerSettings().call_timeout_seconds * 4
         if job.kind == "export":
             return remaining_seconds(job.execution_deadline) if job.execution_deadline else policy.export_s
         if job.phase == "submit" and job.kind == "image" and job.provider_snapshot.get("provider") != "comfyui":
@@ -40,6 +43,11 @@ def run_provider_phase(job_id: str) -> dict:
         async with runtime.session_factory()() as session:
             row = await session.get(Job, ident)
             is_export = row is not None and row.kind == "export"
+        if row is not None and row.params.get("coreTaskId"):
+            from backend.core.execution.runtime import build_worker
+            worker = await build_worker(runtime.session_factory(), Path(os.environ["SWARMUI_DATA_DIR"]),
+                ident, runtime.http(), artifact_client=runtime.artifact_http())
+            return await worker.execute(ident)
         if is_export:
             from backend.services.export_runner import execute_export
             return await execute_export(ident, runtime.session_factory(), Path(os.environ["SWARMUI_DATA_DIR"]))

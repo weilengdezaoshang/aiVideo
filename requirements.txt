@@ -31,3 +31,6 @@ PyYAML>=6.0.3,<7
 
 # Versioned tool parameter schemas shared by model exports and admission.
 jsonschema>=4.26,<5
+
+# Private, expiring execution download tickets; key supplied by deployment.
+cryptography>=50,<51

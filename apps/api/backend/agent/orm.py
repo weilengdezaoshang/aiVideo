@@ -180,8 +180,8 @@ class HostCreditLedger(Base):
     core_task_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     workspace_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("workspaces.id"), index=True)
-    run_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("agent_runs.id"), index=True)
-    step_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("agent_steps.id"))
+    run_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("agent_runs.id"), index=True)
+    step_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("agent_steps.id"))
     child_index: Mapped[int] = mapped_column(Integer)
     attempt: Mapped[int] = mapped_column(Integer, default=1)
     idempotency_key: Mapped[str] = mapped_column(String(128), unique=True)
@@ -193,7 +193,9 @@ class HostCreditLedger(Base):
     details: Mapped[dict] = mapped_column(JSONVariant, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    __table_args__ = (ForeignKeyConstraint(["core_run_id", "workspace_id"], ["core_runs.id", "core_runs.workspace_id"], name="fk_credit_core_workspace"),
+    __table_args__ = (CheckConstraint("(run_id IS NOT NULL AND step_id IS NOT NULL AND core_run_id IS NULL) OR (run_id IS NULL AND step_id IS NULL AND core_run_id IS NOT NULL)", name="ck_credit_owner"),
+        Index("uq_credit_core_task", "core_task_id", unique=True),
+        ForeignKeyConstraint(["core_run_id", "workspace_id"], ["core_runs.id", "core_runs.workspace_id"], name="fk_credit_core_workspace"),
         ForeignKeyConstraint(["core_task_id", "core_run_id"], ["core_tasks.id", "core_tasks.run_id"], name="fk_credit_core_task"),
         CheckConstraint("(core_run_id IS NULL) = (core_task_id IS NULL)", name="ck_credit_core_pair"),
         Index("ix_credit_core_run_task", "core_run_id", "core_task_id"),

@@ -139,7 +139,7 @@ class Job(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
     recovery: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    external_task_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    external_task_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
     state_version: Mapped[int] = mapped_column(Integer, default=0)
     execution_epoch: Mapped[int] = mapped_column(Integer, default=0)

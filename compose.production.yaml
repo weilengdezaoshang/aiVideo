@@ -5,6 +5,8 @@ services:
     image: ${AIVERO_IMAGE:-aivideo:local}
     command: ['python', '-m', 'backend']
     environment:
+      AIVERO_EXECUTION_TICKET_KEY: ${AIVERO_EXECUTION_TICKET_KEY:-}
+      AIVERO_EXECUTION_CALLBACK_SECRET: ${AIVERO_EXECUTION_CALLBACK_SECRET:-}
       SWARMUI_LOG_FORMAT: json
       SWARMUI_HOST: 0.0.0.0
       SWARMUI_PORT: '7801'

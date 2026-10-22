@@ -88,3 +88,47 @@ async def settle(db, ledger, job=None, *, cancelled=False, error_code=None):
         "cancelled": cancelled, "startedAt": job.created_at.isoformat() if job else None,
         "endedAt": job.finished_at.isoformat() if job and job.finished_at else now().isoformat(),
         "durationMs": max(0, int(((job.finished_at or now()) - job.created_at).total_seconds() * 1000)) if job else 0}
+
+
+async def reserve_core(db, run, task, quote):
+    """Caller locks the Run and Task; same account and ledger as legacy media runs."""
+    existing = await db.scalar(select(HostCreditLedger).where(HostCreditLedger.core_task_id == task.id))
+    if existing:
+        return existing
+    if run.credits_reserved + quote > run.credits_limit:
+        raise HostError("budget_exceeded", "任务预估超出 Run 积分预算")
+    account = await account_locked(db, run.workspace_id)
+    if account.available < quote:
+        raise HostError("quota", "积分不足")
+    account.available -= quote
+    run.credits_reserved += quote
+    task.credits_reserved = quote
+    ledger = HostCreditLedger(workspace_id=run.workspace_id, core_run_id=run.id, core_task_id=task.id,
+        run_id=None, step_id=None, child_index=0, attempt=1, idempotency_key="core:" + str(task.id),
+        quoted=quote, charged=0, refunded=0, state="reserved", details={"tool": task.tool_ref})
+    db.add(ledger)
+    await db.flush()
+    return ledger
+
+
+async def settle_core(db, run, task, actual, *, cancelled=False):
+    ledger = await db.scalar(select(HostCreditLedger).where(HostCreditLedger.core_task_id == task.id).with_for_update())
+    if ledger is None:
+        raise HostError("ledger_missing", "任务积分流水缺失")
+    if ledger.state != "reserved":
+        if ledger.charged != actual:
+            raise HostError("settlement_conflict", "任务结算金额冲突")
+        return ledger
+    if type(actual) is not int or not 0 <= actual <= ledger.quoted:
+        raise HostError("unapproved_cost", "实际费用超出已审核预扣，需对账")
+    refund = ledger.quoted - actual
+    account = await account_locked(db, run.workspace_id)
+    account.available += refund
+    ledger.charged, ledger.refunded = actual, refund
+    ledger.state = "cancelled_with_charge" if cancelled and actual else "settled" if actual else "refunded"
+    ledger.updated_at = now()
+    run.credits_reserved -= refund
+    run.credits_spent += actual
+    task.actual_credits = actual
+    await db.flush()
+    return ledger

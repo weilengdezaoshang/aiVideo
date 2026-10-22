@@ -9,7 +9,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class WorkerSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="AIVERO_EXECUTION_", frozen=True)
-    lease_seconds: float = Field(default=120, gt=0)
+    lease_seconds: float = Field(default=30, gt=0)
+    heartbeat_seconds: float = Field(default=10, gt=0)
     call_timeout_seconds: float = Field(default=60, gt=0)
     poll_seconds: float = Field(default=3, gt=0)
     retry_base_seconds: float = Field(default=1, gt=0)

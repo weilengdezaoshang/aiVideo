@@ -874,6 +874,8 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
     install_local_config_routes(app, read_json)
     from backend.agent.media.api import install_host_routes
     install_host_routes(app, read_json)
+    from backend.core.execution.api import install as install_execution_routes
+    install_execution_routes(app)
 
     @app.api_route("/canvas-next", methods=["GET", "HEAD"], include_in_schema=False)
     @app.api_route("/canvas-next/", methods=["GET", "HEAD"], include_in_schema=False)

@@ -109,7 +109,7 @@ class StagedProvider:
             response.raise_for_status()
             entry = response.json().get(task_id, {})
             if entry.get("status", {}).get("status_str") == "error":
-                return StageResult("failed", {"reason": "上游执行失败"}, finished=True)
+                return StageResult("failed", {"reason": "上游执行失败", "code": entry.get("status", {}).get("error_code")}, finished=True)
             files = [f for output in entry.get("outputs", {}).values()
                      for key in ("images", "videos") for f in output.get(key, [])]
             if not files:
@@ -124,7 +124,7 @@ class StagedProvider:
         if status == "SUCCEEDED":
             return StageResult("download", {"url": output["video_url"]}, finished=True)
         if status in {"FAILED", "CANCELED"}:
-            return StageResult("failed", {"reason": "上游任务未成功"}, finished=True)
+            return StageResult("failed", {"reason": "上游任务未成功", "code": output.get("code"), "provider_status": status}, finished=True)
         if status not in {"PENDING", "RUNNING"}:
             raise ValueError("无法确定上游任务状态")
         return StageResult("poll", {}, external_id=task_id)
