@@ -7,6 +7,7 @@ import asyncio
 import hashlib
 import base64
 import json
+import io
 import os
 from pathlib import Path
 import random
@@ -14,6 +15,7 @@ import re
 import uuid
 import time
 
+from PIL import Image
 from authlib.integrations.starlette_client import OAuth
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -27,6 +29,9 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend.config import Config
+
+from backend.core.tools.contracts import ToolSettings
+from backend.core.tools.detection import DetectionError, ImageIdentity, normalize_rembg
 from backend.cutout import Recognition
 from backend.capabilities import generation_capabilities
 from backend.errors import AppError
@@ -114,7 +119,9 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
         app.state.documents = DatabaseDocuments(app.state.factory)
         app.state.agent = AgentService(app.state.factory)
         app.state.host = MediaHost(app.state.factory, host_catalog, settings.media_root)
-        app.state.recognition = Recognition(os.environ.get("CUTOUT_MODEL", "birefnet-portrait"), cutout_infer)
+        app.state.tool_settings = ToolSettings()
+        app.state.recognition = Recognition(os.environ.get("CUTOUT_MODEL", "birefnet-portrait"), cutout_infer,
+            timeout=app.state.tool_settings.recognition_timeout_seconds)
         app.state.redis = Redis.from_url(os.environ.get("AIVERO_REDIS_URL", "redis://127.0.0.1:6379/0"),
             socket_timeout=2, socket_connect_timeout=2)
         settings.media_root.mkdir(parents=True, exist_ok=True)
@@ -637,7 +644,23 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
             if await app.state.redis.get("aivideo:cutout:cancel:" + key):
                 recognition.cancel(key)
             recognition.check(key)
+            def describe_detection():
+                with Image.open(io.BytesIO(source)) as image:
+                    source_identity = ImageIdentity(asset_id=str(ident), sha256=hashlib.sha256(source).hexdigest(),
+                        width=image.width, height=image.height)
+                return normalize_rembg(result, source_identity, operation_id, operation_id + ":foreground",
+                    settings=app.state.tool_settings).model_dump(mode="json")
+            try:
+                detection = await asyncio.to_thread(describe_detection)
+            except DetectionError as exc:
+                return JSONResponse({"error": "识别返回的蒙版无效", "code": "recognition_output_invalid",
+                    "recovery": "retry", "details": {"reason": exc.code}}, status_code=502)
+            # Normalization yields to a thread; cancellation may arrive during decoding.
+            if await app.state.redis.get("aivideo:cutout:cancel:" + key):
+                recognition.cancel(key)
+            recognition.check(key)
             return {"operationId": operation_id, "provider": "rembg", "model": recognition.model,
+                **detection,
                 "urls": {"original": "data:image/png;base64," + base64.b64encode(result).decode()}}
         finally:
             watcher.cancel()
@@ -655,7 +678,7 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
     @app.post("/api/cutout/apply/{ident}", status_code=201)
     async def cutout_apply(ident: uuid.UUID, request: Request, identity: Identity = Depends(authenticated)):
         source = await image_bytes(ident, identity)
-        mask = await read_body(request, 20 * 1024**2)
+        mask = await read_body(request, app.state.tool_settings.max_mask_bytes)
         result = await asyncio.to_thread(apply_mask, source, mask)
         saved = await save_media(app.state.factory, settings.media_root, identity.workspace_id, result)
         return {**asset_view(saved), "mask": {"id": "", "transient": True}}

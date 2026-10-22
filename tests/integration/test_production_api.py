@@ -143,7 +143,9 @@ def test_cutout_precancel_prevents_inference_and_never_persists_mask(tmp_path, m
     monkeypatch.setenv("AIVERO_REDIS_URL", redis_url)
     calls = []
     async def scenario():
-        async with api(tmp_path, cutout_infer=lambda data: calls.append(data) or data) as (app, client, workspace):
+        mask = io.BytesIO()
+        Image.new("L", (64, 64), 255).save(mask, format="PNG")
+        async with api(tmp_path, cutout_infer=lambda data: calls.append(data) or mask.getvalue()) as (app, client, workspace):
             image = io.BytesIO()
             Image.new("RGB", (64, 64)).save(image, format="PNG")
             uploaded = await client.post("/api/assets?kind=image", content=image.getvalue())
@@ -442,4 +444,91 @@ def test_agent_cutout_http_waits_for_canvas_confirmation_and_returns_saved_resul
             assert completed.json()["run"]["status"] == "completed"
             assert completed.json()["run"]["canvasAction"]["resultAssetId"] == result["assetId"]
             assert (await client.post(f"/api/host/runs/{run['id']}/canvas-result", json=receipt)).json()["replayed"]
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("foreground", [True, False])
+def test_cutout_detect_exposes_typed_candidates_without_saving_masks(tmp_path, monkeypatch, foreground):
+    import io
+    from PIL import Image
+    redis_url = os.environ.get("AIVERO_DURABLE_TEST_REDIS")
+    if not redis_url:
+        pytest.skip("explicit isolated Redis required")
+    monkeypatch.setenv("AIVERO_REDIS_URL", redis_url)
+    source, mask = io.BytesIO(), io.BytesIO()
+    Image.new("RGB", (64, 64), "red").save(source, format="PNG")
+    Image.new("L", (64, 64), 255 if foreground else 0).save(mask, format="PNG")
+    async def scenario():
+        async with api(tmp_path, cutout_infer=lambda _: mask.getvalue()) as (app, client, workspace):
+            uploaded = (await client.post("/api/assets?kind=image", content=source.getvalue())).json()["asset"]
+            result = await client.post(f"/api/cutout/detect/{uploaded['id']}?operationId={uuid.uuid4().hex}")
+            assert result.status_code == 200, result.text
+            data = result.json()
+            assert data["result_type"] == ("detected" if foreground else "no_subject")
+            assert data["candidate_count"] == (1 if foreground else 0)
+            if foreground:
+                candidate = data["candidates"][0]
+                assert candidate["confidence"] is None and candidate["confidence_source"] == "unknown"
+                assert candidate["mask"]["media_type"] == "mask"
+                assert candidate["mask"]["source_asset_id"] == uploaded["id"]
+            else:
+                assert data["candidates"] == []
+            assert len(list((tmp_path / "media").rglob("receipt.json"))) == 1
+            original = await client.get(f"/api/assets/{uploaded['id']}/content")
+            assert original.content == source.getvalue()
+    asyncio.run(scenario())
+
+
+def test_cutout_invalid_provider_mask_has_structured_failure_not_no_subject(tmp_path, monkeypatch):
+    import io
+    from PIL import Image
+    redis_url = os.environ.get("AIVERO_DURABLE_TEST_REDIS")
+    if not redis_url:
+        pytest.skip("explicit isolated Redis required")
+    monkeypatch.setenv("AIVERO_REDIS_URL", redis_url)
+    source = io.BytesIO()
+    Image.new("RGB", (64, 64), "red").save(source, format="PNG")
+    async def scenario():
+        async with api(tmp_path, cutout_infer=lambda _: b"bad provider mask") as (app, client, workspace):
+            uploaded = (await client.post("/api/assets?kind=image", content=source.getvalue())).json()["asset"]
+            result = await client.post(f"/api/cutout/detect/{uploaded['id']}?operationId={uuid.uuid4().hex}")
+            assert result.status_code == 502
+            assert result.json()["code"] == "recognition_output_invalid"
+            assert result.json()["details"]["reason"] == "mask_invalid"
+            assert "result_type" not in result.json()
+            assert len(list((tmp_path / "media").rglob("receipt.json"))) == 1
+    asyncio.run(scenario())
+
+
+def test_cutout_cancel_during_result_normalization_discards_late_output(tmp_path, monkeypatch):
+    import io
+    import threading
+    from PIL import Image
+    import backend.production as production
+    redis_url = os.environ.get("AIVERO_DURABLE_TEST_REDIS")
+    if not redis_url:
+        pytest.skip("explicit isolated Redis required")
+    monkeypatch.setenv("AIVERO_REDIS_URL", redis_url)
+    entered, release = threading.Event(), threading.Event()
+    original_normalize = production.normalize_rembg
+    def delayed(*args, **kwargs):
+        entered.set()
+        assert release.wait(5)
+        return original_normalize(*args, **kwargs)
+    monkeypatch.setattr(production, "normalize_rembg", delayed)
+    source, mask = io.BytesIO(), io.BytesIO()
+    Image.new("RGB", (64, 64), "red").save(source, format="PNG")
+    Image.new("L", (64, 64), 255).save(mask, format="PNG")
+    async def scenario():
+        async with api(tmp_path, cutout_infer=lambda _: mask.getvalue()) as (app, client, workspace):
+            uploaded = (await client.post("/api/assets?kind=image", content=source.getvalue())).json()["asset"]
+            operation = uuid.uuid4().hex
+            request = asyncio.create_task(client.post(f"/api/cutout/detect/{uploaded['id']}?operationId={operation}"))
+            try:
+                assert await asyncio.to_thread(entered.wait, 3)
+                assert (await client.delete(f"/api/cutout/operations/{operation}")).status_code == 200
+            finally:
+                release.set()
+            assert (await request).status_code == 409
+            assert len(list((tmp_path / "media").rglob("receipt.json"))) == 1
     asyncio.run(scenario())
