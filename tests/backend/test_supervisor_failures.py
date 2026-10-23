@@ -34,6 +34,58 @@ def test_conversion_rejection_uses_redacted_codes():
     assert conversion_rejection({"writer": "llm"}) is None
 
 
+def test_review_fallback_form_is_rule_and_follows_session_language():
+    from backend.core.supervisor.engine import _clarification_result
+    from backend.core.supervisor.replies import plan_confirmation, review_exhausted
+    run = SimpleNamespace(snapshot={"request": {"message": "make a poster"}}, invariants={"deliverable": {}})
+    english = _clarification_result(run, "en-US")
+    assert english.plan.writer == "rule"
+    assert english.raw_output["writer"] == "rule"
+    assert english.raw_output["clarification"] is True
+    assert english.plan.result_type == "clarify"
+    label = english.plan.steps[0].parameters["form"]["fields"][0]["label"]
+    assert label == "Add the requirement that cannot be determined from the original request"
+    assert "language" not in run.snapshot
+    chinese = _clarification_result(run, None)
+    assert chinese.plan.steps[0].parameters["form"]["fields"][0]["label"] == "请补充无法从原话确定的要求"
+    question, options = plan_confirmation("en")
+    assert question == "Run this plan?"
+    assert [item["label"] for item in options] == ["Confirm", "Cancel"]
+    assert review_exhausted("en-GB").startswith("The plan could not pass review")
+    assert plan_confirmation("zh-CN")[1][0]["label"] == "确认执行"
+
+
+def test_english_video_duration_form_from_rule_and_tool_calls():
+    import asyncio
+    from backend.core.supervisor.planners import RulePlanner
+    from backend.core.supervisor.tool_calls import _duration_form
+    ruled = asyncio.run(RulePlanner().plan({
+        "request": {"message": "生成视频", "selected_assets": []},
+        "language": "en-US", "invariants": {}, "tools": [],
+    }))
+    field = ruled.plan.steps[0].parameters["form"]["fields"][0]
+    assert ruled.plan.steps[0].parameters["form"]["id"] == "video_duration"
+    assert field["label"] == "Video duration (seconds)"
+    assert ruled.plan.writer == "rule"
+    catalog = _catalog([_tool("video", "v", {
+        "type": "object",
+        "properties": {"prompt": {"type": "string"}, "duration_seconds": {"type": "integer"},
+                       "fps": {"type": "integer"}},
+        "required": ["prompt", "duration_seconds", "fps"],
+        "additionalProperties": False,
+    }, outputs=[Port(path="output", media_type="video")])])
+    form = _duration_form(
+        [{"name": "video", "arguments": {"prompt": "clip"}}], catalog, catalog.lock,
+        {"language": "en", "request": {"message": "make a video"}, "snapshot": {}, "invariants": {}})
+    labels = {item.id: item.label for item in form.fields}
+    assert labels["duration_seconds"] == "Video duration (seconds)"
+    assert labels["fps"] == "Frame rate"
+    zh = asyncio.run(RulePlanner().plan({
+        "request": {"message": "生成视频", "selected_assets": []}, "invariants": {}, "tools": [],
+    }))
+    assert zh.plan.steps[0].parameters["form"]["fields"][0]["label"] == "视频时长（秒）"
+
+
 def test_guessed_video_duration_becomes_form():
     catalog = _catalog([_tool("video", "v", {
         "type": "object",

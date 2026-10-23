@@ -39,6 +39,42 @@ def blocked(language: str | None, refunded: int) -> str:
     return f"无法生成。已退回 {refunded} 积分。"
 
 
+def clarification_field_label(language: str | None) -> str:
+    if english(language):
+        return "Add the requirement that cannot be determined from the original request"
+    return "请补充无法从原话确定的要求"
+
+
+def duration_field_label(language: str | None) -> str:
+    if english(language):
+        return "Video duration (seconds)"
+    return "视频时长（秒）"
+
+
+def frame_rate_field_label(language: str | None) -> str:
+    if english(language):
+        return "Frame rate"
+    return "帧率"
+
+
+def plan_confirmation(language: str | None) -> tuple[str, list[dict]]:
+    if english(language):
+        return "Run this plan?", [
+            {"id": "confirm", "label": "Confirm"},
+            {"id": "cancel", "label": "Cancel"},
+        ]
+    return "是否执行此计划？", [
+        {"id": "confirm", "label": "确认执行"},
+        {"id": "cancel", "label": "取消"},
+    ]
+
+
+def review_exhausted(language: str | None) -> str:
+    if english(language):
+        return "The plan could not pass review and stopped. No unapproved step ran."
+    return "计划审核未通过，已停止；没有执行未获准的步骤。"
+
+
 def ask_text(parameters: dict, language: str | None) -> str:
     question = parameters.get("question")
     if isinstance(question, str) and question.strip():

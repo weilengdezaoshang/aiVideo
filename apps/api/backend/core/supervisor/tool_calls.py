@@ -25,6 +25,7 @@ from backend.core.supervisor.contracts import (
 from backend.core.supervisor.tool_selection import _CONTROLS as _CONTROL_SCHEMAS, planning_tools
 from backend.core.tools.catalog import CatalogError, ToolCatalog
 from backend.core.tools.contracts import VersionLock
+from backend.core.supervisor.replies import duration_field_label, frame_rate_field_label
 
 _STEP_ID = re.compile(r"^t[1-9][0-9]*$")
 _REF = re.compile(r"\$(t[1-9][0-9]*)((?:\.[A-Za-z_][A-Za-z0-9_]*|\[\d+\])+)")
@@ -367,9 +368,9 @@ def _duration_form(workers: list[dict], catalog: ToolCatalog, lock: VersionLock,
             if name == "duration_seconds" and value is not None and not _duration_unproven(value, context):
                 continue
             seen.add(name)
-            fields.append(FormField(
-                name=name, id=name, label="视频时长（秒）" if name == "duration_seconds" else "帧率",
-                required=True, type="number"))
+            language = context.get("language")
+            label = duration_field_label(language) if name == "duration_seconds" else frame_rate_field_label(language)
+            fields.append(FormField(name=name, id=name, label=label, required=True, type="number"))
     if not fields:
         raise ConversionError("video_duration_required")
     return FormDefinition(id="video_duration", fields=fields)

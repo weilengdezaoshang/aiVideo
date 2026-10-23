@@ -3,6 +3,7 @@ import copy
 import json
 import re
 from .contracts import PlannerResult, Plan, Settings
+from .replies import duration_field_label
 from backend.agent.media.canvas_actions import is_cutout_request
 from backend.agent.media.intent.negation import affirmative_text
 
@@ -70,7 +71,8 @@ class RulePlanner:
               and _trusted_duration(context) is None):
             plan = {"goal": request["message"], "steps": [{"id": "t1", "kind": "ask_user",
                 "parameters": {"form": {"id": "video_duration", "fields": [
-                    {"id": "duration_seconds", "type": "number", "label": "视频时长（秒）", "required": True}]}}}]}
+                    {"id": "duration_seconds", "type": "number",
+                     "label": duration_field_label(context.get("language")), "required": True}]}}}]}
         else:
             owned = False
             plan = {"goal": request["message"], "steps": [{"id": "t1", "kind": "ask_user",

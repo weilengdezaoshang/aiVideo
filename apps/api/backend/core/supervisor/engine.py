@@ -21,7 +21,10 @@ from .planners import FakePlanner
 from .reviewer import _sources, conversion_rejection, effective_invariants, merge_proposed, review
 from .tool_calls import clarify_unproven_video_duration
 from .context import ContextLimitError
-from .replies import ask_text, blocked, completed, failed, opening, place_label, read_summary
+from .replies import (
+    ask_text, blocked, clarification_field_label, completed, failed, opening, place_label,
+    plan_confirmation, read_summary, review_exhausted,
+)
 from .service import TERMINAL, TASK_TERMINAL, latest_plan, message, digest
 from .wiring import planner_for_lock, watchdog_seconds
 
@@ -62,13 +65,14 @@ async def stop(tx, run, status, text_value, key):
     await message(tx, run, text_value, key)
 
 
-def _clarification_result(run):
+def _clarification_result(run, language=None):
+    """Program-written clarify form. Language comes from the session, not the frozen snapshot."""
     message = run.snapshot["request"]["message"]
-    plan = {"goal": message, "writer": "llm", "result_type": "clarify", "steps": [
+    plan = {"goal": message, "writer": "rule", "result_type": "clarify", "steps": [
         {"id": "t1", "kind": "ask_user", "parameters": {"form": {"id": "clarify", "fields": [
-            {"id": "detail", "type": "text", "label": "请补充无法从原话确定的要求", "required": True}]}}}]}
+            {"id": "detail", "type": "text", "label": clarification_field_label(language), "required": True}]}}}]}
     return PlannerResult(plan=plan, invariants=run.invariants, confidence=1,
-                         raw_output={"writer": "llm", "clarification": True}, tokens=0)
+                         raw_output={"writer": "rule", "clarification": True}, tokens=0)
 
 
 async def _refunded(tx, run_id):
@@ -389,8 +393,9 @@ class Supervisor:
                 and not any(s.tool == "detect_subject" or s.kind == "ask_user" for s in result.plan.steps)):
             # A program-written confirmation ticket goes through the same reviewer as every writer.
             ident = "t" + str(max(int(s.id[1:]) for s in result.plan.steps) + 1)
-            confirmation = Step(id=ident, kind="ask_user", parameters={"question": "是否执行此计划？",
-                "options": [{"id": "confirm", "label": "确认执行"}, {"id": "cancel", "label": "取消"}], "plan_confirmation": True})
+            question, options = plan_confirmation(language)
+            confirmation = Step(id=ident, kind="ask_user", parameters={"question": question,
+                "options": options, "plan_confirmation": True})
             result = result.model_copy(update={"plan": result.plan.model_copy(update={"steps": [confirmation, *[
                 s.model_copy(update={"depends_on": [ident]}) if not s.depends_on else s for s in result.plan.steps]]})})
         messages = list(await tx.scalars(select(CoreSessionMessage).where(CoreSessionMessage.session_id == run.session_id)
@@ -400,7 +405,7 @@ class Supervisor:
                 "content": m.content} for m in messages]
             _texts, fields = _sources(run, mapped)
             duration_ctx = {"request": run.snapshot.get("request") or {}, "snapshot": run.snapshot,
-                "run_id": str(run.id), "form_answers": fields,
+                "run_id": str(run.id), "form_answers": fields, "language": language,
                 "invariants": effective_invariants(run, await latest_plan(tx, run.id)),
                 "messages": mapped}
             clarified = clarify_unproven_video_duration(result.plan, catalog, catalog.lock, duration_ctx)
@@ -428,13 +433,13 @@ class Supervisor:
                     context={"review_reasons": verdict["reasons"]}))
             elif (not self._legacy(run) and not invocation.context.get("clarification_submitted")
                     and not await _already_clarified(tx, run.id)):
-                clarified = _clarification_result(run)
+                clarified = _clarification_result(run, language)
                 tx.add(Invocation(run_id=run.id, event_id=invocation.event_id, attempt=invocation.attempt + 1,
                     status="returned", result=clarified.model_dump(mode="json"),
                     context={"clarification_submitted": True, "review_reasons": verdict["reasons"]}))
                 return
             else:
-                await stop(tx, run, "failed", "计划连续三道审核未通过，已停止；没有执行未获准的步骤。",
+                await stop(tx, run, "failed", review_exhausted(language),
                     "rejected:" + str(run.id))
             return
         version = (await tx.scalar(select(func.max(CorePlan.version)).where(CorePlan.run_id == run.id)) or 0) + 1
