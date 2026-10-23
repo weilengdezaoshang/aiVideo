@@ -23,7 +23,7 @@ class ContextLimitError(ValueError):
 
 
 def encoded_size(value: Any) -> int:
-    return len(json.dumps(value, ensure_ascii=False, default=str, separators=(",", ":")))
+    return len(json.dumps(value, ensure_ascii=False, default=str, sort_keys=True, separators=(",", ":")))
 
 
 def build_context(context: dict, settings: Settings | None = None) -> dict:
@@ -32,10 +32,11 @@ def build_context(context: dict, settings: Settings | None = None) -> dict:
     settings = settings or Settings()
     request = context.get("request") or {}
     readable = _readable(context)
+    readable_nodes = _readable_nodes(context)
     selected_ids = _selected_ids(context)
     viewport = context.get("viewport")
     objects = _objects(context.get("snapshot") or {})
-    visible = [item for item in objects if _asset_of(item) in readable]
+    visible = [item for item in objects if _visible(item, readable, readable_nodes)]
 
     selected: list[dict] = []
     inside: list[dict] = []
@@ -45,7 +46,7 @@ def build_context(context: dict, settings: Settings | None = None) -> dict:
         if identity & selected_ids:
             selected.append(_full(item))
         elif viewport is not None and _intersects(item, viewport):
-            inside.append(_coarse(item))
+            inside.append(_coarse(item, settings))
         else:
             kind = str(item.get("kind") or item.get("type") or "object")
             outside_kinds[kind] = outside_kinds.get(kind, 0) + 1
@@ -62,7 +63,9 @@ def build_context(context: dict, settings: Settings | None = None) -> dict:
         "asset_cards": cards,
         "skill": context.get("skill") or {},
         "summary": context.get("summary") or "",
+        "language": context.get("language") or request.get("language") or "",
         "invariants": context.get("invariants") or {},
+        "form_answers": context.get("form_answers") or {},
         "plan": context.get("plan"),
         "tasks": list(context.get("tasks") or []),
         "events": _events(context),
@@ -113,17 +116,46 @@ def assemble_messages(
     ]
 
 
-def _readable(context: dict) -> set[str]:
+def _scope(context: dict) -> dict:
     scope = context.get("scope") or (context.get("request") or {}).get("scope") or {}
-    return {str(item) for item in scope.get("readable_assets") or []}
+    return scope if isinstance(scope, dict) else {}
+
+
+def _readable(context: dict) -> set[str]:
+    return {str(item) for item in _scope(context).get("readable_assets") or []}
+
+
+def _readable_nodes(context: dict) -> set[str]:
+    """Explicit node whitelist. Empty means no unscoped text; this module does not freeze the snapshot."""
+
+    return {str(item) for item in _scope(context).get("readable_nodes") or [] if str(item)}
 
 
 def _selected_ids(context: dict) -> set[str]:
     raw = context.get("selection") or []
+    node_ids: list = []
     if isinstance(raw, dict):
+        node_ids = list(raw.get("nodeIDs") or raw.get("node_ids") or [])
         raw = raw.get("ids") or raw.get("asset_ids") or []
     request = context.get("request") or {}
-    return {str(item) for item in list(raw) + list(request.get("selected_assets") or [])}
+    request_nodes = request.get("nodeIDs") or request.get("node_ids") or []
+    return {str(item) for item in list(raw) + node_ids + list(request.get("selected_assets") or []) + list(request_nodes) if str(item)}
+
+
+def _is_text(item: dict) -> bool:
+    kind = str(item.get("kind") or item.get("type") or "").lower()
+    return kind == "text"
+
+
+def _visible(item: dict, readable_assets: set[str], readable_nodes: set[str]) -> bool:
+    """Assets stay on the asset allowlist. Text without an asset id needs an explicit node id."""
+
+    asset_id = _asset_of(item)
+    if asset_id:
+        return asset_id in readable_assets
+    if not _is_text(item):
+        return False
+    return bool(_ids(item) & readable_nodes)
 
 
 def _objects(snapshot: dict) -> list[dict]:
@@ -209,12 +241,17 @@ def _full(item: dict) -> dict:
     return _with_identity(item, _public(item, _CARD_FIELDS))
 
 
-def _coarse(item: dict) -> dict:
-    return _with_identity(item, _public(item, ("id", "asset_id", "node_id", "kind", "type")))
+def _coarse(item: dict, settings: Settings) -> dict:
+    kept = _with_identity(item, _public(item, ("id", "asset_id", "node_id", "kind", "type")))
+    text = item.get("text")
+    if isinstance(text, str) and text:
+        kept["text"] = text[: settings.context_text_snippet_chars]
+    return kept
 
 
 def _cap_objects(selected: list[dict], inside: list[dict], limit: int) -> tuple[list[dict], list[dict]]:
-    selected = selected[:limit]
+    if len(selected) > limit:
+        raise ContextLimitError("selected_objects_exceed_context_limit")
     room = max(limit - len(selected), 0)
     return selected, inside[:room]
 
@@ -264,7 +301,8 @@ def _truncate(dynamic: dict, limit: int) -> dict:
     required_events = [event for event in events if _review_event(event)]
     trimmed = {key: value for key, value in dynamic.items() if key != "tools"}
     trimmed["events"] = required_events + [event for event in events if not _review_event(event)]
-    required = {"invariants": trimmed.get("invariants") or {}, "events": required_events}
+    required = {"invariants": trimmed.get("invariants") or {}, "events": required_events,
+                "form_answers": trimmed.get("form_answers") or {}}
     if encoded_size(required) > limit:
         raise ContextLimitError("context_required_fields_exceed_limit")
     if encoded_size(trimmed) <= limit:
@@ -278,7 +316,7 @@ def _truncate(dynamic: dict, limit: int) -> dict:
     trimmed["summary"] = ""
     trimmed["events"] = required_events
     canvas = dict(trimmed.get("canvas") or {})
-    selected = [_scalar_view(item) for item in canvas.get("selected") or [] if isinstance(item, dict)]
+    selected = [dict(item) for item in canvas.get("selected") or [] if isinstance(item, dict)]
     canvas["viewport"] = []
     canvas["selected"] = selected
     trimmed["canvas"] = canvas
@@ -287,20 +325,9 @@ def _truncate(dynamic: dict, limit: int) -> dict:
         return _fill_text(trimmed, dynamic, limit)
     outside = dict(canvas.get("outside") or {})
     canvas["outside"] = {"count": outside.get("count", 0), "by_kind": {}}
-    while selected and encoded_size(trimmed) > limit:
-        selected.pop()
-        canvas["selected"] = list(selected)
-        trimmed["selection"] = list(selected)
     if encoded_size(trimmed) > limit:
         raise ContextLimitError("context_required_fields_exceed_limit")
     return _fill_text(trimmed, dynamic, limit)
-
-
-def _scalar_view(item: dict) -> dict:
-    return {
-        key: value for key, value in item.items()
-        if key != "text" and not isinstance(value, (dict, list))
-    }
 
 
 def _fill_text(trimmed: dict, original: dict, limit: int) -> dict:
@@ -316,8 +343,8 @@ def _fill_text(trimmed: dict, original: dict, limit: int) -> dict:
     trimmed["selection"] = selected
     for index, item in enumerate(selected):
         text = str(originals[index].get("text") or "") if index < len(originals) else ""
-        if text:
-            _prefix_that_fits(item, "text", text, limit, root=trimmed)
+        if text and _prefix_that_fits(item, "text", text, limit, root=trimmed) != text:
+            raise ContextLimitError("selected_objects_exceed_context_limit")
     if encoded_size(trimmed) > limit:
         raise ContextLimitError("context_required_fields_exceed_limit")
     return trimmed
@@ -353,7 +380,7 @@ def _prefix_that_fits(owner: dict, key: str, text: str, limit: int, root: dict |
 
 
 def _shield(value: Any) -> str:
-    text = json.dumps(value, ensure_ascii=False, default=str, separators=(",", ":"))
+    text = json.dumps(value, ensure_ascii=False, default=str, separators=(",", ":"), sort_keys=True)
     return text.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e")
 
 
@@ -366,7 +393,9 @@ def _tags(dynamic: dict) -> str:
         ("asset_cards", dynamic.get("asset_cards")),
         ("skill", dynamic.get("skill")),
         ("summary", dynamic.get("summary")),
+        ("language", {"code": dynamic.get("language") or "", "reply_in_this_language": True}),
         ("invariants", dynamic.get("invariants")),
+        ("form_answers", dynamic.get("form_answers")),
         ("plan_state", {"plan": dynamic.get("plan"), "tasks": dynamic.get("tasks")}),
         ("events", dynamic.get("events")),
         ("history", dynamic.get("messages")),

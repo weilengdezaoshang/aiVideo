@@ -14,8 +14,11 @@ class Settings(BaseSettings):
     concurrency: int = Field(default=4, gt=0)
     scan_limit: int = Field(default=100, gt=0)
     context_messages: int = Field(default=30, gt=0)
+    recent_output_limit: int = Field(default=8, gt=0)
+    feedback_max_chars: int = Field(default=2000, gt=0)
     context_max_objects: int = Field(default=24, gt=0)
     context_max_chars: int = Field(default=6000, gt=0)
+    context_text_snippet_chars: int = Field(default=160, gt=0)
     planner_tool_threshold: int = Field(default=20, gt=0)
     planner_tool_candidates: int = Field(default=8, gt=0)
     planner_retrieval_version: str = "bm25-v1"
@@ -25,6 +28,9 @@ class Settings(BaseSettings):
     lock_timeout_ms: int = Field(default=100, gt=0)
     retry_seconds: float = Field(default=1, gt=0)
     planner_failures: int = Field(default=3, gt=0)
+    planner_checkpoint_margin_seconds: float = Field(default=15, ge=0)
+    viewport_span_limit: float = Field(default=100_000, gt=0)
+    viewport_origin_limit: float = Field(default=1_000_000, gt=0)
 
 
 class Step(Contract):

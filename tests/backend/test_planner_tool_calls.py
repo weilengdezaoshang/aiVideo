@@ -102,11 +102,20 @@ def test_edit_then_video_keeps_order_goal_and_raw_calls():
     result = _convert(catalog, calls, context=_context(message))
     assert result.plan.writer == "llm"
     assert result.plan.goal == message
-    assert [step.tool for step in result.plan.steps] == ["image_edit_preview", "frames_to_video_preview"]
-    assert result.plan.steps[1].depends_on == ["t1"]
-    assert result.plan.steps[0].id == "t1" and result.plan.steps[1].id == "t2"
+    assert result.plan.result_type == "clarify"
+    assert result.plan.steps[0].kind == "ask_user"
+    assert result.plan.steps[0].parameters["form"]["fields"][0]["id"] == "duration_seconds"
+    assert result.plan.steps[0].parameters["form"]["fields"][0].get("default") is None
     assert result.raw_output["calls"] == calls
-    assert result.plan.steps[1].parameters["duration_seconds"] == video.parameters["properties"]["duration_seconds"]["enum"][0]
+    legal = video.parameters["properties"]["duration_seconds"]["enum"][0]
+    seconds = int(legal)
+    proven = _convert(catalog, [
+        {"id": "c1", "name": "image_edit_preview", "arguments": _filled(edit, image=_image())},
+        {"id": "c2", "name": "frames_to_video_preview", "arguments": _filled(
+            video, frames=[_image(), "$t1.output"], prompt="红色动态", duration_seconds=legal)},
+    ], context=_context(f"把图改成红色再做成{seconds}秒视频"))
+    assert [step.tool for step in proven.plan.steps] == ["image_edit_preview", "frames_to_video_preview"]
+    assert proven.plan.steps[1].parameters["duration_seconds"] == legal
 
 
 def test_nested_and_explicit_dependencies_and_mask_chain_pass_review():
@@ -444,3 +453,14 @@ def test_bm25_splits_tool_names_and_reads_k1_from_settings():
     settings = Settings(planner_tool_threshold=20, planner_tool_candidates=1, planner_bm25_k1=1.2, planner_bm25_b=0.5)
     listed = planning_tools(catalog, {}, catalog.lock, query="please edit the image", settings=settings)
     assert listed.tools[0]["function"]["name"] == "image_edit_preview"
+
+
+def test_model_cannot_choose_the_canvas_cas_version():
+    catalog = dev_catalog()
+    tool = catalog.get_tool("image_edit_preview", catalog.lock.version)
+    exposed = planning_tools(catalog, {}, catalog.lock, settings=Settings(planner_tool_threshold=200))
+    spec = next(item["function"] for item in exposed.tools if item["function"]["name"] == tool.name)
+    assert "anchor_version" not in spec["parameters"]["properties"]["_plan"]["properties"]["placement"]["properties"]
+    with pytest.raises(ConversionError, match="invalid_placement"):
+        _convert(catalog, [{"id": "c1", "name": tool.name, "arguments": _filled(tool, image=_image(),
+            _plan={"placement": {"mode": "replace", "anchor_id": "node-1", "anchor_version": "guessed"}})}])

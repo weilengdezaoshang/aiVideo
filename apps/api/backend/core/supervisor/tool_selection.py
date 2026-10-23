@@ -23,7 +23,6 @@ _PLAN_METADATA = {
             "properties": {
                 "mode": {"enum": ["right", "below", "replace", "region"]},
                 "anchor_id": {"type": "string"},
-                "anchor_version": {"type": "string"},
                 "region_id": {"type": "string"},
             },
         },

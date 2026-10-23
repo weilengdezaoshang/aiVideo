@@ -70,7 +70,8 @@ class DetectFake(LocalAdapter):
 
 
 @asynccontextmanager
-async def fixture(tmp_path, *, planner=None, labels=None, message="改图后生成视频", mode="auto"):
+async def fixture(tmp_path, *, planner=None, labels=None, message="改图后生成视频", mode="auto", sized_video=False,
+                  make_planner=None):
     engine = create_async_database_engine(DatabaseSettings(url=DB))
     factory = create_async_session_factory(engine)
     root = tmp_path / "media"
@@ -80,8 +81,12 @@ async def fixture(tmp_path, *, planner=None, labels=None, message="改图后生�
     base = build_catalog(Catalog(CatalogConfig(version="test", environment="development", enabled=True, capabilities=[])), "test")
     tools = list(base.snapshot.tools)
     for name, output in [("edit", "image"), ("video", "video")]:
+        properties = {"prompt": {"type": "string"}, "image": {"anyOf": [{"type": "object"}, {"type": "string"}]}}
+        if output == "video" and sized_video:
+            properties.update({"duration_seconds": {"type": "integer", "minimum": 1},
+                "width": {"type": "integer", "minimum": 1}, "height": {"type": "integer", "minimum": 1}})
         tools.append(ToolDefinition(name=name, version="v1", description="fake only",
-            parameters={"type": "object", "properties": {"prompt": {"type": "string"}, "image": {"anyOf": [{"type": "object"}, {"type": "string"}]}}, "required": ["prompt", "image"], "additionalProperties": False},
+            parameters={"type": "object", "properties": properties, "required": ["prompt", "image"], "additionalProperties": False},
             result_schema={"type": "object"}, inputs=[Port(path="image", media_type="image")], outputs=[Port(path="output", media_type=output)],
             mode="generate", price=Price(kind="fixed", credits=10), limits={}, failures=[],
             execution=Execution(adapter="execution_test_fake", provider_idempotent=True, result_url_policy="authenticated_asset", sla_seconds=60)))
@@ -109,6 +114,8 @@ async def fixture(tmp_path, *, planner=None, labels=None, message="改图后生�
             {"id": "t1", "tool": "edit", "parameters": {"prompt": "edit", "image": {"asset_id": str(asset.id), "media_type": "image"}}},
             {"id": "t2", "tool": "video", "parameters": {"prompt": "video", "image": "$t1.output"}, "depends_on": ["t1"]}]}
         planner = FakePlanner([{"plan": plan, "invariants": run.invariants, "confidence": 1, "tokens": 2, "raw_output": {"plan": plan}}])
+    if make_planner is not None:
+        planner = make_planner(factory)
     supervisor = Supervisor(factory, planner)
     registry = Registry()
     register(registry)
@@ -145,6 +152,17 @@ async def fixture(tmp_path, *, planner=None, labels=None, message="改图后生�
     try:
         yield factory, supervisor, drive, run_id, workspace_id, root, config, fake, events
     finally:
+        # Every fixture owns a workspace. Stop its unfinished scripts before a
+        # later test starts a global daemon with a different scripted provider.
+        from sqlalchemy import update
+        from backend.core.supervisor.engine import stop
+        async with factory.begin() as tx:
+            owned = list(await tx.scalars(select(CoreRun).where(CoreRun.workspace_id == workspace_id)))
+            for row in owned:
+                if row.status not in {"completed", "failed", "cancelled"}:
+                    await stop(tx, row, "cancelled", "fixture cleanup", "fixture-cleanup:" + str(row.id))
+            await tx.execute(update(Invocation).where(Invocation.run_id.in_([row.id for row in owned]))
+                .values(status="done", lease_token=None, lease_until=None))
         await engine.dispose()
 
 

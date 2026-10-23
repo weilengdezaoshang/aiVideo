@@ -89,9 +89,9 @@ async def main(args):
                             for a in attempts]}, ensure_ascii=False))
             return
         transport = RabbitTransport(os.environ["AIVERO_BROKER_URL"], settings) if args.role in {"publisher", "receiver"} else None
-        from backend.core.supervisor.engine import Supervisor
         from backend.core.supervisor.contracts import Settings as SupervisorSettings
-        supervisor = Supervisor(factory)
+        from backend.core.supervisor.wiring import build_supervisor
+        supervisor = build_supervisor(factory)
         async def supervise():
             return await asyncio.gather(*(supervisor.tick() for _ in range(SupervisorSettings().concurrency)))
         from backend.core.diagnostics.metrics import monitor

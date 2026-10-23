@@ -27,3 +27,24 @@ class Invocation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     __table_args__ = (CheckConstraint("attempt >= 0 AND failures >= 0"),
         CheckConstraint("status IN ('pending','calling','returned','done')"), UniqueConstraint("event_id", "attempt"), Index("ix_core_planner_due", "status", "next_at", "lease_until"))
+
+
+class PlannerModelCall(Base):
+    """Raw model payload for one planner invocation. Not an agent_runs foreign key."""
+
+    __tablename__ = "core_planner_model_calls"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    invocation_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("core_planner_invocations.id"), unique=True)
+    status: Mapped[str] = mapped_column(String(16), default="reserved")
+    request_hash: Mapped[str] = mapped_column(String(64))
+    template_version: Mapped[str] = mapped_column(String(64), default="supervisor-v1")
+    template_hash: Mapped[str | None] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(128))
+    route: Mapped[str | None] = mapped_column(String(64))
+    tool_catalog_hash: Mapped[str] = mapped_column(String(128))
+    redacted_request: Mapped[dict | None] = mapped_column(JSONVariant)
+    raw_response: Mapped[dict | None] = mapped_column(JSONVariant)
+    usage: Mapped[dict] = mapped_column(JSONVariant, default=dict)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (CheckConstraint("status IN ('reserved','sending','stored','unknown','converted')"),)

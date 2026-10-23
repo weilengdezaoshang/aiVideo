@@ -14,7 +14,7 @@ from pathlib import Path
 from contextlib import suppress
 
 from cryptography.fernet import Fernet
-from sqlalchemy import select, text, update
+from sqlalchemy import and_, func, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 
 from backend.agent.media.credits import reserve_core, settle_core
@@ -62,6 +62,146 @@ async def record_admission(tx, task, catalog, *, checks, review_ref, placement):
     return row
 
 
+def scoped_canvas_raw(raw: dict, allowed_asset_ids: set[str], readable_nodes: set[str] | None = None) -> dict:
+    """Project only explicitly authorized assets and document text nodes."""
+    import re
+    objects = raw.get("objects") if isinstance(raw, dict) and isinstance(raw.get("objects"), dict) else {}
+    kept = {}
+    for ident, value in objects.items():
+        if not isinstance(ident, str) or not isinstance(value, dict):
+            continue
+        asset_id = value.get("assetId") if isinstance(value.get("assetId"), str) else None
+        if asset_id is None and isinstance(value.get("src"), str):
+            match = re.fullmatch(r"/api/assets/([0-9a-fA-F-]{36})/content", value["src"])
+            asset_id = match[1] if match else None
+        if asset_id is None:
+            if str(value.get("kind") or value.get("type") or "").lower() != "text" or ident not in (readable_nodes or set()):
+                continue
+            if any(not isinstance(value.get(key), (int, float)) or isinstance(value.get(key), bool) for key in ("x", "y", "width", "height")):
+                continue
+            copied = {key: value[key] for key in ("x", "y", "width", "height", "rotation", "name", "text", "fontSize", "fontFamily", "fill") if key in value}
+            copied["kind"] = "text"
+            from backend.agent.tools.canvas_read import CanvasElement
+            from pydantic import ValidationError
+            try:
+                CanvasElement.model_validate({**copied, "id": ident})
+            except ValidationError:
+                # A malformed legacy note must not invalidate unrelated authorized reads.
+                continue
+        else:
+            if asset_id not in allowed_asset_ids:
+                continue
+            copied = {key: value[key] for key in ("kind", "x", "y", "width", "height", "rotation", "name", "ext") if key in value}
+            copied["assetId"] = asset_id
+        kept[ident] = copied
+    order = raw.get("order") if isinstance(raw, dict) else None
+    return {"objects": kept, "order": [item for item in order if isinstance(item, str) and item in kept] if isinstance(order, list) else []}
+
+
+_UNREADABLE_ASSET = frozenset({"deleted", "purged", "reported", "taken_down"})
+
+
+def _asset_blocked(asset, workspace_id) -> bool:
+    """Workspace, host block, and reported/taken-down states are not readable."""
+    if asset is None or asset.workspace_id != workspace_id:
+        return True
+    details = asset.details or {}
+    if details.get("hostBlocked"):
+        return True
+    return details.get("status") in _UNREADABLE_ASSET
+
+
+def _read_gateway(tool=None):
+    """Read tools only. Model write tools are not registered on this gateway.
+
+    Spec timeout comes from the frozen tool SLA. A bare gateway uses the catalog
+    local timeout, never a fixed 5 second stand-in.
+    """
+    from pydantic import BaseModel, ConfigDict, Field
+
+    from backend.agent.contracts import Coverage
+    from backend.agent.tools.canvas_read import READ_TOOLS
+    from backend.agent.tools.errors import ToolError
+    from backend.agent.tools.registry import Outcome, ToolGateway, ToolSpec
+    from backend.core.tools.contracts import ToolSettings
+
+    sla = tool.execution.sla_seconds if tool is not None else ToolSettings().local_timeout_seconds
+
+    class AssetQuery(BaseModel):
+        model_config = ConfigDict(extra="forbid", populate_by_alias=True)
+        asset_id: str = Field(alias="asset_id", min_length=1, max_length=128)
+
+    def read_asset(parsed, context, keep):
+        binding = context.assets.get(parsed.asset_id)
+        if not isinstance(binding, dict) or not binding.get("readable"):
+            raise ToolError("ASSET_OUT_OF_SCOPE", "素材不在本次运行可读范围内")
+        return Outcome(data={"asset_id": parsed.asset_id, "kind": binding.get("kind"),
+            "width": binding.get("width"), "height": binding.get("height")},
+            coverage=Coverage(complete=True), asset_ids=(parsed.asset_id,))
+
+    specs = []
+    for item in READ_TOOLS:
+        timeout = sla if tool is not None and item.name == tool.name else item.timeout_s
+        if timeout == item.timeout_s:
+            specs.append(item)
+        else:
+            specs.append(ToolSpec(item.name, item.version, item.description, item.input, item.kind,
+                item.stages, timeout, item.handler, item.facts, item.suggest))
+    asset_timeout = sla if tool is None or tool.name == "read_asset" else ToolSettings().local_timeout_seconds
+    specs.append(ToolSpec("read_asset", 1, "读取授权范围内资产的基本元数据。", AssetQuery, "read",
+        frozenset({"execute"}), asset_timeout, read_asset, lambda outcome, parsed: [], lambda outcome, parsed: []))
+    return ToolGateway(specs)
+
+
+_BAD_DEPENDENCY = frozenset({"failed", "cancelled", "blocked_by_model", "rejected"})
+
+
+async def _dependency_gate(tx, task, run):
+    identifiers = list(await tx.scalars(select(CoreTaskDependency.depends_on_id).where(CoreTaskDependency.task_id == task.id)))
+    for ident in identifiers:
+        upstream = await tx.get(CoreTask, ident)
+        if upstream is None or upstream.run_id != run.id:
+            return "invalid"
+        if upstream.status == "succeeded":
+            continue
+        if upstream.status in _BAD_DEPENDENCY:
+            return "invalid"
+        return "pending"
+    return "ready"
+
+
+async def _canvas_assets(tx, run, doc, media_root: Path):
+    """Current workspace, frozen readable set, live reference, and a path under media_root."""
+    from backend.agent.media.inspection import managed_path
+    readable = {str(item) for item in (run.scope or {}).get("readable_assets") or []}
+    if doc is None or doc.workspace_id != run.workspace_id or not readable:
+        return {}
+    found = {}
+    for ident in readable:
+        try:
+            asset_id = uuid.UUID(ident)
+        except ValueError:
+            continue
+        asset = await tx.get(Asset, asset_id)
+        if _asset_blocked(asset, run.workspace_id):
+            continue
+        referenced = await tx.scalar(select(AssetReference.id).where(AssetReference.asset_id == asset.id,
+            AssetReference.owner_type == "document", AssetReference.owner_id == str(doc.id)))
+        if referenced is None:
+            continue
+        binding = {"kind": asset.kind, "width": asset.width, "height": asset.height, "ext": asset.ext,
+            "sha256": asset.sha256, "bytes": asset.bytes, "readable": True}
+        try:
+            managed_path(media_root, asset)
+        except HostError:
+            binding["file_ready"] = False
+        else:
+            binding["storage_key"] = asset.storage_key
+            binding["file_ready"] = True
+        found[str(asset.id)] = binding
+    return found
+
+
 async def enqueue(tx, task_id, settings=None):
     """Join the EXISTING Job/outbox/Celery phase queue, in the caller transaction."""
     settings = settings or WorkerSettings()
@@ -79,11 +219,13 @@ async def enqueue(tx, task_id, settings=None):
     tool = catalog.get_tool(task.tool_ref, catalog.lock.version)
     if tool.name not in run.scope.get("tools", []) and f"{tool.name}@{tool.version}" not in run.scope.get("tools", []):
         raise ValueError("tool outside Run scope")
+    read_only = tool.mode == "read_only" and tool.name != "detect_subject"
     output = next((p.media_type for p in tool.outputs if p.media_type in {"image", "video", "audio"}), None)
-    if output is None and tool.name != "detect_subject":
+    if not read_only and output is None and tool.name != "detect_subject":
         raise ValueError("this executor requires an artifact-producing tool")
+    kind = "read" if read_only else "export" if tool.execution.adapter in {"frames_to_video", "export.timeline"} else "video" if output == "video" else "image"
     job = Job(workspace_id=run.workspace_id, document_id=(await tx.get(CoreSession, run.session_id)).canvas_id,
-        kind="export" if tool.execution.adapter in {"frames_to_video", "export.timeline"} else "video" if output == "video" else "image", params={"coreTaskId": str(task.id)},
+        kind=kind, params={"coreTaskId": str(task.id)},
         provider_snapshot={"provider": "core_worker"}, phase="core_worker", status="queued")
     tx.add(job)
     await tx.flush()
@@ -185,8 +327,6 @@ class Worker:
         return await resolve(task.parameters)
 
     async def execute(self, job_id):
-        if self.provider is None:
-            raise RuntimeError("HTTP receipt ingress cannot execute provider operations")
         token = uuid.uuid4()
         async with self.factory.begin() as tx:
             rows = await self.rows(tx, job_id)
@@ -210,6 +350,18 @@ class Worker:
                 raise ValueError("tool outside frozen rollout scope")
             if admission.catalog_hash != catalog.lock.content_hash or tool.version != task.tool_version:
                 raise ValueError("frozen binding mismatch")
+            read_only = tool.mode == "read_only" and tool.name != "detect_subject"
+            if read_only:
+                if task.status in {"succeeded", "failed", "cancelled", "blocked_by_model"} or execution.phase == "done":
+                    return {"done": True}
+                if run.status != "running" or task.status != "queued" or task.plan_id != run.current_plan_id:
+                    return {"deferred": "run_or_task_not_ready"}
+                if now() > execution.deadline:
+                    await self.finish(tx, rows, "failed", 0, "queue_timeout")
+                    return {"failed": "queue_timeout"}
+                return await self._execute_read(tx, rows, tool)
+            if self.provider is None:
+                raise RuntimeError("HTTP receipt ingress cannot execute provider operations")
             if execution.phase == "ready":
                 if run.status != "running" or task.status != "queued" or task.plan_id != run.current_plan_id:
                     return {"deferred": "run_or_task_not_ready"}
@@ -506,12 +658,99 @@ class Worker:
             execution.expires_at = datetime.fromtimestamp(result.expires_at, timezone.utc) if result.expires_at else now() + timedelta(seconds=self.settings.reconcile_seconds)
             execution.phase = "download"
 
+    async def _execute_read(self, tx, rows, tool):
+        """Same worker entry as generation. No credit ledger and no canvas write."""
+        from jsonschema import Draft202012Validator
+        from jsonschema.exceptions import SchemaError, ValidationError
+        from backend.agent.tools.canvas_read import project_snapshot
+        execution, task, run, doc, job = rows
+        gate = await _dependency_gate(tx, task, run)
+        if gate == "pending":
+            await self.defer(tx, execution, job)
+            return {"deferred": "dependencies"}
+        if gate == "invalid":
+            await self.finish(tx, rows, "failed", 0, "param_invalid")
+            return {"failed": "param_invalid"}
+        try:
+            Draft202012Validator(tool.parameters).validate(task.parameters or {})
+        except (SchemaError, ValidationError):
+            await self.finish(tx, rows, "failed", 0, "param_invalid")
+            return {"failed": "param_invalid"}
+        try:
+            resolved = await self.references(tx, task, run)
+            params = {key: resolved[key] for key in (task.parameters or {})} if isinstance(resolved, dict) else task.parameters
+        except HostError:
+            await self.defer(tx, execution, job)
+            return {"deferred": "dependencies"}
+        except ValueError:
+            await self.finish(tx, rows, "failed", 0, "param_invalid")
+            return {"failed": "param_invalid"}
+        if doc is not None and doc.workspace_id != run.workspace_id:
+            doc = None
+        media_root = Path(self.root).resolve()
+        assets = await _canvas_assets(tx, run, doc, media_root)
+        if tool.name == "read_asset":
+            asset_id = str((params or {}).get("asset_id") or "")
+            own = await self._readable_workspace_asset(tx, run, asset_id)
+            assets = {asset_id: own} if own else {}
+        raw = scoped_canvas_raw(doc.data if doc is not None else {}, set(assets),
+            {str(item) for item in (run.scope or {}).get("readable_nodes") or []})
+        selected = [item for item in ((run.snapshot or {}).get("selectedObjectIds") or []) if item in raw["objects"]]
+        snapshot = {"id": str(doc.id) if doc is not None else "", "name": doc.name if doc is not None else "",
+            "revision": doc.revision if doc is not None else 0, **raw}
+        try:
+            snapshot = project_snapshot(snapshot, selected)
+        except Exception:
+            await self.finish(tx, rows, "failed", 0, "param_invalid")
+            return {"failed": "param_invalid"}
+        before = None if doc is None else json.dumps(doc.data, sort_keys=True, default=str)
+        ordinal = await self._read_ordinal(tx, task)
+        inspect_assets = {key: value for key, value in assets.items() if value.get("file_ready") and "storage_key" in value}
+        bound = assets if tool.name == "read_asset" else inspect_assets if tool.name == "inspect_image" else assets
+        outcome = _read_gateway(tool).execute(tool.name, params or {}, snapshot, bound, media_root,
+            max_output_bytes=self.settings.read_max_bytes, ordinal=ordinal, call_id=str(task.id))
+        if doc is not None and json.dumps(doc.data, sort_keys=True, default=str) != before:
+            await self.finish(tx, rows, "failed", 0, "param_invalid")
+            return {"failed": "param_invalid"}
+        if not isinstance(outcome, dict) or outcome.get("error") or "result" not in outcome:
+            await self.finish(tx, rows, "failed", 0, "param_invalid")
+            return {"failed": "param_invalid"}
+        output = outcome
+        if len(canonical(output).encode()) > self.settings.read_max_bytes or not Draft202012Validator(tool.result_schema).is_valid(output):
+            await self.finish(tx, rows, "failed", 0, "param_invalid")
+            return {"failed": "param_invalid"}
+        task.output = output
+        await transition(tx, "task", task.id, task.version, "submitted", causation_id=execution.causation_id)
+        await self.finish(tx, rows, "succeeded", 0)
+        return {"done": True}
+
+    async def _readable_workspace_asset(self, tx, run, asset_id):
+        readable = {str(item) for item in (run.scope or {}).get("readable_assets") or []}
+        if not asset_id or asset_id not in readable:
+            return None
+        try:
+            ident = uuid.UUID(asset_id)
+        except ValueError:
+            return None
+        asset = await tx.get(Asset, ident)
+        if _asset_blocked(asset, run.workspace_id):
+            return None
+        return {"asset_id": str(asset.id), "kind": asset.kind, "width": asset.width, "height": asset.height, "readable": True}
+
+    async def _read_ordinal(self, tx, task):
+        earlier = await tx.scalar(select(func.count()).select_from(CoreTask).where(CoreTask.run_id == task.run_id,
+            CoreTask.kind == "call_tool", or_(CoreTask.created_at < task.created_at,
+                and_(CoreTask.created_at == task.created_at, CoreTask.id < task.id))))
+        return int(earlier or 0) + 1
+
     async def finish(self, tx, rows, status, actual, reason=None):
         execution, task, run, doc, job = rows
+        if execution.phase == "done":
+            return
         ledger = await tx.scalar(select(HostCreditLedger).where(HostCreditLedger.core_task_id == task.id))
         if ledger is not None:
             await settle_core(tx, run, task, actual, cancelled=execution.cancel_requested)
-        elif actual or task.status != "queued":
+        elif actual or (task.status != "queued" and task.credits_reserved != 0):
             raise ValueError("missing reservation for submitted task")
         task.error = {"code": reason} if reason else None
         if execution.attempt_id:

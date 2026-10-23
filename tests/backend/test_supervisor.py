@@ -41,3 +41,16 @@ def test_explicit_single_image_rule_and_uncertain_video():
     assert result.plan.steps[0].parameters["width"] == 512
     context["request"]["message"] = "生成视频"
     assert asyncio.run(RulePlanner().plan(context)).plan.steps[0].kind == "ask_user"
+    answered = {"invariants": {}, "run_id": "run-1", "form_answers": {"duration_seconds": 8},
+        "request": {"message": "生成视频", "selected_assets": []},
+        "tools": [{"name": "text_to_video_preview", "available": True, "parameters": {"properties": {
+            "duration_seconds": {"enum": [8.0]}, "width": {"enum": [512]}, "height": {"enum": [512]},
+            "fps": {"enum": [8]}}}}]}
+    bound = asyncio.run(RulePlanner().plan(answered))
+    assert bound.confidence == 1
+    assert bound.plan.steps[0].tool == "text_to_video_preview"
+    assert bound.plan.steps[0].parameters["duration_seconds"] == 8.0
+    answered["tools"][0]["parameters"]["properties"]["duration_seconds"]["enum"] = [4.0]
+    deferred = asyncio.run(RulePlanner().plan(answered))
+    assert deferred.confidence == 0
+    assert deferred.plan.steps[0].parameters.get("form", {}).get("id") != "video_duration"

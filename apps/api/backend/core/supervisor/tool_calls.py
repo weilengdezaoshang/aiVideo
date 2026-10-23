@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from collections.abc import Mapping
+from types import SimpleNamespace
 from typing import Any
 
 from jsonschema import Draft202012Validator
@@ -21,12 +23,12 @@ from backend.core.supervisor.contracts import (
     Step,
 )
 from backend.core.supervisor.tool_selection import _CONTROLS as _CONTROL_SCHEMAS, planning_tools
-from backend.core.tools.catalog import ToolCatalog
+from backend.core.tools.catalog import CatalogError, ToolCatalog
 from backend.core.tools.contracts import VersionLock
 
 _STEP_ID = re.compile(r"^t[1-9][0-9]*$")
 _REF = re.compile(r"\$(t[1-9][0-9]*)((?:\.[A-Za-z_][A-Za-z0-9_]*|\[\d+\])+)")
-_PLACEMENT_KEYS = frozenset({"mode", "anchor_id", "anchor_version", "region_id"})
+_PLACEMENT_KEYS = frozenset({"mode", "anchor_id", "region_id"})
 _PLACEMENT_MODES = frozenset({"right", "below", "replace", "region"})
 _COORDINATES = frozenset({
     "x", "y", "left", "top", "right", "bottom", "bounds", "position", "scale", "rotation",
@@ -71,7 +73,7 @@ def convert_tool_calls(
     workers = [call for call in parsed if call["name"] not in _CONTROLS]
     for index, call in enumerate(workers, start=1):
         call["step_id"] = f"t{index}"
-    audits = [_audit_control(call, message) for call in controls]
+    audits = [_audit_control(call, message, context) for call in controls]
     names = {call["name"] for call in controls}
     if "answer_only" in names and workers:
         raise ConversionError("answer_only_mixed_with_generation")
@@ -87,11 +89,11 @@ def convert_tool_calls(
     }
     for call in workers:
         _reject_coordinates(call["arguments"])
-    needs_duration = _video_needs_duration(workers, catalog, version_lock)
+    needs_duration = _video_needs_duration(workers, catalog, version_lock, context)
     if "ask_user_form" in names or needs_duration:
         if "ask_user_form" not in names:
             _validate_queued_schemas(workers, catalog, version_lock)
-        form = _explicit_form(controls) or _duration_form(workers, catalog, version_lock)
+        form = _explicit_form(controls) or _duration_form(workers, catalog, version_lock, context)
         step = Step(id="t1", kind="ask_user", parameters={"form": _form_payload(form)})
         plan = _plan(message, [step], "clarify", audits, "")
         return _result(plan, proposed, raw)
@@ -117,12 +119,26 @@ def _parse_call(call: dict, index: int) -> dict:
     arguments = call.get("arguments", {})
     if isinstance(arguments, str):
         try:
-            arguments = json.loads(arguments)
-        except json.JSONDecodeError as exc:
+            arguments = json.loads(arguments, parse_constant=_reject_non_finite)
+        except (json.JSONDecodeError, ValueError) as exc:
             raise ConversionError("invalid_arguments") from exc
-    if not isinstance(arguments, dict):
+    if not isinstance(arguments, dict) or not _finite_json(arguments):
         raise ConversionError("invalid_arguments")
     return {"id": call_id, "name": name, "arguments": arguments, "index": index}
+
+
+def _reject_non_finite(_token: str):
+    raise ValueError("non-finite")
+
+
+def _finite_json(value) -> bool:
+    if isinstance(value, float):
+        return math.isfinite(value)
+    if isinstance(value, dict):
+        return all(isinstance(key, str) and _finite_json(item) for key, item in value.items())
+    if isinstance(value, list):
+        return all(_finite_json(item) for item in value)
+    return True
 
 
 def _reject_duplicate_ids(calls: list[dict]) -> None:
@@ -161,7 +177,7 @@ def _merge_controls(controls: list[dict]) -> list[dict]:
     return [*grouped["set_invariants"], *grouped["ask_user_form"], *grouped["answer_only"]]
 
 
-def _audit_control(call: dict, message: str) -> ControlCallAudit:
+def _audit_control(call: dict, message: str, context: Mapping | None = None) -> ControlCallAudit:
     _validate_schema(_CONTROL_SCHEMAS[call["name"]]["parameters"], call["arguments"])
     if call["name"] == "ask_user_form":
         form = _validate_form(call["arguments"])
@@ -173,22 +189,30 @@ def _audit_control(call: dict, message: str) -> ControlCallAudit:
         return ControlCallAudit(tool=call["name"], arguments={"answer": answer})
     if call["name"] == "set_invariants":
         return ControlCallAudit(
-            tool=call["name"], arguments=dict(call["arguments"]), evidence=_evidence(call["arguments"], message))
+            tool=call["name"], arguments=dict(call["arguments"]), evidence=_evidence(call["arguments"], message, context))
     raise ConversionError("unknown_tool")
 
 
-def _evidence(arguments: dict, message: str) -> list[EvidenceItem]:
+def _evidence(arguments: dict, message: str, context: Mapping | None = None) -> list[EvidenceItem]:
+    from .reviewer import _sources
     quote = arguments.get("source_quote")
     source = arguments.get("source")
-    location = arguments.get("location")
-    if not isinstance(quote, str) or not quote.strip() or quote not in message:
+    if not isinstance(quote, str) or not quote.strip() or not isinstance(source, str) or not source.strip():
         raise ConversionError("invariant_evidence_required")
-    if not isinstance(source, str) or not source.strip() or not isinstance(location, str) or not location.strip():
-        raise ConversionError("invariant_evidence_required")
-    invariants = arguments.get("invariants")
-    if not isinstance(invariants, dict):
+    origin = "user_message"
+    if quote not in message:
+        context = context or {}
+        # Only answer-API rows owned by this Run can support a form quote.
+        if not context.get("run_id"):
+            raise ConversionError("invariant_evidence_required")
+        texts, fields = _sources(_run_view(context), context.get("messages") or [])
+        values = [str(value) for value in fields.values() if isinstance(value, (str, int, float, bool))]
+        if not any(quote in value for value in [*texts, *values]):
+            raise ConversionError("invariant_evidence_required")
+        origin = "user_form"
+    if not isinstance(arguments.get("invariants"), dict):
         raise ConversionError("invalid_invariants")
-    return [EvidenceItem(source=source, quote=quote)]
+    return [EvidenceItem(source=origin, quote=quote)]
 
 
 def _validate_form(arguments: dict) -> FormDefinition:
@@ -263,30 +287,84 @@ def _explicit_form(controls: list[dict]) -> FormDefinition | None:
     return None
 
 
-def _video_needs_duration(workers: list[dict], catalog: ToolCatalog, lock: VersionLock) -> bool:
+def _run_view(context: Mapping) -> SimpleNamespace:
+    """Current run only. Canvas snapshot.form_answers is not evidence."""
+
+    snapshot = dict(context.get("snapshot") or {})
+    snapshot.pop("form_answers", None)
+    if "request" not in snapshot and context.get("request"):
+        snapshot["request"] = context["request"]
+    return SimpleNamespace(id=context.get("run_id"), snapshot=snapshot, invariants=context.get("invariants") or {})
+
+
+def _duration_unproven(value, context: Mapping) -> bool:
+    from .reviewer import _coerce, _same, _sources, _supported
+    run = _run_view(context)
+    texts, fields = _sources(run, context.get("messages") or [])
+    extra = context.get("form_answers") if isinstance(context.get("form_answers"), dict) else {}
+    for key, item in extra.items():
+        fields.setdefault(key, item)
+    coerced = _coerce("duration_seconds", value)
+    if coerced is None:
+        return True
+    approved = _coerce("duration_seconds", ((context.get("invariants") or {}).get("deliverable") or {}).get("duration_seconds"))
+    if approved is not None and _same(approved, coerced):
+        return False
+    return not _supported("duration_seconds", coerced, texts, fields, run)
+
+
+def _video_tool_needs_duration(tool) -> bool:
+    if tool.mode == "read_only":
+        return False
+    if not any(port.media_type == "video" for port in tool.outputs):
+        return False
+    props = tool.parameters.get("properties") or {}
+    required = tool.parameters.get("required") or []
+    return "duration_seconds" in props or "duration_seconds" in required
+
+
+def _video_needs_duration(workers: list[dict], catalog: ToolCatalog, lock: VersionLock,
+                          context: Mapping | None = None) -> bool:
+    context = context or {}
     for call in workers:
-        tool = catalog.get_tool(call["name"], lock.version)
-        if not any(port.media_type == "video" for port in tool.outputs):
+        try:
+            tool = catalog.get_tool(call["name"], lock.version)
+        except (CatalogError, ValueError, KeyError):
             continue
-        if "duration_seconds" in (tool.parameters.get("required") or []) and (
-                "duration_seconds" not in call["arguments"] or call["arguments"].get("duration_seconds") is None):
+        if not _video_tool_needs_duration(tool):
+            continue
+        value = call["arguments"].get("duration_seconds")
+        if value is None or _duration_unproven(value, context):
             return True
     return False
 
 
-def _duration_form(workers: list[dict], catalog: ToolCatalog, lock: VersionLock) -> FormDefinition:
+def _duration_form(workers: list[dict], catalog: ToolCatalog, lock: VersionLock,
+                   context: Mapping | None = None) -> FormDefinition:
+    context = context or {}
     fields = []
     seen = set()
     for call in workers:
-        tool = catalog.get_tool(call["name"], lock.version)
+        try:
+            tool = catalog.get_tool(call["name"], lock.version)
+        except (CatalogError, ValueError, KeyError):
+            continue
         if not any(port.media_type == "video" for port in tool.outputs):
             continue
-        for name in tool.parameters.get("required") or []:
-            if name in call["arguments"] and call["arguments"].get(name) is not None:
-                continue
+        required = list(tool.parameters.get("required") or [])
+        props = tool.parameters.get("properties") or {}
+        names = list(required)
+        if "duration_seconds" in props and "duration_seconds" not in names:
+            names.append("duration_seconds")
+        for name in names:
             if name in seen or name == "_plan":
                 continue
             if name not in {"duration_seconds", "fps"}:
+                continue
+            value = call["arguments"].get(name)
+            if name == "fps" and value is not None:
+                continue
+            if name == "duration_seconds" and value is not None and not _duration_unproven(value, context):
                 continue
             seen.add(name)
             fields.append(FormField(
@@ -295,6 +373,19 @@ def _duration_form(workers: list[dict], catalog: ToolCatalog, lock: VersionLock)
     if not fields:
         raise ConversionError("video_duration_required")
     return FormDefinition(id="video_duration", fields=fields)
+
+
+def clarify_unproven_video_duration(plan: Plan, catalog: ToolCatalog, lock: VersionLock,
+                                    context: Mapping) -> Plan | None:
+    """Replace a guessed video duration with a duration form. Review still owns admission."""
+
+    workers = [{"name": step.tool, "arguments": dict(step.parameters or {}), "step_id": step.id}
+               for step in plan.steps if step.kind == "call_tool" and step.tool]
+    if not workers or not _video_needs_duration(workers, catalog, lock, context):
+        return None
+    form = _duration_form(workers, catalog, lock, context)
+    step = Step(id="t1", kind="ask_user", parameters={"form": _form_payload(form)})
+    return plan.model_copy(update={"steps": [step], "result_type": "clarify", "answer": ""})
 
 
 def _form_payload(form: FormDefinition) -> dict:
@@ -464,10 +555,6 @@ def _placement(raw: dict, arguments: dict, scope: Mapping, tool, snapshot: Mappi
     if not asset_id or asset_id not in readable:
         raise ConversionError("placement_unauthorized")
     placement["anchor_id"] = anchor_id
-    if "anchor_version" in raw:
-        if not isinstance(raw["anchor_version"], str):
-            raise ConversionError("invalid_placement")
-        placement["anchor_version"] = raw["anchor_version"]
     return placement
 
 

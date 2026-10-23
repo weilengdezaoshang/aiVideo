@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from dataclasses import dataclass
 from typing import Mapping
 from pathlib import Path
@@ -123,7 +124,8 @@ class ChatCompletionsProvider:
         self.credentials, self.client = credentials, client
         self.local_config_root = local_config_root
 
-    async def complete(self, route: AgentRoute, messages: list[dict], tools: list[dict]) -> ModelResponse:
+    async def complete(self, route: AgentRoute, messages: list[dict], tools: list[dict], *,
+                       response_sink=None) -> ModelResponse:
         secret = self.credentials.get(route.credential_ref)
         if self.local_config_root is not None and route.credential_ref.startswith("local-dialogue:"):
             import uuid
@@ -144,12 +146,12 @@ class ChatCompletionsProvider:
         if len(encoded) > route.context_max_bytes:
             raise ModelCallError("CONTEXT_LIMIT", "模型请求超过上下文大小限制")
         if self.client is not None:
-            return await self._request(self.client, route, encoded, api_key)
+            return await self._request(self.client, route, encoded, api_key, response_sink)
         async with httpx.AsyncClient(follow_redirects=False, trust_env=False) as client:
-            return await self._request(client, route, encoded, api_key)
+            return await self._request(client, route, encoded, api_key, response_sink)
 
     async def _request(self, client: httpx.AsyncClient, route: AgentRoute,
-                       encoded: bytes, api_key: str) -> ModelResponse:
+                       encoded: bytes, api_key: str, response_sink=None) -> ModelResponse:
         try:
             async with asyncio.timeout(route.timeout_s):
                 async with client.stream("POST", route.base_url + "/chat/completions",
@@ -166,10 +168,57 @@ class ChatCompletionsProvider:
                     try:
                         raw = json.loads(body, parse_constant=_invalid_constant)
                     except (ValueError, UnicodeError, RecursionError) as error:
+                        if response_sink is not None:
+                            await response_sink(_redacted_failure(body))
                         raise ModelCallError("INVALID_MODEL_RESPONSE", "模型响应不是有效 JSON") from error
+                    if response_sink is not None:
+                        await response_sink(_redacted_raw(raw))
                     return _parse_response(raw, response.headers.get("x-request-id"))
         except (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout) as error:
             raise ModelCallError("MODEL_CONNECT_ERROR", "无法连接模型服务") from error
         except (httpx.TransportError, TimeoutError) as error:
             # Local timeout/disconnect cannot establish that no paid request happened.
             raise ModelCallError("MODEL_RESULT_UNKNOWN", "模型请求结果未知，未自动重试", unknown=True) from error
+
+
+_SECRET = re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._\-]{8,}")
+
+
+def _redacted_raw(raw: dict) -> dict:
+    """Keep a complete choices document. Do not slice JSON text before parsing it."""
+
+    if not isinstance(raw, dict):
+        return {"invalid": True}
+    choices = raw.get("choices")
+    choice = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], dict) else {}
+    message = choice.get("message") if isinstance(choice.get("message"), dict) else {}
+    content = message.get("content") if isinstance(message.get("content"), str) else None
+    calls = []
+    wire = message.get("tool_calls") if isinstance(message.get("tool_calls"), list) else []
+    for call in wire:
+        if not isinstance(call, dict):
+            continue
+        function = call.get("function") if isinstance(call.get("function"), dict) else {}
+        arguments = function.get("arguments") if isinstance(function.get("arguments"), str) else ""
+        calls.append({
+            "id": call.get("id") if isinstance(call.get("id"), str) else "",
+            "type": "function",
+            "function": {
+                "name": function.get("name") if isinstance(function.get("name"), str) else "",
+                "arguments": arguments,
+            },
+        })
+    finish = choice.get("finish_reason") if isinstance(choice.get("finish_reason"), str) else ""
+    clean = {
+        "id": raw["id"] if isinstance(raw.get("id"), str) else "",
+        "model": raw["model"] if isinstance(raw.get("model"), str) else "",
+        "choices": [{"index": 0, "message": {"role": "assistant", "content": content, "tool_calls": calls},
+                     "finish_reason": finish}],
+        "usage": _usage(raw),
+    }
+    return json.loads(_SECRET.sub(r"\1[redacted]", json.dumps(clean, ensure_ascii=False)))
+
+
+def _redacted_failure(body: bytearray) -> dict:
+    text = bytes(body[:500]).decode("utf-8", errors="replace")
+    return {"invalid_json": True, "bytes": len(body), "excerpt": _SECRET.sub(r"\1[redacted]", text)}

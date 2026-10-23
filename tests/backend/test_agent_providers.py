@@ -110,6 +110,57 @@ def test_missing_credentials_and_context_limit_never_send():
     asyncio.run(run())
 
 
+def test_large_valid_response_sink_stays_reparsable_before_parse():
+    from backend.agent.providers import _parse_response, _redacted_raw
+    arguments = json.dumps({"prompt": "价格是$100", "note": "n" * 9000}, ensure_ascii=False)
+    call = {"id": "c-large", "type": "function", "function": {"name": "read_canvas", "arguments": arguments}}
+    body = response(None, [call], "tool_calls")
+    body["choices"][0]["message"]["reasoning_content"] = "drop-me"
+    body["debug"] = {"apiKey": "secret-value", "authorization": "Bearer supersecret-token"}
+    assert len(json.dumps(body)) > 8000
+    seen = []
+
+    def handle(request):
+        return httpx.Response(200, json=body, headers={"x-request-id": "large"})
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
+            async def sink(payload):
+                seen.append(payload)
+            result = await ChatCompletionsProvider({"agent": {"apiKey": "secret"}}, client).complete(
+                route(), [], [], response_sink=sink)
+            assert result.tool_calls[0]["arguments"]["note"] == "n" * 9000
+    asyncio.run(run())
+    assert seen and seen[0] is not None
+    stored = seen[0]
+    assert "reasoning_content" not in json.dumps(stored)
+    assert "secret-value" not in json.dumps(stored)
+    assert "supersecret" not in json.dumps(stored)
+    again = _parse_response(stored, None)
+    assert again.tool_calls[0]["arguments"]["prompt"] == "价格是$100"
+    assert _redacted_raw({"not": "a-choice-list"})["choices"][0]["message"]["tool_calls"] == []
+
+
+def test_invalid_json_sink_is_a_bounded_summary():
+    seen = []
+
+    def handle(request):
+        return httpx.Response(200, content=b"not-json " + b"Bearer supersecret-token " + (b"x" * 2000))
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
+            async def sink(payload):
+                seen.append(payload)
+            with pytest.raises(ModelCallError):
+                await ChatCompletionsProvider({"agent": {"apiKey": "secret"}}, client).complete(
+                    route(), [], [], response_sink=sink)
+    asyncio.run(run())
+    assert seen[0]["invalid_json"] is True
+    assert seen[0]["bytes"] > 500
+    assert len(seen[0]["excerpt"]) <= 500
+    assert "supersecret" not in seen[0]["excerpt"]
+
+
 def test_route_configuration_snapshot_and_secret_separation(tmp_path):
     assert load_routes(None) == []
     path = tmp_path / "routes.json"

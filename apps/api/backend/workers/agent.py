@@ -1,10 +1,9 @@
 """Dedicated Agent task: one durable phase per delivery, no automatic paid retry."""
-import json
-import logging
 import os
 from pathlib import Path
 import uuid
 
+from backend.agent.config import load_credentials
 from backend.agent.providers import ChatCompletionsProvider
 from backend.agent.runtime import AgentService
 from backend.workers.celery_app import celery_app
@@ -18,14 +17,7 @@ def advance_agent(run_id: str) -> dict:
     ident = uuid.UUID(run_id)
 
     async def execute():
-        path = os.environ.get("AIVERO_CREDENTIALS_FILE")
-        try:
-            credentials = json.loads(Path(path).read_text()) if path else {}
-        except (OSError, ValueError):
-            logging.getLogger(__name__).error("Agent credentials registry is unreadable or invalid")
-            credentials = {}
-        if not isinstance(credentials, dict):
-            credentials = {}
+        credentials = load_credentials(os.environ.get("AIVERO_CREDENTIALS_FILE"))
         model = ChatCompletionsProvider(credentials, client=runtime.http(),
             local_config_root=Path(os.environ["SWARMUI_DATA_DIR"])
                 if os.environ.get("AIVERO_RUNTIME_ENVIRONMENT") == "development" else None)

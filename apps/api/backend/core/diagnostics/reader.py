@@ -15,7 +15,7 @@ from backend.core.orm import (
     CoreEvent,
     CoreSessionMessage,
 )
-from backend.core.supervisor.orm import Invocation
+from backend.core.supervisor.orm import Invocation, PlannerModelCall
 from backend.agent.orm import HostCreditLedger
 from .contracts import Settings
 from backend.core.orm import CoreTaskDependency
@@ -181,6 +181,15 @@ async def page(tx, run, section, cursor=None, *, settings=None):
         # Exclude invocation input catalogs/snapshots entirely: callers can inspect the pinned Plan, not execution credentials.
         if section == "calls":
             data.pop("context", None)
+            call = await tx.scalar(select(PlannerModelCall).where(PlannerModelCall.invocation_id == row.id))
+            if call is not None:
+                data["model_call"] = redact(serial({
+                    "id": call.id, "status": call.status, "model": call.model, "route": call.route,
+                    "template_version": call.template_version, "template_hash": call.template_hash,
+                    "tool_catalog_hash": call.tool_catalog_hash, "usage": call.usage,
+                    "raw_stored": call.raw_response is not None,
+                    "created_at": call.created_at, "finished_at": call.finished_at,
+                }))
         spans.append(
             {
                 "id": str(row.id),

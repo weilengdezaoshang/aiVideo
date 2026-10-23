@@ -1,11 +1,12 @@
 """Database checkpoints around planner calls; event handlers never wait for planners."""
 import asyncio
+import logging
 import uuid
 from datetime import timedelta
-from sqlalchemy import select, text, exists, update
+from sqlalchemy import func, select, text, exists, update
 from sqlalchemy.orm import aliased
 from sqlalchemy.dialects.postgresql import insert
-from backend.agent.orm import HostCreditAccount
+from backend.agent.orm import HostCreditAccount, HostCreditLedger
 from backend.core.contracts import TaskInput
 from backend.core.orm import CoreRun, CorePlan, CoreTask, CoreTaskDependency, CoreSession, CoreSessionMessage, CoreEvent
 from backend.core.store import transition, create_task
@@ -13,15 +14,22 @@ from backend.core.tools.store import load_catalog
 from backend.core.tools.contracts import VersionLock
 from backend.core.events.store import emit
 from backend.core.execution.engine import record_admission, now
+from backend.core.execution.orm import CanvasWrite
 from .orm import Invocation
 from .contracts import Settings, PlannerResult, Step
-from .planners import RulePlanner
-from .reviewer import review
-from .service import TERMINAL, TASK_TERMINAL, message, digest
+from .planners import FakePlanner
+from .reviewer import _sources, conversion_rejection, effective_invariants, merge_proposed, review
+from .tool_calls import clarify_unproven_video_duration
+from .context import ContextLimitError
+from .replies import ask_text, blocked, completed, failed, opening, place_label, read_summary
+from .service import TERMINAL, TASK_TERMINAL, latest_plan, message, digest
+from .wiring import planner_for_lock, watchdog_seconds
+
+_AUDIT = logging.getLogger("backend.core.supervisor.audit")
 
 
 async def wake(tx, context):
-    if context.run.version_lock.get("supervisor") != "rule-v1" or context.run.status in TERMINAL or context.event.event_type in {"plan_rejected", "plan_written", "asset_changed", "conflict"}:
+    if context.run.version_lock.get("supervisor") not in {"rule-v1", "llm-v1"} or context.run.status in TERMINAL or context.event.event_type in {"plan_rejected", "plan_written", "asset_changed", "conflict"}:
         return
     await tx.execute(insert(Invocation).values(id=uuid.uuid4(), run_id=context.run.id,
         event_id=context.event.id, attempt=0, status="pending", context={}, failures=0)
@@ -54,11 +62,108 @@ async def stop(tx, run, status, text_value, key):
     await message(tx, run, text_value, key)
 
 
+def _clarification_result(run):
+    message = run.snapshot["request"]["message"]
+    plan = {"goal": message, "writer": "llm", "result_type": "clarify", "steps": [
+        {"id": "t1", "kind": "ask_user", "parameters": {"form": {"id": "clarify", "fields": [
+            {"id": "detail", "type": "text", "label": "请补充无法从原话确定的要求", "required": True}]}}}]}
+    return PlannerResult(plan=plan, invariants=run.invariants, confidence=1,
+                         raw_output={"writer": "llm", "clarification": True}, tokens=0)
+
+
+async def _refunded(tx, run_id):
+    value = await tx.scalar(select(func.coalesce(func.sum(HostCreditLedger.refunded), 0)).where(HostCreditLedger.core_run_id == run_id))
+    return int(value or 0)
+
+
+async def _cancel_requested(tx, run_id):
+    return await tx.scalar(select(CoreEvent.id).where(CoreEvent.run_id == run_id,
+        CoreEvent.event_type.in_(("user_cancelled", "user_interrupt"))).limit(1))
+
+
+async def _already_clarified(tx, run_id):
+    rows = await tx.scalars(select(Invocation.context).where(Invocation.run_id == run_id))
+    return any(isinstance(item, dict) and item.get("clarification_submitted") for item in rows)
+
+
+_FAILURE_STATUSES = frozenset({"blocked", "unknown", "unavailable"})
+
+
+def _planner_failure_status(result):
+    raw = result.raw_output or {}
+    failure = raw.get("planner_failure")
+    if isinstance(failure, dict) and failure.get("status") in _FAILURE_STATUSES:
+        return failure["status"]
+    layer = raw.get("cascade_layer")
+    if layer == "rule_blocked":
+        return "blocked"
+    if layer == "rule_unknown":
+        return "unknown"
+    if layer == "rule_unavailable":
+        return "unavailable"
+    return None
+
+
+def _usage_view(result):
+    raw = result.raw_output or {}
+    usage = raw.get("usage") if isinstance(raw.get("usage"), dict) else {}
+    if usage.get("unknown") is True:
+        return True, 0
+    tokens = usage.get("total_tokens")
+    if isinstance(tokens, int) and tokens >= 0 and not isinstance(tokens, bool):
+        return False, tokens
+    if result.tokens:
+        return False, int(result.tokens)
+    return False, 0
+
+
+def account_planner_usage(run, invocation, result):
+    """Count returned usage once. invocation.result and context stay the original dump."""
+
+    error = dict(run.error or {})
+    bag = dict(error.get("planner_usage") or {})
+    accounted = [str(item) for item in bag.get("accounted_invocations") or []]
+    ident = str(invocation.id)
+    if ident in accounted:
+        remaining = run.tokens_limit - run.tokens_used
+        return remaining <= 0
+    unknown, known = _usage_view(result)
+    bag["known_tokens"] = int(bag.get("known_tokens") or 0) + (0 if unknown else known)
+    bag["unknown_calls"] = int(bag.get("unknown_calls") or 0) + (1 if unknown else 0)
+    accounted.append(ident)
+    bag["accounted_invocations"] = accounted
+    remaining = run.tokens_limit - run.tokens_used
+    over = False
+    if not unknown:
+        charged = min(known, remaining)
+        run.tokens_used += charged
+        over = known > remaining
+    error["planner_usage"] = bag
+    run.error = error
+    return over
+
+
 class Supervisor:
-    def __init__(self, factory, planner=None, *, settings=None):
+    def __init__(self, factory, planner=None, *, settings=None, credentials=None, local_root=None, routes=None):
         self.factory = factory
-        self.planner = planner or RulePlanner()
+        self.planner = planner
         self.settings = settings or Settings()
+        self.credentials = credentials or {}
+        self.local_root = local_root
+        self.routes = list(routes or [])
+        self.on_raw_stored = None
+
+    def _legacy(self, run):
+        return (run.version_lock or {}).get("supervisor") != "llm-v1" or isinstance(self.planner, FakePlanner)
+
+    def planner_for(self, run):
+        return planner_for_lock(run, factory=self.factory, settings=self.settings, credentials=self.credentials,
+            local_root=self.local_root, explicit=self.planner)
+
+    def _watchdog(self, run):
+        if self._legacy(run):
+            return max(self.settings.lease_seconds, self.settings.planner_timeout_seconds)
+        return watchdog_seconds(run, self.settings)
 
     async def context(self, tx, run, invocation):
         session = await tx.get(CoreSession, run.session_id)
@@ -66,14 +171,29 @@ class Supervisor:
             .order_by(CoreSessionMessage.sequence.desc()).limit(self.settings.context_messages)))
         tasks = list(await tx.scalars(select(CoreTask).where(CoreTask.run_id == run.id)))
         event = await tx.get(CoreEvent, invocation.event_id)
-        plan = await tx.get(CorePlan, run.current_plan_id) if run.current_plan_id else None
+        plan = await latest_plan(tx, run.id)
         catalog = await load_catalog(tx, run.version_lock["tool_catalog"]["version"])
+        ordered = list(reversed(messages))
+        reasons = list(invocation.context.get("review_reasons") or [])
+        owned = list(await tx.scalars(select(CoreSessionMessage).where(
+            CoreSessionMessage.session_id == session.id, CoreSessionMessage.run_id == run.id,
+            CoreSessionMessage.role == "user").order_by(CoreSessionMessage.sequence)))
+        owned_messages = [{"role": m.role, "id": str(m.id), "run_id": str(m.run_id) if m.run_id else None,
+            "content": m.content} for m in owned]
+        _texts, fields = _sources(run, owned_messages)
         return {"tools": [t.model_dump(mode="json") for t in catalog.snapshot.tools], "invocation_key": str(invocation.id), "attempt": invocation.attempt,
-            "request": run.snapshot["request"], "snapshot": run.snapshot, "summary": session.summary,
-            "messages": [m.content for m in reversed(messages)], "invariants": run.invariants,
-            "plan": plan.proposal if plan else None, "tasks": [{"id": t.task_key, "status": t.status} for t in tasks],
+            "run_id": str(run.id),
+            "request": run.snapshot["request"], "snapshot": run.snapshot, "viewport": run.snapshot.get("viewport"),
+            "summary": session.summary, "language": session.language,
+            "recent_outputs": list(run.snapshot.get("recent_assets") or []),
+            "form_answers": fields,
+            "messages": [{"role": m.role, "id": str(m.id), "run_id": str(m.run_id) if m.run_id else None, "content": m.content} for m in ordered],
+            "invariants": effective_invariants(run, plan),
+            "plan": plan.proposal if plan else None, "tasks": [{"id": t.task_key, "status": t.status, "kind": t.kind} for t in tasks],
             "event": {"id": str(event.id), "type": event.event_type},
-            "review_reasons": invocation.context.get("review_reasons", [])}
+            "events": [{"type": "review", "reasons": reasons}] if reasons else [],
+            "scope": run.scope, "user": {"id": run.user_id}, "review_reasons": reasons,
+            "prompt_version": run.version_lock.get("prompt_version"), "prompt_hash": run.version_lock.get("prompt_hash")}
 
     async def tick(self):
         token = uuid.uuid4()
@@ -81,10 +201,10 @@ class Supervisor:
             await tx.execute(text("SELECT set_config('lock_timeout', :v, true)"), {"v": f"{self.settings.lock_timeout_ms}ms"})
             older = aliased(Invocation)
             row = (await tx.execute(select(Invocation, CoreRun).join(CoreRun, CoreRun.id == Invocation.run_id)
-                .where(Invocation.status != "done", Invocation.next_at <= now(),
+                .where(Invocation.status != "done", Invocation.next_at <= func.now(),
                     ~exists(select(older.id).where(older.run_id == Invocation.run_id, older.status != "done",
                         (older.created_at < Invocation.created_at) | ((older.created_at == Invocation.created_at) & (older.id < Invocation.id)))),
-                    (Invocation.lease_until.is_(None) | (Invocation.lease_until <= now())))
+                    (Invocation.lease_until.is_(None) | (Invocation.lease_until <= func.now())))
                 .order_by(Invocation.created_at, Invocation.id).limit(1).with_for_update(of=CoreRun, skip_locked=True))).first()
             if not row:
                 return False
@@ -120,7 +240,15 @@ class Supervisor:
                 return True
             tasks = list(await tx.scalars(select(CoreTask).where(CoreTask.run_id == run.id)))
             if any(t.status in {"failed", "blocked_by_model"} for t in tasks):
-                await stop(tx, run, "failed", "有步骤执行失败，已保留成功产物并停止后续步骤。", "failed:" + str(run.id))
+                session = await tx.get(CoreSession, run.session_id)
+                if self._legacy(run):
+                    failure = "有步骤执行失败，已保留成功产物并停止后续步骤。"
+                else:
+                    broken = [t for t in tasks if t.status in {"failed", "blocked_by_model"}]
+                    broken.sort(key=lambda task: (getattr(task, "created_at", None) is None, getattr(task, "created_at", None), str(task.id)))
+                    code = ((broken[0].error or {}).get("code") if broken else None)
+                    failure = failed(session.language if session else None, await _refunded(tx, run.id), code=code)
+                await stop(tx, run, "failed", failure, "failed:" + str(run.id))
                 invocation.status = "done"
                 return True
             if invocation.status == "pending" and invocation.attempt == 0:
@@ -133,33 +261,60 @@ class Supervisor:
                 await self.advance(tx, run, invocation, tasks)
                 invocation.status = "done"
                 return True
+            if run.status == "paused" and run.pause_reason == "waiting_user":
+                if any(t.status == "waiting_user" for t in tasks):
+                    invocation.status = "done"
+                    return True
+                await transition(tx, "run", run.id, run.version, run.resume_state, causation_id=invocation.event_id)
+                if run.status == "awaiting_confirm":
+                    await transition(tx, "run", run.id, run.version, "running", causation_id=invocation.event_id)
             if run.status == "created":
                 await transition(tx, "run", run.id, run.version, "planning", causation_id=invocation.event_id)
             if not invocation.result:
                 if not invocation.context.get("invocation_key"):
                     invocation.context = await self.context(tx, run, invocation)
+                watchdog = self._watchdog(run)
                 invocation.started_at = invocation.started_at or now()
                 invocation.status = "calling"
-                invocation.lease_token, invocation.lease_until = token, now() + timedelta(seconds=max(self.settings.lease_seconds, self.settings.planner_timeout_seconds))
-                ident, context = invocation.id, invocation.context
+                invocation.lease_token, invocation.lease_until = token, now() + timedelta(seconds=watchdog)
+                catalog = await load_catalog(tx, run.version_lock["tool_catalog"]["version"],
+                    expected_lock=VersionLock.model_validate(run.version_lock["tool_catalog"]))
+                ident, context = invocation.id, {**invocation.context, "catalog": catalog}
+                planner = self.planner_for(run)
             else:
                 await self.accept(tx, run, invocation)
                 return True
         # No aggregate transaction or Run lock is held across plan().
         try:
-            result = await asyncio.wait_for(self.planner.plan(context), self.settings.planner_timeout_seconds)
+            result = await asyncio.wait_for(planner.plan(context), watchdog)
             result = PlannerResult.model_validate(result)
-        except Exception as exc:
+        except ContextLimitError:
             async with self.factory.begin() as tx:
                 invocation = await tx.get(Invocation, ident, with_for_update=True)
                 if invocation.lease_token == token:
+                    run = await tx.get(CoreRun, invocation.run_id, with_for_update=True)
+                    invocation.lease_token = invocation.lease_until = None
+                    invocation.error = "ContextLimitError"
+                    await stop(tx, run, "failed", "选中内容超出上下文上限，已停止，未调用模型。", "context-limit:" + str(run.id))
+                    invocation.status = "done"
+            return True
+        except Exception as exc:
+            unknown = bool(getattr(exc, "unknown", False))
+            async with self.factory.begin() as tx:
+                invocation = await tx.get(Invocation, ident, with_for_update=True)
+                if invocation.lease_token == token:
+                    run = await tx.get(CoreRun, invocation.run_id, with_for_update=True)
                     invocation.failures += 1
                     invocation.error = type(exc).__name__
                     invocation.lease_token = invocation.lease_until = None
+                    if await _cancel_requested(tx, run.id):
+                        invocation.status = "done"
+                        _AUDIT.info("supervisor cancelled run=%s invocation=%s tokens_kept=true", run.id, invocation.id)
+                        return True
                     invocation.next_at = now() + timedelta(seconds=self.settings.retry_seconds)
-                    if invocation.failures >= self.settings.planner_failures:
-                        run = await tx.get(CoreRun, invocation.run_id, with_for_update=True)
-                        await stop(tx, run, "failed", "计划生成失败，已停止本次运行。", "planner-error:" + str(run.id))
+                    if unknown or invocation.failures >= self.settings.planner_failures:
+                        text_value = "模型请求结果未知，未自动重试。" if unknown else "计划生成失败，已停止本次运行。"
+                        await stop(tx, run, "failed", text_value, "planner-error:" + str(run.id))
                         invocation.status = "done"
             return True
         # Save the exact raw output independently; a kill after this point cannot call the planner again.
@@ -169,31 +324,100 @@ class Supervisor:
                 return True
             invocation.returned_at = now()
             invocation.result = result.model_dump(mode="json")
-            invocation.status = "returned"
             invocation.lease_token = invocation.lease_until = None
+            run = await tx.get(CoreRun, invocation.run_id)
+            if await _cancel_requested(tx, run.id):
+                if not self._legacy(run):
+                    account_planner_usage(run, invocation, result)
+                invocation.status = "done"
+                _AUDIT.info("supervisor usage run=%s invocation=%s tokens=%s", run.id, invocation.id, result.tokens)
+                return True
+            invocation.status = "returned"
+        if self.on_raw_stored is not None:
+            self.on_raw_stored(ident)
         return True
 
     async def accept(self, tx, run, invocation):
         result = PlannerResult.model_validate(invocation.result)
-        if result.tokens > run.tokens_limit - run.tokens_used:
+        session = await tx.get(CoreSession, run.session_id)
+        language = session.language if session else None
+        if await _cancel_requested(tx, run.id):
+            if not self._legacy(run):
+                account_planner_usage(run, invocation, result)
+            invocation.status = "done"
+            _AUDIT.info("supervisor usage run=%s invocation=%s tokens=%s", run.id, invocation.id, result.tokens)
+            return
+        over = False
+        if self._legacy(run):
+            if result.tokens > run.tokens_limit - run.tokens_used:
+                await stop(tx, run, "failed", "计划输出超过 token 预算，已停止。", "tokens:" + str(run.id))
+                invocation.status = "done"
+                return
+            run.tokens_used += result.tokens
+        else:
+            over = account_planner_usage(run, invocation, result)
+        failure = None if self._legacy(run) else _planner_failure_status(result)
+        catalog = await load_catalog(tx, run.version_lock["tool_catalog"]["version"],
+            expected_lock=VersionLock.model_validate(run.version_lock["tool_catalog"]))
+        if failure:
+            account = await tx.get(HostCreditAccount, run.workspace_id)
+            approved = await latest_plan(tx, run.id)
+            merged = effective_invariants(run, approved)
+            verdict = review(result.plan, run, catalog, account.available if account else 0, invariants=merged)
+            invocation.reviewed_at = now()
+            invocation.review = verdict
+            version = (await tx.scalar(select(func.max(CorePlan.version)).where(CorePlan.run_id == run.id)) or 0) + 1
+            plan = CorePlan(run_id=run.id, version=version, writer=result.plan.writer, model_call_ref=str(invocation.id),
+                raw_output=result.raw_output, proposal=result.plan.model_dump(mode="json"),
+                content_hash=digest(result.plan.model_dump(mode="json")), rationale={"confidence": result.confidence},
+                link_constraints={"constraints": verdict["execution_constraints"], "approved_invariants": merged},
+                result_type="answer_only", stage="execute", milestones=[], self_check=verdict,
+                expansion_rules={}, version_lock=run.version_lock)
+            tx.add(plan)
+            await tx.flush()
+            run.current_plan_id = plan.id
+            text_value = result.plan.answer or (blocked(language, await _refunded(tx, run.id)) if failure == "blocked"
+                else "计划生成失败，已停止本次运行。")
+            await stop(tx, run, "failed", text_value, "planner-failure:" + str(run.id))
+            invocation.status = "done"
+            return
+        if over:
             await stop(tx, run, "failed", "计划输出超过 token 预算，已停止。", "tokens:" + str(run.id))
             invocation.status = "done"
             return
-        run.tokens_used += result.tokens
-        catalog = await load_catalog(tx, run.version_lock["tool_catalog"]["version"],
-            expected_lock=VersionLock.model_validate(run.version_lock["tool_catalog"]))
-        if run.mode == "plan" and not any(s.tool == "detect_subject" or s.kind == "ask_user" for s in result.plan.steps):
+        if (run.mode == "plan" and result.plan.result_type == "generate" and result.plan.steps
+                and not any(s.tool == "detect_subject" or s.kind == "ask_user" for s in result.plan.steps)):
             # A program-written confirmation ticket goes through the same reviewer as every writer.
             ident = "t" + str(max(int(s.id[1:]) for s in result.plan.steps) + 1)
             confirmation = Step(id=ident, kind="ask_user", parameters={"question": "是否执行此计划？",
                 "options": [{"id": "confirm", "label": "确认执行"}, {"id": "cancel", "label": "取消"}], "plan_confirmation": True})
             result = result.model_copy(update={"plan": result.plan.model_copy(update={"steps": [confirmation, *[
                 s.model_copy(update={"depends_on": [ident]}) if not s.depends_on else s for s in result.plan.steps]]})})
+        messages = list(await tx.scalars(select(CoreSessionMessage).where(CoreSessionMessage.session_id == run.session_id)
+            .order_by(CoreSessionMessage.sequence)))
+        if not self._legacy(run):
+            mapped = [{"role": m.role, "id": str(m.id), "run_id": str(m.run_id) if m.run_id else None,
+                "content": m.content} for m in messages]
+            _texts, fields = _sources(run, mapped)
+            duration_ctx = {"request": run.snapshot.get("request") or {}, "snapshot": run.snapshot,
+                "run_id": str(run.id), "form_answers": fields,
+                "invariants": effective_invariants(run, await latest_plan(tx, run.id)),
+                "messages": mapped}
+            clarified = clarify_unproven_video_duration(result.plan, catalog, catalog.lock, duration_ctx)
+            if clarified is not None:
+                result = result.model_copy(update={"plan": clarified})
+        approved = await latest_plan(tx, run.id)
+        base = effective_invariants(run, approved)
+        merged, conflicts = merge_proposed(run, result.invariants, messages, frozen=approved is not None, base=base)
         account = await tx.get(HostCreditAccount, run.workspace_id)
-        verdict = review(result.plan, run, catalog, account.available if account else 0)
-        if result.invariants != run.invariants:
-            verdict["verdict"] = "reject"
-            verdict["reasons"].append({"gate": "intent", "code": "invariants_changed"})
+        forced = None if self._legacy(run) else conversion_rejection(result.raw_output)
+        if forced is not None:
+            verdict = forced
+        elif conflicts:
+            verdict = {"execution_constraints": [], "verdict": "reject", "reasons": conflicts, "quoted_credits": 0,
+                "checks": {"legal": True, "types": True, "intent": False}}
+        else:
+            verdict = review(result.plan, run, catalog, account.available if account else 0, invariants=merged)
         invocation.reviewed_at = now()
         invocation.review = verdict
         invocation.status = "done"
@@ -202,25 +426,39 @@ class Supervisor:
             if invocation.attempt < self.settings.review_retries:
                 tx.add(Invocation(run_id=run.id, event_id=invocation.event_id, attempt=invocation.attempt + 1,
                     context={"review_reasons": verdict["reasons"]}))
+            elif (not self._legacy(run) and not invocation.context.get("clarification_submitted")
+                    and not await _already_clarified(tx, run.id)):
+                clarified = _clarification_result(run)
+                tx.add(Invocation(run_id=run.id, event_id=invocation.event_id, attempt=invocation.attempt + 1,
+                    status="returned", result=clarified.model_dump(mode="json"),
+                    context={"clarification_submitted": True, "review_reasons": verdict["reasons"]}))
+                return
             else:
                 await stop(tx, run, "failed", "计划连续三道审核未通过，已停止；没有执行未获准的步骤。",
                     "rejected:" + str(run.id))
             return
-        plan = CorePlan(run_id=run.id, version=1, writer="rule", model_call_ref=str(invocation.id),
+        version = (await tx.scalar(select(func.max(CorePlan.version)).where(CorePlan.run_id == run.id)) or 0) + 1
+        stored_type = "answer_only" if result.plan.result_type == "answer_only" else "generate"
+        plan = CorePlan(run_id=run.id, version=version, writer=result.plan.writer, model_call_ref=str(invocation.id),
             raw_output=result.raw_output, proposal=result.plan.model_dump(mode="json"),
             content_hash=digest(result.plan.model_dump(mode="json")), rationale={"confidence": result.confidence},
-            link_constraints={"constraints": verdict["execution_constraints"]}, result_type="generate", stage="execute", milestones=[], self_check=verdict,
+            link_constraints={"constraints": verdict["execution_constraints"], "approved_invariants": merged}, result_type=stored_type, stage="execute", milestones=[], self_check=verdict,
             expansion_rules={}, version_lock=run.version_lock)
         tx.add(plan)
         await tx.flush()
         run.current_plan_id = plan.id
+        if result.plan.result_type == "answer_only":
+            await transition(tx, "run", run.id, run.version, "running", causation_id=invocation.event_id)
+            await transition(tx, "run", run.id, run.version, "completed", causation_id=invocation.event_id)
+            await message(tx, run, result.plan.answer, "answer:" + str(plan.id))
+            return
         tasks = {}
         for step in result.plan.steps:
             tool = catalog.get_tool(step.tool, catalog.lock.version) if step.tool else None
             task = await create_task(tx, TaskInput(run_id=run.id, plan_id=plan.id, plan_version=plan.version,
                 task_key=step.id, kind=step.kind, tool_ref=step.tool, tool_version=tool.version if tool else None,
                 parameters=step.parameters, idempotency_key=str(plan.id) + ":" + step.id,
-                scope=run.scope, invariants=run.invariants))
+                scope=run.scope, invariants=merged))
             tasks[step.id] = task
             await transition(tx, "task", task.id, task.version, "validated", causation_id=invocation.event_id)
             if tool:
@@ -231,10 +469,18 @@ class Supervisor:
                 tx.add(CoreTaskDependency(task_id=tasks[step.id].id, depends_on_id=tasks[dependency].id,
                     run_id=run.id, plan_id=plan.id))
         await tx.flush()
-        await transition(tx, "run", run.id, run.version, "awaiting_confirm" if any(s.parameters.get("plan_confirmation") for s in result.plan.steps) else "running", causation_id=invocation.event_id)
+        target = "awaiting_confirm" if any(s.parameters.get("plan_confirmation") for s in result.plan.steps) else "running"
+        if run.status != target:
+            await transition(tx, "run", run.id, run.version, target, causation_id=invocation.event_id)
         await emit(tx, "plan_written", run.id, causation_id=invocation.event_id, ids={"plan_id": plan.id})
         await self.advance(tx, run, invocation, list(tasks.values()))
-        await message(tx, run, "计划已审核通过，开始执行。", "plan:" + str(plan.id))
+        confirm = any(s.parameters.get("plan_confirmation") for s in result.plan.steps)
+        if self._legacy(run):
+            spoken = "计划已审核通过，开始执行。"
+        else:
+            spoken = opening(language, int(verdict.get("quoted_credits") or 0), confirm=confirm, goal=result.plan.goal)
+        _AUDIT.info("supervisor plan run=%s invocation=%s plan=%s quoted=%s", run.id, invocation.id, plan.id, verdict.get("quoted_credits"))
+        await message(tx, run, spoken, "plan:" + str(plan.id))
 
     async def advance(self, tx, run, invocation, tasks):
         from .subjects import handle_subjects
@@ -249,7 +495,22 @@ class Supervisor:
             return
         if tasks and all(t.status in TASK_TERMINAL for t in tasks):
             await transition(tx, "run", run.id, run.version, "completed", causation_id=invocation.event_id)
-            await message(tx, run, "已收到补充信息。请携带明确要求发起下一次任务。" if all(t.kind == "ask_user" for t in tasks) else "本次任务已完成。", "complete:" + str(run.id))
+            if all(t.kind == "ask_user" for t in tasks):
+                done_text = "已收到补充信息。请携带明确要求发起下一次任务。"
+            elif self._legacy(run):
+                done_text = "本次任务已完成。"
+            else:
+                session = await tx.get(CoreSession, run.session_id)
+                writes = (await tx.scalars(select(CanvasWrite).where(CanvasWrite.task_id.in_([t.id for t in tasks])))).all()
+                places = [place_label(row.rect) for row in writes if isinstance(row.rect, dict) and row.rect]
+                language = session.language if session else None
+                done_text = completed(language, places)
+                summaries = [read_summary(language, task.tool_ref, task.output or {})
+                    for task in tasks if task.status == "succeeded" and task.tool_ref and isinstance(task.output, dict)]
+                summaries = [item for item in summaries if item]
+                if summaries:
+                    done_text = done_text + "\n" + "\n".join(summaries)
+            await message(tx, run, done_text, "complete:" + str(run.id))
             return
         by_id = {t.id: t for t in tasks}
         dependencies = list(await tx.scalars(select(CoreTaskDependency).where(CoreTaskDependency.run_id == run.id)))
@@ -262,7 +523,8 @@ class Supervisor:
                 task.waiting = task.parameters
                 await transition(tx, "task", task.id, task.version, "waiting_user", causation_id=invocation.event_id)
                 await transition(tx, "run", run.id, run.version, "paused", reason="waiting_user", causation_id=invocation.event_id)
-                await message(tx, run, task.parameters["question"], "ask:" + str(task.id))
+                session = await tx.get(CoreSession, run.session_id)
+                await message(tx, run, ask_text(task.parameters or {}, session.language if session else None), "ask:" + str(task.id))
                 return
             if task.tool_ref == "cutout":
                 continue  # Subject selection code is the sole release gate for this step.

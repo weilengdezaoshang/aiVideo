@@ -27,6 +27,7 @@ class WorkerSettings(BaseSettings):
     export_width: int = Field(default=1280, ge=64, le=4096)
     export_height: int = Field(default=720, ge=64, le=4096)
     callback_max_bytes: int = Field(default=65536, gt=0)
+    read_max_bytes: int = Field(default=16384, gt=0)
     ticket_key: str = Field(default="", repr=False)  # Fernet key supplied by explicit secret mount/env; never stored in snapshots.
 
 

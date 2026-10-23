@@ -64,3 +64,20 @@ def load_routes(path: Path | str | None) -> list[AgentRoute]:
         return sorted(routes, key=lambda route: route.provider != "deepseek")
     except (OSError, ValueError, TypeError) as error:
         raise ValueError("Invalid Agent route configuration") from error
+
+
+def load_credentials(path: Path | str | None) -> dict:
+    """Shared deployment registry reader. Never log file contents or credentials."""
+    if not path:
+        return {}
+    try:
+        raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        import logging
+        logging.getLogger(__name__).error("Agent credentials registry is unreadable or invalid")
+        return {}
+    if not isinstance(raw, dict):
+        import logging
+        logging.getLogger(__name__).error("Agent credentials registry must be an object")
+        return {}
+    return raw
