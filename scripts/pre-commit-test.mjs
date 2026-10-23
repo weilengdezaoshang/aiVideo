@@ -4,6 +4,7 @@
 // 文件清单用 NUL 分隔(git diff --cached --name-only -z),覆盖新增/修改/删除/重命名,
 // 不做 ACMR 过滤(删除与新旧路径都参与匹配),正确处理空格与中文文件名。
 
+import { randomBytes } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -15,6 +16,11 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 // 首个匹配的套件决定归属;后端路径必须先于 tests/ 的宽匹配(用负向先行断言排除)。
 const SUITES = [
   {
+    name: 'planner',
+    // 提示词、Planner 协议与标注集变更才跑离线门禁。不设准确率门槛。
+    test: /^(apps\/api\/backend\/evaluation\/planner_|apps\/api\/backend\/core\/supervisor\/(planners\.py|contracts\.py|context\.py|prompts\.py|prompts\/)|tests\/fixtures\/llm-planner-cases\.jsonl$)/,
+  },
+  {
     name: 'backend',
     // 后端代码、后端测试、启动器与依赖锁定 → 全量后端快速套件(-x 首败即停)。
     test: /^(apps\/api\/backend\/|tests\/backend\/|scripts\/backend\.py$|scripts\/eval\.py$|requirements[^/]*\.txt$)/,
@@ -22,7 +28,7 @@ const SUITES = [
   {
     name: 'web',
     // 前端、前端测试、共享配置与 hook 脚本本身 → 全量前端套件(秒级,含 hook 测试)。
-    test: /^(apps\/web\/|tests\/(?!backend\/)|apps\/api\/[^/]+\.tsx?$|package(-lock)?\.json$|tsconfig[^/]*\.json$|eslint\.config\.mjs$|scripts\/(build-react|e2e-smoke)\.(ts|mjs)$|scripts\/commit-lint\.mjs$|scripts\/pre-commit-test\.mjs$|\.husky\/)/,
+    test: /^(apps\/web\/|tests\/(?!backend\/|fixtures\/llm-planner-cases\.jsonl$)|apps\/api\/[^/]+\.tsx?$|package(-lock)?\.json$|tsconfig[^/]*\.json$|eslint\.config\.mjs$|scripts\/(build-react|e2e-smoke)\.(ts|mjs)$|scripts\/commit-lint\.mjs$|scripts\/pre-commit-test\.mjs$|\.husky\/)/,
   },
 ]
 
@@ -85,6 +91,19 @@ function suiteCommands(name, stagedFiles, cwd) {
     }
     commands.push({ cmd: pythonExe(), args: ['-m', 'pytest', '-q', '-x', 'tests/backend'] })
     return commands
+  }
+  if (name === 'planner') {
+    return [
+      {
+        cmd: pythonExe(),
+        args: [
+          '-m',
+          'backend.evaluation.planner_gate',
+          '--output',
+          join(tmpdir(), `aivideo-planner-hook-${Date.now()}-${randomBytes(4).toString('hex')}`),
+        ],
+      },
+    ]
   }
   if (name === 'reliability') {
     return [

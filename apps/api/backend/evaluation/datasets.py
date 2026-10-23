@@ -93,6 +93,16 @@ def validate_source_params(cases: list[CaseVersion]) -> list[str]:
             if provider != "stub":
                 problems.append(f"{case.caseId}:agent_flow 只允许 stub 生图，当前为 {provider}")
             continue
+        if case.taskType == "planner":
+            params = case.input.params
+            if params.get("kind") != "planner":
+                problems.append(f"{case.caseId}:planner 需要 params.kind=planner")
+            planner_case = params.get("plannerCase")
+            if not isinstance(planner_case, dict):
+                problems.append(f"{case.caseId}:planner 缺少 params.plannerCase")
+            elif set(planner_case) & {"steps", "expect", "mocks"}:
+                problems.append(f"{case.caseId}:planner 不能混入 agent_flow 字段")
+            continue
         unknown = set(case.input.params) - SUPPORTED_INPUT_PARAMS
         if unknown:
             problems.append(f"{case.caseId}:不支持的生成参数 {sorted(unknown)}")

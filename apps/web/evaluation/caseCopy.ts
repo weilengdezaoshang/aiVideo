@@ -8,6 +8,7 @@ export const labels: Record<string, string> = {
   L5: 'L5 · 排队与限流',
   L7: 'L7 · 生成后反思',
   agent_flow: 'Agent 流程',
+  planner: 'Planner 计划',
   text_to_image: '文生图',
   t2i: '文生图',
   smoke: '基础冒烟',

@@ -32,6 +32,31 @@ qwen-vl 判分器默认 `https://dashscope.aliyuncs.com/compatible-mode/v1` + `q
 3. 扩集规则:全部中文、来自真实使用措辞(不写"基准考题腔");每个桶 ≥15 条才算可对比;改集必须换 run 对比,不允许用旧分数混排。
 4. 管线测试(`tests/backend/test_eval_pipeline.py`)已纳入 `npm run verify`,评测代码自身的回归是零成本的。
 
+## Planner 计划评测（96 条标注）
+
+独立任务类型 `planner`，不进入文生图画质排行，也不复用 Node Memory `agent_flow`。标注源是 `tests/fixtures/llm-planner-cases.jsonl`。冻结、执行和判分走现有 `EvaluationRunner`。
+
+```bash
+PYTHONPATH=apps/api .venv/bin/python - <<'PY'
+from pathlib import Path
+from backend.evaluation.planner_dataset import DATASET_ID, write_planner_dataset
+from backend.evaluation.runner import EvaluationRunner
+root = Path("/tmp") / "aivideo-planner-rule-baseline-example"
+source = write_planner_dataset(root / "planner-cases.jsonl")
+runner = EvaluationRunner(root, store=root / "store")
+runner.freeze_dataset(source, DATASET_ID, split="regression")
+manifest = runner.create_run("planner-rule", DATASET_ID, mode="mock", sandbox_config={"plannerMode": "rule"})
+runner.execute_run(manifest.runId)
+print(runner.run_dir(manifest.runId) / "planner-summary.json")
+PY
+```
+
+`plannerMode=rule` 调用 `RulePlanner.plan` 和现有审核器。`plannerMode=llm` 在没有注入 factory 时读取 `wiring.deployment_routes`（`AIVERO_PRODUCTION_AGENT_ROUTES_FILE`）和 `load_credential_map`（`AIVERO_CREDENTIALS_FILE`），用既有 `ChatCompletionsProvider` 与 `LLMPlanner`。可选 `plannerRouteId`。CLI 写在 `scripts/eval.py runs create` 上：`--planner-mode rule|llm` 与 `--planner-route <部署 route id>`。`python -m backend.evaluation.planner_cli` 只跑 Rule，没有 `--planner-route`。客户端 URL、`apiKey`、`credentialRef` 会被拒绝。没有 route 或没有 apiKey 时每条都是 undetermined，不回退 Rule，不哈希密钥，日志和 API 不写 credentialRef 或 endpoint。注入对象仍须带 `eval_binding`（`kind=synthetic`、`synthetic=true`、`audit.source`）才做协议测试，并标 synthetic。注入对象声明 `kind=llm` 不会被当成部署默认构造。
+
+评测后台新建页在 planner 数据集上提交 `sandboxConfig.plannerMode`。选 LLM 时再提交 `plannerRouteId`。route 列表是 `GET /api/evals/v1/planner/routes`，只有 `id` / `label` / `provider` / `model`。未配置时为空列表，页面不会把这次运行显示成已接通。媒体与 Agent 流程创建入口不带这些字段。操作说明见 `docs/runbooks/llm-planner-evaluation.md`。最终 Rule / LLM 指标在集成后重跑，仓库里不保留 2026-10-22 的 33.3% 作为当前基线。
+
+Run manifest 的 `promptTemplateHash` 是 `core.supervisor.prompts.load_prompt()` 的模板正文哈希，`promptTemplateVersion` 是同一份 `supervisor-v1`。`promptAssemblerSourceHash` 单独记录 `context.assemble_messages` 源码，改模板正文会改变前者、不改变后者。提示词文件、`context.py` 或 `planners.py` 变更会让 pre-commit 与 CI 跑 `python -m backend.evaluation.planner_gate`。每次运行使用新的独占目录（省略 `--output` 时自动创建；已有内容的 `--output` 拒绝覆盖）。stdout 打印 `gateEvidence` 与 `ruleSummary`。CI 上传本次 `gate-evidence.json`。门禁只拦协议、注入控制流和数据损坏；Rule 匹配率没有准确率门槛。离线 scripted 模型只做控制流，不代表测过真实 LLM。离线门禁会清掉 route 与凭据环境变量。默认 LLM 绑定只在部署 route 与凭据都存在时成立。
+
 ## 创作 Agent 流程（L0–L5）
 
 流程评测走同一套 `scripts/eval.py`、冻结数据集、类型化规则和门禁。它真实启动 `apps/server` 的 Memory composition root（Node 22 + tsx），写出 Trace v1，再按规则判分。不建第二套平台，不调用付费模型，不把 cloud/VLM 画质分写进流程分。

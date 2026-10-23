@@ -34,6 +34,14 @@ export interface DatasetInfo {
   versions: DatasetVersionInfo[]
 }
 
+/** 部署 route 的公开字段。不含 endpoint、credentialRef 或 apiKey。 */
+export interface PlannerRoutePublic {
+  id: string
+  label: string
+  provider: string
+  model: string
+}
+
 export interface RunListItem {
   runId: string
   createdAt: string
@@ -76,6 +84,31 @@ export interface ReplayVerification {
   verification: string
 }
 
+export interface PlannerRate {
+  hits: number
+  denominator: number
+  rate: number | null
+}
+
+export interface PlannerEvidence {
+  llmTested: boolean
+  llmUntestedReason: string | null
+  plannerMode: string | null
+  synthetic: boolean
+  promptTemplateHash: string | null
+  promptTemplateModule: string | null
+  toolCatalogVersion: string | null
+  toolCatalogHash: string | null
+  datasetContentHash: string | null
+  coverage: { scored: number; denominator: number; rate: number | null }
+  tools: PlannerRate
+  order: PlannerRate
+  invariants: PlannerRate
+  firstReviewPass: PlannerRate
+  latencyMs: { n: number; p50: number | null; p95: number | null }
+  tokens: { perCase: number[]; total: number | null; mean: number | null; denominator: number }
+}
+
 export interface FlowEvidence {
   passRate: number | null
   layers: Record<string, { plan: number; pass: number; fail: number }>
@@ -84,6 +117,7 @@ export interface FlowEvidence {
 
 export interface RunDetail {
   flow?: FlowEvidence | null
+  planner?: PlannerEvidence | null
   runId: string
   manifest: {
     purpose: string
@@ -139,6 +173,7 @@ export interface GradeView {
 
 export interface TrialView {
   tracePath?: string | null
+  latencyMs?: number | null
   trialId: string
   caseId: string
   repetitionIndex: number
@@ -553,6 +588,7 @@ export const api = {
   runCases: (runId: string) =>
     request<{ cases: CaseDefinition[] }>(`/api/evals/v1/runs/${encodeURIComponent(runId)}/cases`),
   datasets: () => request<{ datasets: DatasetInfo[] }>('/api/evals/v1/datasets'),
+  plannerRoutes: () => request<{ routes: PlannerRoutePublic[] }>('/api/evals/v1/planner/routes'),
   suggestBaseline: (runId?: string) =>
     request<{
       candidateRunId: string | null

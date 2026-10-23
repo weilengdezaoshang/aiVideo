@@ -89,6 +89,28 @@ def build_eval_router(data_dir: Path) -> APIRouter:
 
     # ---------- 数据集 ----------
 
+    @router.get("/planner/routes")
+    async def planner_routes():
+        """部署 route 的公开标识。不读凭据，不返回 endpoint、credentialRef 或 apiKey。"""
+        from backend.core.supervisor.wiring import deployment_routes
+
+        try:
+            routes = deployment_routes()
+        except (OSError, ValueError, TypeError):
+            raise HTTPException(422, "部署路由配置非法，已拒绝列出") from None
+        public = []
+        for route in routes:
+            item = route.public()
+            public.append(
+                {
+                    "id": item["id"],
+                    "label": item["label"],
+                    "provider": item["provider"],
+                    "model": item["model"],
+                }
+            )
+        return {"routes": public}
+
     @router.get("/datasets")
     async def datasets():
         dataset_store = DatasetStore(store)
@@ -289,6 +311,7 @@ def build_eval_router(data_dir: Path) -> APIRouter:
             "annotations": report["annotations"],
             "coverageGaps": report["coverageGaps"],
             "flow": report.get("flow"),
+            "planner": report.get("planner"),
         }
 
     @router.get("/runs/{run_id}/trials")
@@ -311,6 +334,7 @@ def build_eval_router(data_dir: Path) -> APIRouter:
                     "error": trial.error,
                     "artifactIds": trial.artifactIds,
                     "tracePath": trial.tracePath,
+                    "latencyMs": trial.latencyMs,
                     "grades": grades_by_trial.get(trial.trialId, []),
                 }
                 for trial in state.trials

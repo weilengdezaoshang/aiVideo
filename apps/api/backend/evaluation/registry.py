@@ -70,12 +70,17 @@ def register_builtin() -> None:
                 "text_to_video",
                 "image_to_video",
                 "agent_flow",
+                "planner",
             },
             inputs={"observed": "typed(bool/int/float/str)"},
             results={"status": "pass|fail|dependency_failed|inconclusive|error|not_applicable"},
             dependencies=["judge 结构化回答"],
             cache_policy="纯函数,无外部调用,无需缓存",
-            known_limits=["只能判定结构化 observed 与 expected 的匹配", "不做任何文本挖掘"],
+            known_limits=[
+                "只能判定结构化 observed 与 expected 的匹配",
+                "不做任何文本挖掘",
+                "planner 检查项来自真实计划与审核回执，不进入画质排行",
+            ],
         ),
         EvaluatorDeclaration(
             id="stub-judge",
@@ -178,7 +183,7 @@ def capabilities_for(config: dict) -> ProviderCapabilities:
 
 def check_case_supported(case: CaseVersion, caps: ProviderCapabilities) -> None:
     """能力不支持的组合必须显式拒绝(§10.3):不让它静默落入另一个任务类型。"""
-    if case.taskType in {"text_to_image", "agent_flow"}:
+    if case.taskType in {"text_to_image", "agent_flow", "planner"}:
         return
     if not caps.supports(case.taskType):
         labels = {

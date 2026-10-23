@@ -343,6 +343,14 @@ def cmd_dataset_freeze(args) -> int:
 
 def cmd_runs_create(args) -> int:
     runner = _runner(args.store)
+    sandbox = None
+    if args.planner_mode or args.planner_route:
+        sandbox = {}
+        if args.planner_mode:
+            sandbox["plannerMode"] = args.planner_mode
+        if args.planner_route:
+            sandbox["plannerRouteId"] = args.planner_route
+            sandbox.setdefault("plannerMode", "llm")
     try:
         runner.create_run(
             args.run_id,
@@ -351,6 +359,7 @@ def cmd_runs_create(args) -> int:
             repetitions=args.repetitions,
             purpose=args.purpose,
             suite=args.suite,
+            sandbox_config=sandbox,
         )
         state = runner.execute_run(args.run_id)
     except (OSError, ValueError) as exc:
@@ -643,6 +652,8 @@ def main(argv=None) -> int:
     runs_create.add_argument("--repetitions", type=int, default=1)
     runs_create.add_argument("--purpose", default="")
     runs_create.add_argument("--suite", default=None, help="只跑该 suite；不存在则失败")
+    runs_create.add_argument("--planner-mode", choices=["rule", "llm"], default=None)
+    runs_create.add_argument("--planner-route", default=None, help="部署 route id。不接受 URL 或密钥")
     runs_create.add_argument("--store", default=None)
     runs_create.set_defaults(func=cmd_runs_create)
     runs_replay = runs_sub.add_parser("replay", help="严格回放源 run 的录制(强制离线)")

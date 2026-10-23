@@ -67,6 +67,12 @@ from .registry import (
 from .replay import ReplayTransport
 
 MAX_REPETITIONS = 10
+
+
+def _jsonable(value):
+    if hasattr(value, "model_dump"):
+        return value.model_dump(mode="json")
+    return value
 RUN_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 # live 沙盒配置白名单(非密钥);密钥只从环境读取(§16)。
 SANDBOX_CONFIG_KEYS = {
@@ -77,6 +83,41 @@ SANDBOX_CONFIG_KEYS = {
     "cloudTextModel",
     "videoModel",
 }
+_PLANNER_ROUTE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+_PLANNER_CLIENT_SECRET_KEYS = {
+    "baseUrl",
+    "apiKey",
+    "credentialRef",
+    "endpoint",
+    "url",
+    "plannerBaseUrl",
+    "authorization",
+}
+_SCRUB_KEYS = _PLANNER_CLIENT_SECRET_KEYS | {"credential_ref", "api_key", "base_url"}
+
+
+def _planner_route_id(sandbox_config: dict | None) -> str | None:
+    """Deployment route id only. Client URLs and keys are rejected."""
+
+    raw = sandbox_config or {}
+    nested = raw.get("planner") if isinstance(raw.get("planner"), dict) else {}
+    for key in _PLANNER_CLIENT_SECRET_KEYS:
+        if key in raw or key in nested:
+            raise ValueError("planner 评测不接受客户端 URL 或密钥")
+    route_id = raw.get("plannerRouteId", nested.get("routeId"))
+    if route_id is None:
+        return None
+    if not isinstance(route_id, str) or not _PLANNER_ROUTE_ID.fullmatch(route_id) or "://" in route_id:
+        raise ValueError("plannerRouteId 只能是部署 route id")
+    return route_id
+
+
+def _scrub_planner_secrets(value):
+    if isinstance(value, dict):
+        return {key: _scrub_planner_secrets(item) for key, item in value.items() if key not in _SCRUB_KEYS}
+    if isinstance(value, list):
+        return [_scrub_planner_secrets(item) for item in value]
+    return value
 # 裁判配置白名单:冻结进 manifest.grading,任何一项变化都是新评分配置。
 JUDGE_CONFIG_KEYS = {
     "model",
@@ -286,6 +327,8 @@ class EvaluationRunner:
                 raise ValueError("mock 模式只允许 stub 判分(禁止外部调用)")
             if provider != "mock":
                 raise ValueError("mock 模式只能使用 mock Provider(§7.1:mock 禁止外部模型调用)")
+            if budget is not None:
+                BudgetPolicy(**budget)
             return self._create_standard_run(
                 target=None,
                 run_id=run_id,
@@ -296,6 +339,8 @@ class EvaluationRunner:
                 repetitions=repetitions,
                 purpose=purpose,
                 judge=judge,
+                budget=budget,
+                sandbox_config=sandbox_config,
                 compression=compression,
                 use_grade_cache=use_grade_cache,
                 model=model,
@@ -374,6 +419,15 @@ class EvaluationRunner:
         problems = validate_source_params(cases)
         if problems:
             raise ValueError("数据集快照与执行链不兼容:" + ";".join(problems))
+        planner_cases = [case for case in cases if case.taskType == "planner"]
+        if planner_cases and (mode != "mock" or provider != "mock"):
+            raise ValueError("planner 评测只在 mock 执行模式运行；LLM 用 plannerMode=llm 与 factory，不走 live 媒体")
+        if planner_cases and any(case.taskType != "planner" for case in cases):
+            raise ValueError("planner 数据集不能与画质或 agent_flow 用例混在同一次 run")
+        planner_mode = str((sandbox_config or {}).get("plannerMode") or "rule")
+        if planner_cases and planner_mode not in {"rule", "llm"}:
+            raise ValueError("plannerMode 只能是 rule 或 llm")
+        planner_route_id = _planner_route_id(sandbox_config) if planner_cases else None
         target = self.run_dir(run_id)
         if target.exists():
             raise ValueError(f"runId 已存在:{run_id}(每次运行使用新的 runId,§19.4)")
@@ -420,6 +474,26 @@ class EvaluationRunner:
             }
             config.setdefault("promptVersion", "1")
             grading.update(config)
+        sandbox_snapshot = self._sandbox_config_snapshot(provider, sandbox_config)
+        if planner_cases:
+            from .planner_factory import prompt_template_evidence, tool_catalog_evidence
+
+            prompt_evidence = prompt_template_evidence()
+            catalog_evidence = tool_catalog_evidence()
+            grading.update(prompt_evidence)
+            grading["plannerMode"] = planner_mode
+            sandbox_snapshot["planner"] = {
+                "plannerMode": planner_mode,
+                "caseCount": len(planner_cases),
+                **prompt_evidence,
+                **catalog_evidence,
+                "llmTested": False,
+                "routeId": planner_route_id,
+                "llmUntestedReason": (
+                    "创建时尚未执行。rule 为 RulePlanner 基线；"
+                    "llm 无部署 route 或无凭据时为 unavailable。"
+                ),
+            }
         manifest = RunManifest(
             runId=run_id,
             createdAt=now(),
@@ -433,7 +507,7 @@ class EvaluationRunner:
             or {"currency": "CNY", "maxCost": "0.00", "maxExternalCalls": 0},
             code=code_fingerprint(self.root),
             model=model,
-            sandboxConfig=self._sandbox_config_snapshot(provider, sandbox_config),
+            sandboxConfig=sandbox_snapshot,
             recordingId=recording_id,
             compression=self._compression_snapshot(compression),
         )
@@ -681,6 +755,10 @@ class EvaluationRunner:
                 for line in manifest.plan
             }
         cases = {case.caseId: case for case in DatasetStore.load_run_snapshot(run_dir)}
+        if cases and all(case.taskType == "planner" for case in cases.values()):
+            return self._execute_planner_only(
+                run_id, manifest, cases, state, log, cancel_check,
+            )
         config = self._sandbox_runtime_config(manifest)
         sandbox = run_dir / "sandbox"
         cancelled = False
@@ -715,6 +793,8 @@ class EvaluationRunner:
                         (trial.caseId, trial.repetitionIndex)
                     )
                     context.attempt_index = 0
+                    if case.taskType == "planner":
+                        raise ValueError("planner 用例不能进入媒体沙盒执行")
                     if case.taskType == "agent_flow":
                         self._execute_agent_flow_trial(trial, case, log, cancel_check=cancel_check)
                     else:
@@ -938,6 +1018,236 @@ class EvaluationRunner:
         if task == "text_to_image" and case.input.referenceArtifactIds:
             raise ValueError("text_to_image 用例不应携带参考素材")
         return body
+
+    def _execute_planner_only(self, run_id, manifest, cases, state, log, cancel_check):
+        """Planner trials never open the media sandbox or a paid provider."""
+
+        cancelled = False
+        try:
+            for trial in state.trials:
+                if cancel_check is not None and cancel_check():
+                    cancelled = True
+                    break
+                if trial.status != "pending":
+                    continue
+                case = cases.get(trial.caseId)
+                if case is None:
+                    raise ValueError(f"快照缺少用例:{trial.caseId}")
+                self._execute_planner_trial(trial, case, manifest, log, cancel_check=cancel_check)
+                if cancel_check is not None and cancel_check():
+                    cancelled = True
+                    break
+        except Exception as exc:
+            self._write_state(run_id, status="interrupted", error=str(exc)[:500])
+            log.append("run.interrupted", run_id, error=str(exc)[:500])
+            raise
+        if cancelled:
+            self._cancel_remaining(run_id, state, log)
+            self._write_state(run_id, status="cancelled", finishedAt=now())
+            log.append("run.cancelled", run_id)
+            return self.load_run(run_id)
+        self._grade_pending(run_id, manifest, cases, log, use_cache=False)
+        finished = self.load_run(run_id)
+        manifest = self._stamp_planner_evidence(run_id, manifest)
+        self._write_planner_summary(run_id, manifest, finished)
+        self._write_state(run_id, status="completed", finishedAt=now())
+        log.append(
+            "run.finished",
+            run_id,
+            trials=len(finished.trials),
+            completed=sum(1 for item in finished.trials if item.status == "completed"),
+        )
+        return self.load_run(run_id)
+
+    def _planner_binding(self, manifest: RunManifest) -> dict:
+        from .planner_factory import bind_planner
+
+        planner_cfg = (manifest.sandboxConfig or {}).get("planner") or {}
+        mode = str(planner_cfg.get("plannerMode") or manifest.grading.get("plannerMode") or "rule")
+        route_id = planner_cfg.get("routeId")
+        return bind_planner(mode, None if route_id is None else str(route_id))
+
+    def _execute_planner_trial(self, trial: Trial, case, manifest: RunManifest, log: EventLog, cancel_check=None) -> None:
+        import asyncio
+
+        from .planner_dataset import embedded_planner_case
+        from .planner_evaluation import desensitized_input, rule_context, rule_review
+        from .planner_factory import resolve_assemble_messages
+
+        run_id = trial.runId
+        trial.status = "running"
+        trial.startedAt = now()
+        self._write_trial(trial)
+        binding = self._planner_binding(manifest)
+        log.append(
+            "trial.started",
+            run_id,
+            trialId=trial.trialId,
+            caseId=trial.caseId,
+            taskType="planner",
+            plannerMode=binding["mode"],
+        )
+        if cancel_check is not None and cancel_check():
+            trial.status = "cancelled"
+            trial.error = "用户取消"
+            trial.finishedAt = now()
+            self._write_trial(trial)
+            log.append("trial.finished", run_id, trialId=trial.trialId, status="cancelled")
+            return
+        planner_case = embedded_planner_case(case)
+        context = rule_context(planner_case)
+        assemble, _module = resolve_assemble_messages()
+        messages = assemble(context)
+        started = time.perf_counter()
+        result = None
+        errors: list[str] = []
+        review_payload = None
+        if binding["unavailable"] or binding["planner"] is None:
+            errors.append(binding["reason"])
+        else:
+            try:
+                result = asyncio.run(binding["planner"].plan(context))
+            except Exception as exc:
+                errors.append(f"planner: {type(exc).__name__}: {exc}")
+            if result is not None:
+                try:
+                    review_payload = rule_review(result, context)
+                except Exception as exc:
+                    errors.append(f"reviewer: {type(exc).__name__}: {exc}")
+                    review_payload = {"verdict": None, "unavailable_reason": f"{type(exc).__name__}: {exc}"}
+        latency_ms = (time.perf_counter() - started) * 1000
+        plan = getattr(result, "plan", None) if result is not None else None
+        invariants = getattr(result, "invariants", None) if result is not None else None
+        tokens = getattr(result, "tokens", None) if result is not None else None
+        raw_output = getattr(result, "raw_output", None) if result is not None else None
+        observation = {
+            "schema": "planner-observation-v1",
+            "mode": binding["mode"],
+            "synthetic": binding["synthetic"],
+            "llm_tested": binding["llm_tested"],
+            "eval_binding": binding.get("eval_binding"),
+            "unavailable": binding["unavailable"] or plan is None,
+            "reason": binding["reason"],
+            "input": desensitized_input(planner_case),
+            "messages": messages,
+            "output": None if plan is None else {"plan": _jsonable(plan), "invariants": _jsonable(invariants)},
+            "review": None if review_payload is None else _jsonable(review_payload),
+            "trace": _jsonable(raw_output),
+            "usage": {"tokens": tokens, "token_source": "planner_result.tokens"},
+            "latency_ms": latency_ms,
+            "errors": errors,
+            "expected_used_as_observation": False,
+        }
+        observation = _scrub_planner_secrets(observation)
+        directory = self._trial_dir(run_id, trial.trialId)
+        atomic_write_text(directory / "observation.json", json.dumps(observation, ensure_ascii=False, indent=2))
+        trial.latencyMs = int(latency_ms)
+        trial.tracePath = str(directory / "observation.json")
+        trial.tracePaths = [trial.tracePath]
+        trial.status = "completed"
+        trial.finishedAt = now()
+        usage = None
+        if tokens is not None:
+            usage = UsageRecord(source="locally_estimated", textTokens=int(tokens), raw={"tokens": int(tokens)})
+        attempt = Attempt(
+            attemptId=f"{trial.trialId}-planner-0",
+            trialId=trial.trialId,
+            callSite="planner",
+            status="failed" if errors and plan is None else "succeeded",
+            usage=usage,
+            error=errors[0] if errors else None,
+            startedAt=trial.startedAt,
+            finishedAt=trial.finishedAt,
+        )
+        self._persist_attempt(trial, attempt)
+        self._write_trial(trial)
+        log.append(
+            "trial.finished",
+            run_id,
+            trialId=trial.trialId,
+            status="completed",
+            plannerMode=binding["mode"],
+            synthetic=binding["synthetic"],
+            tracePath=trial.tracePath,
+        )
+
+    def _grade_planner(self, trial: Trial, case, log: EventLog) -> None:
+        from .graders.rules import Answer
+        from .planner_dataset import embedded_planner_case, read_observation
+        from .planner_evaluation import score
+
+        path = self._trial_dir(trial.runId, trial.trialId) / "observation.json"
+        observation = read_observation(path)
+        planner_case = embedded_planner_case(case)
+        output = observation.get("output") if isinstance(observation.get("output"), dict) else None
+        plan = output.get("plan") if output else None
+        invariants = output.get("invariants") if output else None
+        review = observation.get("review")
+        if observation.get("expected_used_as_observation") is True:
+            self._persist_grading(
+                trial, case, {}, "拒绝把 expected 当作观测", None, "rules", trial.tracePath or "", False, log,
+            )
+            return
+        answers: dict[str, Answer] = {}
+        if plan is None or observation.get("unavailable"):
+            for check in case.checks:
+                answers[check.id] = Answer(
+                    checkId=check.id,
+                    observed=None,
+                    evidence=str(observation.get("reason") or "planner_unavailable"),
+                    source="rules",
+                )
+        else:
+            scored = score(planner_case.expected, plan, invariants, review)
+            values = {
+                "tool_match": scored.tool_match,
+                "order_match": scored.order_match,
+                "invariants_match": scored.invariants_match,
+                "bindings_match": scored.bindings_match,
+                "must_ask_match": scored.must_ask_match,
+                "first_review_pass": scored.first_review_pass,
+            }
+            for check in case.checks:
+                answers[check.id] = Answer(
+                    checkId=check.id,
+                    observed=values.get(check.id),
+                    evidence=check.id,
+                    source="rules",
+                )
+        self._persist_grading(
+            trial, case, answers, None, None, "rules", trial.tracePath or "", False, log,
+        )
+
+    def _stamp_planner_evidence(self, run_id: str, manifest: RunManifest) -> RunManifest:
+        binding = self._planner_binding(manifest)
+        payload = json.loads((self.run_dir(run_id) / "manifest.json").read_text(encoding="utf-8"))
+        planner = dict(payload.get("sandboxConfig", {}).get("planner") or {})
+        planner.update({
+            "plannerMode": binding["mode"] if binding["mode"] != "rule_baseline" else "rule",
+            "executedMode": binding["mode"],
+            "llmTested": binding["llm_tested"],
+            "synthetic": binding["synthetic"],
+            "unavailable": binding["unavailable"],
+            "llmUntestedReason": None if binding["llm_tested"] else binding["reason"],
+        })
+        planner.pop("credentialRef", None)
+        planner.pop("baseUrl", None)
+        payload.setdefault("sandboxConfig", {})["planner"] = planner
+        atomic_write_text(
+            self.run_dir(run_id) / "manifest.json",
+            json.dumps(payload, ensure_ascii=False, indent=2),
+        )
+        return RunManifest.model_validate(payload)
+
+    def _write_planner_summary(self, run_id: str, manifest: RunManifest, state: RunState) -> None:
+        from .reports import planner_section
+
+        cases = DatasetStore.load_run_snapshot(self.run_dir(run_id))
+        payload = planner_section(state, cases, manifest)
+        atomic_write_text(
+            self.run_dir(run_id) / "planner-summary.json",
+            json.dumps(payload, ensure_ascii=False, indent=2),
+        )
 
     def _execute_agent_flow_trial(self, trial: Trial, case, log: EventLog, cancel_check=None) -> None:
         """真实执行 apps/server Memory Host。失败保留 layer / reason / Trace 路径。"""
@@ -1275,6 +1585,9 @@ class EvaluationRunner:
             case = cases[trial.caseId]
             if case.taskType == "agent_flow":
                 self._grade_agent_flow(trial, case, log)
+                continue
+            if case.taskType == "planner":
+                self._grade_planner(trial, case, log)
                 continue
             artifact_id = trial.artifactIds[0]
             record, data = self.objects.get(artifact_id)

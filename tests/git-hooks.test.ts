@@ -90,6 +90,28 @@ test('正文可携带英文技术标识符,不影响主题校验', () => {
 
 /* ---------- pre-commit-test:路径选测 ---------- */
 
+test('选测:Planner 提示词与计划器变更触发离线门禁', () => {
+  assert.deepEqual(pickSuites(['apps/api/backend/evaluation/planner_messages.py']), [
+    'planner',
+    'backend',
+    'reliability',
+  ])
+  assert.deepEqual(pickSuites(['apps/api/backend/core/supervisor/prompts/supervisor-v1.txt']), [
+    'planner',
+    'backend',
+    'reliability',
+  ])
+  assert.deepEqual(pickSuites(['apps/api/backend/core/supervisor/context.py']), [
+    'planner',
+    'backend',
+    'reliability',
+  ])
+  assert.deepEqual(pickSuites(['tests/fixtures/llm-planner-cases.jsonl']), [
+    'planner',
+    'reliability',
+  ])
+})
+
 test('选测:后端路径选中 backend 套件', () => {
   assert.deepEqual(pickSuites(['apps/api/backend/jobs.py']), ['backend', 'reliability'])
   assert.deepEqual(pickSuites(['tests/backend/test_api.py']), ['backend', 'reliability'])

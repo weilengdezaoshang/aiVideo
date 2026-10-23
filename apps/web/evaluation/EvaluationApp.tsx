@@ -27,6 +27,7 @@ import {
 } from './CaseBrowser.js'
 import { checkLabel, failureReason, humanValue } from './caseCopy.js'
 import { FlowOverview } from './FlowOverview.js'
+import { PlannerMetrics } from './PlannerMetrics.js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
 import { ACTIVE_POLL_MS, LIST_POLL_MS, OPS_POLL_MS, useEvalQuery } from './queries.js'
@@ -35,6 +36,7 @@ import {
   ApiError,
   type DatasetInfo,
   type GradeView,
+  type PlannerRoutePublic,
   type PairRunPrefill,
   type ReviewTaskView,
   type RunDetail,
@@ -233,6 +235,11 @@ function NewRunTab({
   const [genPrice, setGenPrice] = useState('')
   const [judgePrice, setJudgePrice] = useState('')
   const [judgeModel, setJudgeModel] = useState('')
+  const [plannerDataset, setPlannerDataset] = useState(false)
+  const [plannerMode, setPlannerMode] = useState<'rule' | 'llm'>('rule')
+  const [plannerRouteId, setPlannerRouteId] = useState('')
+  const [plannerRoutes, setPlannerRoutes] = useState<PlannerRoutePublic[]>([])
+  const [plannerRoutesNote, setPlannerRoutesNote] = useState<string | null>(null)
   const [compression, setCompression] = useState(false)
   const [useCache, setUseCache] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -294,45 +301,125 @@ function NewRunTab({
         undefined,
       )
 
+  useEffect(() => {
+    if (!datasetId || datasetId === '__agent_source__') {
+      setPlannerDataset(false)
+      return
+    }
+    let cancelled = false
+    void api
+      .datasetCases(datasetId, selectedVersion)
+      .then((data) => {
+        if (!cancelled) {
+          setPlannerDataset(data.cases.some((item) => item.taskType === 'planner'))
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPlannerDataset(false)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [datasetId, selectedVersion])
+
+  useEffect(() => {
+    if (!plannerDataset) {
+      setPlannerRoutes([])
+      setPlannerRoutesNote(null)
+      setPlannerMode('rule')
+      setPlannerRouteId('')
+      return
+    }
+    let cancelled = false
+    void api
+      .plannerRoutes()
+      .then((data) => {
+        if (cancelled) {
+          return
+        }
+        setPlannerRoutes(data.routes)
+        setPlannerRouteId(data.routes[0]?.id ?? '')
+        setPlannerRoutesNote(
+          data.routes.length === 0
+            ? '未配置部署路由。LLM 规划评测不能启动，也不会记为已接通。'
+            : null,
+        )
+      })
+      .catch((exc: unknown) => {
+        if (cancelled) {
+          return
+        }
+        setPlannerRoutes([])
+        setPlannerRouteId('')
+        setPlannerRoutesNote(exc instanceof Error ? exc.message : '部署路由不可用')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [plannerDataset])
+
   const submit = useCallback(() => {
     setBusy(true)
     setError(null)
-    const body: Parameters<typeof api.createRun>[0] = liveMode
+    const plannerSandbox: Record<string, string> =
+      plannerMode === 'llm' ? { plannerMode: 'llm', plannerRouteId } : { plannerMode: 'rule' }
+    const body: Parameters<typeof api.createRun>[0] = plannerDataset
       ? {
           runId,
           datasetId,
           version: selectedVersion,
           repetitions,
           purpose,
-          mode: 'live',
-          provider: 'cloud',
-          judge: judgeModel ? 'vlm' : 'stub',
-          judgeConfig: judgeModel ? { model: judgeModel } : undefined,
+          mode: 'mock',
+          provider: 'mock',
+          judge: 'stub',
           budget: {
             currency: 'CNY',
             maxCost: Number(maxCost) || 0,
-            prices: {
-              generation: Number(genPrice) || 0,
-              translate: 0,
-              poll: 0,
-              judge: Number(judgePrice) || 0,
-            },
+            prices: {},
           },
+          sandboxConfig: plannerSandbox,
           compression: { enabled: compression },
           useGradeCache: useCache,
         }
-      : {
-          runId,
-          datasetId,
-          version: selectedVersion,
-          repetitions,
-          purpose,
-          mode: 'mock',
-          // mock 也如实记录压缩开关:配对校验按 not_compression_pair/missing_cost 精确报因,
-          // 不会把「忘了开压缩」误报成「快照不一致」。
-          compression: { enabled: compression },
-          useGradeCache: useCache,
-        }
+      : liveMode
+        ? {
+            runId,
+            datasetId,
+            version: selectedVersion,
+            repetitions,
+            purpose,
+            mode: 'live',
+            provider: 'cloud',
+            judge: judgeModel ? 'vlm' : 'stub',
+            judgeConfig: judgeModel ? { model: judgeModel } : undefined,
+            budget: {
+              currency: 'CNY',
+              maxCost: Number(maxCost) || 0,
+              prices: {
+                generation: Number(genPrice) || 0,
+                translate: 0,
+                poll: 0,
+                judge: Number(judgePrice) || 0,
+              },
+            },
+            compression: { enabled: compression },
+            useGradeCache: useCache,
+          }
+        : {
+            runId,
+            datasetId,
+            version: selectedVersion,
+            repetitions,
+            purpose,
+            mode: 'mock',
+            // mock 也如实记录压缩开关:配对校验按 not_compression_pair/missing_cost 精确报因,
+            // 不会把「忘了开压缩」误报成「快照不一致」。
+            compression: { enabled: compression },
+            useGradeCache: useCache,
+          }
     body.reviewSampling = reviewSampling
     api
       .createRun(body)
@@ -343,6 +430,9 @@ function NewRunTab({
       .finally(() => setBusy(false))
   }, [
     reviewSampling,
+    plannerDataset,
+    plannerMode,
+    plannerRouteId,
     liveMode,
     runId,
     datasetId,
@@ -453,6 +543,49 @@ function NewRunTab({
                 ))}
               </select>
             </label>
+            {plannerDataset && (
+              <>
+                <label>
+                  规划器
+                  <select
+                    aria-label="规划器"
+                    value={plannerMode}
+                    onChange={(event) => {
+                      const next = event.target.value === 'llm' ? 'llm' : 'rule'
+                      setPlannerMode(next)
+                    }}
+                  >
+                    <option value="rule">Rule 基线</option>
+                    <option value="llm">LLM 部署路由</option>
+                  </select>
+                </label>
+                {plannerMode === 'llm' && (
+                  <label>
+                    部署 route
+                    <select
+                      aria-label="部署 route"
+                      value={plannerRouteId}
+                      onChange={(event) => setPlannerRouteId(event.target.value)}
+                      disabled={plannerRoutes.length === 0}
+                    >
+                      {plannerRoutes.length === 0 ? (
+                        <option value="">未配置</option>
+                      ) : (
+                        plannerRoutes.map((route) => (
+                          <option key={route.id} value={route.id}>
+                            {route.label}（{route.id} · {route.provider}/{route.model}）
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </label>
+                )}
+                {plannerRoutesNote && <p className="eval-prefill-note">{plannerRoutesNote}</p>}
+                <p className="eval-prefill-note">
+                  Rule 基线只跑 RulePlanner。LLM 使用已部署的 route id，页面不提交密钥或 URL。
+                </p>
+              </>
+            )}
             {versionOverride !== null && (
               <p className="eval-prefill-note">
                 已锁定数据集版本 v{versionOverride}（与配对运行的冻结快照一致）。
@@ -481,15 +614,30 @@ function NewRunTab({
               <input value={purpose} onChange={(event) => setPurpose(event.target.value)} />
             </label>
           </div>
-          <label className="eval-checkbox">
-            <input
-              type="checkbox"
-              checked={liveMode}
-              onChange={(e) => setLiveMode(e.target.checked)}
-            />
-            live 模式(真实调用,产生费用)
-          </label>
-          {liveMode && (
+          {!plannerDataset && (
+            <label className="eval-checkbox">
+              <input
+                type="checkbox"
+                checked={liveMode}
+                onChange={(e) => setLiveMode(e.target.checked)}
+              />
+              live 模式(真实调用,产生费用)
+            </label>
+          )}
+          {plannerDataset && (
+            <div className="eval-live-config">
+              <label>
+                预算上限(CNY)
+                <input
+                  aria-label="预算上限"
+                  value={maxCost}
+                  onChange={(e) => setMaxCost(e.target.value)}
+                  placeholder="5.0"
+                />
+              </label>
+            </div>
+          )}
+          {!plannerDataset && liveMode && (
             <div className="eval-live-config">
               <label>
                 预算上限(CNY,必填正数)
@@ -565,6 +713,9 @@ function NewRunTab({
                 launch.active ||
                 !runId ||
                 (!liveMode && !datasetId) ||
+                (plannerDataset &&
+                  plannerMode === 'llm' &&
+                  (plannerRoutes.length === 0 || !plannerRouteId)) ||
                 reviewSampling.grayMin > reviewSampling.grayMax
               }
               onClick={submit}
@@ -573,9 +724,13 @@ function NewRunTab({
                 ? '正在启动…'
                 : launch.active
                   ? '评测进行中…'
-                  : liveMode
-                    ? '预检并启动 live 运行'
-                    : '预检并启动 Mock 运行'}
+                  : plannerDataset
+                    ? plannerMode === 'llm'
+                      ? '预检并启动 LLM 规划评测'
+                      : '预检并启动 Rule 基线'
+                    : liveMode
+                      ? '预检并启动 live 运行'
+                      : '预检并启动 Mock 运行'}
             </button>
           </div>
         </div>
@@ -1044,6 +1199,12 @@ function RunDetailPanel({
             </div>
           ))}
         </div>
+      ) : detail.planner ? (
+        <p className="run-pairing">
+          Planner 指标单独展示，不进入画质与条件质量排行。
+          {detail.planner.synthetic ? '本次为 synthetic，只验证协议。' : ''}
+          {detail.planner.llmTested ? '' : 'LLM 未测。'}
+        </p>
       ) : (
         <EvaluationTable className="eval-table">
           <tbody>
@@ -1068,6 +1229,7 @@ function RunDetailPanel({
           </tbody>
         </EvaluationTable>
       )}
+      {detail.planner && <PlannerMetrics planner={detail.planner} />}
       {detail.coverageGaps.length > 0 && (
         <div className="eval-gaps">
           <h4>覆盖缺口(不隐藏、不计为通过)</h4>

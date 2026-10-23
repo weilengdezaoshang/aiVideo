@@ -129,6 +129,15 @@ def build_report(state: RunState, cases: list[CaseVersion]) -> dict:
         annotations.append("stub 判分:合成回答,仅验证判分管线")
     if flow_only:
         annotations.append("流程分来自真实 Host 执行与类型化规则，不使用 cloud/VLM 画质分。")
+    planner_cases = [case for case in cases if case.taskType == "planner"]
+    if planner_cases and len(planner_cases) == len(cases):
+        planner_cfg = (manifest.sandboxConfig or {}).get("planner") or {}
+        if planner_cfg.get("llmTested") is not True:
+            annotations.append(
+                "LLM 未测：" + str(planner_cfg.get("llmUntestedReason") or "本报告不是模型质量结论。")
+            )
+        if planner_cfg.get("synthetic") is True:
+            annotations.append("synthetic planner 只验证协议，不进入质量排行。")
     if manifest.legacy:
         annotations.append("legacy 导入:原记录缺失执行与裁判细节,分数不可复现(§19.2)")
     if judge_error_trials:
@@ -168,6 +177,73 @@ def build_report(state: RunState, cases: list[CaseVersion]) -> dict:
         "coverageGaps": coverage_gaps,
         "entries": entries,
         "flow": _flow_section(state, cases) if flow_cases else None,
+        "planner": planner_section(state, cases, manifest) if any(case.taskType == "planner" for case in cases) else None,
+    }
+
+
+def _check_rate(state: RunState, check_id: str) -> dict:
+    grades = [grade for grade in state.grades if grade.checkId == check_id and grade.status in {"pass", "fail"}]
+    hits = sum(1 for grade in grades if grade.status == "pass")
+    return {"hits": hits, "denominator": len(grades), "rate": _ratio(hits, len(grades))}
+
+
+def _percentile_number(values: list[float], quantile: float) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    index = max(0, min(len(ordered) - 1, int(quantile * len(ordered) + 0.999) - 1))
+    return ordered[index]
+
+
+def planner_section(state: RunState, cases: list[CaseVersion], manifest=None) -> dict:
+    """Independent planner metrics. Rates use their own denominators."""
+
+    manifest = manifest or state.manifest
+    planner_cfg = dict((manifest.sandboxConfig or {}).get("planner") or {})
+    tokens = [
+        item.usage.textTokens
+        for item in state.attempts
+        if item.callSite == "planner" and item.usage is not None and item.usage.textTokens is not None
+    ]
+    latencies = [float(trial.latencyMs) for trial in state.trials if trial.latencyMs is not None]
+    determined = [
+        trial for trial in state.trials if trial.qualityVerdict in {"pass", "fail"}
+    ]
+    reviewed = _check_rate(state, "first_review_pass")
+    return {
+        "llmTested": planner_cfg.get("llmTested") is True,
+        "llmUntestedReason": planner_cfg.get("llmUntestedReason"),
+        "plannerMode": planner_cfg.get("plannerMode") or manifest.grading.get("plannerMode"),
+        "synthetic": planner_cfg.get("synthetic") is True,
+        "promptTemplateVersion": manifest.grading.get("promptTemplateVersion") or planner_cfg.get("promptTemplateVersion"),
+        "promptTemplateHash": manifest.grading.get("promptTemplateHash") or planner_cfg.get("promptTemplateHash"),
+        "promptTemplateModule": planner_cfg.get("promptTemplateModule") or manifest.grading.get("promptTemplateModule"),
+        "promptAssemblerSourceHash": (
+            manifest.grading.get("promptAssemblerSourceHash") or planner_cfg.get("promptAssemblerSourceHash")
+        ),
+        "toolCatalogVersion": planner_cfg.get("toolCatalogVersion"),
+        "toolCatalogHash": planner_cfg.get("toolCatalogHash"),
+        "datasetContentHash": manifest.dataset.get("contentHash"),
+        "coverage": {
+            "scored": len(determined),
+            "denominator": len(state.trials),
+            "rate": _ratio(len(determined), len(state.trials)),
+        },
+        "tools": _check_rate(state, "tool_match"),
+        "order": _check_rate(state, "order_match"),
+        "invariants": _check_rate(state, "invariants_match"),
+        "firstReviewPass": reviewed,
+        "latencyMs": {
+            "n": len(latencies),
+            "p50": _percentile_number(latencies, 0.5),
+            "p95": _percentile_number(latencies, 0.95),
+        },
+        "tokens": {
+            "perCase": tokens,
+            "total": sum(tokens) if tokens else None,
+            "mean": (sum(tokens) / len(tokens)) if tokens else None,
+            "denominator": len(tokens),
+        },
     }
 
 

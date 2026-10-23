@@ -231,3 +231,191 @@ test('新建 Agent 评测预览与启动只包含勾选层', async () => {
     stub.restore()
   }
 })
+
+type CapturedRun = {
+  mode?: string
+  provider?: string
+  judge?: string
+  judgeConfig?: Record<string, unknown>
+  sandboxConfig?: Record<string, string>
+  budget?: Record<string, unknown>
+}
+
+function installPlannerFetch(
+  routes: { id: string; label: string; provider: string; model: string }[],
+) {
+  const original = globalThis.fetch
+  const bodies: CapturedRun[] = []
+  const rawBodies: string[] = []
+  globalThis.fetch = async (input, init) => {
+    const path = String(input)
+    if (init?.method === 'POST' && path.endsWith('/runs')) {
+      const text = String(init.body)
+      rawBodies.push(text)
+      bodies.push(JSON.parse(text) as CapturedRun)
+      return new Response(JSON.stringify({ runId: 'launched', status: 'queued' }), { status: 202 })
+    }
+    if (path.endsWith('/planner/routes')) {
+      return new Response(JSON.stringify({ routes }))
+    }
+    if (path.endsWith('/datasets')) {
+      return new Response(
+        JSON.stringify({
+          datasets: [
+            { datasetId: 'media-ds', versions: [{ version: 1 }] },
+            { datasetId: 'planner-ds', versions: [{ version: 2 }] },
+          ],
+        }),
+      )
+    }
+    if (path.includes('/datasets/') && path.includes('/cases')) {
+      const planner = path.includes('planner-ds')
+      return new Response(
+        JSON.stringify({
+          cases: [
+            {
+              caseId: planner ? 'plan-1' : 'img-1',
+              taskType: planner ? 'planner' : 'text_to_image',
+              suites: [],
+              input: { prompt: '画一张', params: {} },
+              checks: [],
+            },
+          ],
+        }),
+      )
+    }
+    if (path.endsWith('/runs')) {
+      return new Response(JSON.stringify({ runs: [] }))
+    }
+    return new Response(
+      JSON.stringify({
+        status: 'running',
+        progress: {
+          total: 1,
+          completed: 0,
+          failed: 0,
+          cancelled: 0,
+          timedOut: 0,
+          running: 1,
+          pending: 0,
+        },
+        denominators: { pass: 0, determined: 0 },
+        flow: null,
+      }),
+    )
+  }
+  return {
+    restore() {
+      globalThis.fetch = original
+    },
+    bodies,
+    rawBodies,
+  }
+}
+
+test('媒体数据集创建不带规划器字段', async () => {
+  const stub = installPlannerFetch([
+    { id: 'route-a', label: '深', provider: 'deepseek', model: 'deepseek-chat' },
+  ])
+  try {
+    render(<EvaluationApp />)
+    fireEvent.click(screen.getByRole('button', { name: '新建评测' }))
+    await screen.findByRole('option', { name: /media-ds/u })
+    fireEvent.change(screen.getByLabelText('运行 ID'), { target: { value: 'media-run' } })
+    await screen.findByRole('heading', { name: '将运行哪些题' })
+    assert.equal(screen.queryByLabelText('规划器'), null)
+    assert.ok(screen.getByText(/live 模式/u))
+    fireEvent.click(screen.getByRole('button', { name: '预检并启动 Mock 运行' }))
+    await screen.findByRole('progressbar')
+    assert.equal(stub.bodies[0]?.sandboxConfig, undefined)
+    assert.equal(stub.bodies[0]?.mode, 'mock')
+    assert.equal(stub.bodies[0]?.provider, undefined)
+  } finally {
+    stub.restore()
+  }
+})
+
+test('planner 数据集分别提交 Rule 与 LLM route，不传密钥或 URL', async () => {
+  const stub = installPlannerFetch([
+    { id: 'route-a', label: '深', provider: 'deepseek', model: 'deepseek-chat' },
+  ])
+  try {
+    render(<EvaluationApp />)
+    fireEvent.click(screen.getByRole('button', { name: '新建评测' }))
+    await screen.findByRole('option', { name: /media-ds/u })
+    fireEvent.change(screen.getByLabelText('数据集'), { target: { value: 'planner-ds' } })
+    fireEvent.change(screen.getByLabelText('运行 ID'), { target: { value: 'plan-run' } })
+    await screen.findByLabelText('规划器')
+    assert.equal(screen.queryByText(/live 模式/u), null)
+    assert.equal(screen.queryByLabelText('裁判模型'), null)
+    fireEvent.change(screen.getByLabelText('预算上限'), { target: { value: '3' } })
+    fireEvent.click(screen.getByRole('button', { name: '预检并启动 Rule 基线' }))
+    await screen.findByRole('progressbar')
+    assert.deepEqual(stub.bodies[0]?.sandboxConfig, { plannerMode: 'rule' })
+    assert.equal(stub.bodies[0]?.mode, 'mock')
+    assert.equal(stub.bodies[0]?.provider, 'mock')
+    assert.equal(stub.bodies[0]?.judge, 'stub')
+    assert.equal(stub.bodies[0]?.judgeConfig, undefined)
+    assert.deepEqual(stub.bodies[0]?.budget, { currency: 'CNY', maxCost: 3, prices: {} })
+    const raw = stub.rawBodies.join('\n')
+    assert.equal(raw.includes('apiKey'), false)
+    assert.equal(raw.includes('credentialRef'), false)
+    assert.equal(raw.includes('http'), false)
+    assert.equal(raw.includes('baseUrl'), false)
+    assert.equal(raw.includes('plannerRouteId'), false)
+  } finally {
+    stub.restore()
+  }
+})
+
+test('planner LLM 提交部署 route id，不传密钥或 URL', async () => {
+  const stub = installPlannerFetch([
+    { id: 'route-a', label: '深', provider: 'deepseek', model: 'deepseek-chat' },
+  ])
+  try {
+    render(<EvaluationApp />)
+    fireEvent.click(screen.getByRole('button', { name: '新建评测' }))
+    await screen.findByRole('option', { name: /media-ds/u })
+    fireEvent.change(screen.getByLabelText('数据集'), { target: { value: 'planner-ds' } })
+    fireEvent.change(screen.getByLabelText('运行 ID'), { target: { value: 'plan-llm' } })
+    await screen.findByLabelText('规划器')
+    fireEvent.change(screen.getByLabelText('规划器'), { target: { value: 'llm' } })
+    await screen.findByLabelText('部署 route')
+    fireEvent.click(screen.getByRole('button', { name: '预检并启动 LLM 规划评测' }))
+    await screen.findByRole('progressbar')
+    assert.deepEqual(stub.bodies[0]?.sandboxConfig, {
+      plannerMode: 'llm',
+      plannerRouteId: 'route-a',
+    })
+    assert.equal(stub.bodies[0]?.provider, 'mock')
+    assert.equal(stub.bodies[0]?.judge, 'stub')
+    const raw = stub.rawBodies.join('\n')
+    assert.equal(raw.includes('apiKey'), false)
+    assert.equal(raw.includes('credentialRef'), false)
+    assert.equal(raw.includes('http'), false)
+    assert.equal(raw.includes('baseUrl'), false)
+  } finally {
+    stub.restore()
+  }
+})
+
+test('未配置部署路由时不能把 LLM 规划评测当成已启动', async () => {
+  const stub = installPlannerFetch([])
+  try {
+    render(<EvaluationApp />)
+    fireEvent.click(screen.getByRole('button', { name: '新建评测' }))
+    await screen.findByRole('option', { name: /planner-ds/u })
+    fireEvent.change(screen.getByLabelText('数据集'), { target: { value: 'planner-ds' } })
+    fireEvent.change(screen.getByLabelText('运行 ID'), { target: { value: 'plan-empty' } })
+    await screen.findByText(/未配置部署路由/u)
+    fireEvent.change(screen.getByLabelText('规划器'), { target: { value: 'llm' } })
+    const button = screen.getByRole('button', {
+      name: '预检并启动 LLM 规划评测',
+    }) as HTMLButtonElement
+    assert.equal(button.disabled, true)
+    fireEvent.click(button)
+    assert.equal(stub.bodies.length, 0)
+  } finally {
+    stub.restore()
+  }
+})
