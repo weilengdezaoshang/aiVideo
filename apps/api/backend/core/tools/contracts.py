@@ -32,6 +32,14 @@ class ToolSettings(BaseSettings):
     # Local legacy endpoints do not charge credits. Explicit rates, never inferred provider prices.
     cutout_credits: int = Field(default=0, ge=0)
     export_credits: int | None = Field(default=None, ge=0)
+    seed_minimum: int = Field(default=0, ge=0)
+    seed_maximum: int = Field(default=2**31 - 1, ge=0)
+
+    @model_validator(mode="after")
+    def seed_bounds(self):
+        if self.seed_minimum > self.seed_maximum:
+            raise ValueError("seed range is inverted")
+        return self
 
 
 class Price(Contract):

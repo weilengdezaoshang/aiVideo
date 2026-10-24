@@ -52,6 +52,7 @@ TaskType = Literal[
     "image_to_video",
     "agent_flow",
     "planner",
+    "session_reference",
 ]
 CheckKind = Literal["boolean", "integer", "number", "text"]
 DatasetSplit = Literal[
@@ -66,6 +67,7 @@ SuiteType = Literal[
     "acceptance",
     "agent_flow",
     "planner",
+    "session_reference",
     "L0",
     "L1",
     "L2",

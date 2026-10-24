@@ -71,6 +71,8 @@ def build_context(context: dict, settings: Settings | None = None) -> dict:
         "events": _events(context),
         "messages": list(context.get("messages") or [])[: settings.context_messages],
     }
+    if "confirmed_decisions" in context:
+        dynamic["confirmed_decisions"] = list(context.get("confirmed_decisions") or [])
     return {
         "request_message": str(request.get("message") or ""),
         "dynamic": _truncate(dynamic, settings.context_max_chars),
@@ -303,6 +305,8 @@ def _truncate(dynamic: dict, limit: int) -> dict:
     trimmed["events"] = required_events + [event for event in events if not _review_event(event)]
     required = {"invariants": trimmed.get("invariants") or {}, "events": required_events,
                 "form_answers": trimmed.get("form_answers") or {}}
+    if trimmed.get("confirmed_decisions"):
+        required["confirmed_decisions"] = trimmed["confirmed_decisions"]
     if encoded_size(required) > limit:
         raise ContextLimitError("context_required_fields_exceed_limit")
     if encoded_size(trimmed) <= limit:
@@ -393,6 +397,7 @@ def _tags(dynamic: dict) -> str:
         ("asset_cards", dynamic.get("asset_cards")),
         ("skill", dynamic.get("skill")),
         ("summary", dynamic.get("summary")),
+        *(((("confirmed_decisions", dynamic["confirmed_decisions"]),)) if "confirmed_decisions" in dynamic else ()),
         ("language", {"code": dynamic.get("language") or "", "reply_in_this_language": True}),
         ("invariants", dynamic.get("invariants")),
         ("form_answers", dynamic.get("form_answers")),

@@ -31,6 +31,8 @@ class RunInput(Contract):
     mode: Literal["auto", "plan"] = "auto"
     parent_run_id: UUID | None = None
     parent_task_id: UUID | None = None
+    input_revision: int = Field(default=1, gt=0)
+    correction_of_run_id: UUID | None = None
 
 
 class TaskInput(Contract):
@@ -52,6 +54,7 @@ class TaskInput(Contract):
     skill_version_id: UUID | None = None
     stage_key: str | None = None
     milestone_key: str | None = None
+    input_revision: int = Field(default=1, gt=0)
 
 
 class AssetContent(Contract):

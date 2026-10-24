@@ -1,9 +1,20 @@
-"""Import existing bindings and read schemas; no provider preparation or execution."""
+"""Import existing bindings and read schemas; no provider preparation or execution.
+
+Seed properties belong only to a newly built catalog. An already published snapshot
+is immutable and is not rewritten. Publish the new content under a new version string:
+
+  PYTHONPATH=apps/api python scripts/tool_catalog.py --host-catalog <catalog.json> \\
+    --version <new-version> --publish --published-by <name>
+
+That command requires an explicit AIVERO_DB_URL. Reusing a published version conflicts.
+Runs locked to the old version stay executable when seed is absent.
+"""
 from __future__ import annotations
 
 from backend.agent.media.catalog import Catalog
 from backend.agent.tools.canvas_read import READ_TOOLS
 from backend.config import Config
+from backend.providers.seed_capability import provider_honors_seed
 from backend.providers.staged import StagedProvider
 
 from .catalog import ToolCatalog
@@ -122,18 +133,23 @@ def build_catalog(legacy: Catalog, version: str, settings: ToolSettings | None =
             snapshot = binding.providerSnapshot if binding else {}
             config = Config.model_validate(snapshot) if binding and binding.engine == "provider" else None
             capabilities = StagedProvider(config, None).capabilities(cap.outputType) if config else None
+            seed_supported = bool(config and cap.id != "frames_to_video" and provider_honors_seed(
+                config.provider, cap.outputType, config.cloudVendor))
+            if seed_supported:
+                params["seed"] = {"type": "integer", "minimum": settings.seed_minimum,
+                                  "maximum": settings.seed_maximum}
             available = bool(legacy.config.enabled and cap.enabled and binding)
             execution = Execution(adapter="frames_to_video" if cap.id == "frames_to_video" else "staged",
                 binding={"capability_id": cap.id, "tier": tier, "catalog_version": legacy.config.version,
                          "binding": binding.model_dump(mode="json") if binding else {},
-                         "spec": spec.model_dump(mode="json")},
+                         "spec": spec.model_dump(mode="json"), "seed_supported": seed_supported},
                 cancellable=bool(capabilities and capabilities.cancel) or cap.id == "frames_to_video",
                 cancellation="provider" if capabilities and capabilities.cancel else "cooperative" if cap.id == "frames_to_video" else "none",
                 provider_idempotent=bool(capabilities and capabilities.idempotent_submit),
                 result_url_policy="authenticated_asset",
                 sla_seconds=(config.videoTimeoutMin if cap.outputType == "video" else config.imageTimeoutMin) * 60
                     if config else settings.export_timeout_seconds)
-            add(name, descriptions[cap.id], object_schema(params), inputs,
+            add(name, descriptions[cap.id], object_schema(params, [key for key in params if key != "seed"]), inputs,
                 [Port(path="output", media_type=cap.outputType)],
                 "deterministic" if cap.id == "frames_to_video" else "generate",
                 Price(kind="per_count", credits=spec.credits, count_parameter="count"), execution,
@@ -147,7 +163,8 @@ def build_catalog(legacy: Catalog, version: str, settings: ToolSettings | None =
                     config.provider == "cloud" and config.cloudVendor == "siliconflow"
                     and snapshot.get("cloudModel") == "black-forest-labs/FLUX.1-Fill-dev")))
                 add(f"inpaint_{tier}", "按图片与蒙版局部重绘；不修改内容的前景抠图改用 cutout。",
-                    object_schema({**params, "mask": reference_schema("mask")}),
+                    object_schema({**params, "mask": reference_schema("mask")},
+                                  [key for key in {**params, "mask": None} if key != "seed"]),
                     [*inputs, Port(path="mask", media_type="mask")], [Port(path="output", media_type="image")],
                     "generate", Price(kind="per_count", credits=spec.credits, count_parameter="count"),
                     execution.model_copy(update={"binding": {**execution.binding, "requires_mask": True}}),

@@ -128,7 +128,8 @@ def single_step(context):
         return None
     if _VIDEO.search(message) and re.search(r"编辑|修改|改图|抠", message):
         return None
-    if not re.search(r"生成|画一|编辑|修改|改图", message):
+    if not re.search(r"生成|画一|编辑|修改|改图", message) and not (
+            len(request.get("selected_assets", [])) == 1 and re.search(r"换成|改成|调亮|调暗|暗一点|亮一点|去掉|换背景", message)):
         return None
     count = _explicit_count(message)
     if count is not None and count != 1:

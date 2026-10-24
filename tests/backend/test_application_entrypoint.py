@@ -70,9 +70,8 @@ def test_canonical_and_compatible_imports_share_one_factory(deployment, tmp_path
     app = create_app(deployment, DatabaseSettings(url="postgresql+psycopg://test@invalid/test"),
                      root=tmp_path)
     assert not hasattr(app.state, "jobs")
-    assert {"/auth/login", "/api/generate", "/api/events"} <= {
-        route.path for route in app.routes
-    }
+    # OpenAPI resolves included routers as well as directly installed routes.
+    assert {"/auth/login", "/api/generate", "/api/events"} <= set(app.openapi()["paths"])
     assert not (tmp_path / "media" / "jobs.json").exists()
 
 

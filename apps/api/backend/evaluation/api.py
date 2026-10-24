@@ -312,6 +312,7 @@ def build_eval_router(data_dir: Path) -> APIRouter:
             "coverageGaps": report["coverageGaps"],
             "flow": report.get("flow"),
             "planner": report.get("planner"),
+            "sessionReference": report.get("sessionReference"),
         }
 
     @router.get("/runs/{run_id}/trials")

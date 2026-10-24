@@ -36,6 +36,13 @@ WORK_QUEUE = PHASE_QUEUE
 async def schedule_once(factory, root: Path, limit: int = 100) -> int:
     from backend.core.execution.engine import scan_ready
     await scan_ready(factory)
+    from backend.core.sessions.dispatch import dispatch_due
+    from backend.core.supervisor.wiring import deployment_routes, preferred_route
+    await dispatch_due(factory, agent_route=preferred_route(deployment_routes(), None))
+    from backend.core.session_projection import project_session_once
+    await project_session_once(factory, limit=limit)
+    from backend.core.version_switch import VersionSwitchWorker
+    await VersionSwitchWorker(factory).run_once()
     from backend.core.execution.projection import project_pending
     await project_pending(factory, limit)
     from backend.agent.runtime import AgentService
@@ -160,20 +167,36 @@ def notify_once(connection, runtime):
         if not isinstance(body, dict) or body.get("schemaVersion") != "1" or body.get("eventType") not in {"job.changed", "core.changed"}:
             message.reject(requeue=False)
             return
-        try:
-            ident = uuid.UUID(body["payload"]["runId" if body["eventType"] == "core.changed" else "jobId"])
-        except (KeyError, ValueError, TypeError):
-            message.reject(requeue=False)
-            return
+        payload = body.get("payload") if isinstance(body.get("payload"), dict) else {}
         import json
         async def publish():
             async with runtime.session_factory()() as session:
                 if body["eventType"] == "core.changed":
-                    from backend.core.orm import CoreRun
-                    run = await session.get(CoreRun, ident)
-                    if run is not None:
-                        await runtime.redis().publish("aivideo:notify:" + str(run.workspace_id), json.dumps({"runId": str(run.id)}))
-                    return
+                    from backend.core.orm import CoreRun, CoreSession
+                    if payload.get("runId"):
+                        run = await session.get(CoreRun, uuid.UUID(str(payload["runId"])))
+                        if run is not None:
+                            await runtime.redis().publish("aivideo:notify:" + str(run.workspace_id), json.dumps({
+                                "runId": str(run.id), "workspaceId": str(run.workspace_id)}))
+                        return
+                    if payload.get("sessionId"):
+                        core_session = await session.get(CoreSession, uuid.UUID(str(payload["sessionId"])))
+                        if core_session is not None:
+                            await runtime.redis().publish(
+                                "aivideo:notify:" + str(core_session.workspace_id), json.dumps({
+                                    "sessionId": str(core_session.id),
+                                    "workspaceId": str(core_session.workspace_id),
+                                    "userId": core_session.user_id}))
+                        return
+                    if payload.get("commandId"):
+                        from backend.core.version_switch_orm import VersionSwitchCommand
+                        command = await session.get(VersionSwitchCommand, uuid.UUID(str(payload["commandId"])))
+                        if command is not None:
+                            await runtime.redis().publish("aivideo:notify:" + str(command.workspace_id), json.dumps({
+                                "commandId": str(command.id), "documentId": str(command.document_id)}))
+                        return
+                    raise KeyError("core.changed payload requires runId, sessionId or commandId")
+                ident = uuid.UUID(payload["jobId"])
                 job = await session.get(Job, ident)
                 if job is not None:
                     # Read the latest version: duplicate/old notifications cannot regress state.
@@ -183,6 +206,9 @@ def notify_once(connection, runtime):
         try:
             runtime.run(publish(), timeout=10)
             message.ack()
+        except (KeyError, ValueError, TypeError):
+            message.reject(requeue=False)
+            return
         except Exception:
             reject_failed(message)
             raise

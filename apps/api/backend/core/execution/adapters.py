@@ -26,12 +26,23 @@ class StagedAdapter:
         self.kind = next(p.media_type for p in tool.outputs if p.media_type in {"image", "video"})
         self.spec = tool.execution.binding["spec"]
         self.failure_rules = tool.failures
+        self.seed_supported = bool(tool.execution.binding.get("seed_supported"))
+
+    def resolve_seed(self, params):
+        if "seed" not in params or params.get("seed") is None:
+            return 0
+        seed = params["seed"]
+        if not self.seed_supported:
+            raise ValueError("seed_unsupported")
+        if isinstance(seed, bool) or not isinstance(seed, int):
+            raise ValueError("seed_invalid")
+        return seed
 
     def arguments(self, params):
         p = GenParams(prompt=params["prompt"], kind=self.kind,
             model=self.config.videoModel if self.kind == "video" else self.config.cloudModel,
             width=params["width"], height=params["height"], durationSec=params.get("duration_seconds", self.spec["durationSec"]),
-            fps=params.get("fps", self.spec["fps"]), denoise=self.spec["denoise"])
+            fps=params.get("fps", self.spec["fps"]), denoise=self.spec["denoise"], seed=self.resolve_seed(params))
         if params.get("count", 1) != 1:
             raise ValueError("batch proposals must be expanded and audited into individual tasks before execution")
         def media(value):
@@ -52,14 +63,14 @@ class StagedAdapter:
     async def prepare(self, params):
         p, image, mask = self.arguments(params)
         try:
-            return (await self.provider.prepare(p, 0, image, mask)).payload
+            return (await self.provider.prepare(p, p.seed, image, mask)).payload
         except httpx.HTTPError as exc:
             raise OSError("provider preparation failed before submission") from exc
 
     async def submit(self, registration_id, params, idempotency_key):
         p, image, mask = self.arguments(params)
         try:
-            result = await self.provider.submit(p, 0, params["_prepared"], registration_id, image, mask)
+            result = await self.provider.submit(p, p.seed, params["_prepared"], registration_id, image, mask)
         except (httpx.TimeoutException, httpx.NetworkError) as exc:
             raise TimeoutError("submission outcome unknown") from exc
         except httpx.HTTPStatusError as exc:

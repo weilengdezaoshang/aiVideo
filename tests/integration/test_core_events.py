@@ -43,11 +43,13 @@ async def fixture(count=1):
         workspace = Workspace(id=uuid.uuid4())
         tx.add(workspace)
         await tx.flush()
-        session = CoreSession(workspace_id=workspace.id, source_canvas_id=uuid.uuid4(), user_id="events-test", language="zh")
-        tx.add(session)
-        await tx.flush()
         runs = []
         for _ in range(count):
+            # Independent event partitions represent independent conversations.
+            # A Session may have only one active top-level Run.
+            session = CoreSession(workspace_id=workspace.id, source_canvas_id=uuid.uuid4(), user_id="events-test", language="zh")
+            tx.add(session)
+            await tx.flush()
             run = await create_run(tx, RunInput(session_id=session.id, workspace_id=workspace.id,
                 user_id="events-test", request_key=uuid.uuid4().hex, request_hash="a"*64,
                 snapshot={}, scope={}, invariants={}, version_lock={}))

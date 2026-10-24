@@ -17,7 +17,7 @@ from backend.core.tools.store import load_catalog
 from backend.core.tools.catalog import canonical
 from backend.agent.media.intent.negation import affirmative_text
 from backend.core.review.contracts import Invariants
-from backend.infrastructure.orm import Document, Asset, AssetReference, Outbox
+from backend.infrastructure.orm import Asset, AssetReference, Outbox
 from .contracts import Settings
 from .prompts import load_prompt
 from .reviewer import effective_invariants
@@ -33,8 +33,10 @@ def digest(value):
     return hashlib.sha256(canonical(value).encode()).hexdigest()
 
 
-async def message(tx, run, text, key, *, details=None):
-    session = await tx.get(CoreSession, run.session_id, with_for_update=True)
+async def message(tx, run, text, key, *, details=None, session=None):
+    """Caller must already hold the Session row lock. This does not lock Session."""
+
+    session = session or await tx.get(CoreSession, run.session_id)
     old = await tx.scalar(select(CoreSessionMessage).where(CoreSessionMessage.session_id == session.id,
         CoreSessionMessage.request_key == key))
     if old:
@@ -118,26 +120,17 @@ async def _recent_outputs(tx, session, workspace_id):
     return recent
 
 
-async def start(tx, *, workspace_id, user_id, document_id, request_key, request, budget, token_budget,
-                max_rounds, mode="auto", agent_route=None):
-    # Locking the canvas freezes snapshot + session selection atomically with idempotency.
-    doc = await tx.get(Document, document_id, with_for_update=True)
-    if not doc or doc.workspace_id != workspace_id:
-        raise LookupError("画布不存在")
-    session = await tx.scalar(select(CoreSession).where(CoreSession.canvas_id == doc.id,
-        CoreSession.workspace_id == workspace_id, CoreSession.user_id == user_id).order_by(CoreSession.created_at).limit(1).with_for_update())
-    if not session:
-        session = CoreSession(workspace_id=workspace_id, canvas_id=doc.id, source_canvas_id=doc.id,
-            user_id=user_id, language="zh-CN")
-        tx.add(session)
-        await tx.flush()
+async def open_run(tx, session, doc, *, workspace_id, user_id, request_key, request, budget, token_budget,
+                   max_rounds, mode="auto", agent_route=None, input_revision=1, correction_of_run_id=None,
+                   persist_opening_message=True):
     request_hash = digest({"request": request, "budget": budget, "tokens": token_budget, "rounds": max_rounds, "mode": mode})
     old = await tx.scalar(select(CoreRun).where(CoreRun.session_id == session.id, CoreRun.request_key == request_key))
     if old:
         if old.request_hash != request_hash:
             raise ValueError("request_key_conflict")
         return old
-    if await tx.scalar(select(CoreRun.id).where(CoreRun.session_id == session.id, CoreRun.status.not_in(TERMINAL))):
+    if await tx.scalar(select(CoreRun.id).where(CoreRun.session_id == session.id, CoreRun.parent_run_id.is_(None),
+        CoreRun.status.not_in(TERMINAL))):
         raise ValueError("session_has_active_run")
     version = await tx.scalar(select(ToolCatalogVersion.version).order_by(ToolCatalogVersion.created_at.desc(), ToolCatalogVersion.version.desc()).limit(1))
     catalog = await load_catalog(tx, version)
@@ -194,29 +187,52 @@ async def start(tx, *, workspace_id, user_id, document_id, request_key, request,
     invariants = Invariants.model_validate(invariants).model_dump(exclude_none=True)
     run = await create_run(tx, RunInput(session_id=session.id, workspace_id=workspace_id, user_id=user_id,
         request_key=request_key, request_hash=request_hash, snapshot=snapshot, scope=scope, invariants=invariants,
-        version_lock=lock, mode=mode), CoreSettings(credits_limit=budget, tokens_limit=token_budget, max_thought_rounds=max_rounds))
+        version_lock=lock, mode=mode, input_revision=input_revision, correction_of_run_id=correction_of_run_id),
+        CoreSettings(credits_limit=budget, tokens_limit=token_budget, max_thought_rounds=max_rounds))
     for ident in readable:
         tx.add(AssetReference(asset_id=uuid.UUID(ident), owner_type="core_run", owner_id=str(run.id)))
-    session.message_cursor += 1
-    tx.add(CoreSessionMessage(session_id=session.id, sequence=session.message_cursor, request_key=request_key,
-        role="user", content={"text": request["message"]}, processing_status="processed", run_id=run.id))
+    session.active_run_id = run.id
+    if persist_opening_message:
+        session.message_cursor += 1
+        tx.add(CoreSessionMessage(session_id=session.id, sequence=session.message_cursor, request_key=request_key,
+            role="user", content={"text": request["message"]}, processing_status="processed", run_id=run.id,
+            request_hash=request_hash, input_revision=input_revision))
     await tx.flush()
     cause = await tx.scalar(select(CoreEvent.id).where(CoreEvent.run_id == run.id).order_by(CoreEvent.run_sequence).limit(1))
     await emit(tx, "user_message", run.id, causation_id=cause)
     return run
 
 
+async def start(tx, *, workspace_id, user_id, document_id, request_key, request, budget, token_budget,
+                max_rounds, mode="auto", agent_route=None):
+    from backend.core.sessions.resolve import resolve_session
+    session, doc = await resolve_session(tx, workspace_id=workspace_id, user_id=user_id, document_id=document_id)
+    return await open_run(tx, session, doc, workspace_id=workspace_id, user_id=user_id,
+        request_key=request_key, request=request, budget=budget, token_budget=token_budget,
+        max_rounds=max_rounds, mode=mode, agent_route=agent_route)
+
+
 async def latest_plan(tx, run_id):
-    return await tx.scalar(select(CorePlan).where(CorePlan.run_id == run_id).order_by(CorePlan.version.desc()).limit(1))
+    run = await tx.get(CoreRun, run_id)
+    if run is not None and run.current_plan_id is not None:
+        current = await tx.get(CorePlan, run.current_plan_id)
+        if current is not None:
+            return current
+    return await tx.scalar(select(CorePlan).where(CorePlan.run_id == run_id,
+        CorePlan.stage != "obsolete").order_by(CorePlan.version.desc()).limit(1))
 
 
 async def progress(tx, run):
-    tasks = (await tx.scalars(select(CoreTask).where(CoreTask.run_id == run.id).order_by(CoreTask.created_at, CoreTask.task_key))).all()
+    query = select(CoreTask).where(CoreTask.run_id == run.id)
+    if run.current_plan_id is not None:
+        query = query.where(CoreTask.plan_id == run.current_plan_id)
+    tasks = (await tx.scalars(query.order_by(CoreTask.created_at, CoreTask.task_key))).all()
     messages = (await tx.scalars(select(CoreSessionMessage).where(CoreSessionMessage.run_id == run.id,
         CoreSessionMessage.role == "assistant").order_by(CoreSessionMessage.sequence))).all()
     plan = await latest_plan(tx, run.id)
     stored = isinstance(getattr(plan, "link_constraints", None), dict) and isinstance((plan.link_constraints or {}).get("approved_invariants"), dict)
     return {"id": str(run.id), "status": run.status, "version": run.version, "cursor": run.event_cursor,
+        "credits_limit": run.credits_limit, "credits_spent": run.credits_spent,
         "thought_rounds": run.thought_rounds_used, "tokens_used": run.tokens_used,
         "known_tokens": int(((run.error or {}).get("planner_usage") or {}).get("known_tokens") or 0),
         "unknown_calls": int(((run.error or {}).get("planner_usage") or {}).get("unknown_calls") or 0),
@@ -263,7 +279,11 @@ async def answer(tx, *, task_id, option_id, request_key, workspace_id, user_id, 
     initial = await tx.get(CoreTask, task_id)
     if not initial:
         raise LookupError("任务不存在")
-    run = await tx.get(CoreRun, initial.run_id, with_for_update=True)
+    from backend.core.sessions.store import lock_session_then_run
+    owned = await tx.get(CoreRun, initial.run_id)
+    if owned is None:
+        raise LookupError("任务不存在")
+    session, run = await lock_session_then_run(tx, owned.session_id, owned.id)
     if run.workspace_id != workspace_id or run.user_id != user_id:
         raise LookupError("任务不存在")
     task = await tx.get(CoreTask, task_id, with_for_update=True, populate_existing=True)
@@ -285,16 +305,21 @@ async def answer(tx, *, task_id, option_id, request_key, workspace_id, user_id, 
         raise ValueError("answer_conflict")
     if task.status != "waiting_user" or run.status != "paused":
         raise ValueError("question_not_waiting")
-    session = await tx.get(CoreSession, run.session_id, with_for_update=True)
     session.message_cursor += 1
     if form:
         text = " ".join(f"{key}={value}" for key, value in fields.items())
         content = {"text": text, "fields": fields, "task_id": str(task.id), "data": True}
     else:
         content = {"text": choices[option_id]["label"] if choices else option_id, "task_id": str(task.id)}
-    tx.add(CoreSessionMessage(session_id=session.id, sequence=session.message_cursor,
+    message = CoreSessionMessage(session_id=session.id, sequence=session.message_cursor,
         request_key=digest({"task": str(task.id), "answer_key": request_key}), role="user",
-        content=content, processing_status="processed", run_id=run.id))
+        content=content, processing_status="processed", run_id=run.id, input_revision=run.input_revision)
+    tx.add(message)
+    await tx.flush()
+    from backend.core.sessions.store import record_decision
+    await record_decision(tx, session, value={"fields": fields} if form else {
+        "option_id": option_id, "label": content["text"]}, source_message_id=message.id,
+        confirm_task_id=task.id, evidence={"run_id": str(run.id), "input_revision": run.input_revision})
     task.waiting = {**waiting, "answer_key": request_key, "answer": payload["answer"], **({"fields": fields} if form else {})}
     if form:
         # Invariants and the canvas snapshot are immutable. The answer message is the evidence.
@@ -326,9 +351,11 @@ def _related(raw):
 async def record_feedback(tx, *, run_id, workspace_id, user_id, request_key, text, correction, related=None):
     """Explicit terminal feedback. A later chat message is not recorded as a correction."""
 
-    run = await tx.get(CoreRun, run_id, with_for_update=True)
-    if run is None or run.workspace_id != workspace_id or run.user_id != user_id:
+    owned = await tx.get(CoreRun, run_id)
+    if owned is None or owned.workspace_id != workspace_id or owned.user_id != user_id:
         raise LookupError("run_missing")
+    from backend.core.sessions.store import lock_session_then_run
+    session, run = await lock_session_then_run(tx, owned.session_id, owned.id)
     if run.status not in TERMINAL:
         raise ValueError("run_not_terminal")
     if not isinstance(text, str) or not text.strip() or len(text) > Settings().feedback_max_chars:
@@ -358,7 +385,6 @@ async def record_feedback(tx, *, run_id, workspace_id, user_id, request_key, tex
         if old.content.get("text") != text or bool(old.content.get("correction")) != bool(correction):
             raise ValueError("feedback_conflict")
         return old
-    session = await tx.get(CoreSession, run.session_id, with_for_update=True)
     session.message_cursor += 1
     row = CoreSessionMessage(session_id=session.id, sequence=session.message_cursor, request_key=key,
         role="user", content={"text": text, "feedback": True, "correction": bool(correction),

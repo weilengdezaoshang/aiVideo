@@ -71,6 +71,7 @@ def register_builtin() -> None:
                 "image_to_video",
                 "agent_flow",
                 "planner",
+                "session_reference",
             },
             inputs={"observed": "typed(bool/int/float/str)"},
             results={"status": "pass|fail|dependency_failed|inconclusive|error|not_applicable"},
@@ -80,6 +81,7 @@ def register_builtin() -> None:
                 "只能判定结构化 observed 与 expected 的匹配",
                 "不做任何文本挖掘",
                 "planner 检查项来自真实计划与审核回执，不进入画质排行",
+                "session_reference 只比较规则解析与标注，真实 LLM 成绩单独记录",
             ],
         ),
         EvaluatorDeclaration(
@@ -183,7 +185,7 @@ def capabilities_for(config: dict) -> ProviderCapabilities:
 
 def check_case_supported(case: CaseVersion, caps: ProviderCapabilities) -> None:
     """能力不支持的组合必须显式拒绝(§10.3):不让它静默落入另一个任务类型。"""
-    if case.taskType in {"text_to_image", "agent_flow", "planner"}:
+    if case.taskType in {"text_to_image", "agent_flow", "planner", "session_reference"}:
         return
     if not caps.supports(case.taskType):
         labels = {

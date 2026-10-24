@@ -129,6 +129,10 @@ def build_report(state: RunState, cases: list[CaseVersion]) -> dict:
         annotations.append("stub 判分:合成回答,仅验证判分管线")
     if flow_only:
         annotations.append("流程分来自真实 Host 执行与类型化规则，不使用 cloud/VLM 画质分。")
+    reference_cases = [case for case in cases if case.taskType == "session_reference"]
+    if reference_cases and len(reference_cases) == len(cases):
+        ref_cfg = (manifest.sandboxConfig or {}).get("sessionReference") or {}
+        annotations.append("指代规则分与真实 LLM 成绩分开。" + str(ref_cfg.get("llmUntestedReason") or ""))
     planner_cases = [case for case in cases if case.taskType == "planner"]
     if planner_cases and len(planner_cases) == len(cases):
         planner_cfg = (manifest.sandboxConfig or {}).get("planner") or {}
@@ -178,6 +182,7 @@ def build_report(state: RunState, cases: list[CaseVersion]) -> dict:
         "entries": entries,
         "flow": _flow_section(state, cases) if flow_cases else None,
         "planner": planner_section(state, cases, manifest) if any(case.taskType == "planner" for case in cases) else None,
+        "sessionReference": reference_section(state, cases, manifest) if any(case.taskType == "session_reference" for case in cases) else None,
     }
 
 
@@ -193,6 +198,23 @@ def _percentile_number(values: list[float], quantile: float) -> float | None:
     ordered = sorted(values)
     index = max(0, min(len(ordered) - 1, int(quantile * len(ordered) + 0.999) - 1))
     return ordered[index]
+
+
+def reference_section(state: RunState, cases: list[CaseVersion], manifest=None) -> dict:
+    """Rule reference metrics. LLM fields stay false until a separate binding records them."""
+
+    manifest = manifest or state.manifest
+    cfg = dict((manifest.sandboxConfig or {}).get("sessionReference") or {})
+    return {
+        "llmTested": False,
+        "llmUntestedReason": cfg.get("llmUntestedReason"),
+        "rule": {
+            "status": _check_rate(state, "status_match"),
+            "artifact": _check_rate(state, "artifact_match"),
+            "reason": _check_rate(state, "reason_match"),
+        },
+        "llm": None,
+    }
 
 
 def planner_section(state: RunState, cases: list[CaseVersion], manifest=None) -> dict:

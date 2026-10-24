@@ -35,27 +35,37 @@ def _message_run(message):
 
 
 def _sources(run, messages):
-    """This run's request plus answer-API form rows. Other runs and canvas text are not evidence."""
+    """This run's user messages in sequence, including authorized corrections. Snapshot is fallback."""
 
     request = (run.snapshot or {}).get("request") or {}
-    texts = [str(request.get("message") or "")]
     fields = {}
     current = getattr(run, "id", None)
+    ordered = []
     for message in messages or []:
         role = message.get("role") if isinstance(message, dict) else getattr(message, "role", None)
         content = message.get("content") if isinstance(message, dict) else getattr(message, "content", None)
-        if role != "user" or not isinstance(content, dict) or content.get("feedback"):
+        if role != "user" or not isinstance(content, dict):
             continue
         owner = _message_run(message)
         if current is not None and str(owner) != str(current):
             continue
         if isinstance(content.get("fields"), dict) and content.get("task_id"):
             fields.update(content["fields"])
-            if isinstance(content.get("text"), str):
-                texts.append(content["text"])
-        # Option labels are the choice the user picked. They are not a grant of
-        # an arbitrary count or duration, so they stay out of the evidence texts.
-    return texts, fields
+            text = content.get("text")
+            if isinstance(text, str) and text.strip():
+                ordered.append(text.strip())
+            continue
+        if content.get("task_id") and not content.get("fields"):
+            continue
+        text = content.get("text")
+        if isinstance(text, str) and text.strip():
+            ordered.append(text.strip())
+    if ordered:
+        return ordered, fields
+    stored = request.get("messages")
+    if isinstance(stored, list) and stored:
+        return [str(item) for item in stored if str(item).strip()], fields
+    return [str(request.get("message") or "")], fields
 
 
 def _same(left, right):
@@ -184,7 +194,7 @@ def effective_invariants(run, plan=None):
     return fallback
 
 
-def merge_proposed(run, proposed, messages, *, frozen=None, base=None):
+def merge_proposed(run, proposed, messages, *, frozen=None, base=None, revision_texts=None):
     """Reject conflicts and unproven values. Empty lists match a missing field and never erase one."""
 
     current = copy.deepcopy(run.invariants or {} if base is None else base)
@@ -204,12 +214,16 @@ def merge_proposed(run, proposed, messages, *, frozen=None, base=None):
         if key not in _DELIVERABLE:
             reasons.append({"gate": "intent", "code": "invariants_conflict", "field": key})
             continue
+        user_revised = bool(revision_texts) and _supported(key, value, revision_texts, {}, run)
         if key in current_item and _norm(current_item[key]) != _norm(value):
+            if user_revised:
+                merged_item[key] = value
+                continue
             reasons.append({"gate": "intent", "code": "invariants_frozen" if frozen else "invariants_conflict", "field": key})
             continue
         if key in current_item:
             continue
-        if frozen and not _from_form(key, value, fields):
+        if frozen and not _from_form(key, value, fields) and not user_revised:
             reasons.append({"gate": "intent", "code": "invariants_frozen", "field": key})
             continue
         if not _supported(key, value, texts, fields, run):

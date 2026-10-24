@@ -69,7 +69,7 @@ async def transition(tx: AsyncSession, entity_type: str, entity_id: UUID, expect
 
 async def create_run(tx: AsyncSession, value: RunInput, settings: CoreSettings | None = None) -> CoreRun:
     settings = settings or CoreSettings()
-    row = CoreRun(**value.model_dump(), credits_limit=settings.credits_limit,
+    row = CoreRun(**value.model_dump(), submit_fence=value.input_revision, credits_limit=settings.credits_limit,
         tokens_limit=settings.tokens_limit, max_thought_rounds=settings.max_thought_rounds)
     tx.add(row)
     await tx.flush()

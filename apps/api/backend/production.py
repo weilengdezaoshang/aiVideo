@@ -885,6 +885,14 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
     install_execution_routes(app)
     from backend.core.supervisor.api import install as install_supervisor_routes
     install_supervisor_routes(app)
+    from backend.core.sessions.api import install as install_session_routes
+    install_session_routes(app)
+    from backend.core.session_stream import install as install_session_stream
+    install_session_stream(app)
+    from backend.core.version_switch import build_switch_router
+    from backend.core.session_redo_service import build_redo_router
+    app.include_router(build_switch_router())
+    app.include_router(build_redo_router())
     from backend.core.diagnostics.api import install as install_diagnostics_routes
     install_diagnostics_routes(app)
 

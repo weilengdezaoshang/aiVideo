@@ -103,6 +103,13 @@ def validate_source_params(cases: list[CaseVersion]) -> list[str]:
             elif set(planner_case) & {"steps", "expect", "mocks"}:
                 problems.append(f"{case.caseId}:planner 不能混入 agent_flow 字段")
             continue
+        if case.taskType == "session_reference":
+            params = case.input.params
+            if params.get("kind") != "session_reference":
+                problems.append(f"{case.caseId}:session_reference 需要 params.kind=session_reference")
+            if not isinstance(params.get("referenceCase"), dict):
+                problems.append(f"{case.caseId}:session_reference 缺少 params.referenceCase")
+            continue
         unknown = set(case.input.params) - SUPPORTED_INPUT_PARAMS
         if unknown:
             problems.append(f"{case.caseId}:不支持的生成参数 {sorted(unknown)}")

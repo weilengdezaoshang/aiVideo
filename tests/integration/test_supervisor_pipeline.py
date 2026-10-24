@@ -35,7 +35,8 @@ from backend.core.tools.store import publish
 from backend.infrastructure.database import DatabaseSettings, create_async_database_engine, create_async_session_factory
 from backend.infrastructure.orm import Workspace, Document, Asset, AssetReference
 
-DB = os.environ.get("AIVERO_SUPERVISOR_TEST_DB")
+DB = (os.environ.get("AIVERO_SUPERVISOR_TEST_DB") or os.environ.get("AIVERO_CORE_TEST_DB")
+    or os.environ.get("AIVERO_DURABLE_TEST_DB"))
 pytestmark = pytest.mark.skipif(not DB, reason="explicit isolated migrated supervisor DB required")
 
 
@@ -71,7 +72,7 @@ class DetectFake(LocalAdapter):
 
 @asynccontextmanager
 async def fixture(tmp_path, *, planner=None, labels=None, message="改图后生成视频", mode="auto", sized_video=False,
-                  make_planner=None):
+                  make_planner=None, start_run=True, include_canvas=False):
     engine = create_async_database_engine(DatabaseSettings(url=DB))
     factory = create_async_session_factory(engine)
     root = tmp_path / "media"
@@ -104,16 +105,26 @@ async def fixture(tmp_path, *, planner=None, labels=None, message="改图后生�
         doc = Document(workspace_id=workspace.id, data={"objects": {"source": {"id": "source", "kind": "image", "assetId": str(asset.id), "x": 0, "y": 0, "width": 8, "height": 8}}, "order": ["source"]})
         tx.add(doc)
         await tx.flush()
+        tx.add(AssetReference(asset_id=asset.id, owner_type="document", owner_id=str(doc.id)))
         await publish(tx, catalog, published_by="test")
-        run = await start(tx, workspace_id=workspace.id, user_id="owner", document_id=doc.id,
-            request_key="start", request={"message": message, "selected_assets": [str(asset.id)], "anchor_id": "source"},
-            budget=100, token_budget=100, max_rounds=20, mode=mode)
-        run_id, workspace_id = run.id, workspace.id
-    if planner == "chain":
+        asset_id, document_id, workspace_id = asset.id, doc.id, workspace.id
+        run = None
+        if start_run:
+            run = await start(tx, workspace_id=workspace.id, user_id="owner", document_id=doc.id,
+                request_key="start", request={"message": message, "selected_assets": [str(asset.id)], "anchor_id": "source"},
+                budget=100, token_budget=100, max_rounds=20, mode=mode)
+        run_id = None if run is None else run.id
+    if planner == "chain" and run is not None:
         plan = {"goal": message, "steps": [
             {"id": "t1", "tool": "edit", "parameters": {"prompt": "edit", "image": {"asset_id": str(asset.id), "media_type": "image"}}},
             {"id": "t2", "tool": "video", "parameters": {"prompt": "video", "image": "$t1.output"}, "depends_on": ["t1"]}]}
         planner = FakePlanner([{"plan": plan, "invariants": run.invariants, "confidence": 1, "tokens": 2, "raw_output": {"plan": plan}}])
+    if planner == "dark" and run is not None:
+        plan = {"goal": message, "steps": [
+            {"id": "t1", "tool": "edit", "parameters": {"prompt": "dark rabbit",
+                "image": {"asset_id": str(asset.id), "media_type": "image"}}}]}
+        planner = FakePlanner([{"plan": plan, "invariants": run.invariants, "confidence": 1, "tokens": 2,
+            "raw_output": {"plan": plan, "prompt": "dark rabbit"}}])
     if make_planner is not None:
         planner = make_planner(factory)
     supervisor = Supervisor(factory, planner)
@@ -121,22 +132,25 @@ async def fixture(tmp_path, *, planner=None, labels=None, message="改图后生�
     register(registry)
     processor = Processor(factory, EventSettings(concurrency=1, backoff_base_seconds=.001, backoff_max_seconds=.01), registry)
     fake = FakeProvider(tmp_path / "provider.sqlite", Scenario(actual_credits=3))
-    async def events():
+    async def events(only_run=None):
+        rid = only_run or run_id
         async with factory.begin() as tx:
-            for event in await tx.scalars(select(CoreEvent).where(CoreEvent.run_id == run_id).order_by(CoreEvent.run_sequence)):
-                await accept(tx, {"event_id": str(event.id), "run_id": str(run_id)})
+            for event in await tx.scalars(select(CoreEvent).where(CoreEvent.run_id == rid).order_by(CoreEvent.run_sequence)):
+                await accept(tx, {"event_id": str(event.id), "run_id": str(rid)})
         for _ in range(100):
             if not any(await processor.tick()):
                 break
-    async def drive(*, fail_video=False, until=None):
+    async def drive(*, fail_video=False, until=None, run_id=run_id, allow=None):
         for _ in range(100):
-            await events()
+            await events(run_id)
             await supervisor.tick()
             await scan_ready(factory)
             async with factory() as tx:
                 tasks = list(await tx.scalars(select(CoreTask).where(CoreTask.run_id == run_id)))
             for task in tasks:
                 if task.status not in {"queued", "submitted"}:
+                    continue
+                if allow is not None and not allow(task):
                     continue
                 if task.tool_ref in {"detect_subject", "cutout"}:
                     provider = DetectFake(catalog.get_tool(task.tool_ref, catalog.lock.version), factory, root, labels or [])
@@ -150,19 +164,29 @@ async def fixture(tmp_path, *, planner=None, labels=None, message="改图后生�
             await asyncio.sleep(.002)
         raise AssertionError("run did not settle")
     try:
-        yield factory, supervisor, drive, run_id, workspace_id, root, config, fake, events
+        values = (factory, supervisor, drive, run_id, workspace_id, root, config, fake, events)
+        yield (*values, asset_id, document_id) if include_canvas else values
     finally:
         # Every fixture owns a workspace. Stop its unfinished scripts before a
         # later test starts a global daemon with a different scripted provider.
         from sqlalchemy import update
+        from backend.core.orm import CoreSession
         from backend.core.supervisor.engine import stop
         async with factory.begin() as tx:
             owned = list(await tx.scalars(select(CoreRun).where(CoreRun.workspace_id == workspace_id)))
             for row in owned:
                 if row.status not in {"completed", "failed", "cancelled"}:
+                    await tx.scalar(select(CoreSession).where(CoreSession.id == row.session_id).with_for_update())
                     await stop(tx, row, "cancelled", "fixture cleanup", "fixture-cleanup:" + str(row.id))
             await tx.execute(update(Invocation).where(Invocation.run_id.in_([row.id for row in owned]))
                 .values(status="done", lease_token=None, lease_until=None))
+        from sqlalchemy import func
+        async with factory.begin() as tx:
+            sessions = select(CoreSession.id).where(CoreSession.workspace_id == workspace_id)
+            await tx.execute(update(CoreSessionMessage).where(CoreSessionMessage.session_id.in_(sessions),
+                CoreSessionMessage.processing_status == "pending").values(processing_status="cancelled"))
+            await tx.execute(update(CoreSession).where(CoreSession.workspace_id == workspace_id).values(
+                closed_at=func.now(), dispatch_at=None, dispatch_lease_owner=None, dispatch_lease_until=None))
         await engine.dispose()
 
 
@@ -206,6 +230,12 @@ def test_multi_subject_answer(tmp_path, choice):
                 assert [x["label"] for x in question.waiting["options"]] == ["白色杯子", "盘子", "全部"]
                 await answer(tx, task_id=question.id, option_id=choice, request_key="answer", workspace_id=workspace, user_id="owner")
                 await answer(tx, task_id=question.id, option_id=choice, request_key="answer", workspace_id=workspace, user_id="owner")
+                from backend.core.orm import CoreSessionDecision
+                decisions = list(await tx.scalars(select(CoreSessionDecision).where(
+                    CoreSessionDecision.confirm_task_id == question.id)))
+                assert len(decisions) == 1
+                assert decisions[0].value["option_id"] == choice
+                assert decisions[0].source_message_id is not None
             assert await drive() == "completed"
             async with factory() as tx:
                 task = await tx.scalar(select(CoreTask).where(CoreTask.run_id == run, CoreTask.tool_ref == "cutout"))
@@ -389,4 +419,184 @@ def test_placeholders_are_program_owned_and_replaced(tmp_path):
                 doc = await tx.get(Document, doc_id)
                 assert len(doc.data["objects"]) == 3
                 assert not any(n.get("corePlaceholder") or n.get("busy") for k,n in doc.data["objects"].items() if k != "source")
+    asyncio.run(test())
+
+
+def test_dark_rabbit_completes_asset_and_ledger(tmp_path):
+    async def test():
+        message = "狗 不对兔子 再暗一点"
+        async with fixture(tmp_path, planner="dark", message=message) as (factory, supervisor, drive, run, *_):
+            assert await drive() == "completed"
+            async with factory() as tx:
+                from backend.core.orm import CorePlan
+                plan = await tx.scalar(select(CorePlan).where(CorePlan.run_id == run))
+                assert plan.proposal["goal"] == message
+                tasks = list(await tx.scalars(select(CoreTask).where(CoreTask.run_id == run)))
+                assert len(tasks) == 1
+                assert tasks[0].status == "succeeded"
+                assert tasks[0].parameters["prompt"] == "dark rabbit"
+                assert await tx.get(Asset, uuid.UUID(tasks[0].output["asset_id"]))
+                assert await tx.scalar(select(func.count()).select_from(HostCreditLedger).where(
+                    HostCreditLedger.core_run_id == run)) == 1
+                events = list(await tx.scalars(select(CoreEvent).where(CoreEvent.run_id == run)
+                    .order_by(CoreEvent.run_sequence)))
+                assert any(row.event_type == "plan_written" for row in events)
+    asyncio.run(test())
+
+
+class _RequestPlanner:
+    """One scripted plan per call. Goal is the Run request, never a fixed English label."""
+
+    def __init__(self, prompts, *, followup=False):
+        self.prompts = list(prompts)
+        self.followup = followup
+        self.calls = []
+
+    async def plan(self, context):
+        self.calls.append(context["request"])
+        request = context["request"]
+        prompt = self.prompts[min(len(self.calls) - 1, len(self.prompts) - 1)]
+        image = {"asset_id": request["selected_assets"][0], "media_type": "image"}
+        steps = [{"id": "t1", "tool": "edit", "parameters": {"prompt": prompt, "image": image}}]
+        if self.followup:
+            steps.append({"id": "t2", "tool": "video", "parameters": {"prompt": "video", "image": "$t1.output"},
+                "depends_on": ["t1"]})
+        plan = {"goal": request["message"], "steps": steps}
+        return {"plan": plan, "invariants": context["invariants"], "confidence": 1, "tokens": 2,
+            "raw_output": {"plan": plan}}
+
+
+def test_interrupt_same_run_new_plan_keeps_old_output(tmp_path):
+    async def test():
+        from datetime import timedelta
+        from backend.core.orm import CorePlan, CoreSession, CoreSessionMessage, CoreRunInputRevision
+        from backend.core.sessions.contracts import SessionSettings
+        from backend.core.sessions.dispatch import dispatch_due
+        from backend.core.sessions.intake import enqueue_message
+        planner = _RequestPlanner(["edit", "blue"], followup=True)
+        async with fixture(tmp_path, message="改图后生成视频", make_planner=lambda _factory: planner) as (
+                factory, supervisor, drive, run_id, _workspace, _root, _config, fake, _events, *_):
+            async def until_t1(tx):
+                row = await tx.scalar(select(CoreTask).where(CoreTask.run_id == run_id,
+                    CoreTask.task_key == "t1", CoreTask.input_revision == 1, CoreTask.status == "succeeded"))
+                return row is not None
+            status = await drive(until=until_t1, allow=lambda task: task.task_key != "t2")
+            assert status == "running"
+            async with factory.begin() as tx:
+                run = await tx.get(CoreRun, run_id)
+                session = await tx.scalar(select(CoreSession).where(CoreSession.id == run.session_id).with_for_update())
+                old_t1 = await tx.scalar(select(CoreTask).where(CoreTask.run_id == run_id,
+                    CoreTask.task_key == "t1", CoreTask.input_revision == 1, CoreTask.status == "succeeded"))
+                old_output = dict(old_t1.output)
+                old_asset = old_output["asset_id"]
+                opening = await tx.scalar(select(CoreSessionMessage).where(
+                    CoreSessionMessage.run_id == run_id, CoreSessionMessage.role == "user"))
+                assert opening.input_revision == 1
+                await enqueue_message(tx, session, client_id="c", client_message_id="blue",
+                    content={"text": "改成蓝色"}, settings=SessionSettings(quiet_window_seconds=0.01))
+                session.dispatch_at = session.dispatch_at - timedelta(seconds=5)
+            assert await dispatch_due(factory, SessionSettings(quiet_window_seconds=0.01)) is True
+            assert await drive() == "completed"
+            async with factory() as tx:
+                run = await tx.get(CoreRun, run_id)
+                assert run.status == "completed"
+                assert int(run.input_revision) >= 2
+                plans = list(await tx.scalars(select(CorePlan).where(CorePlan.run_id == run_id)
+                    .order_by(CorePlan.version)))
+                approved = [plan for plan in plans if plan.stage == "execute"
+                    and (plan.self_check or {}).get("verdict") == "pass"]
+                assert len(approved) >= 2
+                current = next(plan for plan in plans if plan.id == run.current_plan_id)
+                assert current.input_revision == run.input_revision
+                assert current in approved
+                assert current.proposal["goal"] == "改图后生成视频 改成蓝色"
+                old = await tx.get(CoreTask, old_t1.id)
+                assert old.status == "succeeded"
+                assert old.output["asset_id"] == old_asset
+                assert await tx.get(Asset, uuid.UUID(old_asset))
+                new_t1 = await tx.scalar(select(CoreTask).where(CoreTask.run_id == run_id,
+                    CoreTask.plan_id == current.id, CoreTask.task_key == "t1"))
+                assert new_t1.status == "succeeded"
+                assert new_t1.parameters["prompt"] == "blue"
+                assert new_t1.id != old.id
+                runs = list(await tx.scalars(select(CoreRun.id).where(CoreRun.session_id == run.session_id)))
+                assert runs == [run_id]
+                succeeded = list(await tx.scalars(select(CoreTask).where(CoreTask.run_id == run_id,
+                    CoreTask.kind == "call_tool", CoreTask.status == "succeeded")))
+                ledger = await tx.scalar(select(func.count()).select_from(HostCreditLedger).where(
+                    HostCreditLedger.core_run_id == run_id))
+                assert ledger == len(succeeded) == fake.counts()["submissions"]
+                opening = await tx.scalar(select(CoreSessionMessage).where(CoreSessionMessage.id == opening.id))
+                assert opening.input_revision == 1
+                blue = await tx.scalar(select(CoreSessionMessage).where(
+                    CoreSessionMessage.client_message_id == "blue", CoreSessionMessage.run_id == run_id))
+                assert blue.correction_of_run_id is None
+                assert (blue.content or {}).get("feedback") is not True
+                assert blue.input_revision == run.input_revision
+                revision = await tx.scalar(select(CoreRunInputRevision).where(
+                    CoreRunInputRevision.run_id == run_id, CoreRunInputRevision.revision == run.input_revision))
+                assert revision.effective_request["messages"] == ["改图后生成视频", "改成蓝色"]
+                assert str(opening.id) not in revision.message_ids
+    asyncio.run(test())
+
+
+def test_three_messages_within_one_second_one_dark_rabbit_run(tmp_path):
+    async def test():
+        from datetime import timedelta
+        from backend.core.orm import CorePlan, CoreSession
+        from backend.core.sessions.contracts import SessionSettings
+        from backend.core.sessions.dispatch import dispatch_due
+        from backend.core.sessions.intake import enqueue_message
+        from backend.core.sessions.resolve import resolve_session
+        planner = _RequestPlanner(["dark rabbit"])
+        async with fixture(tmp_path, start_run=False, include_canvas=True, make_planner=lambda _factory: planner) as (
+                factory, _supervisor, drive, _run, workspace, _root, _config, fake, _events, asset_id, document_id):
+            settings = SessionSettings()
+            async with factory.begin() as tx:
+                session, _doc = await resolve_session(tx, workspace_id=workspace, user_id="owner",
+                    document_id=document_id)
+                await enqueue_message(tx, session, client_id="c", client_message_id="a",
+                    content={"text": "狗", "budget": 100, "tokens": 100, "rounds": 20,
+                        "selected_assets": [str(asset_id)], "language": "zh-CN", "action": "tool", "tool": "edit"},
+                    settings=settings)
+                session_id = session.id
+            # Separate committed requests, as two browsers/HTTP handlers would send them.
+            async with factory.begin() as tx:
+                session = await tx.get(CoreSession, session_id, with_for_update=True)
+                await enqueue_message(tx, session, client_id="c", client_message_id="b",
+                    content={"text": "不对兔子"}, settings=settings)
+            async with factory.begin() as tx:
+                session = await tx.get(CoreSession, session_id, with_for_update=True)
+                await enqueue_message(tx, session, client_id="c", client_message_id="c",
+                    content={"text": "再暗一点"}, settings=settings)
+                session.dispatch_at = session.dispatch_at - timedelta(seconds=5)
+            assert await dispatch_due(factory, settings) is True
+            async with factory() as tx:
+                session = await tx.get(CoreSession, session_id)
+                run_id = session.active_run_id
+                messages = list(await tx.scalars(select(CoreSessionMessage).where(
+                    CoreSessionMessage.session_id == session_id).order_by(CoreSessionMessage.sequence)))
+                assert [row.content["text"] for row in messages] == ["狗", "不对兔子", "再暗一点"]
+                span = messages[-1].created_at - messages[0].created_at
+                assert span.total_seconds() < 1
+                assert all(row.correction_of_run_id is None for row in messages)
+            assert await drive(run_id=run_id) == "completed"
+            assert planner.calls[0]["message"] == "狗 不对兔子 再暗一点"
+            assert planner.calls[0]["messages"] == ["狗", "不对兔子", "再暗一点"]
+            assert planner.calls[0]["language"] == "zh-CN"
+            assert planner.calls[0]["action"] == "tool"
+            assert planner.calls[0]["tool"] == "edit"
+            async with factory() as tx:
+                from backend.core.orm import CorePlan
+                runs = list(await tx.scalars(select(CoreRun.id).where(CoreRun.session_id == session_id)))
+                assert runs == [run_id]
+                plan = await tx.scalar(select(CorePlan).where(CorePlan.run_id == run_id, CorePlan.stage == "execute"))
+                assert plan.proposal["goal"] == "狗 不对兔子 再暗一点"
+                task = await tx.scalar(select(CoreTask).where(CoreTask.run_id == run_id))
+                assert task.status == "succeeded"
+                assert task.parameters["prompt"] == "dark rabbit"
+                assert await tx.get(Asset, uuid.UUID(task.output["asset_id"]))
+                assert await tx.scalar(select(func.count()).select_from(HostCreditLedger).where(
+                    HostCreditLedger.core_run_id == run_id)) == 1
+                assert fake.counts()["submissions"] == 1
     asyncio.run(test())

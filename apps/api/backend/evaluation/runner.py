@@ -420,10 +420,15 @@ class EvaluationRunner:
         if problems:
             raise ValueError("数据集快照与执行链不兼容:" + ";".join(problems))
         planner_cases = [case for case in cases if case.taskType == "planner"]
+        reference_cases = [case for case in cases if case.taskType == "session_reference"]
         if planner_cases and (mode != "mock" or provider != "mock"):
             raise ValueError("planner 评测只在 mock 执行模式运行；LLM 用 plannerMode=llm 与 factory，不走 live 媒体")
         if planner_cases and any(case.taskType != "planner" for case in cases):
             raise ValueError("planner 数据集不能与画质或 agent_flow 用例混在同一次 run")
+        if reference_cases and (mode != "mock" or provider != "mock"):
+            raise ValueError("指代评测只在 mock 执行模式运行，不调用媒体或付费模型")
+        if reference_cases and any(case.taskType != "session_reference" for case in cases):
+            raise ValueError("指代数据集不能与画质、planner 或 agent_flow 用例混在同一次 run")
         planner_mode = str((sandbox_config or {}).get("plannerMode") or "rule")
         if planner_cases and planner_mode not in {"rule", "llm"}:
             raise ValueError("plannerMode 只能是 rule 或 llm")
@@ -493,6 +498,12 @@ class EvaluationRunner:
                     "创建时尚未执行。rule 为 RulePlanner 基线；"
                     "llm 无部署 route 或无凭据时为 unavailable。"
                 ),
+            }
+        if reference_cases:
+            sandbox_snapshot["sessionReference"] = {
+                "caseCount": len(reference_cases),
+                "llmTested": False,
+                "llmUntestedReason": "规则解析与真实 LLM 成绩分开；本执行器不调用模型。",
             }
         manifest = RunManifest(
             runId=run_id,
@@ -759,6 +770,10 @@ class EvaluationRunner:
             return self._execute_planner_only(
                 run_id, manifest, cases, state, log, cancel_check,
             )
+        if cases and all(case.taskType == "session_reference" for case in cases.values()):
+            return self._execute_reference_only(
+                run_id, manifest, cases, state, log, cancel_check,
+            )
         config = self._sandbox_runtime_config(manifest)
         sandbox = run_dir / "sandbox"
         cancelled = False
@@ -795,6 +810,8 @@ class EvaluationRunner:
                     context.attempt_index = 0
                     if case.taskType == "planner":
                         raise ValueError("planner 用例不能进入媒体沙盒执行")
+                    if case.taskType == "session_reference":
+                        raise ValueError("指代用例不能进入媒体沙盒执行")
                     if case.taskType == "agent_flow":
                         self._execute_agent_flow_trial(trial, case, log, cancel_check=cancel_check)
                     else:
@@ -1018,6 +1035,105 @@ class EvaluationRunner:
         if task == "text_to_image" and case.input.referenceArtifactIds:
             raise ValueError("text_to_image 用例不应携带参考素材")
         return body
+
+    def _execute_reference_only(self, run_id, manifest, cases, state, log, cancel_check):
+        """Reference trials call the pure resolver. They do not open a model or media sandbox."""
+
+        cancelled = False
+        try:
+            for trial in state.trials:
+                if cancel_check is not None and cancel_check():
+                    cancelled = True
+                    break
+                if trial.status != "pending":
+                    continue
+                case = cases.get(trial.caseId)
+                if case is None:
+                    raise ValueError(f"快照缺少用例:{trial.caseId}")
+                self._execute_reference_trial(trial, case, log, cancel_check=cancel_check)
+                if cancel_check is not None and cancel_check():
+                    cancelled = True
+                    break
+        except Exception as exc:
+            self._write_state(run_id, status="interrupted", error=str(exc)[:500])
+            log.append("run.interrupted", run_id, error=str(exc)[:500])
+            raise
+        if cancelled:
+            self._cancel_remaining(run_id, state, log)
+            self._write_state(run_id, status="cancelled", finishedAt=now())
+            log.append("run.cancelled", run_id)
+            return self.load_run(run_id)
+        self._grade_pending(run_id, manifest, cases, log, use_cache=False)
+        finished = self.load_run(run_id)
+        self._write_state(run_id, status="completed", finishedAt=now())
+        log.append("run.finished", run_id, trials=len(finished.trials))
+        return self.load_run(run_id)
+
+    def _execute_reference_trial(self, trial, case, log, cancel_check=None) -> None:
+        from .reference_dataset import embedded_reference_case
+        from .reference_evaluation import observe_case
+
+        run_id = trial.runId
+        trial.status = "running"
+        trial.startedAt = now()
+        self._write_trial(trial)
+        log.append("trial.started", run_id, trialId=trial.trialId, caseId=trial.caseId, taskType="session_reference")
+        if cancel_check is not None and cancel_check():
+            trial.status = "cancelled"
+            trial.error = "用户取消"
+            trial.finishedAt = now()
+            self._write_trial(trial)
+            return
+        started = time.perf_counter()
+        reference_case = embedded_reference_case(case)
+        status, artifact_id, reason = observe_case(reference_case)
+        latency_ms = (time.perf_counter() - started) * 1000
+        observation = {
+            "schema": "session-reference-observation-v1",
+            "llm_tested": False,
+            "llm_untested_reason": "规则解析与真实 LLM 成绩分开；本执行器不调用模型。",
+            "observed_status": status,
+            "observed_artifact_id": artifact_id,
+            "observed_reason": reason,
+            "expected_used_as_observation": False,
+        }
+        directory = self._trial_dir(run_id, trial.trialId)
+        atomic_write_text(directory / "observation.json", json.dumps(observation, ensure_ascii=False, indent=2))
+        trial.latencyMs = int(latency_ms)
+        trial.tracePath = str(directory / "observation.json")
+        trial.tracePaths = [trial.tracePath]
+        trial.status = "completed"
+        trial.finishedAt = now()
+        self._write_trial(trial)
+        log.append("trial.finished", run_id, trialId=trial.trialId, status="completed", tracePath=trial.tracePath)
+
+    def _grade_reference(self, trial, case, log) -> None:
+        from .graders.rules import Answer
+        from .reference_dataset import embedded_reference_case
+        from .reference_evaluation import grade_recorded
+
+        path = self._trial_dir(trial.runId, trial.trialId) / "observation.json"
+        try:
+            observation = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            self._persist_grading(
+                trial, case, {}, "observation_missing_or_corrupt", None, "rules", trial.tracePath or "", False, log,
+            )
+            return
+        graded = grade_recorded(embedded_reference_case(case), observation)
+        if isinstance(graded, str):
+            self._persist_grading(trial, case, {}, graded, None, "rules", trial.tracePath or "", False, log)
+            return
+        values = {
+            "status_match": graded.status_match,
+            "artifact_match": graded.artifact_match,
+            "reason_match": graded.reason_match,
+        }
+        answers = {
+            check.id: Answer(checkId=check.id, observed=values.get(check.id), evidence=graded.observed_reason, source="rules")
+            for check in case.checks
+        }
+        self._persist_grading(trial, case, answers, None, None, "rules", trial.tracePath or "", False, log)
 
     def _execute_planner_only(self, run_id, manifest, cases, state, log, cancel_check):
         """Planner trials never open the media sandbox or a paid provider."""
@@ -1588,6 +1704,9 @@ class EvaluationRunner:
                 continue
             if case.taskType == "planner":
                 self._grade_planner(trial, case, log)
+                continue
+            if case.taskType == "session_reference":
+                self._grade_reference(trial, case, log)
                 continue
             artifact_id = trial.artifactIds[0]
             record, data = self.objects.get(artifact_id)

@@ -21,8 +21,11 @@ from backend.agent.media.credits import reserve_core, settle_core
 from backend.agent.orm import HostCreditLedger
 from backend.agent.media.catalog import HostError
 from backend.core.contracts import AssetContent
+from backend.core.asset_edit import EditRejected, append_image_edit, capability_of
+from backend.core.session_context import effective_scope
 from backend.core.events.store import alert, emit
-from backend.core.orm import CoreEvent, CoreRun, CoreSession, CoreTask, CoreTaskAttempt, CoreTaskDependency
+from backend.core.orm import CoreAsset, CoreEvent, CoreRun, CoreSession, CoreTask, CoreTaskAttempt, CoreTaskDependency
+from backend.core.sessions.fencing import ObsoleteRevision, assert_submittable, latch_first_submit
 from backend.core.store import create_asset, transition
 from backend.core.tools.catalog import canonical, estimate_cost
 from backend.core.tools.contracts import VersionLock
@@ -170,10 +173,10 @@ async def _dependency_gate(tx, task, run):
     return "ready"
 
 
-async def _canvas_assets(tx, run, doc, media_root: Path):
+async def _canvas_assets(tx, run, doc, media_root: Path, scope=None):
     """Current workspace, frozen readable set, live reference, and a path under media_root."""
     from backend.agent.media.inspection import managed_path
-    readable = {str(item) for item in (run.scope or {}).get("readable_assets") or []}
+    readable = {str(item) for item in (scope if scope is not None else run.scope or {}).get("readable_assets") or []}
     if doc is None or doc.workspace_id != run.workspace_id or not readable:
         return {}
     found = {}
@@ -281,12 +284,15 @@ class Worker:
         return execution, task, run, doc, await tx.get(Job, job_id)
 
     async def references(self, tx, task, run):
+        scope = await effective_scope(tx, run, task.input_revision)
         deps = set(await tx.scalars(select(CoreTaskDependency.depends_on_id).where(CoreTaskDependency.task_id == task.id)))
         by_key = {}
         for ident in deps:
             upstream = await tx.get(CoreTask, ident)
             if upstream is None or upstream.run_id != run.id or upstream.status != "succeeded":
                 raise HostError("dependencies_pending", "依赖尚未成功")
+            if upstream.plan_id != task.plan_id:
+                raise HostError("dependencies_pending", "依赖不属于当前计划")
             by_key[upstream.task_key] = upstream
         async def resolve(value):
             if isinstance(value, str) and value.startswith("$"):
@@ -314,7 +320,7 @@ class Worker:
                 result = {k: await resolve(v) for k, v in value.items()}
                 if "asset_id" in result:
                     asset = await tx.get(Asset, uuid.UUID(result["asset_id"]))
-                    allowed = set(run.scope.get("readable_assets", []))
+                    allowed = set(scope.get("readable_assets", []))
                     generated = {str((t.output or {}).get("asset_id")) for t in by_key.values()}
                     if asset is None or asset.workspace_id != run.workspace_id or asset.details.get("hostBlocked") or str(asset.id) not in allowed | generated:
                         raise ValueError("asset unavailable or out of scope")
@@ -388,6 +394,11 @@ class Worker:
                     raise ValueError("hook_rewrite_requires_fresh_admission")
                 if tool.execution.adapter == "staged" and task.parameters.get("count", 1) != 1:
                     raise ValueError("expand and audit batch tasks before execution")
+                try:
+                    await assert_submittable(tx, run, task)
+                except ObsoleteRevision:
+                    await self.finish(tx, rows, "cancelled", 0, "obsolete_input_revision")
+                    return {"cancelled": "obsolete_input_revision"}
                 quote = estimate_cost(tool, task.parameters)
                 try:
                     await reserve_core(tx, run, task, quote)
@@ -396,7 +407,13 @@ class Worker:
                     await self.defer(tx, execution, job)
                     return {"deferred": exc.code}
                 execution.resolved_parameters = params
+                try:
+                    await assert_submittable(tx, run, task)
+                except ObsoleteRevision:
+                    await self.finish(tx, rows, "cancelled", 0, "obsolete_input_revision")
+                    return {"cancelled": "obsolete_input_revision"}
                 await transition(tx, "task", task.id, task.version, "submitted", causation_id=execution.causation_id)
+                await latch_first_submit(tx, run, task)
                 execution.phase = "preparing" if hasattr(self.provider, "prepare") else "sending"
             if run.status == "cancelled":
                 execution.cancel_requested = True
@@ -522,7 +539,13 @@ class Worker:
                     if isinstance(exc, ValueError) or execution.retries > task.max_retries:
                         await self.finish(tx, rows, "failed", 0, "prepare_failed")
                 elif phase == "publish":
-                    if execution.expires_at and now() < execution.expires_at:
+                    if isinstance(exc, EditRejected):
+                        execution.retries += 1
+                        if exc.code != "asset_version_conflict" or execution.retries > task.max_retries:
+                            await self.finish(tx, rows, "failed", 0, exc.code)
+                        # The artifact is already on MediaHost. A version CAS retry
+                        # never downloads again or re-submits the provider request.
+                    elif execution.expires_at and now() < execution.expires_at:
                         execution.phase, execution.artifact = "download", None
                     else:
                         await self.finish(tx, rows, "failed", 0, "artifact_unavailable")
@@ -688,10 +711,11 @@ class Worker:
         if doc is not None and doc.workspace_id != run.workspace_id:
             doc = None
         media_root = Path(self.root).resolve()
-        assets = await _canvas_assets(tx, run, doc, media_root)
+        scope = await effective_scope(tx, run, task.input_revision)
+        assets = await _canvas_assets(tx, run, doc, media_root, scope)
         if tool.name == "read_asset":
             asset_id = str((params or {}).get("asset_id") or "")
-            own = await self._readable_workspace_asset(tx, run, asset_id)
+            own = await self._readable_workspace_asset(tx, run, asset_id, scope)
             assets = {asset_id: own} if own else {}
         raw = scoped_canvas_raw(doc.data if doc is not None else {}, set(assets),
             {str(item) for item in (run.scope or {}).get("readable_nodes") or []})
@@ -720,12 +744,18 @@ class Worker:
             await self.finish(tx, rows, "failed", 0, "param_invalid")
             return {"failed": "param_invalid"}
         task.output = output
+        try:
+            await assert_submittable(tx, run, task)
+        except ObsoleteRevision:
+            await self.finish(tx, rows, "cancelled", 0, "obsolete_input_revision")
+            return {"cancelled": "obsolete_input_revision"}
         await transition(tx, "task", task.id, task.version, "submitted", causation_id=execution.causation_id)
+        await latch_first_submit(tx, run, task)
         await self.finish(tx, rows, "succeeded", 0)
         return {"done": True}
 
-    async def _readable_workspace_asset(self, tx, run, asset_id):
-        readable = {str(item) for item in (run.scope or {}).get("readable_assets") or []}
+    async def _readable_workspace_asset(self, tx, run, asset_id, scope=None):
+        readable = {str(item) for item in (scope if scope is not None else run.scope or {}).get("readable_assets") or []}
         if not asset_id or asset_id not in readable:
             return None
         try:
@@ -785,9 +815,27 @@ class Worker:
                     "prompt": task.parameters.get("prompt", ""), "width": measured["width"], "height": measured["height"]}})
         tx.add(asset)
         await tx.flush()
-        core_asset = await create_asset(tx, run.workspace_id, run.user_id, "personal", AssetContent(
+        content = AssetContent(
             kind=asset.kind, category="artifact", storage={"asset_id": str(asset.id)}, stored_asset_id=asset.id,
-            content_hash=asset.sha256, user_id=run.user_id, run_id=run.id, task_id=task.id))
+            content_hash=asset.sha256, user_id=run.user_id, run_id=run.id, task_id=task.id,
+            width=asset.width, height=asset.height, size_bytes=asset.bytes)
+        edit_capability = None if task.tool_ref == "cutout" else capability_of(task.tool_ref or "")
+        if edit_capability:
+            source_id = (execution.resolved_parameters.get("image") or {}).get("asset_id")
+            source = await tx.get(Asset, uuid.UUID(str(source_id))) if source_id else None
+            if source is None or source.workspace_id != run.workspace_id:
+                raise EditRejected("edit_source_missing")
+            edited = await append_image_edit(tx, tool_name=task.tool_ref, resolved_asset_id=source.id,
+                workspace_id=run.workspace_id, user_id=run.user_id, run_id=run.id, task_id=task.id,
+                result=content, original=AssetContent(kind=source.kind, category="artifact",
+                    storage={"asset_id": str(source.id)}, stored_asset_id=source.id,
+                    content_hash=source.sha256, user_id=run.user_id, width=source.width,
+                    height=source.height, size_bytes=source.bytes))
+            core_asset = await tx.get(CoreAsset, edited.core_asset_id)
+            version_id = edited.version_id
+        else:
+            core_asset = await create_asset(tx, run.workspace_id, run.user_id, "personal", content)
+            version_id = core_asset.current_version_id
         cancelled = execution.cancel_requested or run.status == "cancelled" or task.status == "cancelled"
         node, conflict, rect = None, False, {}
         if doc and not cancelled:
@@ -813,7 +861,8 @@ class Worker:
             tx.add(CanvasWrite(task_id=task.id, document_id=doc.id, node_id=node, asset_id=asset.id,
                 conflict=conflict, history_only=cancelled or node is None, rect=rect))
         tx.add(AssetReference(asset_id=asset.id, owner_type="job", owner_id=str(job.id)))
-        task.output = {"asset_id": str(asset.id), "media_type": asset.kind, "core_asset_id": str(core_asset.id)}
+        task.output = {"asset_id": str(asset.id), "media_type": asset.kind, "core_asset_id": str(core_asset.id),
+            "core_asset_version_id": str(version_id)}
         execution.asset_id = asset.id
         job.phase_payload = {**artifact, "assetId": str(asset.id)}
         extra_events = await self.after(task, asset)

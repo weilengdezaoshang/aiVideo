@@ -90,13 +90,24 @@ async def main(args):
             return
         transport = RabbitTransport(os.environ["AIVERO_BROKER_URL"], settings) if args.role in {"publisher", "receiver"} else None
         from backend.core.supervisor.contracts import Settings as SupervisorSettings
-        from backend.core.supervisor.wiring import build_supervisor
+        from backend.core.supervisor.wiring import build_supervisor, preferred_route
         supervisor = build_supervisor(factory)
         async def supervise():
             return await asyncio.gather(*(supervisor.tick() for _ in range(SupervisorSettings().concurrency)))
         from backend.core.diagnostics.metrics import monitor
         from backend.core.diagnostics.contracts import Settings as DiagnosticsSettings
-        workers = {"monitor": lambda: lambda: monitor(factory), "supervisor": lambda: supervise, "processor": lambda: Processor(factory, settings, Registry().load(settings.handler_modules)).tick,
+        from backend.core.sessions.dispatch import dispatch_due
+        async def session_tick():
+            from backend.core.session_projection import project_session_once
+            from backend.core.session_stream import StreamSettings
+            from backend.core.version_switch import VersionSwitchWorker
+            dispatched = await dispatch_due(factory, agent_route=preferred_route(supervisor.routes, None))
+            projected = await project_session_once(factory, limit=StreamSettings().replay_limit)
+            switched = await VersionSwitchWorker(factory).run_once()
+            return dispatched or projected or bool(switched)
+        workers = {"monitor": lambda: lambda: monitor(factory), "supervisor": lambda: supervise,
+            "session-dispatch": lambda: session_tick,
+            "processor": lambda: Processor(factory, settings, Registry().load(settings.handler_modules)).tick,
             "timer": lambda: Timers(factory, settings).tick,
             "recovery": lambda: lambda: watchdog(factory, settings),
             "publisher": lambda: Publisher(factory, settings, transport).tick,
@@ -122,7 +133,7 @@ async def main(args):
 def cli():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="role", required=True)
-    for role in ("publisher", "receiver", "processor", "timer", "recovery", "supervisor", "monitor", "list"):
+    for role in ("publisher", "receiver", "processor", "timer", "recovery", "supervisor", "session-dispatch", "monitor", "list"):
         commands.add_parser(role)
     for role in ("inspect", "replay", "quarantine-replay"):
         child = commands.add_parser(role)

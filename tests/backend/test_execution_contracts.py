@@ -85,13 +85,15 @@ def test_asset_scope_accepts_only_current_contract(scope_key, allowed):
         asset = SimpleNamespace(id=asset_id, workspace_id=workspace_id, kind="image", details={},
             storage_key="owned/image.png", ext="png", sha256="test")
         class Session:
+            async def scalar(self, query):
+                return None  # This scope-only fixture has no appended input revision.
             async def scalars(self, query):
                 return []
             async def get(self, model, ident):
                 assert ident == asset_id
                 return asset
-        task = SimpleNamespace(id=uuid.uuid4(), parameters={"image": {"asset_id": str(asset_id)}})
-        run = SimpleNamespace(scope={scope_key: [str(asset_id)]}, workspace_id=workspace_id)
+        task = SimpleNamespace(id=uuid.uuid4(), input_revision=1, parameters={"image": {"asset_id": str(asset_id)}})
+        run = SimpleNamespace(id=uuid.uuid4(), input_revision=1, scope={scope_key: [str(asset_id)]}, workspace_id=workspace_id)
         worker = object.__new__(Worker)
         if allowed:
             result = await worker.references(Session(), task, run)
