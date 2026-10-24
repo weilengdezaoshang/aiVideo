@@ -293,6 +293,7 @@ class CoreSkillVersion(Record, Base):
     source: Mapped[str] = mapped_column(String(16))
     source_ref: Mapped[str | None] = mapped_column(Text)
     content_hash: Mapped[str] = mapped_column(String(64))
+    body: Mapped[str] = mapped_column(Text, default="", server_default="")
     __table_args__ = (UniqueConstraint("skill_id", "version"), UniqueConstraint("id", "skill_id"),
         CheckConstraint("version > 0 AND source IN ('official','user')"))
 
