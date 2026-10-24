@@ -9,7 +9,8 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.dialects.postgresql import insert
 from backend.agent.orm import HostCreditAccount, HostCreditLedger
 from backend.core.contracts import TaskInput
-from backend.core.orm import CoreRun, CorePlan, CoreTask, CoreTaskDependency, CoreSession, CoreSessionMessage, CoreEvent
+from backend.core.orm import (CoreRun, CorePlan, CoreTask, CoreTaskDependency, CoreSession, CoreSessionMessage,
+    CoreEvent, CoreSkillVersion)
 from backend.core.sessions.fencing import lock_session_then_run, pending_user_messages
 from backend.core.sessions.interrupt import apply_interrupt, correction_evidence, invocation_obsolete, is_replan
 from backend.core.session_context import confirmed_decisions, effective_run_view
@@ -107,6 +108,54 @@ async def wake(tx, context):
         event_id=context.event.id, attempt=0, status="pending",
         context={"input_revision": revision}, failures=0)
         .on_conflict_do_nothing(index_elements=[Invocation.event_id, Invocation.attempt]))
+
+
+async def _run_skill(tx, run):
+    """The run's selected skill: scope marker plus the frozen version's spec."""
+    marker = (run.scope or {}).get("skill")
+    if not isinstance(marker, dict) or not marker.get("version_id"):
+        return None, None
+    try:
+        version = await tx.get(CoreSkillVersion, uuid.UUID(str(marker["version_id"])))
+    except (ValueError, TypeError):
+        return None, None
+    if version is None:
+        return None, None
+    from backend.core.skills.store import spec_of
+    return marker, await spec_of(tx, version)
+
+
+def _run_skill_version_id(run):
+    marker = (run.scope or {}).get("skill")
+    if not isinstance(marker, dict) or not marker.get("version_id"):
+        return None
+    try:
+        return uuid.UUID(str(marker["version_id"]))
+    except (ValueError, TypeError):
+        return None
+
+
+async def run_skill_view(tx, run) -> dict:
+    """Playbook text for the supervisor <skill> context tag; empty when no skill."""
+    marker, spec = await _run_skill(tx, run)
+    if spec is None:
+        return {}
+    from backend.core.skills.selection import SkillSettings
+    return {"name": spec.name, "scenes": spec.scenes, "role": spec.role,
+        "body": spec.body[: SkillSettings().context_body_chars],
+        "phases": [phase.model_dump(mode="json") for phase in spec.phases],
+        "routing": spec.routing.model_dump(mode="json"), "boundaries": spec.boundaries,
+        "defaults": spec.defaults, "allowlist": spec.allowlist, "version": spec.version,
+        "skill_id": marker.get("skill_id"), "version_id": marker.get("version_id")}
+
+
+async def run_skill_rules(tx, run):
+    """Playbook phases compiled into reviewer intent rules; empty when no skill."""
+    marker, spec = await _run_skill(tx, run)
+    if spec is None:
+        return []
+    from backend.core.skills.compile_rules import skill_intent_rules
+    return skill_intent_rules(spec)
 
 
 def register(registry):
@@ -359,6 +408,7 @@ class Supervisor:
             "request": view.snapshot["request"], "snapshot": view.snapshot, "viewport": view.snapshot.get("viewport"),
             "summary": session.summary, "language": session.language,
             "recent_outputs": list(session.recent_assets or view.snapshot.get("recent_assets") or []),
+            "skill": await run_skill_view(tx, run),
             "asset_cards": await frozen_card_views(tx, run, limit=self.settings.card_context_limit),
             "confirmed_decisions": await confirmed_decisions(tx, run.session_id),
             "form_answers": fields,
@@ -710,6 +760,9 @@ class Supervisor:
                 "checks": {"legal": True, "types": True, "intent": False}}
         else:
             extras = [_capture] if self.settings.selfcheck_enabled and result.plan.result_type == "generate" else None
+            skill_rules = await run_skill_rules(tx, run)
+            if skill_rules:
+                extras = [*(extras or []), *skill_rules]
             verdict = review(result.plan, view, catalog, account.available if account else 0, invariants=merged,
                 intent_extensions=extras)
         invocation.reviewed_at = now()
@@ -1034,7 +1087,7 @@ class Supervisor:
                 task_key=step.id, kind=step.kind, tool_ref=step.tool, tool_version=tool.version if tool else None,
                 parameters=step.parameters, idempotency_key=str(plan.id) + ":" + step.id,
                 scope=view.scope, invariants=merged, input_revision=int(run.input_revision or 1),
-                stage_key=logical_by_step.get(step.id)))
+                stage_key=logical_by_step.get(step.id), skill_version_id=_run_skill_version_id(run)))
             tasks[step.id] = task
             await transition(tx, "task", task.id, task.version, "validated", causation_id=invocation.event_id)
             if tool:

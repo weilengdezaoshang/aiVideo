@@ -17,6 +17,7 @@ from backend.core.tools.store import load_catalog
 from backend.core.tools.catalog import canonical
 from backend.agent.media.intent.negation import affirmative_text
 from backend.core.review.contracts import Invariants
+from backend.core.skills.selection import select_skill
 from backend.infrastructure.orm import Asset, AssetReference, Outbox
 from .contracts import Settings
 from .prompts import load_prompt
@@ -183,9 +184,29 @@ async def open_run(tx, session, doc, *, workspace_id, user_id, request_key, requ
         for node_id, node in objects.items():
             if isinstance(node, dict) and str(node.get("kind") or node.get("type") or "").lower() == "text":
                 readable_nodes.append(str(node_id))
-    scope = {"tools": [t.name for t in catalog.snapshot.tools if t.available and not t.rollout_groups],
+    # Skill playbook: explicit choice > scene rule match > retrieval. A selected
+    # skill tightens scope.tools to its allowlist; the reviewer's gate-① then
+    # rejects any ticket outside it. No skill keeps today's unrestricted scope.
+    explicit_skill = str(request.get("skill_id") or "") or None
+    picked = await select_skill(tx, workspace_id=workspace_id, user_id=user_id,
+        message=str(request.get("message") or ""), explicit_skill_id=explicit_skill)
+    skill_scope = None
+    if picked is not None:
+        skill_view, skill_spec = picked
+        available_tools = [t.name for t in catalog.snapshot.tools if t.available and not t.rollout_groups]
+        scoped_tools = [name for name in available_tools if name in set(skill_spec.allowlist)]
+        if scoped_tools:
+            skill_scope = {"skill_id": skill_view.skill_id, "version_id": skill_view.version_id,
+                "name": skill_spec.name, "tools": scoped_tools}
+        elif explicit_skill:
+            raise ValueError("skill_tools_unavailable")
+        # An auto-match onto a stale playbook is dropped, not applied half-way.
+    scope = {"tools": skill_scope["tools"] if skill_scope else
+        [t.name for t in catalog.snapshot.tools if t.available and not t.rollout_groups],
         "readable_assets": readable, "readable_cards": list(lock["asset_cards"].keys()),
         "readable_nodes": readable_nodes, "write_canvas": True}
+    if skill_scope is not None:
+        scope["skill"] = skill_scope
     # Invariants come from the explicit request, never from the writer's returned ticket.
     invariants = copy.deepcopy(request.get("invariants", {}))
     if re.search(r"视频|动画|短片|\bvideo\b", affirmative_text(request["message"]), re.I):

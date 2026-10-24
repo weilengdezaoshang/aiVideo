@@ -129,6 +129,13 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
         try:
             async with engine.connect() as connection:
                 await connection.execute(text("SELECT 1 FROM browser_sessions LIMIT 1"))
+            # Official playbooks are content-hash idempotent; a reseed touches nothing.
+            try:
+                from backend.core.skills.store import seed_official
+                async with app.state.factory.begin() as tx:
+                    await seed_official(tx)
+            except Exception:
+                logging.getLogger(__name__).warning("official skill seeding skipped", exc_info=True)
             yield
         finally:
             app.state.recognition.close()
@@ -901,11 +908,13 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
     from backend.core.version_switch import build_switch_router
     from backend.core.session_redo_service import build_redo_router
     from backend.core.asset_cards_api import build_cards_router
+    from backend.core.skills_api import build_skills_router
     app.include_router(build_switch_router())
     app.include_router(build_redo_router())
     app.include_router(build_cards_router())
     from backend.core.composition.api import install as install_composition_fonts
     install_composition_fonts(app)
+    app.include_router(build_skills_router())
     from backend.core.diagnostics.api import install as install_diagnostics_routes
     install_diagnostics_routes(app)
 

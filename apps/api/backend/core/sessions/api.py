@@ -28,6 +28,7 @@ class PostMessage(Contract):
     correction_of_run_id: uuid.UUID | None = None
     viewport: dict | None = None
     language: str | None = None
+    skill_id: uuid.UUID | None = None
     credits_budget: int = Field(default=0, ge=0)
     token_budget: int = Field(default_factory=lambda: CoreSettings().tokens_limit, ge=0)
     max_thought_rounds: int = Field(default_factory=lambda: CoreSettings().max_thought_rounds, gt=0)
@@ -70,6 +71,8 @@ def install(app):
                     content["viewport"] = body.viewport
                 if body.language:
                     content["language"] = body.language
+                if body.skill_id is not None:
+                    content["skill_id"] = str(body.skill_id)
                 result = await enqueue_message(tx, session, client_id=body.client_id,
                     client_message_id=body.client_message_id, content=content, intent=body.intent,
                     related_run_id=body.related_run_id, correction_of_run_id=body.correction_of_run_id,

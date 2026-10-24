@@ -5,7 +5,7 @@ from backend.core.orm import CoreRunInputRevision, CoreSessionMessage
 from backend.core.supervisor.service import digest
 from .store import append_event
 
-SERVER_FIELDS = ("language", "action", "tool", "node_ids")
+SERVER_FIELDS = ("language", "action", "tool", "node_ids", "skill_id")
 
 
 def effective_request(messages: list[CoreSessionMessage]) -> dict:

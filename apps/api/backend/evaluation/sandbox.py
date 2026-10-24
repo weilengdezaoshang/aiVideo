@@ -1089,6 +1089,8 @@ def create_sandbox_app(
     app.include_router(build_eval_router(data))
     app.include_router(metrics_runtime_router)
     from backend.core.asset_cards_api import build_cards_router
+    from backend.core.skills_api import build_skills_router
     app.include_router(build_cards_router())
+    app.include_router(build_skills_router())
     app.mount("/", FrontendFiles(root), name="web")
     return app
