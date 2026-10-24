@@ -12,7 +12,9 @@ _COORDINATE_KEYS = frozenset({
     "x", "y", "width", "height", "left", "top", "right", "bottom",
     "bounds", "position", "scale", "rotation", "camera", "viewport",
 })
-_CARD_FIELDS = ("id", "asset_id", "node_id", "kind", "type", "name", "label", "text", "media_type")
+_CARD_FIELDS = ("id", "asset_id", "node_id", "kind", "type", "name", "label", "text", "media_type",
+    "card_id", "card_kind", "category", "starred", "description", "source_asset_id",
+    "version_number", "head_status", "recognition")
 _RULE_SPLIT = "【当前信息】"
 _BOUNDARY = "【当前阶段边界】"
 _SOFT_LISTS = ("messages", "tasks", "asset_cards", "recent_outputs", "upload")
@@ -52,7 +54,7 @@ def build_context(context: dict, settings: Settings | None = None) -> dict:
             outside_kinds[kind] = outside_kinds.get(kind, 0) + 1
 
     selected, inside = _cap_objects(selected, inside, settings.context_max_objects)
-    cards = _filter_cards(context.get("asset_cards") or [], readable)
+    cards = _filter_cards(context.get("asset_cards") or [], readable, _readable_cards(context))
     recent = _filter_cards(context.get("recent_outputs") or [], readable)
     dynamic = {
         "canvas": {"selected": selected, "viewport": inside, "outside": {
@@ -125,6 +127,12 @@ def _scope(context: dict) -> dict:
 
 def _readable(context: dict) -> set[str]:
     return {str(item) for item in _scope(context).get("readable_assets") or []}
+
+
+def _readable_cards(context: dict) -> set[str]:
+    """Frozen card ids the Run may reference; cards authorize their own source image."""
+
+    return {str(item) for item in _scope(context).get("readable_cards") or [] if str(item)}
 
 
 def _readable_nodes(context: dict) -> set[str]:
@@ -258,18 +266,20 @@ def _cap_objects(selected: list[dict], inside: list[dict], limit: int) -> tuple[
     return selected, inside[:room]
 
 
-def _filter_cards(cards: list, readable: set[str]) -> list:
-    """Keep allowlisted fields of an authorized asset. Anything else is dropped."""
+def _filter_cards(cards: list, readable: set[str], readable_cards: set[str] | None = None) -> list:
+    """Keep allowlisted fields of an authorized asset or Run-frozen card. Anything else is dropped."""
 
+    allowed_cards = readable_cards if readable_cards is not None else set()
     kept = []
     for card in cards:
         if not isinstance(card, dict):
             continue
         asset_id = _asset_of(card)
-        if not asset_id or asset_id not in readable:
+        card_id = str(card.get("card_id") or "")
+        if not ((asset_id and asset_id in readable) or (card_id and card_id in allowed_cards)):
             continue
         view = _full(card)
-        if view.get("asset_id") in readable:
+        if view.get("asset_id") in readable or (view.get("card_id") or "") in allowed_cards:
             kept.append(view)
     return kept
 

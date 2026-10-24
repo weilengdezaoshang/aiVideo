@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     planner_checkpoint_margin_seconds: float = Field(default=15, ge=0)
     viewport_span_limit: float = Field(default=100_000, gt=0)
     viewport_origin_limit: float = Field(default=1_000_000, gt=0)
+    card_context_limit: int = Field(default=12, gt=0)
 
 
 class Step(Contract):

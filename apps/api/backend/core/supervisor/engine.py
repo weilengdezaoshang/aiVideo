@@ -220,6 +220,7 @@ class Supervisor:
         return watchdog_seconds(run, self.settings)
 
     async def context(self, tx, run, invocation):
+        from backend.core.asset_cards import frozen_card_views
         session = await tx.get(CoreSession, run.session_id)
         view = await effective_run_view(tx, run)
         messages = list(await tx.scalars(select(CoreSessionMessage).where(CoreSessionMessage.session_id == session.id)
@@ -241,6 +242,7 @@ class Supervisor:
             "request": view.snapshot["request"], "snapshot": view.snapshot, "viewport": view.snapshot.get("viewport"),
             "summary": session.summary, "language": session.language,
             "recent_outputs": list(session.recent_assets or view.snapshot.get("recent_assets") or []),
+            "asset_cards": await frozen_card_views(tx, run, limit=self.settings.card_context_limit),
             "confirmed_decisions": await confirmed_decisions(tx, run.session_id),
             "form_answers": fields,
             "messages": [{"role": m.role, "id": str(m.id), "run_id": str(m.run_id) if m.run_id else None, "content": message_data(m)} for m in ordered],

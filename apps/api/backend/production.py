@@ -8,6 +8,7 @@ import hashlib
 import base64
 import json
 import io
+import logging
 import os
 from pathlib import Path
 import random
@@ -567,6 +568,14 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
         ext = request.query_params.get("ext") or request.headers.get("content-type", "").split(";")[0].split("/")[-1]
         row = await save_media(app.state.factory, settings.media_root, identity.workspace_id, data,
             kind, ext, request.query_params.get("name", ""))
+        # Best-effort ingest recognition; failures stay in the recognition pipeline.
+        try:
+            from backend.core.recognition.service import enqueue_recognition
+            async with app.state.factory.begin() as tx:
+                await enqueue_recognition(tx, workspace_id=identity.workspace_id, stored_asset=row,
+                    requested_by=identity.principal, source="upload")
+        except Exception:
+            logging.getLogger(__name__).warning("upload recognition enqueue skipped", exc_info=True)
         return asset_view(row)
 
     @app.post("/api/assets/{ident}/metadata")
@@ -891,8 +900,10 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
     install_session_stream(app)
     from backend.core.version_switch import build_switch_router
     from backend.core.session_redo_service import build_redo_router
+    from backend.core.asset_cards_api import build_cards_router
     app.include_router(build_switch_router())
     app.include_router(build_redo_router())
+    app.include_router(build_cards_router())
     from backend.core.diagnostics.api import install as install_diagnostics_routes
     install_diagnostics_routes(app)
 

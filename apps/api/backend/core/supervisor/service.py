@@ -178,7 +178,8 @@ async def open_run(tx, session, doc, *, workspace_id, user_id, request_key, requ
             if isinstance(node, dict) and str(node.get("kind") or node.get("type") or "").lower() == "text":
                 readable_nodes.append(str(node_id))
     scope = {"tools": [t.name for t in catalog.snapshot.tools if t.available and not t.rollout_groups],
-        "readable_assets": readable, "readable_nodes": readable_nodes, "write_canvas": True}
+        "readable_assets": readable, "readable_cards": list(lock["asset_cards"].keys()),
+        "readable_nodes": readable_nodes, "write_canvas": True}
     # Invariants come from the explicit request, never from the writer's returned ticket.
     invariants = copy.deepcopy(request.get("invariants", {}))
     if re.search(r"视频|动画|短片|\bvideo\b", affirmative_text(request["message"]), re.I):

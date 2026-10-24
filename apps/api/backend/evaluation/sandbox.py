@@ -1088,5 +1088,7 @@ def create_sandbox_app(
     # §14 评测 API:独立命名空间,不影响既有端点与 data 格式。
     app.include_router(build_eval_router(data))
     app.include_router(metrics_runtime_router)
+    from backend.core.asset_cards_api import build_cards_router
+    app.include_router(build_cards_router())
     app.mount("/", FrontendFiles(root), name="web")
     return app
