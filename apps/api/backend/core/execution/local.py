@@ -81,6 +81,11 @@ class LocalAdapter:
             finally:
                 recognition.finish(registration_id)
 
+        if adapter in {"cards.create", "cards.update"}:
+            # The card write happens in the worker's consume transaction; the adapter
+            # only marks the attempt finished so submission stays durable and replay-safe.
+            return ProviderResult("succeeded", registration_id, output={"applied": False})
+
         if adapter == "storage.apply_mask":
             # The host must resolve an explicitly approved mask asset, never a model path.
             source_data = source(params["image"]).read_bytes()

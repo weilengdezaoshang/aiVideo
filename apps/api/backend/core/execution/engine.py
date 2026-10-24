@@ -20,6 +20,7 @@ from sqlalchemy.dialects.postgresql import insert
 from backend.agent.media.credits import reserve_core, settle_core
 from backend.agent.orm import HostCreditLedger
 from backend.agent.media.catalog import HostError
+from backend.core.asset_cards import CardRejected, apply_card_parameters
 from backend.core.contracts import AssetContent
 from backend.core.asset_edit import EditRejected, append_image_edit, capability_of
 from backend.core.session_context import effective_scope
@@ -41,6 +42,14 @@ from .orm import CanvasWrite, ExecutionAdmission, ProviderReceipt, TaskExecution
 
 def now():
     return datetime.now(timezone.utc)
+
+
+# Tools whose provider result is structured JSON instead of artifact bytes.
+# detect_subject keeps its dedicated validation; image_analyze returns the
+# analyzer answer; card tasks apply their write in the consume transaction.
+_STRUCTURED_TOOLS = frozenset({"detect_subject", "image_analyze", "create_asset_card", "update_asset_card"})
+# Read-only tools that still execute through the provider path (network model call).
+_PROVIDER_READ_TOOLS = frozenset({"detect_subject", "image_analyze"})
 
 
 def fingerprint(task):
@@ -222,9 +231,9 @@ async def enqueue(tx, task_id, settings=None):
     tool = catalog.get_tool(task.tool_ref, catalog.lock.version)
     if tool.name not in run.scope.get("tools", []) and f"{tool.name}@{tool.version}" not in run.scope.get("tools", []):
         raise ValueError("tool outside Run scope")
-    read_only = tool.mode == "read_only" and tool.name != "detect_subject"
+    read_only = tool.mode == "read_only" and tool.name not in _PROVIDER_READ_TOOLS
     output = next((p.media_type for p in tool.outputs if p.media_type in {"image", "video", "audio"}), None)
-    if not read_only and output is None and tool.name != "detect_subject":
+    if not read_only and output is None and tool.name not in _STRUCTURED_TOOLS:
         raise ValueError("this executor requires an artifact-producing tool")
     kind = "read" if read_only else "export" if tool.execution.adapter in {"frames_to_video", "export.timeline"} else "video" if output == "video" else "image"
     job = Job(workspace_id=run.workspace_id, document_id=(await tx.get(CoreSession, run.session_id)).canvas_id,
@@ -318,6 +327,13 @@ class Worker:
                 return [await resolve(item) for item in value]
             if isinstance(value, dict):
                 result = {k: await resolve(v) for k, v in value.items()}
+                if result.get("media_type") == "card" and "card_id" in result:
+                    from backend.core.asset_cards import resolve_card, run_created_card_ids
+                    frozen = set((run.version_lock or {}).get("asset_cards") or [])
+                    created = (str(result["card_id"]) not in frozen
+                               and str(result["card_id"]) in await run_created_card_ids(tx, run))
+                    view = await resolve_card(tx, run, result["card_id"], allow_run_created=created)
+                    return {**result, **view, "resolved": True}
                 if "asset_id" in result:
                     asset = await tx.get(Asset, uuid.UUID(result["asset_id"]))
                     allowed = set(scope.get("readable_assets", []))
@@ -356,7 +372,7 @@ class Worker:
                 raise ValueError("tool outside frozen rollout scope")
             if admission.catalog_hash != catalog.lock.content_hash or tool.version != task.tool_version:
                 raise ValueError("frozen binding mismatch")
-            read_only = tool.mode == "read_only" and tool.name != "detect_subject"
+            read_only = tool.mode == "read_only" and tool.name not in _PROVIDER_READ_TOOLS
             if read_only:
                 if task.status in {"succeeded", "failed", "cancelled", "blocked_by_model"} or execution.phase == "done":
                     return {"done": True}
@@ -383,6 +399,11 @@ class Worker:
                 except ValueError:
                     await self.finish(tx, rows, "failed", 0, "input_unavailable")
                     return {"failed": "input_unavailable"}
+                try:
+                    params = apply_card_parameters(tool, params)
+                except ValueError:
+                    await self.finish(tx, rows, "failed", 0, "param_invalid")
+                    return {"failed": "param_invalid"}
                 from backend.agent.admission.tool_types import _values
                 for port in tool.inputs:
                     for value in _values(params, port.path.split(".")):
@@ -659,22 +680,36 @@ class Worker:
                 await alert(tx, "unapproved_cost", None, f"cost:{task.id}", context={"task_id": str(task.id), "actual": result.actual_credits, "reserved": task.credits_reserved})
                 return
             if result.output is not None:
-                if task.tool_ref != "detect_subject" or result.actual_credits != 0:
+                if task.tool_ref not in _STRUCTURED_TOOLS or (task.tool_ref != "image_analyze" and result.actual_credits != 0):
                     raise ValueError("unexpected structured result")
                 from backend.core.tools.detection import DetectionResult
                 from jsonschema import Draft202012Validator
                 result_catalog = await load_catalog(tx, run.version_lock["tool_catalog"]["version"],
                     expected_lock=VersionLock.model_validate(run.version_lock["tool_catalog"]))
                 definition = result_catalog.get_tool(task.tool_ref, result_catalog.lock.version)
-                if not Draft202012Validator(definition.result_schema).is_valid(result.output):
-                    await self.finish(tx, rows, "failed", 0, "recognition_output_invalid")
+                output = result.output
+                invalid_code = "recognition_output_invalid"
+                if task.tool_ref in {"create_asset_card", "update_asset_card"}:
+                    from backend.core.asset_cards import apply_card_task
+                    try:
+                        output = await apply_card_task(tx, task, execution, run)
+                    except CardRejected as exc:
+                        await self.finish(tx, rows, "failed", 0, exc.code)
+                        return
+                    invalid_code = "card_output_invalid"
+                if task.tool_ref == "image_analyze":
+                    invalid_code = "analyze_output_invalid"
+                if not Draft202012Validator(definition.result_schema).is_valid(output):
+                    await self.finish(tx, rows, "failed", 0, invalid_code)
                     return
-                try:
-                    task.output = DetectionResult.model_validate(result.output).model_dump(mode="json")
-                except ValueError:
-                    await self.finish(tx, rows, "failed", 0, "recognition_output_invalid")
-                    return
-                await self.finish(tx, rows, "succeeded", 0)
+                if task.tool_ref == "detect_subject":
+                    try:
+                        output = DetectionResult.model_validate(output).model_dump(mode="json")
+                    except ValueError:
+                        await self.finish(tx, rows, "failed", 0, "recognition_output_invalid")
+                        return
+                task.output = output
+                await self.finish(tx, rows, "succeeded", result.actual_credits if task.tool_ref == "image_analyze" else 0)
                 return
             execution.result_credits = result.actual_credits
             execution.ticket = self.seal(result.locator or {})
@@ -865,7 +900,7 @@ class Worker:
             "core_asset_version_id": str(version_id)}
         execution.asset_id = asset.id
         job.phase_payload = {**artifact, "assetId": str(asset.id)}
-        extra_events = await self.after(task, asset)
+        extra_events = await self.after(task, asset, tx)
         for event in extra_events or []:
             await emit(tx, event["type"], run.id, causation_id=execution.causation_id, ids=event["ids"])
         await self.finish(tx, rows, "cancelled" if cancelled else "succeeded", execution.result_credits)

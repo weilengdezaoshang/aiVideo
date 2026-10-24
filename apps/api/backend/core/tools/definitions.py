@@ -40,6 +40,13 @@ def reference_schema(media_type: str) -> dict:
     return {"anyOf": [literal, {"type": "string", "pattern": r"^\$[a-z][a-z0-9_]*\.[a-zA-Z0-9_.\[\]]+$"}]}
 
 
+def card_reference_schema(max_items: int) -> dict:
+    # Asset cards are referenced by id; the worker resolves the Run-frozen version.
+    return {"type": "array", "maxItems": max_items, "items": {"anyOf": [
+        object_schema({"card_id": {"type": "string", "minLength": 1}, "media_type": {"const": "card"}}),
+        {"type": "string", "pattern": r"^\$[a-z][a-z0-9_]*\.[a-zA-Z0-9_.\[\]]+$"}]}}
+
+
 DETECT_RESULT = object_schema({
     "result_type": {"enum": ["detected", "no_subject"]},
     "candidate_count": {"type": "integer", "minimum": 0},
@@ -104,6 +111,47 @@ def build_catalog(legacy: Catalog, version: str, settings: ToolSettings | None =
                 "preserve_original": True, "max_mask_bytes": settings.max_mask_bytes,
                 "max_image_pixels": settings.max_image_pixels})
 
+    ANALYZE_RESULT = object_schema({
+        "answer": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "prompt_hint": {"type": "string", "maxLength": 2000},
+        "subject": object_schema({"category": {"type": "string", "maxLength": 64},
+            "description": {"type": "string", "maxLength": 500}}),
+        "style": object_schema({"tags": {"type": "array", "maxItems": 12,
+            "items": {"type": "string", "maxLength": 32}},
+            "description": {"type": "string", "maxLength": 500}}),
+    })
+    add("image_analyze", "只读看图：反推提示词、回答关于所选图片的问题（例如这是什么风格、画面里有什么）。不修改画布与资产；要创作应写生成任务单。",
+        object_schema({"image": reference_schema("image"),
+                       "question": {"type": "string", "minLength": 1, "maxLength": 500}}, ["image", "question"]),
+        [Port(path="image", media_type="image")], [Port(path="analysis", media_type="text")],
+        "read_only", Price(kind="fixed", credits=settings.analyze_credits),
+        Execution(adapter="vision.analyze", cancellable=True, cancellation="cooperative",
+            result_url_policy="transient", sla_seconds=settings.analyze_timeout_seconds),
+        result=ANALYZE_RESULT,
+        limits={"max_image_bytes": settings.analyze_max_image_bytes})
+    CARD_OUTPUT = object_schema({"card_id": {"type": "string", "minLength": 1},
+        "media_type": {"const": "card"},
+        "version_id": {"type": "string", "minLength": 1},
+        "version_number": {"type": "integer", "minimum": 1}})
+    add("create_asset_card", "把本会话看清的主体或风格保存为资产卡供后续生成引用；card_kind 取 subject/style/character/environment；传 image 可把选中图片作为卡面源图。",
+        object_schema({"card_kind": {"enum": ["subject", "style", "character", "environment"]},
+            "name": {"type": "string", "minLength": 1, "maxLength": 120},
+            "description": {"type": "string", "maxLength": 1000},
+            "image": reference_schema("image"), "starred": {"type": "boolean"}}, ["card_kind", "name"]),
+        [Port(path="image", media_type="image", required=False)], [Port(path="card", media_type="text")],
+        "deterministic", Price(kind="fixed", credits=0),
+        Execution(adapter="cards.create", result_url_policy="authenticated_asset",
+                  sla_seconds=settings.local_timeout_seconds), result=CARD_OUTPUT)
+    add("update_asset_card", "修改资产卡的名称、描述或星标（星标=主参考）；expected_version_number 为当前版本号，修改产生新版本，执行中的 Run 继续用旧版。",
+        object_schema({"card_id": {"type": "string", "minLength": 1},
+            "expected_version_number": {"type": "integer", "minimum": 1},
+            "name": {"type": "string", "minLength": 1, "maxLength": 120},
+            "description": {"type": "string", "maxLength": 1000},
+            "starred": {"type": "boolean"}}, ["card_id", "expected_version_number"]),
+        [], [Port(path="card", media_type="text")], "deterministic", Price(kind="fixed", credits=0),
+        Execution(adapter="cards.update", result_url_policy="authenticated_asset",
+                  sla_seconds=settings.local_timeout_seconds), result=CARD_OUTPUT)
+
     descriptions = {
         "text_to_image": "按文字生成图片；编辑已有图片改用 image_edit。",
         "image_edit": "编辑一张已有图片；只抠前景改用 detect_subject 和 cutout。",
@@ -149,13 +197,22 @@ def build_catalog(legacy: Catalog, version: str, settings: ToolSettings | None =
                 result_url_policy="authenticated_asset",
                 sla_seconds=(config.videoTimeoutMin if cap.outputType == "video" else config.imageTimeoutMin) * 60
                     if config else settings.export_timeout_seconds)
-            add(name, descriptions[cap.id], object_schema(params, [key for key in params if key != "seed"]), inputs,
+            required = [key for key in params if key != "seed"]
+            # Cards add optional style/subject references; the worker converts them
+            # per the recorded capability (V1: description merged into the prompt).
+            generation_params = {**params, "style_cards": card_reference_schema(settings.max_card_refs),
+                                 "subject_cards": card_reference_schema(settings.max_card_refs)}
+            card_support = {"prompt_text": True,
+                "image_input": any(port.path == "image" for port in inputs),
+                "multi_reference": bool(cap.maxRefImages > 1)}
+            add(name, descriptions[cap.id], object_schema(generation_params, required), inputs,
                 [Port(path="output", media_type=cap.outputType)],
                 "deterministic" if cap.id == "frames_to_video" else "generate",
                 Price(kind="per_count", credits=spec.credits, count_parameter="count"), execution,
                 available=available, reason=None if available else "deployment_binding_disabled_or_missing",
                 limits={"max_count": settings.max_count, "width": spec.width, "height": spec.height,
-                        "duration_seconds": spec.durationSec, "fps": spec.fps, "max_ref_images": cap.maxRefImages},
+                        "duration_seconds": spec.durationSec, "fps": spec.fps, "max_ref_images": cap.maxRefImages,
+                        "card_support": card_support},
                 tool_version=binding.version if binding else "unbound")
             # Mask support exists only in the actual ComfyUI or SiliconFlow Fill request path.
             if cap.id == "image_edit":

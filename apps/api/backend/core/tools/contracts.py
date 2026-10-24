@@ -34,6 +34,10 @@ class ToolSettings(BaseSettings):
     export_credits: int | None = Field(default=None, ge=0)
     seed_minimum: int = Field(default=0, ge=0)
     seed_maximum: int = Field(default=2**31 - 1, ge=0)
+    analyze_credits: int = Field(default=0, ge=0)
+    analyze_timeout_seconds: float = Field(default=45, gt=0)
+    analyze_max_image_bytes: int = Field(default=20 * 1024 * 1024, gt=0)
+    max_card_refs: int = Field(default=2, gt=0, le=4)
 
     @model_validator(mode="after")
     def seed_bounds(self):

@@ -76,6 +76,6 @@ async def before_call(task):
     return None
 
 
-async def after_result(task, asset):
-    """Default no-op; implementations may enqueue events in the caller transaction."""
+async def after_result(task, asset, tx=None):
+    """Default no-op; implementations may enqueue follow-up work in the caller transaction."""
     return None
