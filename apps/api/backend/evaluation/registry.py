@@ -73,6 +73,7 @@ def register_builtin() -> None:
                 "planner",
                 "session_reference",
                 "plan_selfcheck",
+                "skill_eval",
             },
             inputs={"observed": "typed(bool/int/float/str)"},
             results={"status": "pass|fail|dependency_failed|inconclusive|error|not_applicable"},
@@ -129,6 +130,19 @@ def register_builtin() -> None:
                 "selfcheck_max_false_block_rate 当前为 None，enforce 保持关闭",
             ],
         ),
+            EvaluatorDeclaration(
+                id="skill-playbook",
+                version="1",
+                rubric_version="1",
+                applies_to={"skill_eval"},
+                inputs={"plan": "计划单", "message": "用户消息", "skill": "技能名"},
+                results={"observed_pass": "选择链+审核综合判定"},
+                cache_policy="grade stored observations; offline CLI is the publish gate",
+                known_limits=[
+                    "纯规则评测：选择链与审核器，不含 LLM 主管遵循度",
+                    "官方技能用例与手册同仓演进，不冻结文件哈希",
+                ],
+            ),
     ]
     for item in builtin:
         if f"{item.id}@{item.version}" not in _REGISTRY:

@@ -90,6 +90,29 @@ jobs:
           .venv/bin/python -m backend.evaluation.selfcheck_cli --mode rules --output "$OUT/rules"
           .venv/bin/python -c "import json,sys; p=json.load(open('$OUT/summary.json')); assert p['llm_tested'] is False and p['model'] is None and p['legal_type_pass']==80"
 
+  skill-playbook-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: python -m venv .venv
+      - run: .venv/bin/python -m pip install -r requirements-dev.txt
+      - name: 官方技能评测门禁（不调用网络；改手册必须先过用例）
+        env:
+          PYTHONPATH: apps/api
+        run: |
+          set -eu
+          OUT="$(mktemp -d "${RUNNER_TEMP:-/tmp}/aivero-skill-offline.XXXXXX")"
+          .venv/bin/python -m backend.evaluation.skill_cli --skill all --output "$OUT"
+          .venv/bin/python -m backend.evaluation.skill_cli --skill ecommerce --output "$OUT/ecommerce"
+          .venv/bin/python -m backend.evaluation.skill_cli --skill poster --output "$OUT/poster"
+          .venv/bin/python -m backend.evaluation.skill_cli --skill storyboard --output "$OUT/storyboard"
+          .venv/bin/python -c "import json; p=json.load(open('$OUT/summary.json')); assert p['failed']==0 and p['total']>=45 and all(v['total']>=15 and v['passed']==v['total'] for v in p['by_skill'].values())"
+
   reliability:
     runs-on: ubuntu-latest
     timeout-minutes: 30

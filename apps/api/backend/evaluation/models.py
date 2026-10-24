@@ -54,6 +54,8 @@ TaskType = Literal[
     "planner",
     "session_reference",
     "plan_selfcheck",
+    "skill_eval",
+    "skill_eval",
 ]
 CheckKind = Literal["boolean", "integer", "number", "text"]
 DatasetSplit = Literal[
