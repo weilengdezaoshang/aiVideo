@@ -22,8 +22,8 @@ _KIND_WORDS: tuple[tuple[CardKind, tuple[str, ...]], ...] = (
     ("subject", ("主体",)),
 )
 _AT_NAME = re.compile(r"[@＠]([^\s@＠，。,\.！!？?]{1,30})")
-_DEMONSTRATIVE = re.compile(r"这(只|个|位|头|条|张)([\u4e00-\u9fa5A-Za-z0-9]{1,8})")
-_BARE_REFERENCE = re.compile(r"这个|这张|那只|那只卡|选中的|选中")
+_DEMONSTRATIVE = re.compile(r"[这那](只|个|位|头|条|张)([\u4e00-\u9fa5A-Za-z0-9]{1,8})")
+_BARE_REFERENCE = re.compile(r"[这那]个|[这那]张|[这那]只|选中的|选中")
 
 
 class CardCandidate(Contract):
