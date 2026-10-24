@@ -904,6 +904,8 @@ def create_app(settings: ProductionSettings | None = None, database: DatabaseSet
     app.include_router(build_switch_router())
     app.include_router(build_redo_router())
     app.include_router(build_cards_router())
+    from backend.core.composition.api import install as install_composition_fonts
+    install_composition_fonts(app)
     from backend.core.diagnostics.api import install as install_diagnostics_routes
     install_diagnostics_routes(app)
 

@@ -23,6 +23,11 @@ export type AgentApi = {
     stepId: string,
     index: number,
   ): Promise<{ run: AgentRun }>
+  retryBatchItems?(
+    runId: string,
+    requestKey: string,
+    itemIds: string[],
+  ): Promise<{ child_run_id: string | null; replayed: boolean; quote: number }>
   eventPath?(documentId: string): string
   confirm?(runId: string, requestId: string, approved: boolean): Promise<{ run: AgentRun }>
   completeCanvasAction?(
@@ -129,6 +134,12 @@ export function createAgentApi(fetchImpl: typeof fetch = (...args) => fetch(...a
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ clientRequestId, stepId, index }),
+      }),
+    retryBatchItems: (id, requestKey, itemIds) =>
+      request(`/api/core/runs/${encodeURIComponent(id)}/batch-retry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request_key: requestKey, item_ids: itemIds }),
       }),
     confirm: (id, clientRequestId, approved) =>
       request(`/api/host/runs/${encodeURIComponent(id)}/confirm`, {

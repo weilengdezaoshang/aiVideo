@@ -319,6 +319,30 @@ export function AgentPanel({
                   )}
                 </div>
               )}
+              {run.batch && run.batch.totalItems > 0 && (
+                <p className="next-agent-hint">
+                  批量成功 {run.batch.completedItems}/{run.batch.totalItems}
+                  ，已处理{' '}
+                  {run.batch.settledItems ?? run.batch.processedItems ?? run.batch.completedItems}/
+                  {run.batch.totalItems}
+                  {run.batch.failedCount ? `，失败 ${run.batch.failedCount}` : ''}
+                  {run.batch.skippedCount ? `，跳过 ${run.batch.skippedCount}` : ''}
+                </p>
+              )}
+              {run.batch && run.batch.failedCount > 0 && run.batch.retryableItemIds?.length ? (
+                <button
+                  type="button"
+                  disabled={state.sending}
+                  onClick={() =>
+                    void store.retryBatchItems(
+                      run.parent_run_id || run.id,
+                      run.batch?.retryableItemIds || [],
+                    )
+                  }
+                >
+                  只重做失败项
+                </button>
+              ) : null}
               {run.error && !(run.media && run.status === 'failed') && (
                 <p className="next-agent-error">{run.error}</p>
               )}

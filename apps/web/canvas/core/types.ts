@@ -91,7 +91,9 @@ export type ViewCapabilities = {
   canRedo: boolean
 }
 
-export type ObjectPreview = Partial<Pick<CanvasObj, 'x' | 'y' | 'width' | 'height' | 'rotation'>>
+export type ObjectPreview = Partial<
+  Pick<CanvasObj, 'x' | 'y' | 'width' | 'height' | 'rotation' | 'fontSize' | 'lineBoxes'>
+>
 
 export type CanvasViewSnapshot = {
   camera: CameraState

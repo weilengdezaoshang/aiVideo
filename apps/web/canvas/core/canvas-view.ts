@@ -6,6 +6,7 @@ import {
 } from '../state/commands.js'
 import type { DocStore } from '../state/doc-store.js'
 import { selectCanvasDocument } from '../state/generation-entity.js'
+import { previewLayerGroup } from '../state/layer-group.js'
 import { TypedEventHub } from './event-hub.js'
 import {
   CanvasLayer,
@@ -564,10 +565,13 @@ export class CanvasViewImpl implements CanvasView {
       case 'preview-changed': {
         const previews = { ...this.objectPreviews }
         for (const id of output.objectIds) {
-          if (output.preview) {
-            previews[id] = { ...(previews[id] ?? {}), ...output.preview }
-          } else {
-            delete previews[id]
+          const members = previewLayerGroup(this.store.doc.objects, id, output.preview)
+          for (const [member, patch] of Object.entries(members)) {
+            if (patch) {
+              previews[member] = { ...(previews[member] ?? {}), ...patch }
+            } else {
+              delete previews[member]
+            }
           }
         }
         this.objectPreviews = previews

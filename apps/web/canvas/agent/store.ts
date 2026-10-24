@@ -2,6 +2,7 @@ import {
   assertRequestNodesUnchanged,
   buildRequestContext,
   captureRequestContext,
+  inferBatchIntent,
   type CanvasRequestSnapshot,
 } from './request-context.js'
 import { AgentApiError, createAgentApi, type AgentApi } from './api.js'
@@ -562,6 +563,7 @@ export function createAgentStore(options: AgentStoreOptions) {
           modelId,
           baseRevision,
           selectedObjectIds: selection,
+          ...(inferBatchIntent(message, selection.length) ? { batch: true } : {}),
           ...(clarifyRunId ? { clarifyRunId } : {}),
           ...(clarify?.optionId ? { clarifyOptionId: clarify.optionId } : {}),
           ...(state.hostEnabled &&
@@ -597,6 +599,23 @@ export function createAgentStore(options: AgentStoreOptions) {
       publish({ sending: true, error: '' })
       try {
         return await submit(request)
+      } finally {
+        publish({ sending: false })
+      }
+    },
+    async retryBatchItems(runId: string, itemIds: string[]): Promise<void> {
+      if (state.sending || !api.retryBatchItems || itemIds.length === 0) {
+        return
+      }
+      publish({ sending: true, error: '' })
+      const key = `${prefix}batch-retry.${runId}`
+      try {
+        const requestKey = storage.getItem(key) || crypto.randomUUID()
+        storage.setItem(key, requestKey)
+        await api.retryBatchItems(runId, requestKey, itemIds)
+        await refresh()
+      } catch (error) {
+        publish({ error: messageOf(error) })
       } finally {
         publish({ sending: false })
       }

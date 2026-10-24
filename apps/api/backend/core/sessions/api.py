@@ -64,6 +64,8 @@ def install(app):
                     "node_ids": body.selected_node_ids,
                     "budget": body.credits_budget, "tokens": body.token_budget, "rounds": body.max_thought_rounds,
                     "mode": body.mode}
+                if body.intent in {"batch", "for_each"}:
+                    content["action"] = body.intent
                 if body.viewport is not None:
                     content["viewport"] = body.viewport
                 if body.language:

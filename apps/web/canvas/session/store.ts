@@ -1,3 +1,5 @@
+import { inferBatchIntent } from '../agent/request-context.js'
+
 /** Database sequences are authoritative across windows; local storage only retains retries. */
 export type SessionMessage = {
   id: string
@@ -44,6 +46,7 @@ export type PendingMessage = {
   selected_assets: string[]
   selected_node_ids?: string[]
   credits_budget?: number
+  intent?: 'batch'
 }
 export type SessionApi = {
   open(documentId: string): Promise<SessionSnapshot>
@@ -402,6 +405,7 @@ export function createSessionStore(options: SessionStoreOptions) {
         selected_assets: [...selectedAssets],
         selected_node_ids: [...selectedNodes],
         credits_budget: creditsBudget,
+        ...(inferBatchIntent(message, selectedAssets.length) ? { intent: 'batch' as const } : {}),
       })
       return flush()
     },

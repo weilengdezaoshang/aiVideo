@@ -21,6 +21,7 @@ from backend.core.execution.engine import record_admission, now
 from backend.core.execution.orm import CanvasWrite
 from .orm import Invocation
 from .contracts import Settings, PlannerResult, Step
+from backend.core.batch.compile import plan_expansion
 from .planners import FakePlanner
 from .reviewer import _sources, conversion_rejection, effective_invariants, merge_proposed, review
 from .tool_calls import clarify_unproven_video_duration
@@ -376,6 +377,10 @@ class Supervisor:
                 "thought_rounds": run.max_thought_rounds - run.thought_rounds_used}}
 
     async def tick(self):
+        from backend.core.batch.retry_helpers import reconcile_completed_retries
+        await reconcile_completed_retries(self.factory, settings=self.settings)
+        from backend.core.batch.runtime import reconcile_terminal_dispatches
+        await reconcile_terminal_dispatches(self.factory)
         token = uuid.uuid4()
         calling = False
         pending_selfcheck = False
@@ -413,7 +418,8 @@ class Supervisor:
             event = await tx.get(CoreEvent, invocation.event_id)
             broken = await tx.scalar(select(CoreTask).where(CoreTask.run_id == run.id,
                 CoreTask.status.in_(("failed", "blocked_by_model"))).order_by(CoreTask.finished_at, CoreTask.id).limit(1))
-            if broken is not None and event.event_type != "user_cancelled":
+            batch_doc = await _batch_document(tx, run)
+            if broken is not None and event.event_type != "user_cancelled" and batch_doc is None:
                 # A queued interruption is not permission to bypass a model block
                 # or automatically replan after an exhausted provider failure.
                 await tx.execute(update(CoreSessionMessage).where(CoreSessionMessage.session_id == run.session_id,
@@ -431,9 +437,21 @@ class Supervisor:
                     # A lost submit response is a reconciliation wakeup, not proof of failure.
                     invocation.status = "done"
                     return True
+                if batch_doc is not None and timed_task is not None and timed_task.run_id == run.id:
+                    await _fail_batch_timeout(tx, timed_task, invocation.event_id)
+                    tasks = list(await tx.scalars(select(CoreTask).where(CoreTask.run_id == run.id)))
+                    again = await self.advance(tx, run, invocation, current_plan_tasks(run, tasks))
+                    _hold_or_finish(invocation, again, self.settings)
+                    return True
             if event.event_type == "timeout" or (event.event_type == "user_cancelled" and event.task_id is None):
+                if batch_doc is not None and event.event_type == "user_cancelled":
+                    tasks = list(await tx.scalars(select(CoreTask).where(CoreTask.run_id == run.id)))
+                    await _reconcile_batch_slots(tx, run, tasks)
                 await stop(tx, run, "cancelled" if event.event_type != "timeout" else "failed",
                     "本次运行已停止；已提交任务将按服务商实际结果结算。", "stopped:" + str(run.id))
+                if batch_doc is not None and event.event_type == "user_cancelled":
+                    tasks = list(await tx.scalars(select(CoreTask).where(CoreTask.run_id == run.id)))
+                    await _reconcile_batch_slots(tx, run, tasks)
                 invocation.status = "done"
                 return True
             if event.event_type == "user_interrupt" and not is_replan(invocation):
@@ -462,7 +480,7 @@ class Supervisor:
                 return True
             tasks = list(await tx.scalars(select(CoreTask).where(CoreTask.run_id == run.id)))
             live = current_plan_tasks(run, tasks)
-            if any(task.status == "cancelled" and task.input_revision == run.input_revision for task in live):
+            if batch_doc is None and any(task.status == "cancelled" and task.input_revision == run.input_revision for task in live):
                 await stop(tx, run, "cancelled", "本次运行已取消，已保留完成的产物。", "cancelled:" + str(run.id))
                 invocation.status = "done"
                 return True
@@ -474,7 +492,7 @@ class Supervisor:
                 invocation.status = "done"
                 await emit(tx, "user_message", run.id, causation_id=invocation.event_id)
                 return True
-            if any(t.status in {"failed", "blocked_by_model"} for t in live) and not (run.error or {}).get("interrupt_pending"):
+            if batch_doc is None and any(t.status in {"failed", "blocked_by_model"} for t in live) and not (run.error or {}).get("interrupt_pending"):
                 session = await tx.get(CoreSession, run.session_id)
                 if self._legacy(run):
                     failure = "有步骤执行失败，已保留成功产物并停止后续步骤。"
@@ -485,6 +503,10 @@ class Supervisor:
                     failure = failed(session.language if session else None, await _refunded(tx, run.id), code=code)
                 await stop(tx, run, "failed", failure, "failed:" + str(run.id))
                 invocation.status = "done"
+                return True
+            if batch_doc is not None and run.current_plan_id:
+                again = await self.advance(tx, run, invocation, live)
+                _hold_or_finish(invocation, again, self.settings)
                 return True
             if invocation.status == "pending" and invocation.attempt == 0:
                 if run.thought_rounds_used >= run.max_thought_rounds or run.tokens_used >= run.tokens_limit:
@@ -517,7 +539,8 @@ class Supervisor:
                 catalog = await load_catalog(tx, run.version_lock["tool_catalog"]["version"],
                     expected_lock=VersionLock.model_validate(run.version_lock["tool_catalog"]))
                 ident, context = invocation.id, {**invocation.context, "catalog": catalog}
-                planner = self.planner_for(run)
+                from backend.core.batch.retry_helpers import planner_for_retry
+                planner = await planner_for_retry(tx, self.factory, run) or self.planner_for(run)
                 calling = True
             else:
                 await self.accept(tx, run, invocation)
@@ -600,7 +623,7 @@ class Supervisor:
                 content_hash=digest(result.plan.model_dump(mode="json")), rationale={"confidence": result.confidence},
                 link_constraints={"obsolete": True, "source_revision": invocation.context.get("input_revision")},
                 result_type="answer_only" if result.plan.result_type == "answer_only" else "generate",
-                stage="obsolete", milestones=[], self_check={}, expansion_rules={}, version_lock=run.version_lock,
+                stage="obsolete", milestones=[], self_check={}, expansion_rules=plan_expansion(result.plan), version_lock=run.version_lock,
                 input_revision=int(invocation.context.get("input_revision") or run.input_revision or 1))
             tx.add(plan)
             await tx.flush()
@@ -633,7 +656,7 @@ class Supervisor:
                 content_hash=digest(result.plan.model_dump(mode="json")), rationale={"confidence": result.confidence},
                 link_constraints={"constraints": verdict["execution_constraints"], "approved_invariants": merged},
                 result_type="answer_only", stage="execute", milestones=[], self_check=verdict,
-                expansion_rules={}, version_lock=run.version_lock, input_revision=int(run.input_revision or 1))
+                expansion_rules=plan_expansion(result.plan), version_lock=run.version_lock, input_revision=int(run.input_revision or 1))
             tx.add(plan)
             await tx.flush()
             run.current_plan_id = plan.id
@@ -736,7 +759,7 @@ class Supervisor:
                     rationale={"confidence": result.confidence},
                     link_constraints={"constraints": verdict["execution_constraints"], "approved_invariants": merged},
                     result_type=stored_type, stage="reviewing", milestones=[],
-                    self_check=check_payload, expansion_rules={}, version_lock=run.version_lock,
+                    self_check=check_payload, expansion_rules=plan_expansion(result.plan), version_lock=run.version_lock,
                     input_revision=int(run.input_revision or 1))
                 tx.add(plan)
                 await tx.flush()
@@ -748,7 +771,7 @@ class Supervisor:
             raw_output=result.raw_output, proposal=proposal,
             content_hash=content_hash, rationale={"confidence": result.confidence},
             link_constraints={"constraints": verdict["execution_constraints"], "approved_invariants": merged}, result_type=stored_type, stage="execute", milestones=[], self_check=check_payload,
-            expansion_rules={}, version_lock=run.version_lock, input_revision=int(run.input_revision or 1))
+            expansion_rules=plan_expansion(result.plan), version_lock=run.version_lock, input_revision=int(run.input_revision or 1))
         tx.add(plan)
         await tx.flush()
         run.current_plan_id = plan.id
@@ -1001,17 +1024,30 @@ class Supervisor:
             await message(tx, run, result.plan.answer, "answer:" + str(plan.id))
             return
         tasks = {}
+        logical_by_step = {}
+        for item in (result.plan.expansion or {}).get("items") or []:
+            for spec in item.get("steps") or []:
+                logical_by_step[spec.get("step_id")] = spec.get("stage_key") or spec.get("logical_key")
         for step in result.plan.steps:
             tool = catalog.get_tool(step.tool, catalog.lock.version) if step.tool else None
             task = await create_task(tx, TaskInput(run_id=run.id, plan_id=plan.id, plan_version=plan.version,
                 task_key=step.id, kind=step.kind, tool_ref=step.tool, tool_version=tool.version if tool else None,
                 parameters=step.parameters, idempotency_key=str(plan.id) + ":" + step.id,
-                scope=view.scope, invariants=merged, input_revision=int(run.input_revision or 1)))
+                scope=view.scope, invariants=merged, input_revision=int(run.input_revision or 1),
+                stage_key=logical_by_step.get(step.id)))
             tasks[step.id] = task
             await transition(tx, "task", task.id, task.version, "validated", causation_id=invocation.event_id)
             if tool:
+                depended = {dep for item in result.plan.steps for dep in item.depends_on}
+                batching = bool((result.plan.expansion or {}).get("compiled"))
+                from backend.core.batch.runtime import canvas_placement
+                placement = canvas_placement(
+                    step.placement, tool=step.tool, step_id=step.id, batching=batching, depended_ids=depended)
+                if step.placement.get("anchor_id"):
+                    placement["anchor_version"] = view.snapshot.get("objects", {}).get(step.placement.get("anchor_id"), {}).get("assetVersion", 0)
+                task.parameters = {key: value for key, value in dict(task.parameters or {}).items() if key != "suppress_canvas"}
                 await record_admission(tx, task, catalog, checks=verdict["checks"],
-                    review_ref=str(invocation.id), placement={**step.placement, **({"anchor_version": view.snapshot.get("objects", {}).get(step.placement.get("anchor_id"), {}).get("assetVersion", 0)} if step.placement.get("anchor_id") else {})})
+                    review_ref=str(invocation.id), placement=placement)
         for step in result.plan.steps:
             for dependency in step.depends_on:
                 tx.add(CoreTaskDependency(task_id=tasks[step.id].id, depends_on_id=tasks[dependency].id,
@@ -1032,6 +1068,7 @@ class Supervisor:
 
     async def advance(self, tx, run, invocation, tasks):
         from .subjects import handle_subjects
+        batch_doc = await _prepare_batch(tx, run, tasks, invocation.event_id)
         if run.status == "paused" and run.pause_reason == "waiting_user" and not any(t.status == "waiting_user" for t in tasks):
             if any((t.waiting or {}).get("plan_confirmation") and (t.waiting or {}).get("answer") == "cancel" for t in tasks):
                 await stop(tx, run, "cancelled", "已取消计划，未提交生成。", "cancel-plan:" + str(run.id))
@@ -1039,8 +1076,8 @@ class Supervisor:
             await transition(tx, "run", run.id, run.version, run.resume_state, causation_id=invocation.event_id)
             if run.status == "awaiting_confirm":
                 await transition(tx, "run", run.id, run.version, "running", causation_id=invocation.event_id)
-        if await handle_subjects(tx, run, tasks, invocation.event_id, self.settings):
-            return
+        if await handle_subjects(tx, run, tasks, invocation.event_id, self.settings, batch=batch_doc is not None):
+            return None
         if tasks and all(t.status in TASK_TERMINAL for t in tasks):
             if (run.error or {}).get("interrupt_pending"):
                 run.current_plan_id = None
@@ -1049,7 +1086,11 @@ class Supervisor:
                 run.error = bag
                 await emit(tx, "user_message", run.id, causation_id=invocation.event_id)
                 return
-            await transition(tx, "run", run.id, run.version, "completed", causation_id=invocation.event_id)
+            batch_doc = batch_doc or await _batch_document(tx, run)
+            failed_run = batch_doc is not None and any(
+                t.status in {"failed", "blocked_by_model"} for t in tasks)
+            await transition(tx, "run", run.id, run.version, "failed" if failed_run else "completed",
+                             causation_id=invocation.event_id)
             if all(t.kind == "ask_user" for t in tasks):
                 done_text = "已收到补充信息。请携带明确要求发起下一次任务。"
             elif self._legacy(run):
@@ -1065,23 +1106,198 @@ class Supervisor:
                 summaries = [item for item in summaries if item]
                 if summaries:
                     done_text = done_text + "\n" + "\n".join(summaries)
-            await message(tx, run, done_text, "complete:" + str(run.id))
-            return
-        by_id = {t.id: t for t in tasks}
+            if batch_doc:
+                from backend.core.batch.schedule import item_progress
+                counts = item_progress(batch_doc, {task.task_key: task.status for task in tasks})
+                done_text = (
+                    f"批量已结束：成功 {counts['completedItems']}/{counts['totalItems']}，"
+                    f"已处理 {counts['settledItems']}/{counts['totalItems']}，"
+                    f"失败 {counts['failedCount']}，跳过 {counts['skippedCount']}，拦截 {counts['blockedCount']}。"
+                )
+            await message(tx, run, done_text, ("failed:" if failed_run else "complete:") + str(run.id))
+            return None
+        if run.status == "paused" and not (batch_doc is not None and run.pause_reason == "waiting_user"):
+            return None
         dependencies = list(await tx.scalars(select(CoreTaskDependency).where(
             CoreTaskDependency.run_id == run.id, CoreTaskDependency.plan_id == run.current_plan_id)))
-        if run.status == "paused":
-            return
-        for task in tasks:
-            if task.status != "validated" or any(by_id[d.depends_on_id].status != "succeeded" for d in dependencies if d.task_id == task.id):
-                continue
-            if task.kind == "ask_user":
-                task.waiting = task.parameters
-                await transition(tx, "task", task.id, task.version, "waiting_user", causation_id=invocation.event_id)
-                await transition(tx, "run", run.id, run.version, "paused", reason="waiting_user", causation_id=invocation.event_id)
+        return await _dispatch_ready(tx, run, tasks, dependencies, batch_doc, invocation.event_id)
+
+
+async def _batch_document(tx, run):
+    if not run.current_plan_id:
+        return None
+    plan = await tx.get(CorePlan, run.current_plan_id)
+    rules = (plan.expansion_rules or {}) if plan is not None else {}
+    if not rules.get("compiled"):
+        return None
+    return rules
+
+
+async def _dispatch_ready(tx, run, tasks, dependencies, batch_doc, causation_id):
+    """Queue a bounded ready set. Batch claims use one global lock, not one query per task."""
+
+    by_id = {task.id: task for task in tasks}
+    deps: dict = {}
+    for row in dependencies:
+        deps.setdefault(row.task_id, []).append(row.depends_on_id)
+    ready = []
+    for task in tasks:
+        if task.status != "validated":
+            continue
+        if any(by_id[ident].status != "succeeded" for ident in deps.get(task.id, [])):
+            continue
+        if task.kind == "ask_user":
+            task.waiting = task.parameters
+            await transition(tx, "task", task.id, task.version, "waiting_user", causation_id=causation_id)
+            if batch_doc is None:
+                await transition(tx, "run", run.id, run.version, "paused", reason="waiting_user", causation_id=causation_id)
                 session = await tx.get(CoreSession, run.session_id)
                 await message(tx, run, ask_text(task.parameters or {}, session.language if session else None), "ask:" + str(task.id))
-                return
-            if task.tool_ref == "cutout":
-                continue  # Subject selection code is the sole release gate for this step.
-            await transition(tx, "task", task.id, task.version, "queued", causation_id=invocation.event_id)
+                return None
+            continue
+        if task.tool_ref == "cutout" and not _cutout_released(task, tasks):
+            continue
+        ready.append(task)
+    if batch_doc is None:
+        for task in ready:
+            await transition(tx, "task", task.id, task.version, "queued", causation_id=causation_id)
+        return None
+    if not ready:
+        return None
+    from backend.core.batch.contracts import BatchSettings
+    from backend.core.batch.store import ack_dispatch, claim_dispatch_many
+    settings = BatchSettings()
+    credits = {}
+    for item in batch_doc.get("items") or []:
+        for step in item.get("steps") or []:
+            credits[step.get("task_key")] = int(step.get("credits") or 0)
+    left = int(run.credits_limit) - int(run.credits_spent) - int(run.credits_allocated)
+    chosen = ready[: settings.max_per_batch]
+    decisions = await claim_dispatch_many(
+        tx, workspace_id=run.workspace_id, run_id=run.id,
+        items=[(task.task_key, credits.get(task.task_key, 0)) for task in chosen],
+        budget_left=left, limit=settings.max_per_batch, settings=settings)
+    if decisions and decisions[0] == "quota_busy":
+        return "again"
+    for task, decision in zip(chosen, decisions):
+        if decision == "budget_rejected" and run.status != "paused":
+            await transition(tx, "run", run.id, run.version, "paused", reason="over_budget", causation_id=causation_id)
+            return None
+        if decision == "concurrency_rejected":
+            break
+        if decision not in {"reserved", "duplicate:reserved"}:
+            continue
+        await transition(tx, "task", task.id, task.version, "queued", causation_id=causation_id)
+        await ack_dispatch(tx, run.id, task.task_key)
+    return None
+
+
+async def _batch_allows_queue(tx, run, task, causation_id) -> str:
+    """Claim, queue, and ack in this transaction. Non-batch plans only queue."""
+
+    document = await _batch_document(tx, run)
+    if document is None:
+        await transition(tx, "task", task.id, task.version, "queued", causation_id=causation_id)
+        return "queued"
+    credits = 0
+    for item in document.get("items") or []:
+        for step in item.get("steps") or []:
+            if step.get("task_key") == task.task_key or step.get("step_id") == task.task_key:
+                credits = int(step.get("credits") or 0)
+    from backend.core.batch.store import ack_dispatch, claim_dispatch
+    left = int(run.credits_limit) - int(run.credits_spent) - int(run.credits_allocated)
+    decision = await claim_dispatch(
+        tx, workspace_id=run.workspace_id, run_id=run.id, task_key=task.task_key,
+        credits=credits, budget_left=left)
+    if decision == "quota_busy":
+        return "busy"
+    if decision == "budget_rejected" and run.status != "paused":
+        await transition(tx, "run", run.id, run.version, "paused", reason="over_budget", causation_id=causation_id)
+        return "blocked"
+    if decision in {"concurrency_rejected", "budget_rejected"}:
+        return "skip"
+    if decision == "duplicate:submitted":
+        return "skip"
+    if decision not in {"reserved", "duplicate:reserved"}:
+        return "skip"
+    await transition(tx, "task", task.id, task.version, "queued", causation_id=causation_id)
+    acked = await ack_dispatch(tx, run.id, task.task_key)
+    if acked not in {"submitted", "duplicate:submitted"}:
+        return "skip"
+    return "queued"
+
+
+def _hold_or_finish(invocation, again, settings) -> None:
+    if again == "again":
+        invocation.status = "pending"
+        invocation.next_at = now() + timedelta(seconds=settings.retry_seconds)
+        invocation.lease_token = None
+        invocation.lease_until = None
+        return
+    invocation.status = "done"
+
+
+def _cutout_released(task, tasks) -> bool:
+    """Subject policy must record a mask before a batch cutout may take a quota slot."""
+
+    mask = (task.parameters or {}).get("mask")
+    if not isinstance(mask, str) or not mask.startswith("$"):
+        return False
+    key = mask[1:].split(".", 1)[0]
+    detection = next((item for item in tasks if item.task_key == key), None)
+    if detection is None or detection.status != "succeeded":
+        return False
+    return bool((detection.waiting or {}).get("selected_output"))
+
+
+async def _fail_batch_timeout(tx, task, causation_id) -> None:
+    if task is None or task.status in TASK_TERMINAL or task.status == "submitted":
+        return
+    if (task.error or {}).get("code") == "submission_unknown":
+        return
+    task.error = {"code": "timeout"}
+    target = "failed" if task.status == "queued" else "cancelled"
+    await transition(tx, "task", task.id, task.version, target, causation_id=causation_id, reason="timeout")
+
+
+async def _prepare_batch(tx, run, tasks, causation_id):
+    document = await _batch_document(tx, run)
+    if document is None:
+        return None
+    await _cancel_batch_successors(tx, document, tasks, causation_id)
+    await _reconcile_batch_slots(tx, run, tasks)
+    return document
+
+
+async def _cancel_batch_successors(tx, document, tasks, causation_id) -> None:
+    from backend.core.batch.runtime import successor_task_keys
+
+    by_key = {task.task_key: task for task in tasks}
+    for key in successor_task_keys(document, by_key):
+        task = by_key[key]
+        if task.status in TASK_TERMINAL or task.status == "submitted":
+            continue
+        task.error = {"code": "upstream_failed"}
+        target = "failed" if task.status == "queued" else "cancelled"
+        await transition(tx, "task", task.id, task.version, target, causation_id=causation_id, reason="upstream_failed")
+
+
+async def _reconcile_batch_slots(tx, run, tasks) -> None:
+    """Settle submitted terminals and reserved cancellations. Unknown submits stay reserved in flight."""
+
+    from backend.core.batch.orm import CoreBatchDispatch
+    from backend.core.batch.store import release_reserved, settle_dispatch
+
+    rows = list(await tx.scalars(select(CoreBatchDispatch).where(
+        CoreBatchDispatch.run_id == run.id, CoreBatchDispatch.state.in_(("reserved", "submitted")))))
+    by_key = {task.task_key: task for task in tasks}
+    for row in rows:
+        task = by_key.get(row.task_key)
+        if task is None or task.status not in TASK_TERMINAL:
+            continue
+        if (task.error or {}).get("code") == "submission_unknown":
+            continue
+        if row.state == "submitted":
+            await settle_dispatch(tx, run.id, row.task_key)
+        elif row.state == "reserved":
+            await release_reserved(tx, run.id, row.task_key)

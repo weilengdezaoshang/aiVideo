@@ -22,6 +22,13 @@ async def project_pending(factory, limit):
                 ident = "generated-" + str(task.id)
                 objects = data.setdefault("objects", {})
                 existing = objects.get(ident, {})
+                admission = await tx.scalar(select(ExecutionAdmission).where(ExecutionAdmission.task_id == task.id))
+                if admission is not None and (admission.placement or {}).get("suppress_canvas"):
+                    if existing.get("corePlaceholder"):
+                        objects.pop(ident)
+                        data["order"] = [key for key in data.get("order", []) if key != ident]
+                        changed = True
+                    continue
                 if task.status in {"cancelled", "failed", "blocked_by_model", "rejected"}:
                     if existing.get("corePlaceholder"):
                         objects.pop(ident)
@@ -30,7 +37,6 @@ async def project_pending(factory, limit):
                     continue
                 if task.kind != "call_tool" or task.tool_ref == "detect_subject" or task.status not in {"validated", "queued", "submitted"} or existing:
                     continue
-                admission = await tx.scalar(select(ExecutionAdmission).where(ExecutionAdmission.task_id == task.id))
                 run = await tx.get(CoreRun, task.run_id)
                 if admission is None or not run.scope.get("write_canvas"):
                     continue

@@ -73,8 +73,22 @@ export type CanvasObj = {
   text?: string
   /** 文字字号 */
   fontSize?: number
+  /** 注册表字体 id，供重载后按同一字体编辑 */
+  fontFamily?: string
+  /** 相对版区，像素位置仍由对象的 x/y 表示 */
+  region?: 'title' | 'body' | 'footer'
+  /** 文字对齐 */
+  textAlign?: 'left' | 'center' | 'right'
+  /** Pillow anchor lt 行框，相对本对象左上角，浏览器不得另加 padding */
+  lineBoxes?: { text: string; x: number; y: number; width: number; height: number }[]
   /** 文字颜色(空 = 跟随主题默认) */
   fill?: string
+  /** cover 为旧图；contain 只用于分层海报里的背景/主体 */
+  fit?: 'cover' | 'contain'
+  /** 分层角色。group 只承载 manifest，不把预览栅格再画一遍 */
+  layerRole?: 'group' | 'background' | 'subject' | 'text'
+  /** 合成清单。预览图不是其中的文字层 */
+  layers?: Record<string, unknown>
   /** 抠图谱系 */
   cutout?: { originalAssetId: string; originalExt: string; maskAssetId: string }
   /** 视频时长(角标辨认用,PRD §8) */

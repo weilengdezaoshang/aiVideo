@@ -6,6 +6,7 @@ import {
   type CanvasCommand,
   type CommandDoc,
 } from './commands.js'
+import { expandLayerCommand } from './layer-command.js'
 
 const COALESCE_WINDOW_MS = 600
 const DEFAULT_LIMIT = 100
@@ -54,6 +55,7 @@ export function createHistoryManager(
       return () => listeners.delete(listener)
     },
     apply(command, { coalesce = true } = {}) {
+      command = expandLayerCommand(doc, command)
       if (options.canApply?.(command) === false) {
         throw new Error('node_busy: 请先取消生成任务，再删除或替换节点')
       }

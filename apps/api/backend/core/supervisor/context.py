@@ -53,7 +53,14 @@ def build_context(context: dict, settings: Settings | None = None) -> dict:
             kind = str(item.get("kind") or item.get("type") or "object")
             outside_kinds[kind] = outside_kinds.get(kind, 0) + 1
 
-    selected, inside = _cap_objects(selected, inside, settings.context_max_objects)
+    batch = _explicit_batch(request)
+    collection = None
+    if batch:
+        collection = _batch_collection(selected)
+        _check_batch_collection(collection)
+        selected, inside = [], inside[: settings.context_max_objects]
+    else:
+        selected, inside = _cap_objects(selected, inside, settings.context_max_objects)
     cards = _filter_cards(context.get("asset_cards") or [], readable, _readable_cards(context))
     recent = _filter_cards(context.get("recent_outputs") or [], readable)
     dynamic = {
@@ -73,6 +80,8 @@ def build_context(context: dict, settings: Settings | None = None) -> dict:
         "events": _events(context),
         "messages": list(context.get("messages") or [])[: settings.context_messages],
     }
+    if collection is not None:
+        dynamic["collections"] = {"selected_images": collection}
     if "confirmed_decisions" in context:
         dynamic["confirmed_decisions"] = list(context.get("confirmed_decisions") or [])
     return {
@@ -118,6 +127,30 @@ def assemble_messages(
         {"role": "system", "content": system},
         {"role": "user", "content": built["request_message"]},
     ]
+
+
+def _explicit_batch(request: dict) -> bool:
+    """Only an explicit batch request may replace the selected list with a collection handle."""
+
+    return request.get("batch") is True or request.get("inputs_collection") == "selected_images"
+
+
+def _batch_collection(selected: list[dict]) -> dict:
+    """Compact description for the model. The compiler reads the frozen snapshot, not this text."""
+
+    types = sorted({str(item.get("kind") or item.get("type") or "image") for item in selected}) or ["image"]
+    return {"id": "selected_images", "media_type": types[0] if len(types) == 1 else "mixed",
+            "count": len(selected), "types": types}
+
+
+def _check_batch_collection(collection: dict) -> None:
+    from backend.core.batch.contracts import BatchSettings
+
+    limits = BatchSettings()
+    if collection["count"] > limits.max_batch_inputs:
+        raise ContextLimitError("input_limit")
+    if encoded_size(collection) > limits.max_rule_bytes:
+        raise ContextLimitError("rule_too_large")
 
 
 def _scope(context: dict) -> dict:

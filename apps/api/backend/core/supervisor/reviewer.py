@@ -273,7 +273,12 @@ def review(plan, run, catalog, balance, *, invariants=None, intent_extensions=No
                 "quoted_credits": 0,
                 "checks": {gate: not any(i["gate"] == gate for i in issues) for gate in ("legal", "types", "intent")}}
     issues, tools, steps, constraints = [], {}, [], []
-    if len(plan.steps) > Settings().max_tasks:
+    expansion = getattr(plan, "expansion", None) or {}
+    task_cap = Settings().max_tasks
+    if expansion.get("compiled"):
+        from backend.core.batch.contracts import BatchSettings
+        task_cap = BatchSettings().max_expanded_tasks
+    if len(plan.steps) > task_cap:
         issues.append({"gate": "legal", "code": "task_limit"})
     typed = []
     for tool in catalog.snapshot.tools:
@@ -288,6 +293,8 @@ def review(plan, run, catalog, balance, *, invariants=None, intent_extensions=No
             "output_type": output, "input_types": {p.path: [p.media_type] for p in tool.inputs if "[*]" not in p.path},
             "params_schema": params, "cost_credits": tool.price.credits or 0,
             "ambiguous_without": [k for k in ("duration_seconds",) if output == "video" and k in tool.parameters.get("properties", {})]}
+    batch_identity = {member["step_id"]: item["item_id"]
+                      for item in expansion.get("items", []) for member in item.get("steps", [])}
     for step in plan.steps:
         if step.kind == "ask_user":
             steps.append({"id": step.id, "kind": "ask_user", "depends_on": step.depends_on})
@@ -295,7 +302,8 @@ def review(plan, run, catalog, balance, *, invariants=None, intent_extensions=No
         try:
             tool = catalog.get_tool(step.tool, catalog.lock.version)
             quote = estimate_cost(tool, step.parameters)
-            if tool.mode != "read_only" and not any(p.media_type in {"image", "video", "audio"} for p in tool.outputs):
+            if (tool.mode != "read_only" and not any(p.media_type in {"image", "video", "audio"} for p in tool.outputs)
+                    and not (tool.name == "text_layout" and tool.execution.adapter == "composition.text_layout")):
                 issues.append({"gate": "legal", "code": "executor_not_supported", "step": step.id})
             typed.append(TypedTask(id=step.id, tool=step.tool, parameters=step.parameters,
                 depends_on=[key for key in step.depends_on if next((s for s in plan.steps if s.id == key), None).kind == "call_tool"]))
@@ -304,9 +312,16 @@ def review(plan, run, catalog, balance, *, invariants=None, intent_extensions=No
                 value = step.parameters.get(port.path)
                 if value is not None and "[*]" not in port.path:
                     inputs[port.path] = value if isinstance(value, str) else {"asset_id": value.get("asset_id", value.get("source_asset_id", ""))}
+            params = {k: v for k, v in step.parameters.items() if k in tools[tool.name]["params_schema"]}
+            if step.id in batch_identity:
+                params = {**params, "_batch_item": batch_identity[step.id]}
+            if expansion.get("compiled"):
+                asset_id = next((value.get("asset_id") for value in step.parameters.values()
+                                 if isinstance(value, dict) and value.get("asset_id")), "")
+                if asset_id:
+                    params = {**params, "_batch_asset": asset_id}
             steps.append({"id": step.id, "tool": step.tool, "tool_version": tool.version,
-                "params": {k: v for k, v in step.parameters.items() if k in tools[tool.name]["params_schema"]},
-                "inputs": inputs, "depends_on": step.depends_on, "estimated_cost": quote})
+                "params": params, "inputs": inputs, "depends_on": step.depends_on, "estimated_cost": quote})
         except (ValueError, TypeError, AttributeError, SchemaError):
             issues.append({"gate": "legal", "code": "invalid_tool_or_parameters", "step": step.id})
     if not issues:

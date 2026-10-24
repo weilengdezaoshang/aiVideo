@@ -23,6 +23,28 @@ export function captureRequestContext(snapshot: CanvasRequestSnapshot): CanvasRe
   }
   return structuredClone(snapshot)
 }
+const BATCH_WORDS = /批量|全部|每张|逐张|每一张|每个尺寸|每种尺寸/
+const BATCH_NEGATION = /不要批量|别批量|不用批量|无需批量/
+const COMPARE_WORDS = /比较|对比|哪个更好|哪张更好/
+
+/** Button action, or explicit batch words plus a multi-selection. Comparison stays a normal request. */
+export function inferBatchIntent(
+  message: string,
+  selectedCount: number,
+  action?: string | null,
+): boolean {
+  if (BATCH_NEGATION.test(message)) {
+    return false
+  }
+  if (action === 'batch' || action === 'for_each') {
+    return true
+  }
+  if (COMPARE_WORDS.test(message)) {
+    return false
+  }
+  return selectedCount >= 2 && BATCH_WORDS.test(message)
+}
+
 export function buildRequestContext(input: {
   requestId: string
   conversationId: string

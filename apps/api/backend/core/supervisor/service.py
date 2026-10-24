@@ -146,16 +146,20 @@ async def open_run(tx, session, doc, *, workspace_id, user_id, request_key, requ
         CoreSkill.workspace_id.is_(None)), or_(CoreSkill.user_id == user_id, CoreSkill.user_id.is_(None))))).all()
     cards = (await tx.scalars(select(CoreAsset).join(CoreAssetVersion, CoreAssetVersion.id == CoreAsset.current_version_id).where(CoreAssetVersion.category == "card", CoreAsset.workspace_id == workspace_id,
         or_(CoreAsset.user_id == user_id, CoreAsset.ownership == "team")))).all()
-    prompt = load_prompt()
+    prompt = load_prompt("supervisor-v2")
     frozen_route = route_snapshot(agent_route)
     settings = settings or Settings()
     lock = {"supervisor": "llm-v1", "prompt_version": prompt.version, "prompt_hash": prompt.content_hash,
+        "planner_controls": {"version": "planner-controls-v2", "prompt_version": prompt.version,
+                             "prompt_hash": prompt.content_hash},
         "agent_route": frozen_route, "tool_catalog": catalog.lock.model_dump(), "capabilities": catalog.lock.model_dump(),
         "tool_descriptions": catalog.lock.model_dump(), "skills": {str(s.id): str(s.current_version_id) for s in skills if s.current_version_id},
         "asset_cards": {str(a.id): str(a.current_version_id) for a in cards if a.current_version_id},
         "selfcheck": freeze_selfcheck_entry(settings, frozen_route, routes=list(routes or deployment_routes()))}
     request = copy.deepcopy(request)
     request.pop("recent_assets", None)
+    from backend.core.batch.intent import apply_batch_intent
+    request = apply_batch_intent(request)
     language = request.get("language") or session.language
     if not isinstance(language, str) or not re.fullmatch(r"[A-Za-z]{2,8}(?:-[A-Za-z0-9]{2,8})?", language):
         raise ValueError("invalid_language")
@@ -236,7 +240,8 @@ async def progress(tx, run):
         CoreSessionMessage.role == "assistant").order_by(CoreSessionMessage.sequence))).all()
     plan = await latest_plan(tx, run.id)
     stored = isinstance(getattr(plan, "link_constraints", None), dict) and isinstance((plan.link_constraints or {}).get("approved_invariants"), dict)
-    return {"id": str(run.id), "status": run.status, "version": run.version, "cursor": run.event_cursor,
+    body = {"id": str(run.id), "parent_run_id": str(run.parent_run_id) if run.parent_run_id else None,
+        "status": run.status, "version": run.version, "cursor": run.event_cursor,
         "credits_limit": run.credits_limit, "credits_spent": run.credits_spent,
         "thought_rounds": run.thought_rounds_used, "tokens_used": run.tokens_used,
         "known_tokens": int(((run.error or {}).get("planner_usage") or {}).get("known_tokens") or 0),
@@ -247,6 +252,11 @@ async def progress(tx, run):
             "labels": [c["label"] for c in (t.output or {}).get("candidates", [])],
             "question": {k: v for k, v in (t.waiting or {}).items() if k in {"question", "options", "form"}}} for t in tasks],
         "messages": [m.content for m in messages]}
+    rules = getattr(plan, "expansion_rules", None) or {}
+    if rules.get("compiled"):
+        from backend.core.batch.retry_helpers import effective_batch_progress
+        body["batch"] = await effective_batch_progress(tx, run, rules, tasks)
+    return body
 
 
 def _check_form_fields(form: dict, fields: dict) -> dict:

@@ -38,11 +38,28 @@ class ToolSettings(BaseSettings):
     analyze_timeout_seconds: float = Field(default=45, gt=0)
     analyze_max_image_bytes: int = Field(default=20 * 1024 * 1024, gt=0)
     max_card_refs: int = Field(default=2, gt=0, le=4)
+    text_layout_credits: int = Field(default=0, ge=0)
+    compose_credits: int = Field(default=0, ge=0)
+    max_copy_chars: int = Field(default=200, gt=0, le=4000)
+    max_text_layers: int = Field(default=8, gt=0, le=32)
+    min_font_size: int = Field(default=8, ge=1, le=1024)
+    max_font_size: int = Field(default=512, ge=1, le=1024)
+    min_canvas_edge: int = Field(default=64, ge=16, le=8192)
+    max_canvas_edge: int = Field(default=4096, ge=16, le=8192)
+    text_line_height: float = Field(default=1.3, gt=0, le=4)
+    max_text_lines: int = Field(default=32, gt=0, le=200)
+    subject_margin_ratio: float = Field(default=0.08, ge=0, lt=0.5)
+    text_overflow: Literal["fail"] = "fail"
+    font_registry_path: str = ""
+    max_font_bytes: int = Field(default=16 * 1024 * 1024, gt=0)
+    catalog_validation_cache_size: int = Field(default=32, gt=0)
 
     @model_validator(mode="after")
     def seed_bounds(self):
         if self.seed_minimum > self.seed_maximum:
             raise ValueError("seed range is inverted")
+        if self.min_font_size > self.max_font_size or self.min_canvas_edge > self.max_canvas_edge:
+            raise ValueError("layout bounds are inverted")
         return self
 
 

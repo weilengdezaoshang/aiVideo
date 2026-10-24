@@ -18,6 +18,7 @@ const snapshot = (runs: AgentRun[] = [], cursor = 0): AgentSnapshot => ({
 const makeRun = (request: AgentRequest, status: AgentRun['status'] = 'queued'): AgentRun => ({
   id: 'run-1',
   ...request,
+  batch: undefined,
   status,
   reply: null,
   error: null,

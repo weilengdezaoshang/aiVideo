@@ -36,6 +36,11 @@ class Answer(Contract):
     fields: dict | None = None
 
 
+class BatchRetry(Contract):
+    request_key: str = Field(min_length=1, max_length=128)
+    item_ids: list[str] = Field(default_factory=list)
+
+
 class Feedback(Contract):
     request_key: str = Field(min_length=1, max_length=128)
     text: str = Field(min_length=1, max_length=Settings().feedback_max_chars)
@@ -76,6 +81,31 @@ def install(app):
             if run is None or run.workspace_id != identity.workspace_id or run.user_id != identity.principal:
                 raise HTTPException(404, "Run 不存在")
             return await progress(tx, run)
+
+    @app.post("/api/core/runs/{run_id}/batch-retry")
+    async def batch_retry(run_id: uuid.UUID, body: BatchRetry, identity: Identity = Depends(authenticated)):
+        from backend.agent.orm import HostCreditAccount
+        from backend.core.batch.compile import CompileError
+        from backend.core.batch.service import open_batch_retry
+        from backend.core.tools.store import load_catalog
+        from backend.core.tools.contracts import VersionLock
+        try:
+            async with app.state.factory.begin() as tx:
+                run = await tx.get(CoreRun, run_id)
+                if run is None or run.workspace_id != identity.workspace_id or run.user_id != identity.principal:
+                    raise HTTPException(404, "Run 不存在")
+                if run.parent_run_id is not None:
+                    raise HTTPException(409, "not_root")
+                catalog = await load_catalog(tx, run.version_lock["tool_catalog"]["version"],
+                    expected_lock=VersionLock.model_validate(run.version_lock["tool_catalog"]))
+                account = await tx.get(HostCreditAccount, identity.workspace_id)
+                balance = int(account.available) if account is not None else 0
+                return await open_batch_retry(tx, run, request_key=body.request_key, item_ids=body.item_ids,
+                                              catalog=catalog, balance=balance)
+        except CompileError as exc:
+            raise HTTPException(409, exc.code) from None
+        except LookupError:
+            raise HTTPException(404, "Run 不存在") from None
 
     @app.post("/api/core/tasks/{task_id}/answer")
     async def reply(task_id: uuid.UUID, body: Answer, identity: Identity = Depends(authenticated)):

@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .catalog import CatalogError, ToolCatalog, canonical
-from .contracts import CatalogSnapshot, VersionLock
+from .contracts import VersionLock
 from .orm import ToolCatalogVersion, ToolDefinitionRecord
 
 
@@ -40,7 +40,7 @@ async def load_catalog(tx: AsyncSession, version: str, *, expected_lock: Version
     row = await tx.get(ToolCatalogVersion, version, populate_existing=True)
     if row is None:
         raise CatalogError("catalog_version_not_found")
-    catalog = ToolCatalog(CatalogSnapshot.model_validate(row.snapshot))
+    catalog = ToolCatalog.from_document(row.snapshot)
     if catalog.lock.content_hash != row.content_hash:
         raise CatalogError("catalog_integrity_error")
     rows = (await tx.scalars(select(ToolDefinitionRecord).where(

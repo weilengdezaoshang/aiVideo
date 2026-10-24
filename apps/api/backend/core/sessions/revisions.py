@@ -34,7 +34,8 @@ def effective_request(messages: list[CoreSessionMessage]) -> dict:
         "selection_explicit": bool(messages and (messages[-1].content or {}).get("selected_assets")), **budget, **server}
     if viewport is not None:
         request["viewport"] = viewport
-    return request
+    from backend.core.batch.intent import apply_batch_intent
+    return apply_batch_intent(request)
 
 
 async def _owned_user_messages(tx, run):

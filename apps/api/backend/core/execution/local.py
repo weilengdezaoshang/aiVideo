@@ -39,13 +39,35 @@ class LocalAdapter:
         self.tool, self.root = tool, root
         self.settings = WorkerSettings()
 
+    def _locked_composition(self):
+        from backend.core.composition.errors import CompositionError
+        from backend.core.composition.fonts import load_registry, locked_faces
+        from backend.core.tools.contracts import ToolSettings
+        snapshot = (self.tool.execution.binding or {}).get("composition")
+        if not isinstance(snapshot, dict) or "fonts" not in snapshot:
+            raise CompositionError("param_invalid")
+        # The live registry only locates files. Identity is the published hash.
+        return snapshot, locked_faces(snapshot, load_registry(ToolSettings().font_registry_path, int(snapshot["max_font_bytes"])))
+
+    @staticmethod
+    def _preset_table(snapshot):
+        return {key: (int(value["width"]), int(value["height"])) for key, value in snapshot["presets"].items()}
+
+    @staticmethod
+    def _region_table(snapshot):
+        return {key: (float(value["x"]), float(value["y"]), float(value["width"]), float(value["height"]))
+                for key, value in snapshot["regions"].items()}
+
     async def submit(self, registration_id, params, idempotency_key):
         try:
             result = await self.compute(registration_id, params)
             epoch = params["_execution_epoch"]
             if result.data:
                 artifact = ArtifactSpool(self.root).save(uuid.UUID(registration_id), epoch, Generated(result.data, result.ext))
-                result = replace(result, data=None, locator={"local_file": artifact["storage_key"]})
+                locator = {"local_file": artifact["storage_key"]}
+                if result.output is not None:
+                    locator["composition"] = result.output
+                result = replace(result, data=None, output=None, locator=locator)
             marker = self.root / "export-work" / registration_id / str(epoch) / "execution-ready.json"
             marker.parent.mkdir(parents=True, exist_ok=True)
             ArtifactSpool._atomic(marker, json.dumps(asdict(result)).encode())
@@ -86,6 +108,69 @@ class LocalAdapter:
             # only marks the attempt finished so submission stays durable and replay-safe.
             return ProviderResult("succeeded", registration_id, output={"applied": False})
 
+        if adapter == "composition.text_layout":
+            from backend.core.composition.errors import CompositionError
+            from backend.core.composition.layout import layout_text
+            try:
+                snapshot, registry = self._locked_composition()
+                if snapshot.get("text_overflow") != "fail":
+                    raise CompositionError("param_invalid")
+                laid = layout_text({key: value for key, value in params.items() if not key.startswith("_")},
+                    registry, min_font_size=snapshot["min_font_size"], max_font_size=snapshot["max_font_size"],
+                    max_copy_chars=snapshot["max_copy_chars"], min_edge=snapshot["min_canvas_edge"],
+                    max_edge=snapshot["max_canvas_edge"], line_height=snapshot["text_line_height"],
+                    max_lines=snapshot["max_text_lines"], presets=self._preset_table(snapshot),
+                    regions=self._region_table(snapshot))
+            except CompositionError:
+                return ProviderResult("failed", registration_id, failure="param_invalid")
+            return ProviderResult("succeeded", registration_id, output=laid, actual_credits=self.tool.price.credits or 0)
+        if adapter == "composition.compose":
+            from backend.core.composition.compose import compose_layers
+            from backend.core.composition.errors import CompositionError
+            clean = {key: value for key, value in params.items() if not key.startswith("_")}
+            try:
+                snapshot, registry = self._locked_composition()
+                subject = clean.get("subject")
+                subject_bytes = source(subject).read_bytes() if subject else None
+                background = clean["background"]
+                background_bytes = None
+                background_sha = background_id = None
+                if background.get("kind") == "image":
+                    image = background["image"]
+                    background_bytes = source(image).read_bytes()
+                    background_sha = image["sha256"]
+                    if hashlib.sha256(background_bytes).hexdigest() != background_sha:
+                        raise CompositionError("param_invalid")
+                    background_id = image.get("asset_id")
+                texts = []
+                for item in clean.get("text_layers") or []:
+                    blob = source(item).read_bytes()
+                    if item.get("sha256") and hashlib.sha256(blob).hexdigest() != item["sha256"]:
+                        raise CompositionError("param_invalid")
+                    payload = json.loads(blob)
+                    payload["asset_id"] = item.get("asset_id")
+                    payload["sha256"] = item.get("sha256")
+                    payload["core_asset_version_id"] = item.get("core_asset_version_id")
+                    texts.append(payload)
+                proof = clean.get("subject_proof")
+                mask_bytes = None
+                if proof and proof.get("mask"):
+                    mask_bytes = selected_mask(self.root, proof["mask"])
+                data, manifest = compose_layers(width=clean.get("width"), height=clean.get("height"),
+                    preset=clean.get("preset"), background=background, texts=texts,
+                    registry=registry, min_edge=snapshot["min_canvas_edge"],
+                    max_edge=snapshot["max_canvas_edge"], subject_margin_ratio=snapshot["subject_margin_ratio"],
+                    max_pixels=snapshot["max_image_pixels"], presets=self._preset_table(snapshot),
+                    subject_png=subject_bytes, subject_asset_id=None if subject is None else subject.get("asset_id"),
+                    subject_sha256=None if subject is None else subject.get("sha256"),
+                    subject_proof=proof, mask_png=mask_bytes,
+                    background_asset_id=background_id, background_sha256=background_sha, background_png=background_bytes)
+            except CompositionError as exc:
+                return ProviderResult("failed", registration_id, failure="no_subject" if exc.code == "need_subject" else "param_invalid")
+            if self.tool.price.credits is None:
+                return ProviderResult("failed", registration_id, failure="param_invalid")
+            return ProviderResult("succeeded", registration_id, data=data, output=manifest,
+                                  actual_credits=self.tool.price.credits, ext="png")
         if adapter == "storage.apply_mask":
             # The host must resolve an explicitly approved mask asset, never a model path.
             source_data = source(params["image"]).read_bytes()

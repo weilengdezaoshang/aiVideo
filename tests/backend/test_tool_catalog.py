@@ -161,3 +161,15 @@ def test_inventory_is_generated_from_the_same_definitions():
     assert "无固定到期" in report and "未定价" in report
     assert c.get_tool("video_concat", c.lock.version).execution.cancellation == "cooperative"
     assert c.get_tool("frames_to_video_preview", c.lock.version).execution.cancellation == "cooperative"
+
+
+def test_catalog_reads_do_not_revalidate_all_schemas(monkeypatch):
+    c = catalog()
+    lock = c.lock
+    def repeated_validation(*args, **kwargs):
+        raise AssertionError("published schemas must be validated once")
+    monkeypatch.setattr(Draft202012Validator, "check_schema", repeated_validation)
+    for _ in range(100):
+        assert c.get_tool("cutout", lock.version).name == "cutout"
+        assert c.lock == lock
+    assert c.snapshot.version == lock.version

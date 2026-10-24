@@ -98,6 +98,7 @@ export type CanvasAgentAction = {
 }
 
 export type AgentRun = {
+  parent_run_id?: string | null
   intentTrace?: {
     multi_step: boolean
     steps: { id: string; l2: string }[]
@@ -154,6 +155,17 @@ export type AgentRun = {
   createdAt: string
   updatedAt: string
   stateVersion?: number
+  batch?: {
+    completedItems: number
+    settledItems?: number
+    processedItems?: number
+    totalItems: number
+    failedCount: number
+    blockedCount?: number
+    skippedCount?: number
+    retryableItemIds?: string[]
+    settled?: boolean
+  }
 }
 
 export type AgentModel = { id: string; provider: string; model: string; label: string }
@@ -169,6 +181,7 @@ export type AgentRequest = {
   modelId: string
   baseRevision: number
   selectedObjectIds: string[]
+  batch?: boolean
   supersedeRunId?: string
   clarifyOptionId?: string
   clarifyRunId?: string

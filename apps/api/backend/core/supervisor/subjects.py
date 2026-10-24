@@ -19,7 +19,7 @@ def decision(result, target, mode, threshold):
     return "ask", []
 
 
-async def handle_subjects(tx, run, tasks, cause, settings):
+async def handle_subjects(tx, run, tasks, cause, settings, *, batch: bool = False):
     for detection in tasks:
         if detection.tool_ref != "detect_subject" or detection.status != "succeeded":
             continue
@@ -31,14 +31,16 @@ async def handle_subjects(tx, run, tasks, cause, settings):
             continue
         state = detection.waiting or {}
         if state.get("selected_output"):
-            await transition(tx, "task", cutout.id, cutout.version, "queued", causation_id=cause)
+            if not batch:
+                await transition(tx, "task", cutout.id, cutout.version, "queued", causation_id=cause)
             continue
         candidates = result["candidates"]
         await message(tx, run, "识别到：" + "、".join(c["label"] for c in candidates) if candidates else "未识别到可抠的主体。",
             "subjects:" + str(detection.id))
         kind, indices = decision(result, detection.parameters.get("target_description", ""), run.mode, settings.confidence_threshold)
         if kind == "none":
-            await transition(tx, "task", cutout.id, cutout.version, "cancelled", causation_id=cause)
+            cutout.error = {"code": "no_subject"}
+            await transition(tx, "task", cutout.id, cutout.version, "cancelled", causation_id=cause, reason="no_subject")
             continue
         question = next((t for t in tasks if t.kind == "ask_user" and (t.waiting or {}).get("detection_id") == str(detection.id)), None)
         if question:
@@ -72,10 +74,14 @@ async def handle_subjects(tx, run, tasks, cause, settings):
             await transition(tx, "task", question.id, question.version, "waiting_user", causation_id=cause)
             tx.add(CoreTaskDependency(task_id=question.id, depends_on_id=detection.id, run_id=run.id, plan_id=plan.id))
             tx.add(CoreTaskDependency(task_id=cutout.id, depends_on_id=question.id, run_id=run.id, plan_id=plan.id))
-            await transition(tx, "run", run.id, run.version, "paused", reason="waiting_user", causation_id=cause)
+            if not batch:
+                await transition(tx, "run", run.id, run.version, "paused", reason="waiting_user", causation_id=cause)
             await message(tx, run, waiting["question"], "ask:" + str(question.id), details={"options": options})
-            return True
+            if not batch:
+                return True
+            continue
         selected = [candidates[i]["mask"] for i in indices]
         detection.waiting = {"selected_output": selected[0], "selected_handles": [m["handle"] for m in selected]}
-        await transition(tx, "task", cutout.id, cutout.version, "queued", causation_id=cause)
+        if not batch:
+            await transition(tx, "task", cutout.id, cutout.version, "queued", causation_id=cause)
     return False

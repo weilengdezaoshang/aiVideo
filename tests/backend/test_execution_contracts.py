@@ -96,9 +96,28 @@ def test_asset_scope_accepts_only_current_contract(scope_key, allowed):
         run = SimpleNamespace(id=uuid.uuid4(), input_revision=1, scope={scope_key: [str(asset_id)]}, workspace_id=workspace_id)
         worker = object.__new__(Worker)
         if allowed:
-            result = await worker.references(Session(), task, run)
+            result = await worker.references(Session(), task, run, SimpleNamespace(inputs=[SimpleNamespace(path="image")]))
             assert result["image"]["storage_key"] == asset.storage_key
         else:
             with pytest.raises(ValueError, match="out of scope"):
-                await worker.references(Session(), task, run)
+                await worker.references(Session(), task, run, SimpleNamespace(inputs=[SimpleNamespace(path="image")]))
     asyncio.run(scenario())
+
+
+def test_worker_preserves_literal_dollar_text_outside_media_ports():
+    import uuid
+    from types import SimpleNamespace
+    from backend.core.execution.engine import Worker
+    async def body():
+        class Session:
+            async def scalar(self, query):
+                return None
+            async def scalars(self, query):
+                return []
+        task = SimpleNamespace(id=uuid.uuid4(), input_revision=1,
+                               parameters={"copy": "$t1.output", "prompt": "$100 价格"})
+        run = SimpleNamespace(id=uuid.uuid4(), input_revision=1, scope={})
+        worker = object.__new__(Worker)
+        result = await worker.references(Session(), task, run, SimpleNamespace(inputs=[]))
+        assert result == task.parameters
+    asyncio.run(body())

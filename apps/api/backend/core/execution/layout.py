@@ -56,11 +56,133 @@ def choose(data: dict, placement: dict, settings: WorkerSettings):
     return None, True, None
 
 
-async def place(doc, task_id, asset, placement, settings):
+def canvas_insert_allowed(*, cancel_requested: bool, run_cancelled: bool, task_cancelled: bool, permitted: bool) -> bool:
+    """A finished local result still stays history-only when the run or task was cancelled."""
+    return bool(permitted) and not (cancel_requested or run_cancelled or task_cancelled)
+
+
+def place_layered(data, task_id, asset, placement, settings, manifest):
+    """Place one native-aspect group; a replay preserves subsequent user edits."""
+    group = "generated-" + str(task_id)
+    for key, value in data.get("objects", {}).items():
+        if value.get("layerRole") == "group" and value.get("compositionTaskId") == str(task_id):
+            return key, False, {name: value[name] for name in ("x", "y", "width", "height")}
+    scratch = copy.deepcopy(data)
+    scratch["objects"] = {key: value for key, value in data.get("objects", {}).items()
+                          if key != group and not key.startswith(group + ":")}
+    rect, conflict, replacement = choose(scratch, placement, settings)
+    if rect is None:
+        return None, conflict, {}
+    canvas = manifest["canvas"]
+    scale = min(rect["width"] / canvas["width"], rect["height"] / canvas["height"])
+    native_width, native_height = canvas["width"] * scale, canvas["height"] * scale
+    rect = {**rect, "x": rect["x"] + (rect["width"] - native_width) / 2,
+            "y": rect["y"] + (rect["height"] - native_height) / 2,
+            "width": native_width, "height": native_height}
+    scale_x = scale_y = scale
+    if replacement:
+        group = replacement
+    objects = data.setdefault("objects", {})
+    order = data.setdefault("order", [])
+    removed = {key for key, value in objects.items()
+               if key != group and value.get("groupId") == group}
+    for key in removed:
+        objects.pop(key)
+    if removed:
+        data["order"] = order = [key for key in order if key not in removed]
+
+    def put(suffix, fields):
+        node_id = group if suffix == "" else f"{group}:{suffix}"
+        previous = objects.get(node_id, {})
+        transform = fields.pop("transform")
+        objects[node_id] = {"id": node_id, "groupId": group,
+            "x": rect["x"] + transform["x"] * scale_x, "y": rect["y"] + transform["y"] * scale_y,
+            "width": max(1, transform["width"] * scale_x), "height": max(1, transform["height"] * scale_y),
+            "assetVersion": int(previous.get("assetVersion", 0)) + 1, **fields}
+        if node_id not in order:
+            order.append(node_id)
+        return node_id
+
+    put("", {"kind": "board", "name": "海报", "layerRole": "group", "fit": "contain",
+             "compositionTaskId": str(task_id),
+             "layers": manifest, "backgroundColor": "#ffffff", "transform": {"x": 0, "y": 0, "width": canvas["width"], "height": canvas["height"]},
+             "assetId": str(asset.id), "ext": asset.ext, "src": None})
+    for layer in manifest["layers"]:
+        role = layer["role"]
+        if role == "background" and layer["kind"] == "color":
+            put("background", {"kind": "board", "layerRole": "background", "fit": "contain",
+                               "backgroundColor": layer["color"], "transform": dict(layer["transform"])})
+        elif role == "background":
+            put("background", {"kind": "image", "layerRole": "background", "fit": "contain",
+                               "assetId": layer.get("asset_id"), "ext": "png", "transform": dict(layer["transform"])})
+        elif role == "subject":
+            put("subject", {"kind": "image", "layerRole": "subject", "fit": "contain",
+                            "assetId": layer.get("asset_id"), "ext": "png", "transform": dict(layer["transform"])})
+        elif role == "text":
+            box = layer["transform"]
+            line_boxes = [{
+                "text": line["text"],
+                "x": (line["x"] - box["x"]) * scale_x,
+                "y": (line["y"] - box["y"]) * scale_y,
+                "width": max(1, line["width"] * scale_x) if line["text"] else 0,
+                "height": max(1, line["height"] * scale_y),
+            } for line in layer.get("lines") or []]
+            put(layer["id"], {"kind": "text", "layerRole": "text", "text": layer["text"],
+                              "fontSize": max(1, round(layer["font_size"] * scale_y)), "fontFamily": layer["font_id"],
+                              "fill": layer["color"], "textAlign": layer["align"], "region": layer["region"],
+                              "lineBoxes": line_boxes, "transform": dict(box)})
+    return group, conflict, rect
+
+
+def insert_text_leaf(data, task_id, placement, settings, layout):
+    """One editable text object. Line boxes stay in the object's local space."""
+    rect, conflict, _replacement = choose(data, placement, settings)
+    if rect is None:
+        return None, conflict, {}
+    canvas = layout["canvas"]
+    box = layout["box"]
+    scale_x = rect["width"] / canvas["width"]
+    scale_y = rect["height"] / canvas["height"]
+    node_id = "generated-" + str(task_id)
+    objects = data.setdefault("objects", {})
+    order = data.setdefault("order", [])
+    previous = objects.get(node_id, {})
+    objects[node_id] = {**previous, "id": node_id, "kind": "text", "layerRole": "text",
+        "x": rect["x"] + box["x"] * scale_x, "y": rect["y"] + box["y"] * scale_y,
+        "width": max(1, box["width"] * scale_x), "height": max(1, box["height"] * scale_y),
+        "text": layout["copy"], "fontSize": max(1, round(layout["size"] * scale_y)),
+        "fontFamily": layout["font_id"], "fill": layout["color"], "textAlign": layout["alignment"],
+        "region": layout["region"], "lineBoxes": [{
+            "text": line["text"], "x": (line["x"] - box["x"]) * scale_x, "y": (line["y"] - box["y"]) * scale_y,
+            "width": max(1, line["width"] * scale_x) if line["text"] else 0,
+            "height": max(1, line["height"] * scale_y),
+        } for line in layout["lines"]],
+        "assetVersion": int(previous.get("assetVersion", 0)) + 1}
+    if node_id not in order:
+        order.append(node_id)
+    return node_id, conflict, rect
+
+
+async def place_text_leaf(doc, task_id, placement, settings, layout):
+    data = copy.deepcopy(doc.data)
+    node, conflict, rect = await asyncio.to_thread(insert_text_leaf, data, task_id, placement, settings, layout)
+    if node is None:
+        return None, conflict, {}
+    doc.data, doc.revision = data, doc.revision + 1
+    return node, conflict, rect
+
+
+async def place(doc, task_id, asset, placement, settings, manifest=None):
     data = copy.deepcopy(doc.data)
     placeholder = "generated-" + str(task_id)
     if data.get("objects", {}).get(placeholder, {}).get("corePlaceholder"):
         data["objects"].pop(placeholder)
+    if manifest:
+        node, conflict, rect = await asyncio.to_thread(place_layered, data, task_id, asset, placement, settings, manifest)
+        if node is None:
+            return None, conflict, {}
+        doc.data, doc.revision = data, doc.revision + 1
+        return node, conflict, rect
     rect, conflict, replacement = await asyncio.to_thread(choose, data, placement, settings)
     if rect is None:
         return None, conflict, {}

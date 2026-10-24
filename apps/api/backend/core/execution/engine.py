@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import hashlib
 import json
 import math
@@ -36,7 +37,7 @@ from backend.infrastructure.orm import Asset, AssetReference, Document, Job, Out
 from backend.providers.base import Generated
 from backend.services.media import inspect_media
 from .contracts import Provider, ProviderResult, WorkerSettings, before_call, after_result
-from .layout import place
+from .layout import place, place_text_leaf
 from .orm import CanvasWrite, ExecutionAdmission, ProviderReceipt, TaskExecution
 
 
@@ -47,7 +48,8 @@ def now():
 # Tools whose provider result is structured JSON instead of artifact bytes.
 # detect_subject keeps its dedicated validation; image_analyze returns the
 # analyzer answer; card tasks apply their write in the consume transaction.
-_STRUCTURED_TOOLS = frozenset({"detect_subject", "image_analyze", "create_asset_card", "update_asset_card"})
+_STRUCTURED_TOOLS = frozenset({"detect_subject", "image_analyze", "create_asset_card", "update_asset_card", "text_layout"})
+_PRICED_STRUCTURED = frozenset({"image_analyze", "text_layout"})
 # Read-only tools that still execute through the provider path (network model call).
 _PROVIDER_READ_TOOLS = frozenset({"detect_subject", "image_analyze"})
 
@@ -292,7 +294,7 @@ class Worker:
             return None
         return execution, task, run, doc, await tx.get(Job, job_id)
 
-    async def references(self, tx, task, run):
+    async def references(self, tx, task, run, tool):
         scope = await effective_scope(tx, run, task.input_revision)
         deps = set(await tx.scalars(select(CoreTaskDependency.depends_on_id).where(CoreTaskDependency.task_id == task.id)))
         by_key = {}
@@ -303,8 +305,8 @@ class Worker:
             if upstream.plan_id != task.plan_id:
                 raise HostError("dependencies_pending", "依赖不属于当前计划")
             by_key[upstream.task_key] = upstream
-        async def resolve(value):
-            if isinstance(value, str) and value.startswith("$"):
+        async def resolve(value, allow_reference=True):
+            if allow_reference and isinstance(value, str) and value.startswith("$"):
                 import re
                 match = re.fullmatch(r"\$([a-z][a-z0-9_]*)\.(output|candidates\[\d+\]\.mask)", value)
                 if not match or match[1] not in by_key:
@@ -319,14 +321,14 @@ class Worker:
                         output = _read(output, match[2])
                     except (KeyError, IndexError, TypeError, ValueError):
                         raise ValueError("approved output reference no longer exists") from None
-                resolved_output = await resolve(output)
+                resolved_output = await resolve(output, False)
                 if upstream_task.tool_ref == "detect_subject" and match[2] == "output":
                     resolved_output = {**resolved_output, "_members": upstream_task.waiting["selected_handles"]}
                 return resolved_output
             if isinstance(value, list):
-                return [await resolve(item) for item in value]
+                return [await resolve(item, allow_reference) for item in value]
             if isinstance(value, dict):
-                result = {k: await resolve(v) for k, v in value.items()}
+                result = {k: await resolve(v, allow_reference) for k, v in value.items()}
                 if result.get("media_type") == "card" and "card_id" in result:
                     from backend.core.asset_cards import resolve_card, run_created_card_ids
                     frozen = set((run.version_lock or {}).get("asset_cards") or [])
@@ -344,9 +346,39 @@ class Worker:
                         raise ValueError("asset type mismatch")
                     result.update(storage_key=asset.storage_key, ext=asset.ext, sha256=asset.sha256,
                         duration_frames=round(asset.details.get("durationSec", 0) * 30))
+                    if asset.kind == "text":
+                        from backend.core.composition.persist import materialize_text_reference
+                        from backend.core.orm import CoreAssetVersion
+                        path = (Path(self.root) / asset.storage_key).resolve()
+                        if not path.is_relative_to(Path(self.root).resolve()) or not path.is_file():
+                            raise ValueError("text source missing")
+                        version = await tx.scalar(select(CoreAssetVersion).where(
+                            CoreAssetVersion.workspace_id == run.workspace_id,
+                            CoreAssetVersion.stored_asset_id == asset.id,
+                        ).order_by(CoreAssetVersion.version.desc()).limit(1))
+                        result = materialize_text_reference(result, storage_key=asset.storage_key,
+                            sha256=asset.sha256, asset_id=str(asset.id), blob=path.read_bytes(),
+                            core_asset_id=None if version is None else str(version.asset_id),
+                            core_asset_version_id=None if version is None else str(version.id))
                 return result
             return value
-        return await resolve(task.parameters)
+        parameters = copy.deepcopy(task.parameters)
+        async def hydrate(value, parts):
+            if not parts:
+                return await resolve(value)
+            head, *tail = parts
+            if not isinstance(value, dict):
+                return value
+            if head.endswith("[*]"):
+                key = head[:-3]
+                if isinstance(value.get(key), list):
+                    value[key] = [await hydrate(item, tail) for item in value[key]]
+            elif head in value:
+                value[head] = await hydrate(value[head], tail)
+            return value
+        for port in tool.inputs:
+            parameters = await hydrate(parameters, port.path.split("."))
+        return parameters
 
     async def execute(self, job_id):
         token = uuid.uuid4()
@@ -392,7 +424,7 @@ class Worker:
                     return {"failed": "queue_timeout"}
                 execution.deadline = now() + timedelta(seconds=tool.execution.sla_seconds)
                 try:
-                    params = await self.references(tx, task, run)
+                    params = await self.references(tx, task, run, tool)
                 except HostError:
                     await self.defer(tx, execution, job)
                     return {"deferred": "dependencies"}
@@ -679,8 +711,10 @@ class Worker:
                 execution.deadline = now()
                 await alert(tx, "unapproved_cost", None, f"cost:{task.id}", context={"task_id": str(task.id), "actual": result.actual_credits, "reserved": task.credits_reserved})
                 return
-            if result.output is not None:
-                if task.tool_ref not in _STRUCTURED_TOOLS or (task.tool_ref != "image_analyze" and result.actual_credits != 0):
+            if task.tool_ref == "compose_layers" and isinstance(result.locator, dict) and result.locator.get("composition"):
+                execution.prepared = {**(execution.prepared or {}), "composition": result.locator["composition"]}
+            if result.output is not None and result.locator is None:
+                if task.tool_ref not in _STRUCTURED_TOOLS or (result.actual_credits != 0 and task.tool_ref not in _PRICED_STRUCTURED):
                     raise ValueError("unexpected structured result")
                 from backend.core.tools.detection import DetectionResult
                 from jsonschema import Draft202012Validator
@@ -699,6 +733,19 @@ class Worker:
                     invalid_code = "card_output_invalid"
                 if task.tool_ref == "image_analyze":
                     invalid_code = "analyze_output_invalid"
+                if task.tool_ref == "text_layout":
+                    from backend.core.composition.persist import persist_text_layout
+                    try:
+                        output = await persist_text_layout(tx, Path(self.root), attempt.id, run, task, output,
+                                                           job_id=job.id)
+                    except ValueError:
+                        await self.finish(tx, rows, "failed", 0, "param_invalid")
+                        return
+                    await self._retain_text_canvas(tx, rows, output)
+                    invalid_code = "param_invalid"
+                    if result.actual_credits != definition.price.credits:
+                        await self.finish(tx, rows, "failed", 0, "param_invalid")
+                        return
                 if not Draft202012Validator(definition.result_schema).is_valid(output):
                     await self.finish(tx, rows, "failed", 0, invalid_code)
                     return
@@ -709,7 +756,7 @@ class Worker:
                         await self.finish(tx, rows, "failed", 0, "recognition_output_invalid")
                         return
                 task.output = output
-                await self.finish(tx, rows, "succeeded", result.actual_credits if task.tool_ref == "image_analyze" else 0)
+                await self.finish(tx, rows, "succeeded", result.actual_credits if task.tool_ref in _PRICED_STRUCTURED else 0)
                 return
             execution.result_credits = result.actual_credits
             execution.ticket = self.seal(result.locator or {})
@@ -735,7 +782,7 @@ class Worker:
             await self.finish(tx, rows, "failed", 0, "param_invalid")
             return {"failed": "param_invalid"}
         try:
-            resolved = await self.references(tx, task, run)
+            resolved = await self.references(tx, task, run, tool)
             params = {key: resolved[key] for key in (task.parameters or {})} if isinstance(resolved, dict) else task.parameters
         except HostError:
             await self.defer(tx, execution, job)
@@ -823,6 +870,8 @@ class Worker:
             attempt.actual_credits, attempt.submission_status, attempt.finished_at = actual, "finished", now()
             attempt.error = {"code": reason} if reason else None
         result = await transition(tx, "task", task.id, task.version, status, causation_id=execution.causation_id) if task.status != status else None
+        from backend.core.batch.runtime import settle_marked_dispatch
+        await settle_marked_dispatch(tx, run, task)
         event = "task_succeeded" if status == "succeeded" else "task_blocked" if status == "blocked_by_model" else "task_failed" if status == "failed" else "user_cancelled"
         await emit(tx, event, run.id, causation_id=result.event_id if result else execution.causation_id, ids={"task_id": task.id})
         execution.phase, execution.ticket = "done", None
@@ -838,6 +887,28 @@ class Worker:
         tx.add(Outbox(aggregate_type="job", aggregate_id=str(job.id), event_type="job.changed",
             payload={"jobId": str(job.id), "workspaceId": str(run.workspace_id)}))
 
+    async def _retain_text_canvas(self, tx, rows, layout):
+        """A leaf text task may draw. suppress_canvas keeps the asset and writes history only."""
+        execution, task, run, doc, _job = rows
+        if doc is None or await tx.get(CanvasWrite, task.id):
+            return
+        from .layout import canvas_insert_allowed
+        admission = await tx.scalar(select(ExecutionAdmission).where(ExecutionAdmission.task_id == task.id))
+        placement = (admission.placement if admission else {}) or {}
+        suppress = placement.get("suppress_canvas") is True
+        cancelled = execution.cancel_requested or run.status == "cancelled" or task.status == "cancelled"
+        node, conflict, rect = None, False, {}
+        if (not suppress and canvas_insert_allowed(cancel_requested=execution.cancel_requested,
+                run_cancelled=run.status == "cancelled", task_cancelled=task.status == "cancelled",
+                permitted=run.scope.get("write_canvas") is True)):
+            node, conflict, rect = await place_text_leaf(doc, task.id, placement, self.settings, layout)
+            if node:
+                tx.add(AssetReference(asset_id=uuid.UUID(layout["asset_id"]), owner_type="document",
+                                      owner_id=str(doc.id)))
+        tx.add(CanvasWrite(task_id=task.id, document_id=doc.id, node_id=node,
+            asset_id=uuid.UUID(layout["asset_id"]), conflict=bool(conflict),
+            history_only=suppress or cancelled or node is None, rect=rect or {}))
+
     async def publish(self, tx, rows, placement, measured):
         execution, task, run, doc, job = rows
         if await tx.get(CanvasWrite, task.id):
@@ -850,10 +921,22 @@ class Worker:
                     "prompt": task.parameters.get("prompt", ""), "width": measured["width"], "height": measured["height"]}})
         tx.add(asset)
         await tx.flush()
+        manifest = (execution.prepared or {}).get("composition") if task.tool_ref == "compose_layers" else None
+        if manifest:
+            from backend.core.orm import CoreAssetVersion
+            for layer in manifest.get("layers") or []:
+                if layer.get("source_version_id") or not layer.get("asset_id"):
+                    continue
+                found = await tx.scalar(select(CoreAssetVersion).where(
+                    CoreAssetVersion.workspace_id == run.workspace_id,
+                    CoreAssetVersion.stored_asset_id == uuid.UUID(str(layer["asset_id"])),
+                ).order_by(CoreAssetVersion.version.desc()).limit(1))
+                if found is not None:
+                    layer["source_version_id"] = str(found.id)
         content = AssetContent(
             kind=asset.kind, category="artifact", storage={"asset_id": str(asset.id)}, stored_asset_id=asset.id,
             content_hash=asset.sha256, user_id=run.user_id, run_id=run.id, task_id=task.id,
-            width=asset.width, height=asset.height, size_bytes=asset.bytes)
+            width=asset.width, height=asset.height, size_bytes=asset.bytes, layers=manifest or {})
         edit_capability = None if task.tool_ref == "cutout" else capability_of(task.tool_ref or "")
         if edit_capability:
             source_id = (execution.resolved_parameters.get("image") or {}).get("asset_id")
@@ -871,9 +954,16 @@ class Worker:
         else:
             core_asset = await create_asset(tx, run.workspace_id, run.user_id, "personal", content)
             version_id = core_asset.current_version_id
+        if manifest:
+            from backend.core.orm import CoreAssetLineage
+            for layer in manifest.get("layers") or []:
+                source_id = layer.get("source_version_id")
+                if source_id:
+                    tx.add(CoreAssetLineage(input_version_id=uuid.UUID(str(source_id)), output_version_id=version_id, relation="composed_from"))
         cancelled = execution.cancel_requested or run.status == "cancelled" or task.status == "cancelled"
+        suppress_canvas = placement.get("suppress_canvas") is True
         node, conflict, rect = None, False, {}
-        if doc and not cancelled:
+        if doc and not cancelled and not suppress_canvas:
             if doc.workspace_id != run.workspace_id:
                 raise ValueError("document workspace mismatch")
             safe_placement = {**placement, "writable_region": run.scope.get("writable_region")}
@@ -884,8 +974,10 @@ class Worker:
                 permitted = region_id in run.scope["writable_regions"] and isinstance(bounds, dict) and all(key in bounds for key in ("x", "y", "width", "height"))
                 if permitted:
                     safe_placement["writable_region"] = {key: bounds[key] for key in ("x", "y", "width", "height")}
-            if permitted:
-                node, conflict, rect = await place(doc, task.id, asset, safe_placement, self.settings)
+            from .layout import canvas_insert_allowed
+            if canvas_insert_allowed(cancel_requested=execution.cancel_requested, run_cancelled=run.status == "cancelled",
+                                     task_cancelled=task.status == "cancelled", permitted=permitted):
+                node, conflict, rect = await place(doc, task.id, asset, safe_placement, self.settings, manifest)
             else:
                 conflict = True
             if node:
@@ -894,10 +986,10 @@ class Worker:
                 await emit(tx, "conflict", run.id, causation_id=execution.causation_id, ids={"task_id": task.id, "asset_id": core_asset.id})
         if doc:
             tx.add(CanvasWrite(task_id=task.id, document_id=doc.id, node_id=node, asset_id=asset.id,
-                conflict=conflict, history_only=cancelled or node is None, rect=rect))
+                conflict=conflict, history_only=cancelled or suppress_canvas or node is None, rect=rect))
         tx.add(AssetReference(asset_id=asset.id, owner_type="job", owner_id=str(job.id)))
         task.output = {"asset_id": str(asset.id), "media_type": asset.kind, "core_asset_id": str(core_asset.id),
-            "core_asset_version_id": str(version_id)}
+            "core_asset_version_id": str(version_id), **({"layers": manifest} if manifest else {})}
         execution.asset_id = asset.id
         job.phase_payload = {**artifact, "assetId": str(asset.id)}
         extra_events = await self.after(task, asset, tx)

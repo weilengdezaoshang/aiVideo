@@ -280,7 +280,7 @@ def test_rollout_scope_and_membership_do_not_publish_hidden_tools():
                             settings=Settings(planner_tool_threshold=200))
     names = [item["function"]["name"] for item in scoped.tools]
     assert names[0] == "read_asset"
-    assert set(names[-3:]) == {"ask_user_form", "answer_only", "set_invariants"}
+    assert set(names[-4:]) == {"ask_user_form", "answer_only", "set_invariants", "for_each"}
 
 
 def test_over_threshold_retrieval_closes_mask_chain_and_records_versions():
@@ -310,7 +310,7 @@ def test_over_threshold_retrieval_closes_mask_chain_and_records_versions():
     assert listed.catalog_hash == catalog.lock.content_hash
     assert "cutout" in names and "detect_subject" in names
     assert "spawn_helper" not in names
-    assert names[-3:] == ["ask_user_form", "answer_only", "set_invariants"]
+    assert names[-4:] == ["ask_user_form", "answer_only", "set_invariants", "for_each"]
     assert len([name for name in names if name.startswith("filler_")]) == 0
 
 

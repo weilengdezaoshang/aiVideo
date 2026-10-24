@@ -17,6 +17,10 @@ from backend.config import Config
 from backend.providers.seed_capability import provider_honors_seed
 from backend.providers.staged import StagedProvider
 
+from backend.core.composition.fonts import load_registry
+from backend.core.composition.presets import PRESET_VERSION, PRESETS
+from backend.core.composition.snapshot import composition_snapshot
+
 from .catalog import ToolCatalog
 from .contracts import CatalogSnapshot, Execution, Port, Price, ToolDefinition, ToolSettings
 from .errors import FAILURE_RULES
@@ -253,6 +257,74 @@ def build_catalog(legacy: Catalog, version: str, settings: ToolSettings | None =
                 Price(kind="unpriced"), Execution(adapter="unavailable", **local),
                 available=False, reason="deployment_binding_missing", tool_version="unbound")
 
+    registry = load_registry(settings.font_registry_path, settings.max_font_bytes)
+    composition = {**local, "binding": {"composition": composition_snapshot(settings)}}
+    font_ids = registry.ids()
+    preset_ids = list(PRESETS)
+    copy_schema = {"type": "string", "minLength": 1, "maxLength": settings.max_copy_chars}
+    size_schema = {"type": "integer", "minimum": settings.min_font_size, "maximum": settings.max_font_size}
+    edge = {"type": "integer", "minimum": settings.min_canvas_edge, "maximum": settings.max_canvas_edge}
+    text_shared = {"copy": copy_schema, "font_id": {"enum": font_ids} if font_ids else {"type": "string", "minLength": 1},
+                   "size": size_schema, "color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+                   "alignment": {"enum": ["left", "center", "right"]},
+                   "region": {"enum": ["title", "body", "footer"]}}
+    text_required = list(text_shared)
+
+    def sized(shared, extra_required):
+        explicit = {**shared, "width": edge, "height": edge}
+        return {"type": "object", "additionalProperties": False, "properties": {**explicit, "preset": {"enum": preset_ids}},
+                "required": extra_required,
+                "oneOf": [{"required": ["preset"], "not": {"anyOf": [{"required": ["width"]}, {"required": ["height"]}]}},
+                          {"required": ["width", "height"], "not": {"required": ["preset"]}}]}
+
+    text_result = object_schema({
+        "asset_id": {"type": "string", "minLength": 1}, "media_type": {"const": "text"},
+        "core_asset_id": {"type": "string", "minLength": 1}, "core_asset_version_id": {"type": "string", "minLength": 1},
+        "copy": copy_schema, "font_id": text_shared["font_id"], "font_version": {"type": "string", "minLength": 1},
+        "font_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "size": size_schema,
+        "color": text_shared["color"], "alignment": text_shared["alignment"], "region": text_shared["region"],
+        "preset": {"type": ["string", "null"]},
+        "canvas": object_schema({"width": edge, "height": edge, "preset_version": {"const": PRESET_VERSION}}),
+        "box": object_schema({"x": {"type": "integer"}, "y": {"type": "integer"},
+                              "width": {"type": "integer", "minimum": 1}, "height": {"type": "integer", "minimum": 1}}),
+        "lines": {"type": "array", "minItems": 1, "maxItems": settings.max_text_lines, "items": object_schema({
+            "text": {"type": "string"}, "x": {"type": "integer"}, "y": {"type": "integer"},
+            "width": {"type": "integer", "minimum": 0}, "height": {"type": "integer", "minimum": 1}})},
+    })
+    add("text_layout", "把原文排进 title/body/footer 版区并生成可编辑文字层。不要让模型画字或填写画布坐标。缺字、溢出、未知字体直接失败。",
+        sized(text_shared, text_required), [], [Port(path="output", media_type="text")], "deterministic",
+        Price(kind="fixed", credits=settings.text_layout_credits),
+        Execution(adapter="composition.text_layout", **composition), result=text_result,
+        limits={"max_copy_chars": settings.max_copy_chars, "min_font_size": settings.min_font_size,
+                "max_font_size": settings.max_font_size, "max_text_lines": settings.max_text_lines,
+                "overflow": settings.text_overflow, "preset_version": PRESET_VERSION,
+                "presets": {key: {"width": value[0], "height": value[1]} for key, value in PRESETS.items()},
+                "font_ids": font_ids, "coordinates": "code"})
+    background_schema = {"oneOf": [
+        object_schema({"kind": {"const": "color"}, "color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"}}),
+        object_schema({"kind": {"const": "image"}, "image": reference_schema("image")}),
+    ]}
+    compose_shared = {"background": background_schema, "subject": reference_schema("image"),
+                      "subject_proof": object_schema({
+                          "source": {"const": "cutout"},
+                          "mask_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+                          "mask": reference_schema("mask")}, ["source", "mask_sha256"]),
+                      "text_layers": {"type": "array", "maxItems": settings.max_text_layers,
+                                      "items": reference_schema("text")},
+                      "fit": {"const": "contain"}}
+    add("compose_layers", "用纯色或已有背景图、可选透明主体和文字层合成海报。没有主体时不要造假主体。全透明图是 no_subject。不透明图只有带 cutout 蒙版证明才算主体。不把用户要的图片背景换成白底。主体 contain。outpaint 不可用。预览图不是文字层。",
+        sized(compose_shared, ["background", "text_layers", "fit"]),
+        [Port(path="subject", media_type="image", required=False),
+         Port(path="subject_proof.mask", media_type="mask", required=False),
+         Port(path="background.image", media_type="image", required=False),
+         Port(path="text_layers[*]", media_type="text", required=False)],
+        [Port(path="output", media_type="image")], "deterministic",
+        Price(kind="fixed", credits=settings.compose_credits),
+        Execution(adapter="composition.compose", **composition),
+        limits={"fit": "contain", "preset_version": PRESET_VERSION,
+                "presets": {key: {"width": value[0], "height": value[1]} for key, value in PRESETS.items()},
+                "max_text_layers": settings.max_text_layers, "subject_margin_ratio": settings.subject_margin_ratio,
+                "outpaint": "unavailable", "need_subject_failure": "no_subject"})
     add("video_concat", "拼接已有视频时间线；图片序列使用 frames_to_video，生成视频使用视频生成工具。",
         object_schema({"clips": {"type": "array", "minItems": 1, "maxItems": settings.max_clips,
                                   "items": reference_schema("video")}}),

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   buildRequestContext,
   captureRequestContext,
+  inferBatchIntent,
 } from '../apps/web/canvas/agent/request-context.js'
 import { AgentRequestSchema } from '../apps/web/shared/agent-protocol.js'
 const id = '11111111-1111-4111-8111-111111111111'
@@ -70,6 +71,15 @@ test('高亮与选区不一致拒绝发送，伪造身份拒绝，节点描述�
   })
   assert.deepEqual(parsed.mentions, [{ id: 'cat' }])
   assert.deepEqual(parsed.message?.[0], { type: 'mention', id: 'cat' })
+})
+
+test('批量意图只在按钮或明确批量用语加多选时成立', () => {
+  assert.equal(inferBatchIntent('全部抠图换白底', 100), true)
+  assert.equal(inferBatchIntent('不要批量全部处理', 100), false)
+  assert.equal(inferBatchIntent('比较这两张哪个更好', 2), false)
+  assert.equal(inferBatchIntent('抠图', 100), false)
+  assert.equal(inferBatchIntent('抠图', 1, 'batch'), true)
+  assert.equal(inferBatchIntent('全部', 1), false)
 })
 
 test('仅参考节点内容身份变化拒发；换选区和其他节点变化可发送', async () => {

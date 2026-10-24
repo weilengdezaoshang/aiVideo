@@ -103,6 +103,7 @@ class Plan(Contract):
     answer: str = ""
     control_audit: ControlCallAudit = Field(default_factory=ControlCallAudit)
     control_audits: list[ControlCallAudit] = Field(default_factory=list)
+    expansion: dict = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def empty_steps_only_for_answer(self):

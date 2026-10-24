@@ -29,7 +29,7 @@ _PLAN_METADATA = {
     },
 }
 _VISIBLE_MODES = frozenset({"read_only", "generate", "deterministic"})
-_CONTROL_ORDER = ("ask_user_form", "answer_only", "set_invariants")
+_CONTROL_ORDER = ("ask_user_form", "answer_only", "set_invariants", "for_each")
 _TOKEN = re.compile(r"[a-z0-9_]+|[\u4e00-\u9fff]")
 
 _CONTROLS = {
@@ -84,6 +84,20 @@ _CONTROLS = {
             },
         },
     },
+    "for_each": {
+        "description": "对一组已冻结素材套用同一任务模板。这不是执行步骤。程序展开全部条目后再统一审核，禁止逐张再调模型。",
+        "parameters": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["task_template"],
+            "properties": {
+                "inputs": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+                "inputs_collection": {"type": "string", "enum": ["selected_images"]},
+                "task_template": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+                "sizes": {"type": "array", "items": {"type": "object"}},
+            },
+        },
+    },
 }
 
 
@@ -104,6 +118,7 @@ def planning_tools(
     scope: Mapping[str, object] | None = None,
     query: str = "",
     settings: Settings | None = None,
+    prompt_version: str | None = None,
 ) -> PlanningToolList:
     """Decorate exported tools for planning. Does not copy execution bindings or mutate the catalog."""
 
@@ -124,7 +139,10 @@ def planning_tools(
     retrieved = len(visible) > settings.planner_tool_threshold
     if retrieved:
         visible = _retrieve(catalog, version_lock, visible, query, settings)
-    controls = [_control(name) for name in _CONTROL_ORDER]
+    order = _CONTROL_ORDER
+    if prompt_version == "supervisor-v1":
+        order = tuple(name for name in order if name != "for_each")
+    controls = [_control(name) for name in order]
     return PlanningToolList(
         tools=visible + controls,
         catalog_version=version_lock.version,

@@ -5,6 +5,7 @@ import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
+  type RefObject,
 } from 'react'
 import {
   Circle,
@@ -31,6 +32,10 @@ import type {
   ResizeHandle,
 } from '../core/types.js'
 import { useImageElement, useVideoElement } from './use-media.js'
+import { containFrame, coverCrop } from './image-fit.js'
+import { TextPropertyBar } from './text-properties.js'
+import { layeredLines } from './layered-text.js'
+import { cmdUpdateObject } from '../state/commands.js'
 import { exposeRendererDiagnostics } from './perf-diagnostics.js'
 import { preventBrowserGestureZoom } from './browser-gestures.js'
 import type { Theme } from '../theme.js'
@@ -122,6 +127,8 @@ export function CanvasEditor({
     view.dispatchInput(input)
   }
 
+  const selectedId = snapshot.selection.length === 1 ? snapshot.selection[0] : undefined
+  const selectedObject = selectedId ? view.getDocument().objects[selectedId] : undefined
   return (
     <div
       ref={containerRef}
@@ -133,6 +140,8 @@ export function CanvasEditor({
         height: '100%',
         overflow: 'hidden',
         outline: 'none',
+        display: 'flex',
+        flexDirection: 'column',
         cursor:
           snapshot.requestedTool === 'mask'
             ? maskBrushCursor(snapshot.maskBrush.size, snapshot.maskBrush.mode)
@@ -147,6 +156,12 @@ export function CanvasEditor({
       }}
       onKeyUp={(event) => view.dispatchInput(keyboardInput('key-up', event))}
     >
+      {selectedObject?.kind === 'text' && (
+        <TextPropertyBar
+          object={selectedObject}
+          onPatch={(patch, prev) => view.execute(cmdUpdateObject(selectedObject.id, patch, prev))}
+        />
+      )}
       <Stage
         width={snapshot.viewport.width}
         height={snapshot.viewport.height}
@@ -313,23 +328,44 @@ function ObjectNode({
       {object.kind === 'text' && (
         <>
           {object.textCard && <Rect {...common} fill={object.backgroundColor || '#ffffff'} />}
-          <Text
-            width={object.width}
-            height={object.height}
-            text={object.text || '双击输入文字'}
-            fontSize={object.fontSize || 16}
-            fill={object.fill || '#202124'}
-            padding={12}
-            verticalAlign="middle"
-          />
+          {layeredLines(object) ? (
+            layeredLines(object)!.map((line, index) => (
+              <Text
+                key={`${line.text}-${index}`}
+                x={line.x}
+                y={line.y}
+                width={Math.max(line.width, 1)}
+                height={line.height}
+                text={line.text}
+                fontSize={object.fontSize || 16}
+                fontFamily={object.fontFamily}
+                align="left"
+                fill={object.fill || '#202124'}
+                padding={0}
+                verticalAlign="top"
+              />
+            ))
+          ) : (
+            <Text
+              width={object.width}
+              height={object.height}
+              text={object.text || '双击输入文字'}
+              fontSize={object.fontSize || 16}
+              fontFamily={object.fontFamily}
+              align={object.textAlign || 'left'}
+              fill={object.fill || '#202124'}
+              padding={12}
+              verticalAlign="middle"
+            />
+          )}
         </>
       )}
       {(object.kind === 'image' || object.kind === 'video') && (image || video) && (
-        <KonvaImage
-          ref={videoNode}
-          {...common}
-          image={video || image || undefined}
-          crop={coverCrop(video || image, object.width, object.height)}
+        <FittedImage
+          nodeRef={videoNode}
+          object={object}
+          media={(video || image) as CanvasImageSource}
+          common={common}
         />
       )}
       {(object.kind === 'image' || object.kind === 'video') && !image && !video && (
@@ -617,23 +653,51 @@ function mediaUrl(object: CanvasObj): string | null {
   return `/assets/${object.assetId}/original.${object.ext || (object.kind === 'video' ? 'mp4' : 'png')}`
 }
 
-function coverCrop(media: CanvasImageSource | null, width: number, height: number) {
-  if (!media) {
-    return undefined
+function usesContain(object: CanvasObj): boolean {
+  return (
+    object.fit === 'contain' || object.layerRole === 'subject' || object.layerRole === 'background'
+  )
+}
+
+function FittedImage({
+  object,
+  media,
+  common,
+  nodeRef,
+}: {
+  object: CanvasObj
+  media: CanvasImageSource
+  common: {
+    width: number
+    height: number
+    cornerRadius: number
+    stroke?: string
+    strokeWidth: number
   }
+  nodeRef: RefObject<Konva.Image | null>
+}) {
   const sourceWidth = mediaWidth(media)
   const sourceHeight = mediaHeight(media)
-  if (!sourceWidth || !sourceHeight) {
-    return undefined
-  }
-  const sourceRatio = sourceWidth / sourceHeight
-  const targetRatio = width / height
-  if (sourceRatio > targetRatio) {
-    const cropWidth = sourceHeight * targetRatio
-    return { x: (sourceWidth - cropWidth) / 2, y: 0, width: cropWidth, height: sourceHeight }
-  }
-  const cropHeight = sourceWidth / targetRatio
-  return { x: 0, y: (sourceHeight - cropHeight) / 2, width: sourceWidth, height: cropHeight }
+  const contain = usesContain(object) && sourceWidth > 0 && sourceHeight > 0
+  const frame = contain
+    ? containFrame(sourceWidth, sourceHeight, object.width, object.height)
+    : null
+  return (
+    <KonvaImage
+      ref={nodeRef}
+      {...common}
+      x={frame?.x}
+      y={frame?.y}
+      width={frame?.width ?? common.width}
+      height={frame?.height ?? common.height}
+      image={media}
+      crop={
+        contain || !sourceWidth || !sourceHeight
+          ? undefined
+          : coverCrop(sourceWidth, sourceHeight, object.width, object.height)
+      }
+    />
+  )
 }
 
 function mediaWidth(media: CanvasImageSource): number {

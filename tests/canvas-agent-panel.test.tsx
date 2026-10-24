@@ -38,6 +38,7 @@ function setup(options: { initial?: AgentRun; saveFailure?: boolean; hostEnabled
       requests.push(request)
       run = {
         ...request,
+        batch: undefined,
         id: 'run',
         status: 'running',
         reply: null,

@@ -15,6 +15,7 @@ from backend.core.events import orm as core_events_orm  # noqa: F401 — event c
 from backend.core.supervisor import orm as _supervisor_orm  # noqa: F401
 from backend.core.execution import orm as execution_orm  # noqa: F401 — durable worker receipts
 from backend.core.tools import orm as tools_orm  # noqa: F401 — versioned tool catalog
+from backend.core.batch import orm as batch_orm  # noqa: F401 — batch quota and retry links
 from backend.core import orm as core_orm  # noqa: F401 — register isolated core contracts
 from backend.agent import orm as agent_orm  # noqa: F401 — register Agent tables in the shared metadata
 

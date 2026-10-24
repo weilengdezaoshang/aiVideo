@@ -293,6 +293,8 @@ def _check_budget(
 
 def _check_params(step: PlanStep, spec: ToolSpec, reasons: list[ReviewReason]) -> None:
     for name, value in step.params.items():
+        if name in {"_batch_asset", "_batch_item"}:
+            continue
         rule = spec.params_schema.get(name)
         if rule is None:
             reasons.append(

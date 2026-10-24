@@ -201,7 +201,8 @@ class LLMPlanner:
         catalog = context["catalog"]
         presented = planning_tools(
             catalog, context.get("user") or {}, catalog.lock,
-            scope=context.get("scope"), query=context["request"]["message"], settings=self.settings)
+            scope=context.get("scope"), query=context["request"]["message"], settings=self.settings,
+            prompt_version=context.get("prompt_version"))
         messages, prompt = _messages(context, self.settings)
         request_hash = _request_hash(messages, presented.tools, self.route, prompt.content_hash)
         prior = await self._prior(context, presented, messages, prompt, request_hash)

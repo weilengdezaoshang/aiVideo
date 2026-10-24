@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+from functools import lru_cache
 from collections.abc import Mapping
 
 from jsonschema import Draft202012Validator
 
-from .contracts import CatalogSnapshot, ToolDefinition, VersionLock
+from .contracts import CatalogSnapshot, ToolDefinition, VersionLock, ToolSettings
 
 
 def canonical(value: dict) -> str:
@@ -18,19 +19,39 @@ class CatalogError(ValueError):
     pass
 
 
+@lru_cache(maxsize=ToolSettings().catalog_validation_cache_size)
+def _validated_snapshot(encoded: str) -> CatalogSnapshot:
+    # Cache by full canonical content, never version alone. No mutable value is
+    # exported; public accessors return deep copies. Database integrity is still
+    # checked on every load, including every definition record.
+    return CatalogSnapshot.model_validate_json(encoded)
+
+
 class ToolCatalog:
     def __init__(self, snapshot: CatalogSnapshot):
-        self._encoded = canonical(snapshot.model_dump(mode="json"))
+        self._initialize(canonical(snapshot.model_dump(mode="json")))
+
+    @classmethod
+    def from_document(cls, document: dict) -> ToolCatalog:
+        catalog = cls.__new__(cls)
+        catalog._initialize(canonical(document))
+        return catalog
+
+    def _initialize(self, encoded: str):
+        self._encoded = encoded
         self._hash = hashlib.sha256(self._encoded.encode()).hexdigest()
+        self._snapshot = _validated_snapshot(self._encoded)
+        self._version = self._snapshot.version
+        self._tools = {tool.name: tool for tool in self._snapshot.tools}
 
     @property
     def snapshot(self) -> CatalogSnapshot:
         # Pydantic frozen is shallow; callers always receive a detached copy.
-        return CatalogSnapshot.model_validate_json(self._encoded)
+        return self._snapshot.model_copy(deep=True)
 
     @property
     def lock(self) -> VersionLock:
-        return VersionLock(version=self.snapshot.version, content_hash=self._hash)
+        return VersionLock(version=self._version, content_hash=self._hash)
 
     def check_lock(self, version_lock: VersionLock):
         if version_lock != self.lock:
@@ -39,10 +60,10 @@ class ToolCatalog:
     def get_tool(self, name: str, version: str) -> ToolDefinition:
         if version != self.lock.version:
             raise CatalogError("catalog_version_not_loaded")
-        for tool in self.snapshot.tools:
-            if tool.name == name:
-                return tool
-        raise CatalogError("tool_not_found")
+        tool = self._tools.get(name)
+        if tool is None:
+            raise CatalogError("tool_not_found")
+        return tool.model_copy(deep=True)
 
     def to_model_tools(self, user: Mapping[str, object], version_lock: VersionLock) -> list[dict]:
         self.check_lock(version_lock)

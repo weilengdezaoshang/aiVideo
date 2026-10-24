@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 _PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
-_VERSIONS = {"supervisor-v1": "supervisor-v1.txt"}
+_VERSIONS = {"supervisor-v1": "supervisor-v1.txt", "supervisor-v2": "supervisor-v2.txt"}
 
 
 @dataclass(frozen=True, slots=True)

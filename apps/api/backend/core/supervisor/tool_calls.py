@@ -35,7 +35,7 @@ _COORDINATES = frozenset({
     "x", "y", "left", "top", "right", "bottom", "bounds", "position", "scale", "rotation",
     "camera", "viewport",
 })
-_CONTROLS = frozenset({"ask_user_form", "answer_only", "set_invariants"})
+_CONTROLS = frozenset({"ask_user_form", "answer_only", "set_invariants", "for_each"})
 _FIELD_TYPES = frozenset({"text", "number", "boolean", "choice"})
 
 
@@ -63,7 +63,8 @@ def convert_tool_calls(
     message = str(request.get("message") or "")
     scope = context.get("scope") or request.get("scope") or {}
     presented = planning_tools(
-        catalog, user, version_lock, scope=scope, query=message, settings=settings)
+        catalog, user, version_lock, scope=scope, query=message, settings=settings,
+        prompt_version=str(context.get("prompt_version") or "") or None)
     visible = {entry["function"]["name"]: entry for entry in presented.tools}
     parsed = [_parse_call(call, index) for index, call in enumerate(calls)]
     _reject_duplicate_ids(parsed)
@@ -88,6 +89,19 @@ def convert_tool_calls(
         "catalog_hash": presented.catalog_hash,
         "retrieval_version": presented.retrieval_version,
     }
+    if "for_each" in names:
+        if workers or names - {"for_each", "set_invariants"}:
+            raise ConversionError("for_each_mixed")
+        from backend.core.batch.compile import CompileError, compile_rule
+        try:
+            compiled = compile_rule(
+                next(call["arguments"] for call in controls if call["name"] == "for_each"),
+                _asset_index(context), catalog, version_lock,
+                scope=scope if isinstance(scope, dict) else {})
+        except CompileError as exc:
+            raise ConversionError(exc.code) from exc
+        plan = _plan(message, compiled.steps, "generate", audits, "", expansion=compiled.document)
+        return _result(plan, proposed, raw)
     for call in workers:
         _reject_coordinates(call["arguments"])
     needs_duration = _video_needs_duration(workers, catalog, version_lock, context)
@@ -156,7 +170,7 @@ def _merge_controls(controls: list[dict]) -> list[dict]:
     grouped: dict[str, list[dict]] = {name: [] for name in _CONTROLS}
     for call in controls:
         grouped[call["name"]].append(call)
-    if len(grouped["ask_user_form"]) > 1 or len(grouped["answer_only"]) > 1:
+    if len(grouped["ask_user_form"]) > 1 or len(grouped["answer_only"]) > 1 or len(grouped["for_each"]) > 1:
         raise ConversionError("duplicate_control")
     invariants = grouped["set_invariants"]
     if len(invariants) > 1:
@@ -175,7 +189,7 @@ def _merge_controls(controls: list[dict]) -> list[dict]:
         if evidence is not None:
             arguments = {**evidence["arguments"], "invariants": merged}
             grouped["set_invariants"] = [{**evidence, "arguments": arguments}]
-    return [*grouped["set_invariants"], *grouped["ask_user_form"], *grouped["answer_only"]]
+    return [*grouped["set_invariants"], *grouped["ask_user_form"], *grouped["answer_only"], *grouped["for_each"]]
 
 
 def _audit_control(call: dict, message: str, context: Mapping | None = None) -> ControlCallAudit:
@@ -191,6 +205,8 @@ def _audit_control(call: dict, message: str, context: Mapping | None = None) -> 
     if call["name"] == "set_invariants":
         return ControlCallAudit(
             tool=call["name"], arguments=dict(call["arguments"]), evidence=_evidence(call["arguments"], message, context))
+    if call["name"] == "for_each":
+        return ControlCallAudit(tool=call["name"], arguments=dict(call["arguments"]))
     raise ConversionError("unknown_tool")
 
 
@@ -575,7 +591,52 @@ def _literal_asset(value: Any) -> str:
     return ""
 
 
-def _plan(message: str, steps: list[Step], result_type: str, audits: list[ControlCallAudit], answer: str) -> Plan:
+def _asset_index(context: Mapping) -> dict:
+    """Known assets plus the frozen ``$selection`` list. Collection names are not task references."""
+
+    index = {}
+    snapshot = context.get("snapshot") or {}
+    for bag in snapshot.get("assets") or []:
+        if isinstance(bag, dict) and bag.get("asset_id"):
+            version = bag.get("version")
+            if isinstance(version, bool) or not isinstance(version, int):
+                version = 1
+            media = bag.get("media_type") or bag.get("kind") or "image"
+            index[str(bag["asset_id"])] = {"asset_id": str(bag["asset_id"]), "version": version, "media_type": str(media)}
+    versions = snapshot.get("asset_versions") or {}
+    if isinstance(versions, dict):
+        for key, value in versions.items():
+            if isinstance(value, dict):
+                version = value.get("version")
+                media = value.get("media_type") or value.get("kind") or "image"
+            else:
+                version = value
+                media = "image"
+            if isinstance(version, bool) or not isinstance(version, int):
+                continue
+            index[str(key)] = {"asset_id": str(key), "version": version, "media_type": str(media)}
+    request = context.get("request") or {}
+    scope = context.get("scope") or request.get("scope") or {}
+    readable = {str(item) for item in (scope.get("readable_assets") or [])} if isinstance(scope, Mapping) else set()
+    selected = request.get("selected_assets") or context.get("selection") or []
+    if isinstance(selected, dict):
+        selected = selected.get("ids") or selected.get("asset_ids") or []
+    rows = []
+    for item in selected:
+        asset_id = str(item)
+        known = index.get(asset_id)
+        if known is None:
+            continue
+        if readable and asset_id not in readable:
+            continue
+        rows.append(dict(known))
+    if rows:
+        index["$selection"] = rows
+    return index
+
+
+def _plan(message: str, steps: list[Step], result_type: str, audits: list[ControlCallAudit], answer: str,
+          expansion: dict | None = None) -> Plan:
     _reject_cycles(steps)
     primary = audits[0] if audits else ControlCallAudit()
     if any(item.tool == "ask_user_form" for item in audits):
@@ -584,7 +645,7 @@ def _plan(message: str, steps: list[Step], result_type: str, audits: list[Contro
         primary = next(item for item in audits if item.tool == "answer_only")
     return Plan(
         goal=message, steps=steps, result_type=result_type, writer="llm", answer=answer,
-        control_audit=primary, control_audits=audits)
+        control_audit=primary, control_audits=audits, expansion=dict(expansion or {}))
 
 
 def _reject_cycles(steps: list[Step]) -> None:
