@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Uuid
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Uuid, func
 
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -18,7 +18,7 @@ class CoreRecognitionJob(Record, Base):
     source: Mapped[str] = mapped_column(String(16))
     status: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending")
     attempt: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    next_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default="now()")
+    next_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     lease_token: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     core_asset_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)

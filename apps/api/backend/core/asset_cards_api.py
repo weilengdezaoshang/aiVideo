@@ -34,9 +34,12 @@ class UpdateCardBody(BaseModel):
     starred: bool | None = None
 
 
-def _conflict(code: str):
-    status = 404 if code in {"card_not_found"} else 409
-    return HTTPException(status, code)
+def _status_for(code: str) -> int:
+    if code == "card_not_found":
+        return 404
+    if code.startswith("invalid_") or code == "card_update_empty":
+        return 400
+    return 409
 
 
 def build_cards_router() -> APIRouter:
@@ -60,7 +63,7 @@ def build_cards_router() -> APIRouter:
                     description=body.description, source_stored_asset=stored, starred=body.starred)
                 return version_view(card, version)
         except CardRejected as exc:
-            raise _conflict(exc.code) from exc
+            raise HTTPException(_status_for(exc.code), exc.code) from exc
 
     @router.get("/api/core/cards")
     async def listing(request: Request, identity: Identity = Depends(authenticated),
@@ -99,7 +102,7 @@ def build_cards_router() -> APIRouter:
                 card = await tx.get(CoreAsset, card_id)
                 return version_view(card, version)
         except CardRejected as exc:
-            raise _conflict(exc.code) from exc
+            raise HTTPException(_status_for(exc.code), exc.code) from exc
         except EntityNotFound:
             raise HTTPException(404, "card_not_found") from None
 
@@ -114,7 +117,7 @@ def build_cards_router() -> APIRouter:
                 card = await tx.get(CoreAsset, card_id)
                 return version_view(card, version)
         except CardRejected as exc:
-            raise _conflict(exc.code) from exc
+            raise HTTPException(_status_for(exc.code), exc.code) from exc
         except EntityNotFound:
             raise HTTPException(404, "card_not_found") from None
 
@@ -129,7 +132,7 @@ def build_cards_router() -> APIRouter:
                 card = await tx.get(CoreAsset, card_id)
                 return version_view(card, version)
         except CardRejected as exc:
-            raise _conflict(exc.code) from exc
+            raise HTTPException(_status_for(exc.code), exc.code) from exc
         except EntityNotFound:
             raise HTTPException(404, "card_not_found") from None
 

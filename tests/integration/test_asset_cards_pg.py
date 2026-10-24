@@ -234,6 +234,11 @@ def test_worker_executes_card_task_and_card_parameter_generation(tmp_path):
                 assert created is not None
                 version = await tx.get(CoreAssetVersion, created.current_version_id)
                 assert version.category == "card" and version.card_kind == "subject"
+                # The run's own card task must not echo an asset_changed back to itself.
+                echoed = list(await tx.scalars(select(CoreEvent.event_type).where(
+                    CoreEvent.run_id == ids["run"], CoreEvent.event_kind == "domain",
+                    CoreEvent.event_type == "asset_changed")))
+                assert echoed == []
 
             # Generation with the run-frozen style card merges its description into the prompt.
             card_id, card_version_id = ids["card"], ids["card_version"]

@@ -85,7 +85,7 @@ async def create_card(tx, *, workspace_id: uuid.UUID, user_id: str, card_kind: s
         if parent is not None:
             tx.add(CoreAssetLineage(input_version_id=parent, output_version_id=version.id, relation="card_of"))
     if notify:
-        await notify_card_changed(tx, card.id)
+        await notify_card_changed(tx, card.id, exclude_run_id=run_id)
     return card, version
 
 
@@ -159,7 +159,7 @@ async def update_card(tx, card_id: uuid.UUID, workspace_id: uuid.UUID, expected_
 
     version = await _append_card_version(tx, card.id, "edited", build)
     if notify:
-        await notify_card_changed(tx, card_id)
+        await notify_card_changed(tx, card_id, exclude_run_id=run_id)
     return version
 
 
@@ -333,8 +333,12 @@ def apply_card_parameters(tool, params: dict) -> dict:
     return resolved
 
 
-async def notify_card_changed(tx, card_id: uuid.UUID) -> int:
-    """Emit asset_changed into every active run that froze this card."""
+async def notify_card_changed(tx, card_id: uuid.UUID, *, exclude_run_id: uuid.UUID | None = None) -> int:
+    """Emit asset_changed into every active run that froze this card.
+
+    The run whose own card task made the change is excluded: its task_succeeded
+    event already reports the outcome.
+    """
     card = await tx.get(CoreAsset, card_id)
     if card is None:
         return 0
@@ -343,6 +347,8 @@ async def notify_card_changed(tx, card_id: uuid.UUID) -> int:
     sent = 0
     # Deterministic order keeps concurrent card updates from deadlocking on run locks.
     for run in sorted(runs, key=lambda row: str(row.id)):
+        if exclude_run_id is not None and run.id == exclude_run_id:
+            continue
         lock = (run.version_lock or {}).get("asset_cards") or {}
         if str(card_id) not in lock:
             continue

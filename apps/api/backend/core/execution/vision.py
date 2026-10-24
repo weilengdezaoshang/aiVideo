@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from dataclasses import asdict
 from pathlib import Path
 
@@ -51,7 +52,10 @@ class VisionAdapter:
             return ProviderResult("failed", registration_id, failure="param_invalid")
         marker = self.root / "vision-work" / registration_id / str(params["_execution_epoch"]) / "execution-ready.json"
         marker.parent.mkdir(parents=True, exist_ok=True)
-        marker.write_text(json.dumps(asdict(result)), encoding="utf-8")
+        # Atomic publish: a half-written marker must never look like a durable result.
+        tmp = marker.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(asdict(result)), encoding="utf-8")
+        os.replace(tmp, marker)
         return result
 
     async def query(self, task_id, registration_id):
