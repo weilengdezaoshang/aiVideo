@@ -67,6 +67,7 @@ import { paintCutoutMask } from './flows/cutout-mask.js'
 import { openAgentCutout, type AgentCutoutOwner } from './flows/agent-cutout.js'
 import { cutoutPlacement } from './flows/cutout-placement.js'
 import { AgentPanel } from './agent-panel.js'
+import { ConnectedSessionPanel } from './session/connected-panel.js'
 import type { AgentRun } from './agent/types.js'
 import { createAgentStore, type AgentStore } from './agent/store.js'
 import { createDocStore, type CanvasDocData, type DocStore } from './state/doc-store.js'
@@ -1788,6 +1789,7 @@ function CanvasShell({ document, store, restored }: LoadedCanvas) {
             active={sidebarOpen}
             timelineNodeId={timelineNodeId}
             ensureSaved={saver.ensureSaved}
+            syncDocument={saver.syncRemote}
           />
         </div>
       </SidebarPresence>
@@ -1835,6 +1837,7 @@ function SidebarContent({
   active,
   timelineNodeId,
   ensureSaved,
+  syncDocument,
 }: {
   tab: 'library' | 'chat' | 'storyboard' | 'timeline'
   selection: readonly string[]
@@ -1844,6 +1847,7 @@ function SidebarContent({
   active: boolean
   timelineNodeId?: string
   ensureSaved: () => Promise<unknown>
+  syncDocument: () => Promise<unknown>
 }) {
   const object = selection.length === 1 ? view.getDocument().objects[selection[0]] : undefined
   const targetTimelineId =
@@ -1859,12 +1863,35 @@ function SidebarContent({
   }
   if (tab === 'chat') {
     return (
-      <AgentPanel
-        store={agentStore}
-        history={store.doc.chat ?? []}
-        getSelection={() => view.getSnapshot().selection}
-        onArtifact={(nodeId) => view.focusObject(nodeId)}
-      />
+      <>
+        <ConnectedSessionPanel
+          documentId={store.doc.id}
+          ensureSaved={ensureSaved}
+          syncDocument={syncDocument}
+          versionAnchor={(nodeId) => {
+            const node = store.doc.objects[nodeId]
+            return node
+              ? { documentRevision: store.doc.revision ?? 0, anchorVersion: node.assetVersion ?? 0 }
+              : null
+          }}
+          selectedNodes={() => view.getSnapshot().selection}
+          selectedAssets={() =>
+            view.getSnapshot().selection.flatMap((id) => {
+              const assetId = store.doc.objects[id]?.assetId
+              return typeof assetId === 'string' ? [assetId] : []
+            })
+          }
+        />
+        <details className="next-agent-history">
+          <summary>旧对话与手动流程</summary>
+          <AgentPanel
+            store={agentStore}
+            history={store.doc.chat ?? []}
+            getSelection={() => view.getSnapshot().selection}
+            onArtifact={(nodeId) => view.focusObject(nodeId)}
+          />
+        </details>
+      </>
     )
   }
   if (tab === 'storyboard') {
