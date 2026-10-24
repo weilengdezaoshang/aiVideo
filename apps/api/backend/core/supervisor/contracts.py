@@ -32,6 +32,23 @@ class Settings(BaseSettings):
     viewport_span_limit: float = Field(default=100_000, gt=0)
     viewport_origin_limit: float = Field(default=1_000_000, gt=0)
     card_context_limit: int = Field(default=12, gt=0)
+    selfcheck_enabled: bool = False
+    selfcheck_mode: Literal["off", "shadow", "enforce"] = "off"
+    selfcheck_video_anywhere: bool = True
+    selfcheck_min_steps: int = Field(default=8, ge=1)
+    selfcheck_min_depth: int = Field(default=6, ge=1)
+    selfcheck_cost_threshold: int = Field(default=80, ge=0)
+    selfcheck_helper_marker: bool = True
+    selfcheck_timeout_seconds: float = Field(default=8, gt=0)
+    selfcheck_max_input_bytes: int = Field(default=24_000, ge=256)
+    selfcheck_max_output_bytes: int = Field(default=16_384, ge=256)
+    selfcheck_max_param_chars: int = Field(default=400, ge=32)
+    selfcheck_template_version: str = "selfcheck-v1"
+    selfcheck_max_false_block_rate: float | None = Field(default=None, ge=0, le=1)
+    selfcheck_expected_dataset_hash: str | None = None
+    selfcheck_checkpoint_margin_seconds: float = Field(default=15, ge=0)
+    selfcheck_evidence_path: str | None = None
+    selfcheck_route_id: str | None = None
 
 
 class Step(Contract):

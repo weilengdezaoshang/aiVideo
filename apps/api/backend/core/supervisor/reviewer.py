@@ -260,7 +260,7 @@ def conversion_rejection(raw):
             "checks": {"legal": False, "types": True, "intent": True}}
 
 
-def review(plan, run, catalog, balance, *, invariants=None):
+def review(plan, run, catalog, balance, *, invariants=None, intent_extensions=None):
     if plan.result_type == "answer_only":
         issues = []
         if plan.steps:
@@ -317,7 +317,8 @@ def review(plan, run, catalog, balance, *, invariants=None):
             "scope": {k: run.scope.get(k, []) for k in ("tools", "readable_assets", "writable_regions")},
             "version_lock": {"tools": tools}, "invariants": run.invariants if invariants is None else invariants,
             "canvas": {"assets": run.snapshot.get("assets", []), "nodes": [{"id": str(k)} for k in run.snapshot.get("objects", {})]}}
-        result = validate({"goal": plan.goal, "steps": steps}, context)
+        result = validate({"goal": plan.goal, "steps": steps}, context,
+            intent_extensions=intent_extensions)
         issues.extend(r.model_dump() for r in result.reasons)
     request = run.snapshot["request"]
     if request.get("action") == "tool" and any(s.tool != request.get("tool") for s in plan.steps if s.kind == "call_tool"):

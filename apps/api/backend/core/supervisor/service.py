@@ -21,7 +21,7 @@ from backend.infrastructure.orm import Asset, AssetReference, Outbox
 from .contracts import Settings
 from .prompts import load_prompt
 from .reviewer import effective_invariants
-from .wiring import route_snapshot
+from .wiring import deployment_routes, freeze_selfcheck_entry, route_snapshot
 
 _AUDIT = logging.getLogger("backend.core.supervisor.audit")
 
@@ -122,7 +122,7 @@ async def _recent_outputs(tx, session, workspace_id):
 
 async def open_run(tx, session, doc, *, workspace_id, user_id, request_key, request, budget, token_budget,
                    max_rounds, mode="auto", agent_route=None, input_revision=1, correction_of_run_id=None,
-                   persist_opening_message=True):
+                   persist_opening_message=True, settings=None, routes=None):
     request_hash = digest({"request": request, "budget": budget, "tokens": token_budget, "rounds": max_rounds, "mode": mode})
     old = await tx.scalar(select(CoreRun).where(CoreRun.session_id == session.id, CoreRun.request_key == request_key))
     if old:
@@ -148,10 +148,12 @@ async def open_run(tx, session, doc, *, workspace_id, user_id, request_key, requ
         or_(CoreAsset.user_id == user_id, CoreAsset.ownership == "team")))).all()
     prompt = load_prompt()
     frozen_route = route_snapshot(agent_route)
+    settings = settings or Settings()
     lock = {"supervisor": "llm-v1", "prompt_version": prompt.version, "prompt_hash": prompt.content_hash,
         "agent_route": frozen_route, "tool_catalog": catalog.lock.model_dump(), "capabilities": catalog.lock.model_dump(),
         "tool_descriptions": catalog.lock.model_dump(), "skills": {str(s.id): str(s.current_version_id) for s in skills if s.current_version_id},
-        "asset_cards": {str(a.id): str(a.current_version_id) for a in cards if a.current_version_id}}
+        "asset_cards": {str(a.id): str(a.current_version_id) for a in cards if a.current_version_id},
+        "selfcheck": freeze_selfcheck_entry(settings, frozen_route, routes=list(routes or deployment_routes()))}
     request = copy.deepcopy(request)
     request.pop("recent_assets", None)
     language = request.get("language") or session.language
@@ -159,7 +161,7 @@ async def open_run(tx, session, doc, *, workspace_id, user_id, request_key, requ
         raise ValueError("invalid_language")
     session.language = language
     request["language"] = language
-    viewport = _viewport(request.get("viewport"), Settings())
+    viewport = _viewport(request.get("viewport"), settings)
     recent = await _recent_outputs(tx, session, workspace_id)
     session.recent_assets = recent
     if not request.get("anchor_id") and selected:
@@ -205,22 +207,24 @@ async def open_run(tx, session, doc, *, workspace_id, user_id, request_key, requ
 
 
 async def start(tx, *, workspace_id, user_id, document_id, request_key, request, budget, token_budget,
-                max_rounds, mode="auto", agent_route=None):
+                max_rounds, mode="auto", agent_route=None, settings=None, routes=None):
     from backend.core.sessions.resolve import resolve_session
     session, doc = await resolve_session(tx, workspace_id=workspace_id, user_id=user_id, document_id=document_id)
     return await open_run(tx, session, doc, workspace_id=workspace_id, user_id=user_id,
         request_key=request_key, request=request, budget=budget, token_budget=token_budget,
-        max_rounds=max_rounds, mode=mode, agent_route=agent_route)
+        max_rounds=max_rounds, mode=mode, agent_route=agent_route, settings=settings, routes=routes)
 
 
 async def latest_plan(tx, run_id):
+    """Approved execute plans only. Reviewing/rejected/obsolete candidates are history."""
+
     run = await tx.get(CoreRun, run_id)
     if run is not None and run.current_plan_id is not None:
         current = await tx.get(CorePlan, run.current_plan_id)
-        if current is not None:
+        if current is not None and current.stage == "execute":
             return current
     return await tx.scalar(select(CorePlan).where(CorePlan.run_id == run_id,
-        CorePlan.stage != "obsolete").order_by(CorePlan.version.desc()).limit(1))
+        CorePlan.stage == "execute").order_by(CorePlan.version.desc()).limit(1))
 
 
 async def progress(tx, run):

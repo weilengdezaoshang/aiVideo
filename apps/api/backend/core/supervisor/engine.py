@@ -1,6 +1,7 @@
 """Database checkpoints around planner calls; event handlers never wait for planners."""
 import asyncio
 import logging
+import time
 import uuid
 from datetime import timedelta
 from sqlalchemy import func, select, text, exists, update, or_
@@ -29,7 +30,12 @@ from .replies import (
     plan_confirmation, read_summary, review_exhausted,
 )
 from .service import TERMINAL, TASK_TERMINAL, latest_plan, message, digest
-from .wiring import planner_for_lock, watchdog_seconds
+from .wiring import frozen_selfcheck_route, planner_for_lock, selfcheck_provider_for, watchdog_seconds
+from backend.agent.providers import ModelCallError
+from backend.core.selfcheck.policy import content_from_raw, read_journal
+from backend.core.selfcheck.service import merge_self_check, prepare_journal, apply_parsed
+
+_BLOCKED = frozenset({"CONTENT_BLOCKED", "MODEL_CONTENT_BLOCKED"})
 
 _AUDIT = logging.getLogger("backend.core.supervisor.audit")
 
@@ -50,6 +56,40 @@ async def locked_invocation(tx, ident):
     if invocation is None:
         raise LookupError("planner_callback_record_missing")
     return invocation, run
+
+
+async def _plan_for_invocation(tx, invocation, *, reviewing_only=False):
+    stmt = select(CorePlan).where(CorePlan.model_call_ref == str(invocation.id)).order_by(CorePlan.version.desc())
+    if reviewing_only:
+        stmt = stmt.where(CorePlan.stage == "reviewing")
+    return await tx.scalar(stmt.limit(1))
+
+
+def _working_journal(invocation, plan):
+    bag = invocation.review if isinstance(invocation.review, dict) else None
+    journal = read_journal(bag) if bag else None
+    if journal is not None:
+        return journal
+    return read_journal(plan.self_check if plan is not None else None)
+
+
+def _store_working(invocation, plan, journal):
+    base = invocation.review if isinstance(invocation.review, dict) else (plan.self_check if plan is not None else {})
+    invocation.review = merge_self_check(base, journal)
+
+
+async def _emit_plan_version(tx, run, source, *, stage, self_check):
+    version = (await tx.scalar(select(func.max(CorePlan.version)).where(CorePlan.run_id == run.id)) or 0) + 1
+    plan = CorePlan(
+        run_id=run.id, version=version, writer=source.writer, model_call_ref=source.model_call_ref,
+        raw_output=source.raw_output, proposal=source.proposal, content_hash=source.content_hash,
+        rationale=source.rationale, link_constraints=source.link_constraints, result_type=source.result_type,
+        stage=stage, milestones=list(source.milestones or []), self_check=self_check,
+        expansion_rules=dict(source.expansion_rules or {}), version_lock=source.version_lock,
+        input_revision=source.input_revision)
+    tx.add(plan)
+    await tx.flush()
+    return plan
 
 
 async def wake(tx, context):
@@ -171,6 +211,76 @@ def _usage_view(result):
     return False, 0
 
 
+def _selfcheck_meter(usage):
+    usage = usage if isinstance(usage, dict) else {}
+    if usage.get("unknown") is True:
+        return True, 0
+    tokens = usage.get("total_tokens")
+    valid = isinstance(tokens, int) and not isinstance(tokens, bool) and tokens >= 0
+    if not valid:
+        return True, 0
+    return False, tokens
+
+
+def account_selfcheck_usage(run, plan_id, usage):
+    """Meter checker tokens on the Run budget. Invalid totals are unknown, never invented as 0."""
+
+    error = dict(run.error or {})
+    bag = dict(error.get("planner_usage") or {})
+    accounted = [str(item) for item in bag.get("accounted_selfcheck") or []]
+    unknowns = [str(item) for item in bag.get("accounted_selfcheck_unknown") or []]
+    ident = str(plan_id)
+    unknown, known = _selfcheck_meter(usage)
+
+    def _persist():
+        bag["accounted_selfcheck"] = accounted
+        bag["accounted_selfcheck_unknown"] = unknowns
+        error["planner_usage"] = bag
+        run.error = error
+
+    if ident in accounted:
+        if ident in unknowns and not unknown:
+            unknowns.remove(ident)
+            bag["unknown_calls"] = max(0, int(bag.get("unknown_calls") or 0) - 1)
+            bag["known_tokens"] = int(bag.get("known_tokens") or 0) + known
+            remaining = run.tokens_limit - run.tokens_used
+            charged = min(known, max(0, remaining))
+            run.tokens_used += charged
+            _persist()
+            return known > remaining
+        _persist()
+        return run.tokens_limit - run.tokens_used <= 0
+    bag["known_tokens"] = int(bag.get("known_tokens") or 0) + (0 if unknown else known)
+    bag["unknown_calls"] = int(bag.get("unknown_calls") or 0) + (1 if unknown else 0)
+    accounted.append(ident)
+    if unknown:
+        unknowns.append(ident)
+    remaining = run.tokens_limit - run.tokens_used
+    over = False
+    if not unknown:
+        charged = min(known, remaining)
+        run.tokens_used += charged
+        over = known > remaining
+    _persist()
+    return over
+
+
+def _audit_late_selfcheck(run, invocation, *, reason, raw=None, usage=None):
+    error = dict(run.error or {})
+    bag = dict(error.get("planner_usage") or {})
+    items = list(bag.get("selfcheck_late_audit") or [])
+    payload = raw if isinstance(raw, dict) else None
+    items.append({
+        "invocation_id": str(invocation.id),
+        "reason": reason,
+        "usage": usage if isinstance(usage, dict) else {},
+        "raw": payload,
+    })
+    bag["selfcheck_late_audit"] = items[-8:]
+    error["planner_usage"] = bag
+    run.error = error
+
+
 def account_planner_usage(run, invocation, result):
     """Count returned usage once. invocation.result and context stay the original dump."""
 
@@ -198,7 +308,8 @@ def account_planner_usage(run, invocation, result):
 
 
 class Supervisor:
-    def __init__(self, factory, planner=None, *, settings=None, credentials=None, local_root=None, routes=None):
+    def __init__(self, factory, planner=None, *, settings=None, credentials=None, local_root=None, routes=None,
+                 selfcheck_provider=None, selfcheck_evidence=None, selfcheck_evidence_gate=None):
         self.factory = factory
         self.planner = planner
         self.settings = settings or Settings()
@@ -206,9 +317,14 @@ class Supervisor:
         self.local_root = local_root
         self.routes = list(routes or [])
         self.on_raw_stored = None
+        self.selfcheck_provider = selfcheck_provider
+        self.selfcheck_evidence = selfcheck_evidence
+        self.selfcheck_evidence_gate = selfcheck_evidence_gate
 
     def _legacy(self, run):
-        return (run.version_lock or {}).get("supervisor") != "llm-v1" or isinstance(self.planner, FakePlanner)
+        if (run.version_lock or {}).get("supervisor") != "llm-v1":
+            return True
+        return isinstance(self.planner, FakePlanner) and not self.settings.selfcheck_enabled
 
     def planner_for(self, run):
         return planner_for_lock(run, factory=self.factory, settings=self.settings, credentials=self.credentials,
@@ -261,6 +377,9 @@ class Supervisor:
 
     async def tick(self):
         token = uuid.uuid4()
+        calling = False
+        pending_selfcheck = False
+        ident = context = planner = watchdog = None
         async with self.factory.begin() as tx:
             await tx.execute(text("SELECT set_config('lock_timeout', :v, true)"), {"v": f"{self.settings.lock_timeout_ms}ms"})
             older = aliased(Invocation)
@@ -399,9 +518,17 @@ class Supervisor:
                     expected_lock=VersionLock.model_validate(run.version_lock["tool_catalog"]))
                 ident, context = invocation.id, {**invocation.context, "catalog": catalog}
                 planner = self.planner_for(run)
+                calling = True
             else:
                 await self.accept(tx, run, invocation)
-                return True
+                latest = await _plan_for_invocation(tx, invocation)
+                pending_selfcheck = latest is not None and latest.stage == "reviewing"
+                ident = invocation.id
+        if pending_selfcheck:
+            asyncio.create_task(self.run_selfcheck(ident))
+            return True
+        if not calling:
+            return True
         # No aggregate transaction or Run lock is held across plan().
         try:
             if (context.get("request") or {}).get("reference_clarification"):
@@ -456,6 +583,11 @@ class Supervisor:
         return True
 
     async def accept(self, tx, run, invocation):
+        existing = await _plan_for_invocation(tx, invocation)
+        if existing is not None:
+            if existing.stage != "reviewing":
+                invocation.status = "done"
+            return
         result = PlannerResult.model_validate(invocation.result)
         session = await tx.get(CoreSession, run.session_id)
         language = session.language if session else None
@@ -543,6 +675,10 @@ class Supervisor:
         merged, conflicts = merge_proposed(view, result.invariants, messages, frozen=approved is not None,
             base=base, revision_texts=revision_texts)
         account = await tx.get(HostCreditAccount, run.workspace_id)
+        captured = []
+        def _capture(plan_view):
+            captured.append(plan_view)
+            return []
         forced = None if self._legacy(run) else conversion_rejection(result.raw_output)
         if forced is not None:
             verdict = forced
@@ -550,11 +686,13 @@ class Supervisor:
             verdict = {"execution_constraints": [], "verdict": "reject", "reasons": conflicts, "quoted_credits": 0,
                 "checks": {"legal": True, "types": True, "intent": False}}
         else:
-            verdict = review(result.plan, view, catalog, account.available if account else 0, invariants=merged)
+            extras = [_capture] if self.settings.selfcheck_enabled and result.plan.result_type == "generate" else None
+            verdict = review(result.plan, view, catalog, account.available if account else 0, invariants=merged,
+                intent_extensions=extras)
         invocation.reviewed_at = now()
         invocation.review = verdict
-        invocation.status = "done"
         if verdict["verdict"] != "pass":
+            invocation.status = "done"
             await emit(tx, "plan_rejected", run.id, causation_id=invocation.event_id)
             if invocation.attempt < self.settings.review_retries:
                 tx.add(Invocation(run_id=run.id, event_id=invocation.event_id, attempt=invocation.attempt + 1,
@@ -570,16 +708,293 @@ class Supervisor:
                 await stop(tx, run, "failed", review_exhausted(language),
                     "rejected:" + str(run.id))
             return
-        version = (await tx.scalar(select(func.max(CorePlan.version)).where(CorePlan.run_id == run.id)) or 0) + 1
         stored_type = "answer_only" if result.plan.result_type == "answer_only" else "generate"
+        proposal = result.plan.model_dump(mode="json")
+        content_hash = digest(proposal)
+        check_payload = verdict
+        if captured and stored_type == "generate":
+            route = frozen_selfcheck_route(run)
+            kind = getattr(self.selfcheck_provider, "kind", None)
+            if kind is None:
+                kind = "none" if not route else "chat"
+            request = (view.snapshot or {}).get("request") or {}
+            journal = prepare_journal(
+                captured[0], settings=self.settings, run_id=str(run.id),
+                parent_run_id=str(run.parent_run_id) if run.parent_run_id else None,
+                invocation_id=str(invocation.id), input_revision=int(run.input_revision or 1),
+                candidate_hash=content_hash, catalog_hash=catalog.lock.content_hash,
+                estimated_cost=int(verdict.get("quoted_credits") or 0), route=route,
+                evidence=self.selfcheck_evidence, raw_plan=proposal, catalog=catalog,
+                user_message=str(request.get("message") or result.plan.goal or ""),
+                extra_refs=list(request.get("selected_assets") or []),
+                provider_kind=kind, evidence_gate=self.selfcheck_evidence_gate)
+            check_payload = merge_self_check(verdict, journal)
+            if journal.triggered and journal.status == "reserved":
+                version = (await tx.scalar(select(func.max(CorePlan.version)).where(CorePlan.run_id == run.id)) or 0) + 1
+                plan = CorePlan(run_id=run.id, version=version, writer=result.plan.writer, model_call_ref=str(invocation.id),
+                    raw_output=result.raw_output, proposal=proposal, content_hash=content_hash,
+                    rationale={"confidence": result.confidence},
+                    link_constraints={"constraints": verdict["execution_constraints"], "approved_invariants": merged},
+                    result_type=stored_type, stage="reviewing", milestones=[],
+                    self_check=check_payload, expansion_rules={}, version_lock=run.version_lock,
+                    input_revision=int(run.input_revision or 1))
+                tx.add(plan)
+                await tx.flush()
+                invocation.review = check_payload
+                return
+        invocation.status = "done"
+        version = (await tx.scalar(select(func.max(CorePlan.version)).where(CorePlan.run_id == run.id)) or 0) + 1
         plan = CorePlan(run_id=run.id, version=version, writer=result.plan.writer, model_call_ref=str(invocation.id),
-            raw_output=result.raw_output, proposal=result.plan.model_dump(mode="json"),
-            content_hash=digest(result.plan.model_dump(mode="json")), rationale={"confidence": result.confidence},
-            link_constraints={"constraints": verdict["execution_constraints"], "approved_invariants": merged}, result_type=stored_type, stage="execute", milestones=[], self_check=verdict,
+            raw_output=result.raw_output, proposal=proposal,
+            content_hash=content_hash, rationale={"confidence": result.confidence},
+            link_constraints={"constraints": verdict["execution_constraints"], "approved_invariants": merged}, result_type=stored_type, stage="execute", milestones=[], self_check=check_payload,
             expansion_rules={}, version_lock=run.version_lock, input_revision=int(run.input_revision or 1))
         tx.add(plan)
         await tx.flush()
         run.current_plan_id = plan.id
+        await self._create_tasks(tx, run, invocation, result, plan, verdict, merged, catalog, view, language)
+
+    async def run_selfcheck(self, ident):
+        """Call the checker outside Session/Run locks. Persist raw before parse/admit."""
+
+        timeout = self.settings.selfcheck_timeout_seconds
+        margin = self.settings.selfcheck_checkpoint_margin_seconds
+        handle = None
+        async with self.factory.begin() as tx:
+            invocation, run = await locked_invocation(tx, ident)
+            plan = await _plan_for_invocation(tx, invocation)
+            if plan is None or plan.stage != "reviewing":
+                invocation.status = "done"
+                if plan is None:
+                    invocation.error = "selfcheck_plan_missing"
+                return
+            journal = _working_journal(invocation, plan)
+            if journal is None:
+                invocation.status = "done"
+                invocation.error = "selfcheck_journal_missing"
+                return
+            stale = bool(await _cancel_requested(tx, run.id) or invocation_obsolete(invocation, run))
+            if journal.raw is not None:
+                if stale:
+                    await self._finish_stale(tx, run, invocation, plan, journal)
+                    return
+                await self._apply_selfcheck(tx, run, invocation, plan, journal)
+                return
+            if journal.status == "sending":
+                live = (invocation.lease_token is not None and invocation.lease_until is not None
+                        and invocation.lease_until > now())
+                if live:
+                    return
+                journal.status = "unknown"
+                journal.fallback_reason = "sending_without_raw"
+                if not journal.usage:
+                    journal.usage = {"unknown": True}
+                _store_working(invocation, plan, journal)
+                if stale:
+                    await self._finish_stale(tx, run, invocation, plan, journal)
+                else:
+                    await self._apply_selfcheck(tx, run, invocation, plan, journal)
+                return
+            if stale:
+                await self._finish_stale(tx, run, invocation, plan, journal)
+                return
+            provider = self.selfcheck_provider
+            if provider is None:
+                provider = selfcheck_provider_for(run, credentials=self.credentials,
+                    local_root=self.local_root, routes=self.routes)
+            if provider is None:
+                journal.status = "unavailable"
+                journal.fallback_reason = "no_route"
+                _store_working(invocation, plan, journal)
+                await self._apply_selfcheck(tx, run, invocation, plan, journal)
+                return
+            token = uuid.uuid4()
+            journal.status = "sending"
+            journal.lease_token = str(token)
+            _store_working(invocation, plan, journal)
+            invocation.lease_token, invocation.lease_until = token, now() + timedelta(seconds=timeout + margin)
+            handle = {
+                "invocation_id": invocation.id, "plan_id": plan.id, "call_key": journal.call_key,
+                "token": token, "messages": list(journal.request_messages or []), "provider": provider,
+            }
+        started = time.perf_counter()
+
+        async def sink(raw):
+            async with self.factory.begin() as tx:
+                invocation, run = await locked_invocation(tx, handle["invocation_id"])
+                usage = raw.get("usage") if isinstance(raw, dict) and isinstance(raw.get("usage"), dict) else {}
+                payload = raw if isinstance(raw, dict) else {"invalid": True}
+                latest = await _plan_for_invocation(tx, invocation)
+                live_owner = (invocation.lease_token == handle["token"]
+                              and invocation.lease_until is not None and invocation.lease_until > now())
+                terminal = latest is not None and latest.stage != "reviewing"
+                if not live_owner or terminal:
+                    _audit_late_selfcheck(run, invocation,
+                        reason="already_terminal" if terminal else "late_sink",
+                        raw=payload, usage=usage)
+                    account_selfcheck_usage(run, handle["plan_id"], usage)
+                    if latest is None:
+                        invocation.status = "done"
+                        invocation.error = invocation.error or "selfcheck_plan_missing"
+                    return
+                plan = await tx.get(CorePlan, handle["plan_id"])
+                if plan is None:
+                    invocation.status = "done"
+                    invocation.error = "selfcheck_plan_missing"
+                    return
+                journal = _working_journal(invocation, plan)
+                if journal is None or journal.call_key != handle["call_key"]:
+                    invocation.status = "done"
+                    invocation.error = "selfcheck_key_mismatch"
+                    return
+                if journal.raw is None:
+                    journal.raw = payload
+                    journal.usage = usage
+                    journal.status = "stored"
+                    _store_working(invocation, plan, journal)
+
+        provider = handle["provider"]
+        error_kind = None
+        returned = None
+        blocked_usage = {}
+        try:
+            returned = await asyncio.wait_for(
+                provider.complete(handle["messages"], response_sink=sink), timeout)
+        except TimeoutError:
+            error_kind = "timeout"
+        except ModelCallError as exc:
+            if exc.code in _BLOCKED:
+                error_kind = "content_blocked"
+                blocked_usage = exc.usage if isinstance(exc.usage, dict) else {}
+            else:
+                error_kind = "unknown" if getattr(exc, "unknown", False) else "unavailable"
+                if isinstance(exc.usage, dict) and exc.usage:
+                    blocked_usage = exc.usage
+        except Exception as exc:
+            error_kind = "unknown" if getattr(exc, "unknown", False) else "unavailable"
+        elapsed = (time.perf_counter() - started) * 1000
+        async with self.factory.begin() as tx:
+            invocation, run = await locked_invocation(tx, handle["invocation_id"])
+            latest = await _plan_for_invocation(tx, invocation)
+            live_owner = (invocation.lease_token == handle["token"]
+                          and invocation.lease_until is not None and invocation.lease_until > now())
+            terminal = latest is not None and latest.stage != "reviewing"
+            returned_raw = returned.raw if returned is not None and isinstance(getattr(returned, "raw", None), dict) else None
+            returned_usage = returned.usage if returned is not None and isinstance(getattr(returned, "usage", None), dict) else blocked_usage
+            if not live_owner or terminal:
+                _audit_late_selfcheck(run, invocation,
+                    reason="already_terminal" if terminal else "late_callback",
+                    raw=returned_raw, usage=returned_usage)
+                account_selfcheck_usage(run, handle["plan_id"], returned_usage or {})
+                if latest is None:
+                    invocation.status = "done"
+                    invocation.error = invocation.error or "selfcheck_plan_missing"
+                elif terminal:
+                    invocation.status = "done"
+                return
+            plan = await tx.get(CorePlan, handle["plan_id"])
+            if plan is None:
+                invocation.status = "done"
+                invocation.error = "selfcheck_plan_missing"
+                return
+            journal = _working_journal(invocation, plan)
+            if journal is None or journal.call_key != handle["call_key"]:
+                invocation.status = "done"
+                invocation.error = "selfcheck_key_mismatch"
+                return
+            journal.timings_ms = {**(journal.timings_ms or {}), "model": elapsed}
+            if journal.raw is None and returned is not None and isinstance(returned.raw, dict):
+                journal.raw = returned.raw
+                journal.usage = returned.usage if isinstance(returned.usage, dict) else journal.usage
+                journal.status = "stored"
+            if journal.raw is None and blocked_usage:
+                journal.usage = {**dict(journal.usage or {}), **blocked_usage}
+            stale = bool(await _cancel_requested(tx, run.id) or invocation_obsolete(invocation, run))
+            if error_kind == "content_blocked":
+                journal.status = "blocked"
+                journal.fallback_reason = "content_blocked"
+                bag = merge_self_check(plan.self_check, journal)
+                account_selfcheck_usage(run, plan.id, journal.usage)
+                await _emit_plan_version(tx, run, plan, stage="rejected", self_check=bag)
+                invocation.review = bag
+                invocation.status = "done"
+                session = await tx.get(CoreSession, run.session_id)
+                await stop(tx, run, "failed", blocked(session.language if session else None, await _refunded(tx, run.id)),
+                    "selfcheck-blocked:" + str(run.id))
+                return
+            if stale:
+                await self._finish_stale(tx, run, invocation, plan, journal)
+                return
+            if journal.raw is None:
+                journal.status = "unknown" if error_kind in {None, "unknown"} else "unavailable"
+                journal.fallback_reason = error_kind or "sending_without_raw"
+                if not journal.usage:
+                    journal.usage = {"unknown": True}
+                _store_working(invocation, plan, journal)
+            await self._apply_selfcheck(tx, run, invocation, plan, journal)
+
+    async def _finish_stale(self, tx, run, invocation, plan, journal):
+        account_selfcheck_usage(run, plan.id, journal.usage)
+        journal.fallback_reason = journal.fallback_reason or "stale_after_interrupt"
+        bag = merge_self_check(plan.self_check, journal)
+        await _emit_plan_version(tx, run, plan, stage="obsolete", self_check=bag)
+        invocation.review = bag
+        invocation.status = "done"
+
+    async def _apply_selfcheck(self, tx, run, invocation, plan, journal):
+        over = account_selfcheck_usage(run, plan.id, journal.usage)
+        if journal.raw is not None and journal.status in {"stored", "parsed", "sending", "reserved"}:
+            content = content_from_raw(journal.raw)
+            journal, extra, reject = apply_parsed(journal, content, journal.usage, journal.raw)
+        elif journal.status in {"unknown", "unavailable", "rule_only"}:
+            extra, reject = [], False
+            if journal.status != "unknown":
+                journal.status = "rule_only"
+            journal.fallback_reason = journal.fallback_reason or journal.status
+        else:
+            extra, reject = [], False
+        bag = merge_self_check(plan.self_check, journal)
+        if extra:
+            bag["verdict"] = "reject"
+            bag["reasons"] = list(bag.get("reasons") or []) + extra
+            bag["checks"] = {**(bag.get("checks") or {}), "intent": False}
+        invocation.review = bag
+        if over:
+            await _emit_plan_version(tx, run, plan, stage="rejected", self_check=bag)
+            invocation.status = "done"
+            await stop(tx, run, "failed", "计划输出超过 token 预算，已停止。", "tokens:" + str(run.id))
+            return
+        if reject:
+            await _emit_plan_version(tx, run, plan, stage="rejected", self_check=bag)
+            invocation.status = "done"
+            await emit(tx, "plan_rejected", run.id, causation_id=invocation.event_id)
+            language = (await tx.get(CoreSession, run.session_id)).language if run.session_id else None
+            if invocation.attempt < self.settings.review_retries:
+                tx.add(Invocation(run_id=run.id, event_id=invocation.event_id, attempt=invocation.attempt + 1,
+                    context={"review_reasons": bag["reasons"]}))
+            elif not invocation.context.get("clarification_submitted") and not await _already_clarified(tx, run.id):
+                view = await effective_run_view(tx, run)
+                clarified = _clarification_result(view, language)
+                tx.add(Invocation(run_id=run.id, event_id=invocation.event_id, attempt=invocation.attempt + 1,
+                    status="returned", result=clarified.model_dump(mode="json"),
+                    context={"clarification_submitted": True, "review_reasons": bag["reasons"]}))
+            else:
+                await stop(tx, run, "failed", review_exhausted(language), "rejected:" + str(run.id))
+            return
+        terminal = await _emit_plan_version(tx, run, plan, stage="execute", self_check=bag)
+        invocation.status = "done"
+        result = PlannerResult.model_validate(invocation.result)
+        merged = ((plan.link_constraints or {}).get("approved_invariants")
+                  or effective_invariants(run, plan))
+        catalog = await load_catalog(tx, run.version_lock["tool_catalog"]["version"],
+            expected_lock=VersionLock.model_validate(run.version_lock["tool_catalog"]))
+        view = await effective_run_view(tx, run)
+        session = await tx.get(CoreSession, run.session_id)
+        language = session.language if session else None
+        run.current_plan_id = terminal.id
+        await self._create_tasks(tx, run, invocation, result, terminal, bag, merged, catalog, view, language)
+
+    async def _create_tasks(self, tx, run, invocation, result, plan, verdict, merged, catalog, view, language):
         if result.plan.result_type == "answer_only":
             await transition(tx, "run", run.id, run.version, "running", causation_id=invocation.event_id)
             await transition(tx, "run", run.id, run.version, "completed", causation_id=invocation.event_id)

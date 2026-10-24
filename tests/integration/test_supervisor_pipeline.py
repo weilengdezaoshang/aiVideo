@@ -72,7 +72,8 @@ class DetectFake(LocalAdapter):
 
 @asynccontextmanager
 async def fixture(tmp_path, *, planner=None, labels=None, message="改图后生成视频", mode="auto", sized_video=False,
-                  make_planner=None, start_run=True, include_canvas=False):
+                  make_planner=None, start_run=True, include_canvas=False, supervisor_settings=None,
+                  selfcheck_provider=None):
     engine = create_async_database_engine(DatabaseSettings(url=DB))
     factory = create_async_session_factory(engine)
     root = tmp_path / "media"
@@ -112,7 +113,7 @@ async def fixture(tmp_path, *, planner=None, labels=None, message="改图后生�
         if start_run:
             run = await start(tx, workspace_id=workspace.id, user_id="owner", document_id=doc.id,
                 request_key="start", request={"message": message, "selected_assets": [str(asset.id)], "anchor_id": "source"},
-                budget=100, token_budget=100, max_rounds=20, mode=mode)
+                budget=100, token_budget=100, max_rounds=20, mode=mode, settings=supervisor_settings)
         run_id = None if run is None else run.id
     if planner == "chain" and run is not None:
         plan = {"goal": message, "steps": [
@@ -127,7 +128,8 @@ async def fixture(tmp_path, *, planner=None, labels=None, message="改图后生�
             "raw_output": {"plan": plan, "prompt": "dark rabbit"}}])
     if make_planner is not None:
         planner = make_planner(factory)
-    supervisor = Supervisor(factory, planner)
+    supervisor = Supervisor(factory, planner, settings=supervisor_settings,
+        selfcheck_provider=selfcheck_provider)
     registry = Registry()
     register(registry)
     processor = Processor(factory, EventSettings(concurrency=1, backoff_base_seconds=.001, backoff_max_seconds=.01), registry)
