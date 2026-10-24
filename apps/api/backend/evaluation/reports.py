@@ -133,6 +133,13 @@ def build_report(state: RunState, cases: list[CaseVersion]) -> dict:
     if reference_cases and len(reference_cases) == len(cases):
         ref_cfg = (manifest.sandboxConfig or {}).get("sessionReference") or {}
         annotations.append("指代规则分与真实 LLM 成绩分开。" + str(ref_cfg.get("llmUntestedReason") or ""))
+    selfcheck_cases = [case for case in cases if case.taskType == "plan_selfcheck"]
+    if selfcheck_cases and len(selfcheck_cases) == len(cases):
+        selfcheck_cfg = (manifest.sandboxConfig or {}).get("planSelfcheck") or {}
+        if selfcheck_cfg.get("llmTested") is not True:
+            annotations.append(
+                "计划自检 LLM 未测：" + str(selfcheck_cfg.get("llmUntestedReason") or "模型 TPR/FPR 为空。")
+            )
     planner_cases = [case for case in cases if case.taskType == "planner"]
     if planner_cases and len(planner_cases) == len(cases):
         planner_cfg = (manifest.sandboxConfig or {}).get("planner") or {}
@@ -183,6 +190,7 @@ def build_report(state: RunState, cases: list[CaseVersion]) -> dict:
         "flow": _flow_section(state, cases) if flow_cases else None,
         "planner": planner_section(state, cases, manifest) if any(case.taskType == "planner" for case in cases) else None,
         "sessionReference": reference_section(state, cases, manifest) if any(case.taskType == "session_reference" for case in cases) else None,
+        "planSelfcheck": plan_selfcheck_section(state, cases, manifest) if any(case.taskType == "plan_selfcheck" for case in cases) else None,
     }
 
 
@@ -214,6 +222,98 @@ def reference_section(state: RunState, cases: list[CaseVersion], manifest=None) 
             "reason": _check_rate(state, "reason_match"),
         },
         "llm": None,
+    }
+
+
+def _selfcheck_comparison(state: RunState, by_id: dict, mode: str) -> dict | None:
+    from backend.evaluation.selfcheck_dataset import embedded_selfcheck_case
+    from backend.evaluation.selfcheck_evaluation import GradeRejected, comparison_from_grades, grade_record
+
+    grades = []
+    for trial in state.trials:
+        case = by_id.get(trial.caseId)
+        if case is None or not trial.tracePath:
+            continue
+        try:
+            record = json.loads(Path(trial.tracePath).read_text(encoding="utf-8"))
+            grades.append(grade_record(record, label_pass=embedded_selfcheck_case(case).label_pass))
+        except (OSError, UnicodeError, json.JSONDecodeError, GradeRejected, ValueError):
+            continue
+    if not grades:
+        return None
+    compared = comparison_from_grades(grades)
+    if mode != "llm":
+        compared["modelAdditional"] = None
+        compared["modelTpr"] = None
+        compared["modelFpr"] = None
+        compared["combinedTpr"] = None
+        compared["combinedFpr"] = None
+        compared["combinedDrift"] = None
+        compared["combinedNormal"] = None
+    return compared
+
+
+def plan_selfcheck_section(state: RunState, cases: list[CaseVersion], manifest=None) -> dict:
+    """Drift is the positive class. Model rates stay null unless the run is llm_tested."""
+
+    manifest = manifest or state.manifest
+    cfg = dict((manifest.sandboxConfig or {}).get("planSelfcheck") or {})
+    mode = cfg.get("selfcheckMode") or "rules"
+    llm_tested = cfg.get("llmTested") is True
+    by_id = {case.caseId: case for case in cases if case.taskType == "plan_selfcheck"}
+    grades = [grade for grade in state.grades if grade.checkId == "should_reject"]
+    drift_valid = normal_valid = caught = blocked = 0
+    for grade in grades:
+        if grade.status not in {"pass", "fail"}:
+            continue
+        trial = next((item for item in state.trials if item.trialId == grade.trialId), None)
+        case = by_id.get(trial.caseId) if trial else None
+        if case is None:
+            continue
+        drift = "drift" in case.tags
+        if drift:
+            drift_valid += 1
+            if grade.status == "pass":
+                caught += 1
+        else:
+            normal_valid += 1
+            if grade.status == "fail":
+                blocked += 1
+    legal = _check_rate(state, "legal_type_pass")
+    rates = {
+        "tpr": (caught / drift_valid) if drift_valid else None,
+        "fpr": (blocked / normal_valid) if normal_valid else None,
+        "driftValid": drift_valid,
+        "normalValid": normal_valid,
+        "valid": drift_valid + normal_valid,
+        "total": len(state.trials),
+    }
+    model_latency = None
+    if llm_tested:
+        latencies = [float(trial.latencyMs) for trial in state.trials if trial.latencyMs is not None]
+        model_latency = {
+            "p50": _percentile_number(latencies, 0.5),
+            "p95": _percentile_number(latencies, 0.95),
+        }
+    return {
+        "llmTested": llm_tested,
+        "llmUntestedReason": None if llm_tested else cfg.get("llmUntestedReason"),
+        "selfcheckMode": mode,
+        "templateHash": cfg.get("templateHash"),
+        "policyHash": cfg.get("policyHash"),
+        "datasetHash": cfg.get("datasetHash"),
+        "legalType": legal,
+        "model": {"tpr": rates["tpr"], "fpr": rates["fpr"], "latencyMs": model_latency} if llm_tested else {
+            "tpr": None, "fpr": None, "latencyMs": None,
+        },
+        "rule": rates if mode == "rules" else {
+            "tpr": cfg.get("ruleTpr"),
+            "fpr": cfg.get("ruleFpr"),
+            "ruleCaught": cfg.get("ruleCaught"),
+        },
+        "comparison": _selfcheck_comparison(state, by_id, str(mode)) or cfg.get("comparison"),
+        "protocol": rates if mode == "protocol" else None,
+        "enforceEligible": False,
     }
 
 

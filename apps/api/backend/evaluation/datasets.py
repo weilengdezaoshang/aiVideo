@@ -103,6 +103,13 @@ def validate_source_params(cases: list[CaseVersion]) -> list[str]:
             elif set(planner_case) & {"steps", "expect", "mocks"}:
                 problems.append(f"{case.caseId}:planner 不能混入 agent_flow 字段")
             continue
+        if case.taskType == "plan_selfcheck":
+            params = case.input.params
+            if params.get("kind") != "plan_selfcheck":
+                problems.append(f"{case.caseId}:plan_selfcheck 需要 params.kind=plan_selfcheck")
+            if not isinstance(params.get("selfcheckCase"), dict):
+                problems.append(f"{case.caseId}:plan_selfcheck 缺少 params.selfcheckCase")
+            continue
         if case.taskType == "session_reference":
             params = case.input.params
             if params.get("kind") != "session_reference":

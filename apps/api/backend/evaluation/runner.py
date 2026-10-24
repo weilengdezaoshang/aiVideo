@@ -421,6 +421,7 @@ class EvaluationRunner:
             raise ValueError("数据集快照与执行链不兼容:" + ";".join(problems))
         planner_cases = [case for case in cases if case.taskType == "planner"]
         reference_cases = [case for case in cases if case.taskType == "session_reference"]
+        selfcheck_cases = [case for case in cases if case.taskType == "plan_selfcheck"]
         if planner_cases and (mode != "mock" or provider != "mock"):
             raise ValueError("planner 评测只在 mock 执行模式运行；LLM 用 plannerMode=llm 与 factory，不走 live 媒体")
         if planner_cases and any(case.taskType != "planner" for case in cases):
@@ -429,6 +430,20 @@ class EvaluationRunner:
             raise ValueError("指代评测只在 mock 执行模式运行，不调用媒体或付费模型")
         if reference_cases and any(case.taskType != "session_reference" for case in cases):
             raise ValueError("指代数据集不能与画质、planner 或 agent_flow 用例混在同一次 run")
+        if selfcheck_cases and (mode != "mock" or provider != "mock"):
+            raise ValueError("plan_selfcheck 只在 mock 执行模式运行；文本模型走 selfcheckMode=llm，不走媒体 live")
+        if selfcheck_cases and any(case.taskType != "plan_selfcheck" for case in cases):
+            raise ValueError("plan_selfcheck 数据集不能与画质、planner 或 agent_flow 用例混在同一次 run")
+        selfcheck_mode = str((sandbox_config or {}).get("selfcheckMode") or "rules")
+        if selfcheck_cases and selfcheck_mode not in {"rules", "offline", "llm"}:
+            raise ValueError("selfcheckMode 只能是 rules、offline 或 llm")
+        if selfcheck_cases:
+            for key in ("apiKey", "credentialRef", "baseUrl", "authorization"):
+                if key in (sandbox_config or {}):
+                    raise ValueError("plan_selfcheck 不接受客户端 URL 或密钥")
+            retries = (sandbox_config or {}).get("selfcheckRetries", 0)
+            if retries not in {0, None}:
+                raise ValueError("plan_selfcheck 不重试 timeout/unknown/blocked")
         planner_mode = str((sandbox_config or {}).get("plannerMode") or "rule")
         if planner_cases and planner_mode not in {"rule", "llm"}:
             raise ValueError("plannerMode 只能是 rule 或 llm")
@@ -504,6 +519,32 @@ class EvaluationRunner:
                 "caseCount": len(reference_cases),
                 "llmTested": False,
                 "llmUntestedReason": "规则解析与真实 LLM 成绩分开；本执行器不调用模型。",
+            }
+        if selfcheck_cases:
+            from backend.core.selfcheck.contracts import POLICY_HASH
+            from backend.core.selfcheck.prompt import load_prompt
+            from backend.evaluation.selfcheck_cases import dataset_hash
+            from backend.evaluation.selfcheck_evaluation import policy_snapshot, try_policy_fingerprint
+
+            prompt = load_prompt()
+            sandbox_snapshot["planSelfcheck"] = {
+                "selfcheckMode": selfcheck_mode,
+                "caseCount": len(selfcheck_cases),
+                "llmTested": False,
+                "llmUntestedReason": "创建时尚未产生真实模型观测。rules/offline 不是模型质量。",
+                "templateVersion": prompt.version,
+                "templateHash": prompt.content_hash,
+                "policyHash": POLICY_HASH,
+                "policyFingerprint": try_policy_fingerprint(),
+                "policySnapshot": policy_snapshot(),
+                "datasetHash": dataset_hash(),
+                "routeId": (sandbox_config or {}).get("selfcheckRouteId"),
+                "tokenBudget": (sandbox_config or {}).get("selfcheckTokenBudget", 250_000),
+                "outputCap": (sandbox_config or {}).get("selfcheckOutputCap"),
+                "maxContextBytes": (sandbox_config or {}).get("selfcheckMaxContextBytes", 24000),
+                "timeoutSeconds": (sandbox_config or {}).get("selfcheckTimeoutSeconds", 8),
+                "retries": (sandbox_config or {}).get("selfcheckRetries", 0),
+                "concurrency": (sandbox_config or {}).get("selfcheckConcurrency", 1),
             }
         manifest = RunManifest(
             runId=run_id,
@@ -774,6 +815,10 @@ class EvaluationRunner:
             return self._execute_reference_only(
                 run_id, manifest, cases, state, log, cancel_check,
             )
+        if cases and all(case.taskType == "plan_selfcheck" for case in cases.values()):
+            return self._execute_selfcheck_only(
+                run_id, manifest, cases, state, log, cancel_check,
+            )
         config = self._sandbox_runtime_config(manifest)
         sandbox = run_dir / "sandbox"
         cancelled = False
@@ -812,6 +857,8 @@ class EvaluationRunner:
                         raise ValueError("planner 用例不能进入媒体沙盒执行")
                     if case.taskType == "session_reference":
                         raise ValueError("指代用例不能进入媒体沙盒执行")
+                    if case.taskType == "plan_selfcheck":
+                        raise ValueError("plan_selfcheck 用例不能进入媒体沙盒执行")
                     if case.taskType == "agent_flow":
                         self._execute_agent_flow_trial(trial, case, log, cancel_check=cancel_check)
                     else:
@@ -1035,6 +1082,189 @@ class EvaluationRunner:
         if task == "text_to_image" and case.input.referenceArtifactIds:
             raise ValueError("text_to_image 用例不应携带参考素材")
         return body
+
+    def _execute_selfcheck_only(self, run_id, manifest, cases, state, log, cancel_check):
+        """Text self-check. Rules and offline do not open a model. LLM uses the explicit binding."""
+
+        cancelled = False
+        try:
+            for trial in state.trials:
+                if cancel_check is not None and cancel_check():
+                    cancelled = True
+                    break
+                if trial.status != "pending":
+                    continue
+                case = cases.get(trial.caseId)
+                if case is None:
+                    raise ValueError(f"快照缺少用例:{trial.caseId}")
+                self._execute_selfcheck_trial(trial, case, manifest, log, cancel_check=cancel_check)
+                if cancel_check is not None and cancel_check():
+                    cancelled = True
+                    break
+        except Exception as exc:
+            self._write_state(run_id, status="interrupted", error=str(exc)[:500])
+            log.append("run.interrupted", run_id, error=str(exc)[:500])
+            raise
+        if cancelled:
+            self._cancel_remaining(run_id, state, log)
+            self._write_state(run_id, status="cancelled", finishedAt=now())
+            log.append("run.cancelled", run_id)
+            return self.load_run(run_id)
+        self._grade_pending(run_id, manifest, cases, log, use_cache=False)
+        finished = self.load_run(run_id)
+        self._stamp_selfcheck_evidence(run_id, manifest, finished)
+        self._write_state(run_id, status="completed", finishedAt=now())
+        log.append("run.finished", run_id, trials=len(finished.trials))
+        return self.load_run(run_id)
+
+    def _execute_selfcheck_trial(self, trial, case, manifest, log, cancel_check=None) -> None:
+        from backend.evaluation.selfcheck_dataset import embedded_selfcheck_case
+        from backend.evaluation.selfcheck_evaluation import (
+            StageLimits,
+            offline_observation,
+            resume_decision,
+            rule_observation,
+        )
+        from backend.evaluation.selfcheck_factory import bind_selfcheck
+
+        run_id = trial.runId
+        trial.status = "running"
+        trial.startedAt = now()
+        self._write_trial(trial)
+        log.append("trial.started", run_id, trialId=trial.trialId, caseId=trial.caseId, taskType="plan_selfcheck")
+        if cancel_check is not None and cancel_check():
+            trial.status = "cancelled"
+            trial.error = "用户取消"
+            trial.finishedAt = now()
+            self._write_trial(trial)
+            return
+        cfg = (manifest.sandboxConfig or {}).get("planSelfcheck") or {}
+        mode = str(cfg.get("selfcheckMode") or "rules")
+        directory = self._trial_dir(run_id, trial.trialId)
+        destination = directory / "observation.json"
+        prior = None
+        if destination.is_file():
+            prior = json.loads(destination.read_text(encoding="utf-8"))
+        decision = resume_decision(prior)
+        selfcheck_case = embedded_selfcheck_case(case)
+        if decision == "reuse" and isinstance(prior, dict):
+            record = prior
+        elif decision == "unknown" and isinstance(prior, dict):
+            prior["status"] = "unknown"
+            prior["fallback"] = prior.get("fallback") or "unknown"
+            prior["observed_pass"] = None
+            prior["llm_tested"] = False
+            record = prior
+        elif mode == "offline":
+            record = offline_observation(selfcheck_case)
+        elif mode == "rules":
+            record = rule_observation(selfcheck_case)
+        else:
+            binding = bind_selfcheck(
+                "llm",
+                None if cfg.get("routeId") is None else str(cfg.get("routeId")),
+                local_config_root=None,
+                workspace_id=None,
+            )
+            if binding.get("unavailable") or binding.get("provider") is None or binding.get("synthetic"):
+                result_record = offline_observation(selfcheck_case)
+                result_record["mode"] = "llm"
+                result_record["status"] = "unknown"
+                result_record["fallback"] = "unknown"
+                result_record["observed_pass"] = None
+                result_record["llm_tested"] = False
+                result_record["provider_kind"] = "none"
+                result_record["llm_untested_reason"] = binding.get("unavailable") or "synthetic_binding_not_quality"
+                record = result_record
+            else:
+                import asyncio
+
+                from backend.evaluation.selfcheck_evaluation import CallBudget, observe_llm_case
+
+                route = binding["route"]
+                cap = route.get("maxTokens", route.get("max_tokens"))
+                limits = StageLimits(
+                    output_cap=int(cfg.get("outputCap") or cap or 1024),
+                    token_budget=int(cfg.get("tokenBudget") or 250_000),
+                    max_context_bytes=int(cfg.get("maxContextBytes") or route.get("contextMaxBytes") or 24000),
+                    timeout_seconds=float(cfg.get("timeoutSeconds") or 8),
+                    retries=0,
+                    concurrency=1,
+                    max_calls=int(cfg.get("caseCount") or 80),
+                )
+                record = asyncio.run(observe_llm_case(
+                    selfcheck_case,
+                    binding["provider"],
+                    route=route,
+                    limits=limits,
+                    destination=destination,
+                    budget=CallBudget(limits),
+                ))
+        destination.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
+        if isinstance(record.get("latency_ms"), (int, float)) and record.get("provider_kind") == "chat":
+            trial.latencyMs = int(record["latency_ms"])
+        trial.tracePath = str(destination)
+        trial.tracePaths = [trial.tracePath]
+        trial.status = "completed"
+        trial.finishedAt = now()
+        self._write_trial(trial)
+        log.append("trial.finished", run_id, trialId=trial.trialId, status="completed", tracePath=trial.tracePath)
+
+    def _grade_selfcheck(self, trial, case, log) -> None:
+        from backend.evaluation.graders.rules import Answer
+        from backend.evaluation.selfcheck_dataset import embedded_selfcheck_case
+        from backend.evaluation.selfcheck_evaluation import GradeRejected, grade_record
+
+        path = self._trial_dir(trial.runId, trial.trialId) / "observation.json"
+        try:
+            observation = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            self._persist_grading(
+                trial, case, {}, "observation_missing_or_corrupt", None, "rules", trial.tracePath or "", False, log,
+            )
+            return
+        embedded = embedded_selfcheck_case(case)
+        try:
+            graded = grade_record(observation, label_pass=embedded.label_pass)
+        except GradeRejected as exc:
+            self._persist_grading(
+                trial, case, {}, str(exc), None, "rules", trial.tracePath or "", False, log,
+            )
+            return
+        answers = {}
+        if graded["legal_type_pass"] is True or graded["legal_type_pass"] is False:
+            answers["legal_type_pass"] = Answer(
+                checkId="legal_type_pass",
+                observed=graded["legal_type_pass"],
+                evidence="review.validate gates",
+                source="rules",
+            )
+        if graded["valid"]:
+            answers["should_reject"] = Answer(
+                checkId="should_reject",
+                observed=graded["rejected"] is True,
+                evidence="stored observation",
+                source="rules",
+            )
+        self._persist_grading(trial, case, answers, None, None, "rules", trial.tracePath or "", False, log)
+
+    def _stamp_selfcheck_evidence(self, run_id: str, manifest, state) -> None:
+        from backend.evaluation.reports import plan_selfcheck_section
+
+        cfg = dict((manifest.sandboxConfig or {}).get("planSelfcheck") or {})
+        section = plan_selfcheck_section(state, list(DatasetStore.load_run_snapshot(self.run_dir(run_id))), manifest)
+        cfg["llmTested"] = section.get("llmTested") is True
+        cfg["llmUntestedReason"] = section.get("llmUntestedReason")
+        cfg.pop("apiKey", None)
+        cfg.pop("credentialRef", None)
+        cfg.pop("baseUrl", None)
+        payload = json.loads((self.run_dir(run_id) / "manifest.json").read_text(encoding="utf-8"))
+        payload.setdefault("sandboxConfig", {})["planSelfcheck"] = cfg
+        atomic_write_text(self.run_dir(run_id) / "manifest.json", json.dumps(payload, ensure_ascii=False, indent=2))
+        atomic_write_text(
+            self.run_dir(run_id) / "selfcheck-summary.json",
+            json.dumps(section, ensure_ascii=False, indent=2),
+        )
 
     def _execute_reference_only(self, run_id, manifest, cases, state, log, cancel_check):
         """Reference trials call the pure resolver. They do not open a model or media sandbox."""
@@ -1707,6 +1937,9 @@ class EvaluationRunner:
                 continue
             if case.taskType == "session_reference":
                 self._grade_reference(trial, case, log)
+                continue
+            if case.taskType == "plan_selfcheck":
+                self._grade_selfcheck(trial, case, log)
                 continue
             artifact_id = trial.artifactIds[0]
             record, data = self.objects.get(artifact_id)

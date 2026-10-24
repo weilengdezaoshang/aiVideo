@@ -53,6 +53,7 @@ TaskType = Literal[
     "agent_flow",
     "planner",
     "session_reference",
+    "plan_selfcheck",
 ]
 CheckKind = Literal["boolean", "integer", "number", "text"]
 DatasetSplit = Literal[
@@ -68,6 +69,7 @@ SuiteType = Literal[
     "agent_flow",
     "planner",
     "session_reference",
+    "plan_selfcheck",
     "L0",
     "L1",
     "L2",

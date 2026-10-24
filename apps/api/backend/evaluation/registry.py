@@ -72,6 +72,7 @@ def register_builtin() -> None:
                 "agent_flow",
                 "planner",
                 "session_reference",
+                "plan_selfcheck",
             },
             inputs={"observed": "typed(bool/int/float/str)"},
             results={"status": "pass|fail|dependency_failed|inconclusive|error|not_applicable"},
@@ -106,6 +107,27 @@ def register_builtin() -> None:
             max_usage={"max_attempts": 2},
             cache_policy="P4:按 §13.4 缓存键(素材/问题/规则/模型修订)",
             known_limits=["中文视觉裁判未经独立人工校准前,结论按 inconclusive 对待(§11.3)"],
+        ),
+        EvaluatorDeclaration(
+            id="plan-selfcheck",
+            version="1",
+            rubric_version="1",
+            applies_to={"plan_selfcheck"},
+            inputs={"plan_summary": "summarize(PlanView)", "user_message": "str", "invariants": "dict", "refs": "list"},
+            results={
+                "model_tpr": "null unless llm_tested",
+                "model_fpr": "null unless llm_tested",
+                "rule_tpr": "intent reject on drift / valid drift",
+                "rule_fpr": "intent reject on normal / valid normal",
+            },
+            cache_policy="grade stored observations; do not cache a pass from labels",
+            known_limits=[
+                "CI 与规则基线不是模型质量；llm_tested 默认为 false，模型 TPR/FPR/延迟为 null",
+                "缺 factory 或 route 时记 unknown / quality undetermined，不回退为通过",
+                "fallback 与 unknown 不进入 TPR/FPR 分母，也不能把 FPR 记成 0",
+                "enforce 证据只在 80 条真实完整观测、provenance=live 且身份钉住后导出",
+                "selfcheck_max_false_block_rate 当前为 None，enforce 保持关闭",
+            ],
         ),
     ]
     for item in builtin:
@@ -185,7 +207,7 @@ def capabilities_for(config: dict) -> ProviderCapabilities:
 
 def check_case_supported(case: CaseVersion, caps: ProviderCapabilities) -> None:
     """能力不支持的组合必须显式拒绝(§10.3):不让它静默落入另一个任务类型。"""
-    if case.taskType in {"text_to_image", "agent_flow", "planner", "session_reference"}:
+    if case.taskType in {"text_to_image", "agent_flow", "planner", "session_reference", "plan_selfcheck"}:
         return
     if not caps.supports(case.taskType):
         labels = {

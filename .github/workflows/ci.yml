@@ -69,6 +69,27 @@ jobs:
           path: ${{ env.PLANNER_GATE_DIR }}/gate-evidence.json
           if-no-files-found: error
 
+  plan-selfcheck-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: python -m venv .venv
+      - run: .venv/bin/python -m pip install -r requirements-dev.txt
+      - name: 计划自检离线门禁（不评模型质量，不调用网络）
+        env:
+          PYTHONPATH: apps/api
+        run: |
+          set -eu
+          OUT="$(mktemp -d "${RUNNER_TEMP:-/tmp}/aivideo-selfcheck-offline.XXXXXX")"
+          .venv/bin/python -m backend.evaluation.selfcheck_cli --mode offline --output "$OUT"
+          .venv/bin/python -m backend.evaluation.selfcheck_cli --mode rules --output "$OUT/rules"
+          .venv/bin/python -c "import json,sys; p=json.load(open('$OUT/summary.json')); assert p['llm_tested'] is False and p['model'] is None and p['legal_type_pass']==80"
+
   reliability:
     runs-on: ubuntu-latest
     timeout-minutes: 15

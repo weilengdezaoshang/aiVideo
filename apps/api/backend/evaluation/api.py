@@ -313,7 +313,50 @@ def build_eval_router(data_dir: Path) -> APIRouter:
             "flow": report.get("flow"),
             "planner": report.get("planner"),
             "sessionReference": report.get("sessionReference"),
+            "planSelfcheck": report.get("planSelfcheck"),
         }
+
+    @router.post("/plan-selfcheck", status_code=202)
+    async def create_plan_selfcheck(request: Request):
+        """Freeze the curated JSONL and queue a rules or offline run. No key fields."""
+
+        raw = await request.json()
+        if any(key in raw for key in ("apiKey", "credentialRef", "baseUrl", "authorization")):
+            raise HTTPException(422, "plan_selfcheck 不接受密钥或 URL")
+        mode = raw.get("mode", "rules")
+        if mode not in {"rules", "offline"}:
+            raise HTTPException(422, "该入口只接受 rules 或 offline；llm 由 CLI opt-in")
+        runner = _runner(data_dir)
+        from backend.evaluation.selfcheck_cases import FIXTURE_PATH
+        from backend.evaluation.selfcheck_dataset import DATASET_ID, write_selfcheck_dataset
+
+        source = store / "staging" / "plan-selfcheck.jsonl"
+        try:
+            write_selfcheck_dataset(source, FIXTURE_PATH)
+            runner.freeze_dataset(source, DATASET_ID, split="regression")
+            run_id = str(raw.get("runId") or "").strip()
+            if not run_id:
+                raise ValueError("缺少 runId")
+            runner.create_run(
+                run_id,
+                DATASET_ID,
+                mode="mock",
+                provider="mock",
+                purpose="plan self-check preflight",
+                sandbox_config={
+                    "selfcheckMode": mode,
+                    "selfcheckTokenBudget": int(raw.get("tokenBudget", 250_000)),
+                    "selfcheckOutputCap": raw.get("outputCap"),
+                    "selfcheckMaxContextBytes": int(raw.get("maxContextBytes", 24000)),
+                    "selfcheckTimeoutSeconds": float(raw.get("timeoutSeconds", 8)),
+                    "selfcheckRetries": int(raw.get("retries", 0)),
+                    "selfcheckConcurrency": int(raw.get("concurrency", 1)),
+                },
+            )
+        except (ValueError, OSError) as exc:
+            raise HTTPException(422, str(exc)) from None
+        queued = _scheduler(data_dir).submit(run_id)
+        return {"runId": run_id, "queued": queued["queued"], "mode": mode}
 
     @router.get("/runs/{run_id}/trials")
     async def run_trials(run_id: str):
