@@ -46,30 +46,35 @@ async def ensure_artifact_wrapper(tx, stored: Asset, *, user_id: str):
 
 
 async def apply_recognition(tx, job: CoreRecognitionJob, stored: Asset, recognition: dict) -> tuple[uuid.UUID, uuid.UUID]:
-    """Write recognition as a new asset version; idempotent on the content hash."""
+    """Write recognition as a new asset version; idempotent on the content hash.
+
+    The CAS retry rebuilds the content from the freshly committed head so a
+    concurrent version append is preserved instead of overwritten.
+    """
     wrapper = await ensure_artifact_wrapper(tx, stored, user_id=job.requested_by)
-    head = await tx.get(CoreAssetVersion, wrapper.current_version_id)
     stamped = {**recognition, "content_hash": stored.sha256, "source": "vision"}
-    if (head.recognition or {}).get("content_hash") == stamped["content_hash"] and head.recognition.get("source") == "vision":
-        return wrapper.id, head.id
-    content = AssetContent(kind=head.kind, category=head.category, card_kind=head.card_kind,
-        starred=head.starred, recognition=stamped, layers=head.layers or {},
-        metadata_json=head.metadata_json or {}, storage=head.storage or {},
-        stored_asset_id=head.stored_asset_id, content_hash=head.content_hash,
-        mime_type=head.mime_type, size_bytes=head.size_bytes, width=head.width,
-        height=head.height, duration_ms=head.duration_ms, status=head.status,
-        run_id=head.run_id, task_id=head.task_id, user_id=head.user_id)
-    try:
-        version = await append_asset_version(tx, wrapper.id, wrapper.version, content,
-            parents=(head.id,), relation="recognition")
-    except VersionConflict:
-        wrapper = await tx.get(CoreAsset, wrapper.id, populate_existing=True)
-        head = await tx.get(CoreAssetVersion, wrapper.current_version_id)
+
+    def build(head) -> AssetContent:
+        return AssetContent(kind=head.kind, category=head.category, card_kind=head.card_kind,
+            starred=head.starred, recognition=stamped, layers=head.layers or {},
+            metadata_json=head.metadata_json or {}, storage=head.storage or {},
+            stored_asset_id=head.stored_asset_id, content_hash=head.content_hash,
+            mime_type=head.mime_type, size_bytes=head.size_bytes, width=head.width,
+            height=head.height, duration_ms=head.duration_ms, status=head.status,
+            run_id=head.run_id, task_id=head.task_id, user_id=head.user_id)
+
+    for attempt in (0, 1):
+        head = await tx.get(CoreAssetVersion, wrapper.current_version_id, populate_existing=True)
         if (head.recognition or {}).get("content_hash") == stamped["content_hash"] and head.recognition.get("source") == "vision":
             return wrapper.id, head.id
-        version = await append_asset_version(tx, wrapper.id, wrapper.version, content,
-            parents=(head.id,), relation="recognition")
-    return wrapper.id, version.id
+        try:
+            version = await append_asset_version(tx, wrapper.id, wrapper.version, build(head),
+                parents=(head.id,), relation="recognition")
+            return wrapper.id, version.id
+        except VersionConflict:
+            if attempt:
+                raise
+            wrapper = await tx.get(CoreAsset, wrapper.id, populate_existing=True)
 
 
 class RecognitionWorker:

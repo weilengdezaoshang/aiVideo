@@ -199,6 +199,10 @@ def test_delisted_card_fails_closed_everywhere(tmp_path):
                 run = await tx.get(CoreRun, ids["run"])
                 with pytest.raises(ValueError, match="card_unavailable"):
                     await resolve_card(tx, run, str(card_id))
+                # A delisted card cannot be edited back to life.
+                from backend.core.asset_cards import CardRejected, update_card
+                with pytest.raises(CardRejected, match="card_not_editable"):
+                    await update_card(tx, card_id, ids["workspace"], 2, name="复活")
                 # Context drops delisted cards entirely.
                 views = await frozen_card_views(tx, run, limit=10)
                 assert views == []

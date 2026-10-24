@@ -99,44 +99,65 @@ async def load_card(tx, card_id, workspace_id: uuid.UUID) -> tuple[CoreAsset, Co
     return card, version
 
 
-async def _append_card_version(tx, card: CoreAsset, content: AssetContent, *, relation: str) -> CoreAssetVersion:
-    head = await tx.get(CoreAssetVersion, card.current_version_id)
-    try:
-        return await append_asset_version(tx, card.id, card.version, content,
-            parents=(head.id,), relation=relation)
-    except VersionConflict:
-        card, head = await load_card(tx, card.id, card.workspace_id)
-        content = content.model_copy(update={"user_id": head.user_id})
-        return await append_asset_version(tx, card.id, card.version, content,
-            parents=(head.id,), relation=relation)
+async def _append_card_version(tx, card_id: uuid.UUID, relation: str, build) -> CoreAssetVersion:
+    """Append with CAS; on conflict rebuild from the freshly committed head.
+
+    ``build(head)`` produces the new content so a concurrent edit's fields
+    survive the retry instead of being overwritten by a stale snapshot.
+    """
+    for attempt in (0, 1):
+        card = await tx.scalar(select(CoreAsset).where(CoreAsset.id == card_id)
+            .execution_options(populate_existing=True))
+        if card is None:
+            raise EntityNotFound("card_not_found")
+        head = await tx.get(CoreAssetVersion, card.current_version_id, populate_existing=True)
+        try:
+            return await append_asset_version(tx, card.id, card.version, build(head),
+                parents=(head.id,), relation=relation)
+        except VersionConflict:
+            if attempt:
+                raise
+
+
+def _head_content(head: CoreAssetVersion, *, metadata: dict | None = None, starred: bool | None = None,
+                  status: str | None = None, run_id=None, task_id=None) -> AssetContent:
+    """Rebuild a full version snapshot from a head plus explicit overrides."""
+    return AssetContent(kind=head.kind, category=head.category, card_kind=head.card_kind,
+        starred=head.starred if starred is None else starred, recognition=head.recognition or {},
+        layers=head.layers or {}, metadata_json=head.metadata_json if metadata is None else metadata,
+        storage=head.storage or {}, stored_asset_id=head.stored_asset_id,
+        content_hash=head.content_hash, mime_type=head.mime_type, size_bytes=head.size_bytes,
+        width=head.width, height=head.height, duration_ms=head.duration_ms,
+        status=head.status if status is None else status,
+        run_id=head.run_id if run_id is None else run_id,
+        task_id=head.task_id if task_id is None else task_id, user_id=head.user_id)
 
 
 async def update_card(tx, card_id: uuid.UUID, workspace_id: uuid.UUID, expected_version_number: int,
                       *, name: str | None = None, description: str | None = None,
                       starred: bool | None = None, run_id: uuid.UUID | None = None,
                       task_id: uuid.UUID | None = None, notify: bool = True) -> CoreAssetVersion:
-    """Any card edit appends a version; the caller sees card_version_conflict on races."""
+    """Any card edit appends a version; only normal-state cards are editable."""
     card, head = await load_card(tx, card_id, workspace_id)
     if head.version != expected_version_number:
         raise CardRejected("card_version_conflict")
+    if head.status != "normal":
+        # report/remove own the status channel; an edit must not resurrect a delisted card.
+        raise CardRejected("card_not_editable")
     if name is None and description is None and starred is None:
         raise CardRejected("card_update_empty")
-    metadata = dict(head.metadata_json or {})
-    if name is not None:
-        metadata["name"] = name
-    if description is not None:
-        metadata["description"] = description
-    content = AssetContent(kind=head.kind, category="card", card_kind=head.card_kind,
-        starred=head.starred if starred is None else bool(starred), recognition=head.recognition or {},
-        layers=head.layers or {}, metadata_json=metadata, storage=head.storage or {},
-        stored_asset_id=head.stored_asset_id, content_hash=head.content_hash,
-        mime_type=head.mime_type, size_bytes=head.size_bytes, width=head.width,
-        height=head.height, duration_ms=head.duration_ms, status="normal",
-        run_id=run_id or head.run_id, task_id=task_id or head.task_id, user_id=head.user_id)
-    try:
-        version = await _append_card_version(tx, card, content, relation="edited")
-    except CardRejected:
-        raise
+
+    def build(head: CoreAssetVersion) -> AssetContent:
+        metadata = dict(head.metadata_json or {})
+        if name is not None:
+            metadata["name"] = name
+        if description is not None:
+            metadata["description"] = description
+        return _head_content(head, metadata=metadata,
+            starred=head.starred if starred is None else bool(starred),
+            run_id=run_id, task_id=task_id)
+
+    version = await _append_card_version(tx, card.id, "edited", build)
     if notify:
         await notify_card_changed(tx, card_id)
     return version
@@ -149,13 +170,10 @@ async def set_card_status(tx, card_id: uuid.UUID, workspace_id: uuid.UUID, expec
     card, head = await load_card(tx, card_id, workspace_id)
     if head.version != expected_version_number:
         raise CardRejected("card_version_conflict")
-    content = AssetContent(kind=head.kind, category="card", card_kind=head.card_kind, starred=head.starred,
-        recognition=head.recognition or {}, layers=head.layers or {}, metadata_json=head.metadata_json or {},
-        storage=head.storage or {}, stored_asset_id=head.stored_asset_id, content_hash=head.content_hash,
-        mime_type=head.mime_type, size_bytes=head.size_bytes, width=head.width, height=head.height,
-        duration_ms=head.duration_ms, status=status, run_id=head.run_id, task_id=head.task_id,
-        user_id=head.user_id)
-    version = await _append_card_version(tx, card, content, relation="edited")
+    if head.status == status:
+        raise CardRejected("card_status_unchanged")
+    version = await _append_card_version(tx, card.id, "edited",
+        lambda head: _head_content(head, status=status))
     if notify:
         await notify_card_changed(tx, card_id)
     return version
