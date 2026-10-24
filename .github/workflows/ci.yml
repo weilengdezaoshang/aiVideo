@@ -92,7 +92,7 @@ jobs:
 
   reliability:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16-alpine
@@ -184,4 +184,27 @@ jobs:
           path: |
             /tmp/session-integration.xml
             /tmp/session-reference-report
+          if-no-files-found: warn
+
+      - name: 批量展开与可编辑分层回归（仅假服务商）
+        timeout-minutes: 12
+        env:
+          PYTHONPATH: apps/api:tests/backend
+          AIVERO_DB_URL: postgresql+psycopg://postgres:reliability-test@127.0.0.1:5432/reliability_test
+          AIVERO_CORE_TEST_DB: postgresql+psycopg://postgres:reliability-test@127.0.0.1:5432/reliability_test
+          AIVERO_SUPERVISOR_TEST_DB: postgresql+psycopg://postgres:reliability-test@127.0.0.1:5432/reliability_test
+          AIVERO_EXECUTION_TEST_DB: postgresql+psycopg://postgres:reliability-test@127.0.0.1:5432/reliability_test
+          AIVERO_DURABLE_TEST_DB: postgresql+psycopg://postgres:reliability-test@127.0.0.1:5432/reliability_test
+          AIVERO_DURABLE_TEST_REDIS: redis://127.0.0.1:6379/0
+        run: |
+          .venv/bin/alembic upgrade head
+          .venv/bin/python -m pytest -q --junitxml=/tmp/batch-integration.xml \
+            tests/integration/test_batch_dispatch_pg.py tests/integration/test_batch_pipeline_pg.py \
+            tests/integration/test_batch_retry_pg.py tests/integration/test_batch_composition_pg.py \
+            tests/integration/test_composition_worker.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: batch-integration
+          path: /tmp/batch-integration.xml
           if-no-files-found: warn
