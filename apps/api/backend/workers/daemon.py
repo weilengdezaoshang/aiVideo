@@ -45,6 +45,8 @@ async def schedule_once(factory, root: Path, limit: int = 100) -> int:
     await VersionSwitchWorker(factory).run_once()
     from backend.core.recognition.worker import RecognitionWorker
     await RecognitionWorker(factory, root).run_once()
+    from backend.core.supervisor.subjects import expire_stale_choices
+    await expire_stale_choices(factory)
     from backend.core.execution.projection import project_pending
     await project_pending(factory, limit)
     from backend.agent.runtime import AgentService

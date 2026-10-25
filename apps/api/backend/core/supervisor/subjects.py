@@ -1,5 +1,8 @@
 """Subject choice is program policy; only opaque option IDs cross the answer API."""
-from backend.core.orm import CoreTaskDependency, CorePlan
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from backend.core.orm import CoreEvent, CoreTaskDependency, CorePlan
 from backend.core.contracts import TaskInput
 from backend.core.store import create_task, transition
 from .service import message
@@ -85,3 +88,100 @@ async def handle_subjects(tx, run, tasks, cause, settings, *, batch: bool = Fals
         if not batch:
             await transition(tx, "task", cutout.id, cutout.version, "queued", causation_id=cause)
     return False
+
+
+class SubjectSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="AIVERO_SUBJECT_", frozen=True, extra="forbid")
+    choice_ttl_seconds: float = Field(default=300, gt=0)
+    scan_limit: int = Field(default=20, gt=0)
+
+
+def _normalize(text: str) -> str:
+    return "".join(str(text or "").split()).lower()
+
+
+def match_waiting_option(labels: list[dict], text: str) -> str | None:
+    """Match a free-form chat message onto a waiting option; no model involved.
+
+    The message must name the option (or its label) without ambiguity; a
+    miss stays a regular interruption and never guesses.
+    """
+    needle = _normalize(text)
+    if not needle:
+        return None
+    exact = [option for option in labels if _normalize(option.get("label") or "") == needle]
+    if len(exact) == 1:
+        return exact[0].get("id")
+    contained = [option for option in labels
+                 if _normalize(option.get("label") or "") and _normalize(option["label"]) in needle]
+    if contained:
+        return max(contained, key=lambda option: len(_normalize(option.get("label") or ""))).get("id")
+    covering = [option for option in labels
+                if _normalize(option.get("label") or "") and needle in _normalize(option["label"])]
+    if len(covering) == 1:
+        return covering[0].get("id")
+    return None
+
+
+async def try_message_answer(tx, run, text: str) -> bool:
+    """A waiting subject-choice can be answered by plain chat (e.g. 抠杯子)."""
+    from sqlalchemy import select as _select
+
+    from backend.core.orm import CoreTask
+    question = await tx.scalar(_select(CoreTask).where(CoreTask.run_id == run.id,
+        CoreTask.status == "waiting_user", CoreTask.kind == "ask_user",
+        CoreTask.idempotency_key.like("subject-choice:%")).order_by(CoreTask.created_at).limit(1))
+    if question is None or run.status != "paused" or run.pause_reason != "waiting_user":
+        return False
+    waiting = question.waiting or {}
+    option_id = match_waiting_option(waiting.get("options") or [], text)
+    if option_id is None:
+        return False
+    from .service import answer
+    try:
+        await answer(tx, task_id=question.id, option_id=option_id,
+            request_key="subject-chat:" + digest_message(text), workspace_id=run.workspace_id,
+            user_id=run.user_id)
+    except ValueError:
+        return False
+    return True
+
+
+def digest_message(text: str) -> str:
+    import hashlib
+    return hashlib.sha256(("subject-chat:" + text).encode()).hexdigest()[:64]
+
+
+async def expire_stale_choices(factory, settings: SubjectSettings | None = None) -> int:
+    """Cancel waiting subject choices past their TTL; nothing was reserved."""
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import select as _select
+
+    from backend.core.orm import CoreRun, CoreTask
+    from backend.core.store import transition
+    from .engine import stop
+    from .service import message
+
+    settings = settings or SubjectSettings()
+    horizon = datetime.now(timezone.utc) - timedelta(seconds=settings.choice_ttl_seconds)
+    expired = 0
+    async with factory.begin() as tx:
+        rows = list((await tx.scalars(_select(CoreTask).where(CoreTask.status == "waiting_user",
+            CoreTask.kind == "ask_user", CoreTask.idempotency_key.like("subject-choice:%"),
+            CoreTask.updated_at < horizon).limit(settings.scan_limit)
+            .with_for_update(skip_locked=True))))
+        for question in rows:
+            run = await tx.scalar(_select(CoreRun).where(CoreRun.id == question.run_id)
+                .with_for_update(skip_locked=True))
+            if run is None or run.status in ("completed", "failed", "cancelled"):
+                continue
+            cause = await tx.scalar(_select(CoreEvent.id).where(CoreEvent.run_id == run.id)
+                .order_by(CoreEvent.run_sequence.desc()).limit(1))
+            await transition(tx, "task", question.id, question.version, "cancelled", causation_id=cause)
+            await message(tx, run, "超时未选择主体，已自动取消本次抠图（未扣费）。",
+                "subject-ttl:" + str(question.id))
+            await stop(tx, run, "cancelled", "超时未选择主体，本次运行已结束（未扣费）。",
+                "subject-ttl:" + str(run.id))
+            expired += 1
+    return expired

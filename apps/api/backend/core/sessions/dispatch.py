@@ -190,6 +190,19 @@ async def dispatch_due(factory, settings=None, agent_route=None):
         correction = next((m.correction_of_run_id for m in pending if m.correction_of_run_id), None)
         related = next((m.related_run_id for m in pending if m.related_run_id), None)
         opened_by_redo = False
+        if run is not None and run.status == "paused" and run.pause_reason == "waiting_user":
+            # A waiting subject choice can be answered by plain chat (e.g. 抠杯子)
+            # without waking the planner; a miss falls through to interruption.
+            from backend.core.supervisor.subjects import try_message_answer
+            answered = await try_message_answer(tx, run,
+                " ".join(str((m.content or {}).get("text") or "") for m in pending if m.role == "user"))
+            if answered:
+                for item in pending:
+                    if item.processing_status == "pending":
+                        item.processing_status = "processed"
+                        item.run_id = run.id
+                session.dispatch_at = session.dispatch_lease_owner = session.dispatch_lease_until = None
+                return True
         if should_natural_redo(pending, active_run=run is not None):
             opened = await open_exact_redo(tx, session, pending)
             if opened is None:
