@@ -111,7 +111,7 @@ async def reserve_core(db, run, task, quote):
     return ledger
 
 
-async def settle_core(db, run, task, actual, *, cancelled=False):
+async def settle_core(db, run, task, actual, *, cancelled=False, outcome=None):
     ledger = await db.scalar(select(HostCreditLedger).where(HostCreditLedger.core_task_id == task.id).with_for_update())
     if ledger is None:
         raise HostError("ledger_missing", "任务积分流水缺失")
@@ -121,14 +121,20 @@ async def settle_core(db, run, task, actual, *, cancelled=False):
         return ledger
     if type(actual) is not int or not 0 <= actual <= ledger.quoted:
         raise HostError("unapproved_cost", "实际费用超出已审核预扣，需对账")
-    refund = ledger.quoted - actual
+    # One configurable policy decides every settlement path; defaults keep the
+    # historical behaviour (fail/blocked full refund, cancelled pays actual).
+    from backend.core.refunds import RefundSettings, settle_decision
+    if outcome is None:
+        outcome = "cancelled" if cancelled else "succeeded"
+    settlement = settle_decision(outcome, ledger.quoted, actual, settings=RefundSettings())
+    refund = settlement.refund
     account = await account_locked(db, run.workspace_id)
     account.available += refund
-    ledger.charged, ledger.refunded = actual, refund
-    ledger.state = "cancelled_with_charge" if cancelled and actual else "settled" if actual else "refunded"
+    ledger.charged, ledger.refunded = settlement.charge, refund
+    ledger.state = settlement.state
     ledger.updated_at = now()
     run.credits_reserved -= refund
-    run.credits_spent += actual
-    task.actual_credits = actual
+    run.credits_spent += settlement.charge
+    task.actual_credits = settlement.charge
     await db.flush()
     return ledger

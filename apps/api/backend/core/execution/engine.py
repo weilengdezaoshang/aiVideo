@@ -861,7 +861,8 @@ class Worker:
             return
         ledger = await tx.scalar(select(HostCreditLedger).where(HostCreditLedger.core_task_id == task.id))
         if ledger is not None:
-            await settle_core(tx, run, task, actual, cancelled=execution.cancel_requested)
+            outcome = ("cancelled" if execution.cancel_requested or status == "cancelled" else status)
+            await settle_core(tx, run, task, actual, cancelled=execution.cancel_requested, outcome=outcome)
         elif actual or (task.status != "queued" and task.credits_reserved != 0):
             raise ValueError("missing reservation for submitted task")
         task.error = {"code": reason} if reason else None
