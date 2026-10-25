@@ -9,12 +9,42 @@ export type SessionMessage = {
   run_id: string | null
   processing_status: string
 }
+export type SessionTask = {
+  id: string
+  key: string
+  kind: string
+  status: string
+  tool?: string | null
+  tier?: string | null
+  quoted?: number
+  actual?: number
+  labels?: string[]
+  question?: {
+    question?: string
+    options?: { id: string; label: string }[]
+    form?: {
+      id?: string
+      fields?: {
+        id?: string
+        name?: string
+        label?: string
+        required?: boolean
+        type?: 'text' | 'number' | 'boolean' | 'choice'
+        default?: string | number | boolean | null
+        choices?: string[]
+      }[]
+    }
+  }
+}
 export type SessionRun = {
   id: string
   status: string
   version: number
   credits_limit?: number
   credits_spent?: number
+  pause_reason?: string | null
+  tasks?: SessionTask[]
+  queue?: { jobs_ahead?: number; estimated_seconds?: number }
   [key: string]: unknown
 }
 export type SessionSnapshot = {
@@ -52,12 +82,38 @@ export type SessionApi = {
   open(documentId: string): Promise<SessionSnapshot>
   snapshot(id: string): Promise<SessionSnapshot>
   send(id: string, body: PendingMessage): Promise<unknown>
+  answer?(
+    taskId: string,
+    body: { option_id?: string; request_key: string; fields?: Record<string, unknown> },
+  ): Promise<unknown>
+  budget?(
+    runId: string,
+    action: 'extend' | 'resume' | 'stop',
+    additional?: number,
+  ): Promise<unknown>
+  cancelRun?(runId: string): Promise<unknown>
+  costs?(runId: string): Promise<RunCosts>
   events(id: string, cursor: number): string
   heartbeat?(id: string, clientId: string, cursor: number, online: boolean): Promise<unknown>
   artifacts?(id: string): Promise<{ artifacts: SessionArtifact[] }>
   versions?(id: string): Promise<import('./version-history.js').AssetVersion[]>
   switchVersion?(assetId: string, versionId: string, body: VersionSwitch): Promise<void>
   readNotification?(id: string): Promise<unknown>
+}
+export type RunCostLine = {
+  task_id: string
+  step: string
+  status: string
+  reserved: number
+  actual: number
+  refunded: number
+  settlement: string
+  retry_count: number
+}
+export type RunCosts = {
+  run_id: string
+  tasks: RunCostLine[]
+  credits_spent: number
 }
 export type SessionSource = {
   addEventListener(
@@ -382,6 +438,37 @@ export function createSessionStore(options: SessionStoreOptions) {
         source?.close()
         publish({ connected: false })
       }
+    },
+    async answer(taskId: string, optionId?: string, fields?: Record<string, unknown>) {
+      if (!state.snapshot || !options.api.answer) {
+        throw new Error('当前会话不支持作答')
+      }
+      await options.api.answer(taskId, {
+        option_id: optionId ?? '',
+        request_key: `ui-answer:${taskId}:${optionId ?? JSON.stringify(fields ?? {})}`,
+        ...(fields ? { fields } : {}),
+      })
+      await refresh()
+    },
+    async budget(runId: string, action: 'extend' | 'resume' | 'stop', additional?: number) {
+      if (!options.api.budget) {
+        throw new Error('当前会话不支持预算操作')
+      }
+      await options.api.budget(runId, action, additional)
+      await refresh()
+    },
+    async cancelRun(runId: string) {
+      if (!options.api.cancelRun) {
+        throw new Error('当前会话不支持停止')
+      }
+      await options.api.cancelRun(runId)
+      await refresh()
+    },
+    costs(runId: string) {
+      if (!options.api.costs) {
+        return Promise.reject(new Error('当前会话不支持费用查询'))
+      }
+      return options.api.costs(runId)
     },
     send(
       message: string,

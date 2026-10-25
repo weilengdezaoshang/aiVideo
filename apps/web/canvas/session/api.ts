@@ -53,6 +53,16 @@ export function createSessionApi(
       request(`${path(id)}/clients`, { client_id: clientId, cursor, online }),
     readNotification: (id) => request(`/api/core/notifications/${encodeURIComponent(id)}/read`, {}),
     artifacts: (id) => request(`${path(id)}/artifacts`),
+    costs: async (runId) =>
+      request(`/api/core/runs/${runId}/costs`) as Promise<import('./store.js').RunCosts>,
+    answer: async (taskId, body) =>
+      request(`/api/core/tasks/${taskId}/answer`, body) as Promise<unknown>,
+    budget: async (runId, action, additional) =>
+      request(`/api/core/runs/${runId}/budget`, {
+        action,
+        ...(additional ? { additional } : {}),
+      }) as Promise<unknown>,
+    cancelRun: async (runId) => request(`/api/core/runs/${runId}/cancel`, {}) as Promise<unknown>,
     versions: async (id) =>
       (
         await request<{ versions: import('./version-history.js').AssetVersion[] }>(

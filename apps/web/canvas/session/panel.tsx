@@ -1,5 +1,5 @@
 import { useState, useSyncExternalStore } from 'react'
-import type { createSessionStore } from './store.js'
+import type { RunCosts, SessionRun, SessionTask, createSessionStore } from './store.js'
 
 const statuses: Record<string, string> = {
   created: '等待规划',
@@ -10,6 +10,257 @@ const statuses: Record<string, string> = {
   completed: '已完成',
   failed: '执行失败',
   cancelled: '已取消',
+}
+
+const taskStatuses: Record<string, string> = {
+  pending: '排队中',
+  validated: '已审核',
+  queued: '已入队',
+  submitted: '执行中',
+  waiting_user: '等你操作',
+  succeeded: '已完成',
+  failed: '失败',
+  blocked_by_model: '被拦截',
+  cancelled: '已取消',
+  rejected: '被退回',
+}
+
+function QuestionCard({
+  task,
+  store,
+}: {
+  task: SessionTask
+  store: ReturnType<typeof createSessionStore>
+}) {
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      (task.question?.form?.fields ?? []).map((field) => [
+        field.id ?? field.name ?? '',
+        field.default == null ? '' : String(field.default),
+      ]),
+    ),
+  )
+  const [busy, setBusy] = useState(false)
+  const fields = task.question?.form?.fields ?? []
+  const submitForm = () => {
+    setBusy(true)
+    void store
+      .answer(task.id, undefined, values)
+      .catch(() => undefined)
+      .finally(() => setBusy(false))
+  }
+  return (
+    <section className="next-question-card" aria-label="需要你操作">
+      {task.question?.question && <p>{task.question.question}</p>}
+      {task.question?.options?.map((option) => (
+        <button
+          key={option.id}
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true)
+            void store
+              .answer(task.id, option.id)
+              .catch(() => undefined)
+              .finally(() => setBusy(false))
+          }}
+        >
+          {option.label}
+        </button>
+      ))}
+      {fields.length > 0 && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            submitForm()
+          }}
+        >
+          {fields.map((field) => {
+            const key = field.id ?? field.name ?? ''
+            return (
+              <label key={key}>
+                {field.label || key}
+                {field.required ? '（必填）' : ''}
+                {field.type === 'boolean' ? (
+                  <input
+                    type="checkbox"
+                    checked={values[key] === 'true'}
+                    onChange={(event) =>
+                      setValues({ ...values, [key]: String(event.target.checked) })
+                    }
+                  />
+                ) : field.type === 'choice' ? (
+                  <select
+                    value={values[key]}
+                    onChange={(event) => setValues({ ...values, [key]: event.target.value })}
+                  >
+                    {(field.choices ?? []).map((choice) => (
+                      <option key={choice} value={choice}>
+                        {choice}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type={field.type === 'number' ? 'number' : 'text'}
+                    value={values[key]}
+                    onChange={(event) => setValues({ ...values, [key]: event.target.value })}
+                  />
+                )}
+              </label>
+            )
+          })}
+          <button type="submit" disabled={busy}>
+            提交
+          </button>
+        </form>
+      )}
+    </section>
+  )
+}
+
+function CostsCard({
+  runId,
+  store,
+}: {
+  runId: string
+  store: ReturnType<typeof createSessionStore>
+}) {
+  const [rows, setRows] = useState<RunCosts | null>(null)
+  return (
+    <details className="next-costs-card">
+      <summary
+        onClick={() => {
+          if (!rows) {
+            void store
+              .costs(runId)
+              .then(setRows)
+              .catch(() => setRows(null))
+          }
+        }}
+      >
+        花费明细{rows ? `（共 ${rows.credits_spent} 积分）` : ''}
+      </summary>
+      {rows && (
+        <table>
+          <thead>
+            <tr>
+              <th>步骤</th>
+              <th>预估</th>
+              <th>实扣</th>
+              <th>已退</th>
+              <th>结算</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.tasks.map((line) => (
+              <tr key={line.task_id}>
+                <td>{line.step}</td>
+                <td>{line.reserved}</td>
+                <td>{line.actual}</td>
+                <td>{line.refunded}</td>
+                <td>{line.settlement}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </details>
+  )
+}
+
+function RunCard({
+  run,
+  store,
+}: {
+  run: SessionRun
+  store: ReturnType<typeof createSessionStore>
+}) {
+  const [extra, setExtra] = useState('')
+  const [busy, setBusy] = useState(false)
+  const overBudget = run.status === 'paused' && run.pause_reason === 'over_budget'
+  const waiting = (run.tasks ?? []).filter((task) => task.status === 'waiting_user')
+  return (
+    <section className="next-run-card" aria-label="运行控制">
+      <p role="status">
+        {statuses[run.status] ?? run.status}
+        {run.queue?.jobs_ahead ? ` · 前面还有 ${run.queue.jobs_ahead} 个任务` : ''}
+        {run.queue?.estimated_seconds
+          ? ` · 预计等待约 ${Math.ceil(run.queue.estimated_seconds / 60)} 分钟`
+          : ''}
+        {run.credits_limit !== undefined
+          ? ` · 已用 ${run.credits_spent ?? 0}/${run.credits_limit} 积分`
+          : ''}
+      </p>
+      {overBudget && (
+        <p className="next-budget-actions">
+          <input
+            type="number"
+            min="1"
+            step="1"
+            value={extra}
+            aria-label="追加积分"
+            onChange={(event) => setExtra(event.target.value)}
+          />
+          <button
+            type="button"
+            disabled={busy || !Number.isSafeInteger(Number(extra)) || Number(extra) < 1}
+            onClick={() => {
+              setBusy(true)
+              void store
+                .budget(run.id, 'extend', Number(extra))
+                .catch(() => undefined)
+                .finally(() => setBusy(false))
+            }}
+          >
+            追加积分并继续
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true)
+              void store
+                .budget(run.id, 'stop')
+                .catch(() => undefined)
+                .finally(() => setBusy(false))
+            }}
+          >
+            结束并退还
+          </button>
+        </p>
+      )}
+      {(run.tasks ?? []).length > 0 && (
+        <ul className="next-task-list">
+          {(run.tasks ?? []).map((task) => (
+            <li key={task.id}>
+              {task.key} · {taskStatuses[task.status] ?? task.status}
+              {task.tool ? ` · ${task.tool}` : ''}
+              {task.quoted ? ` · 预估 ${task.quoted}` : ''}
+              {task.actual ? ` · 实扣 ${task.actual}` : ''}
+            </li>
+          ))}
+        </ul>
+      )}
+      {waiting.map((task) => (
+        <QuestionCard key={task.id} task={task} store={store} />
+      ))}
+      <CostsCard runId={run.id} store={store} />
+      <button
+        type="button"
+        disabled={busy || ['completed', 'failed', 'cancelled'].includes(run.status)}
+        onClick={() => {
+          setBusy(true)
+          void store
+            .cancelRun(run.id)
+            .catch(() => undefined)
+            .finally(() => setBusy(false))
+        }}
+      >
+        停止本次运行
+      </button>
+    </section>
+  )
 }
 
 export function SessionPanel({
@@ -84,9 +335,7 @@ export function SessionPanel({
           </p>
         ))}
         {state.snapshot?.runs.map((run) => (
-          <p key={run.id} role="status">
-            {statuses[run.status] ?? run.status}
-          </p>
+          <RunCard key={run.id} run={run} store={store} />
         ))}
         {state.snapshot?.notifications?.map((notice) => (
           <p key={notice.id} role="status">
