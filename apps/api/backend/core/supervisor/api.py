@@ -41,6 +41,23 @@ class BatchRetry(Contract):
     item_ids: list[str] = Field(default_factory=list)
 
 
+class AmendBody(Contract):
+    request_key: str = Field(min_length=1, max_length=128)
+    delete_steps: list[str] = Field(default_factory=list, max_length=64)
+    parameter_changes: dict = Field(default_factory=dict)
+
+
+class BudgetBody(Contract):
+    action: Literal["extend", "resume", "stop"]
+    additional: int | None = Field(default=None, ge=1, le=10 ** 9)
+
+
+class FinalizeBody(Contract):
+    credits_budget: int = Field(default=0, ge=0)
+    token_budget: int = Field(default_factory=lambda: CoreSettings().tokens_limit, ge=0)
+    max_thought_rounds: int = Field(default_factory=lambda: CoreSettings().max_thought_rounds, gt=0)
+
+
 class Feedback(Contract):
     request_key: str = Field(min_length=1, max_length=128)
     text: str = Field(min_length=1, max_length=Settings().feedback_max_chars)
@@ -116,6 +133,75 @@ def install(app):
                 return {"task_id": str(task.id), "status": task.status}
         except LookupError:
             raise HTTPException(404, "任务不存在") from None
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from None
+
+    @app.post("/api/core/runs/{run_id}/amend")
+    async def amend(run_id: uuid.UUID, body: AmendBody, identity: Identity = Depends(authenticated)):
+        from .engine import AmendRejected, Supervisor
+        try:
+            async with app.state.factory.begin() as tx:
+                run = await tx.get(CoreRun, run_id)
+                if run is None or run.workspace_id != identity.workspace_id or run.user_id != identity.principal:
+                    raise HTTPException(404, "Run 不存在")
+                supervisor = Supervisor(app.state.factory, settings=Settings(),
+                    credentials=getattr(app.state, "agent_credentials", None))
+                result = await supervisor.amend(tx, run, {
+                    "delete_steps": body.delete_steps, "parameter_changes": body.parameter_changes})
+                if not result.get("reviewed"):
+                    raise HTTPException(409, {"code": "amend_rejected", "reasons": result.get("reasons")})
+                return result
+        except AmendRejected as exc:
+            raise HTTPException(409, exc.code if str(exc) else "amend_rejected") from None
+
+    @app.post("/api/core/runs/{run_id}/budget")
+    async def budget(run_id: uuid.UUID, body: BudgetBody, identity: Identity = Depends(authenticated)):
+        from .engine import BudgetRejected
+        from .service import run_budget_action
+        try:
+            async with app.state.factory.begin() as tx:
+                run = await tx.get(CoreRun, run_id)
+                if run is None or run.workspace_id != identity.workspace_id or run.user_id != identity.principal:
+                    raise HTTPException(404, "Run 不存在")
+                return await run_budget_action(tx, run, body.action, body.additional)
+        except BudgetRejected as exc:
+            raise HTTPException(409, str(exc)) from None
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from None
+
+    @app.post("/api/core/runs/{run_id}/cancel")
+    async def cancel(run_id: uuid.UUID, identity: Identity = Depends(authenticated)):
+        from .service import run_cancel
+        try:
+            async with app.state.factory.begin() as tx:
+                run = await tx.get(CoreRun, run_id)
+                if run is None or run.workspace_id != identity.workspace_id or run.user_id != identity.principal:
+                    raise HTTPException(404, "Run 不存在")
+                return await run_cancel(tx, run)
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from None
+
+    @app.post("/api/core/runs/{run_id}/finalize", status_code=201)
+    async def finalize(run_id: uuid.UUID, body: FinalizeBody, identity: Identity = Depends(authenticated)):
+        from backend.core.orm import Document
+        from .engine import FinalizeRejected, Supervisor
+        from .service import progress
+        try:
+            async with app.state.factory.begin() as tx:
+                run = await tx.get(CoreRun, run_id)
+                if run is None or run.workspace_id != identity.workspace_id or run.user_id != identity.principal:
+                    raise HTTPException(404, "Run 不存在")
+                from backend.core.sessions.store import lock_session_then_run
+                session, locked = await lock_session_then_run(tx, run.session_id, run.id)
+                doc = await tx.get(Document, session.canvas_id)
+                supervisor = Supervisor(app.state.factory, settings=Settings(),
+                    credentials=getattr(app.state, "agent_credentials", None))
+                new_run = await supervisor.finalize(tx, locked, session=session, doc=doc,
+                    budget=body.credits_budget, token_budget=body.token_budget,
+                    max_rounds=body.max_thought_rounds)
+                return await progress(tx, new_run)
+        except FinalizeRejected as exc:
+            raise HTTPException(409, str(exc)) from None
         except ValueError as exc:
             raise HTTPException(409, str(exc)) from None
 

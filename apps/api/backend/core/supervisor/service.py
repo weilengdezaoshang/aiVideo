@@ -5,7 +5,10 @@ import logging
 import math
 import uuid
 import re
-from sqlalchemy import select, or_
+from sqlalchemy import func, select, or_
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from backend.core.contracts import CoreSettings, RunInput
 from backend.core.orm import (CoreRun, CoreSession, CoreSessionMessage, CoreEvent, CoreTask, CorePlan,
     CoreSkill, CoreAsset, CoreAssetVersion)
@@ -252,11 +255,28 @@ async def latest_plan(tx, run_id):
         CorePlan.stage == "execute").order_by(CorePlan.version.desc()).limit(1))
 
 
+class QueueSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="AIVERO_QUEUE_", frozen=True, extra="forbid")
+    seconds_per_job: float = Field(default=20, gt=0)
+
+
+async def _queue_view(tx, run) -> dict:
+    """Rough fairness ETA: how many jobs this workspace has ahead in the queues."""
+    from backend.infrastructure.orm import Job
+    ahead = await tx.scalar(select(func.count()).select_from(Job).where(
+        Job.workspace_id == run.workspace_id, Job.status.in_(("queued", "running"))))
+    settings = QueueSettings()
+    return {"jobs_ahead": int(ahead or 0), "estimated_seconds": round(int(ahead or 0) * settings.seconds_per_job)}
+
+
 async def progress(tx, run):
     query = select(CoreTask).where(CoreTask.run_id == run.id)
     if run.current_plan_id is not None:
         query = query.where(CoreTask.plan_id == run.current_plan_id)
     tasks = (await tx.scalars(query.order_by(CoreTask.created_at, CoreTask.task_key))).all()
+    from backend.agent.orm import HostCreditLedger
+    quoted = {row.core_task_id: int(row.quoted) for row in await tx.scalars(
+        select(HostCreditLedger).where(HostCreditLedger.core_run_id == run.id)) if row.core_task_id}
     messages = (await tx.scalars(select(CoreSessionMessage).where(CoreSessionMessage.run_id == run.id,
         CoreSessionMessage.role == "assistant").order_by(CoreSessionMessage.sequence))).all()
     plan = await latest_plan(tx, run.id)
@@ -270,8 +290,12 @@ async def progress(tx, run):
         "constraints": effective_invariants(run, plan),
         "sourcePlan": str(plan.id) if stored else None,
         "tasks": [{"id": str(t.id), "key": t.task_key, "kind": t.kind, "status": t.status,
+            "tool": t.tool_ref, "tier": t.tier, "quoted": quoted.get(t.id, 0),
+            "actual": int(t.actual_credits or 0),
             "labels": [c["label"] for c in (t.output or {}).get("candidates", [])],
             "question": {k: v for k, v in (t.waiting or {}).items() if k in {"question", "options", "form"}}} for t in tasks],
+        "queue": await _queue_view(tx, run),
+        "pause_reason": run.pause_reason,
         "messages": [m.content for m in messages]}
     rules = getattr(plan, "expansion_rules", None) or {}
     if rules.get("compiled"):
@@ -364,6 +388,50 @@ async def answer(tx, *, task_id, option_id, request_key, workspace_id, user_id, 
     await emit(tx, "user_confirmed", run.id, ids={"task_id": task.id},
         causation_id=await tx.scalar(select(CoreEvent.id).where(CoreEvent.aggregate_id == task.id).order_by(CoreEvent.run_sequence.desc()).limit(1)))
     return task
+
+
+async def run_budget_action(tx, run, action: str, additional: int | None = None):
+    """Over-budget runs wait for the user: extend and continue, resume, or stop."""
+    from .engine import BudgetRejected, _refunded, message, stop
+    if action not in {"extend", "resume", "stop"}:
+        raise BudgetRejected("unknown_action")
+    if run.status in TERMINAL:
+        raise BudgetRejected("run_finished")
+    if action == "stop":
+        spent, refunded = int(run.credits_spent), await _refunded(tx, run.id)
+        text = (f"已停止本次运行。已产生费用 {spent} 积分，已退还 {refunded} 积分；"
+                "在途任务将按服务商实际结果结算后多退少补。")
+        await stop(tx, run, "cancelled", text, "user-stop:" + str(run.id))
+        return {"status": "cancelled", "spent": spent, "refunded": refunded}
+    if run.status != "paused" or run.pause_reason != "over_budget":
+        raise BudgetRejected("run_not_over_budget")
+    if action == "extend":
+        if type(additional) is not int or not 1 <= additional <= 10 ** 9:
+            raise BudgetRejected("invalid_amount")
+        run.credits_limit += additional
+    else:  # resume: only when settled reservations already fit the limit
+        if run.credits_reserved > run.credits_limit:
+            raise BudgetRejected("budget_still_short")
+    from backend.core.events.store import emit as _emit
+    cause = await tx.scalar(select(CoreEvent.id).where(CoreEvent.run_id == run.id)
+        .order_by(CoreEvent.run_sequence.desc()).limit(1))
+    await transition(tx, "run", run.id, run.version, run.resume_state or "running", causation_id=cause)
+    await _emit(tx, "run_resumed", run.id, causation_id=cause)
+    note = (f"已追加 {additional} 积分，继续执行。" if action == "extend" else "已恢复执行（未追加积分）。")
+    await message(tx, run, note, "budget-" + action + ":" + str(run.id))
+    return {"status": run.status, "credits_limit": int(run.credits_limit)}
+
+
+async def run_cancel(tx, run):
+    """User-level run stop: cascade cancel, settle the in-flight, report costs."""
+    from .engine import _refunded, stop
+    if run.status in TERMINAL:
+        raise ValueError("run_finished")
+    spent, refunded = int(run.credits_spent), await _refunded(tx, run.id)
+    text = (f"已停止本次运行。已产生费用 {spent} 积分，已退还 {refunded} 积分；"
+            "在途任务将按服务商实际结果结算，未开始的不再扣费。")
+    await stop(tx, run, "cancelled", text, "user-cancel:" + str(run.id))
+    return {"status": "cancelled", "spent": spent, "refunded": refunded}
 
 
 _RELATED = {"plan_id", "task_id", "invocation_id", "event_id"}

@@ -3,6 +3,7 @@ import asyncio
 import logging
 import time
 import uuid
+from types import SimpleNamespace
 from datetime import timedelta
 from sqlalchemy import func, select, text, exists, update, or_
 from sqlalchemy.orm import aliased
@@ -31,11 +32,23 @@ from .replies import (
     ask_text, blocked, clarification_field_label, completed, failed, opening, place_label,
     plan_confirmation, read_summary, review_exhausted,
 )
-from .service import TERMINAL, TASK_TERMINAL, latest_plan, message, digest
+from .service import TERMINAL, TASK_TERMINAL, latest_plan, message, digest, open_run
 from .wiring import frozen_selfcheck_route, planner_for_lock, selfcheck_provider_for, watchdog_seconds
 from backend.agent.providers import ModelCallError
 from backend.core.selfcheck.policy import content_from_raw, read_journal
 from backend.core.selfcheck.service import merge_self_check, prepare_journal, apply_parsed
+
+
+class AmendRejected(Exception):
+    """Plan editing gate; carries a stable code for the HTTP layer."""
+
+
+class FinalizeRejected(Exception):
+    """Final-tier promotion gate."""
+
+
+class BudgetRejected(Exception):
+    """Budget action gate."""
 
 _BLOCKED = frozenset({"CONTENT_BLOCKED", "MODEL_CONTENT_BLOCKED"})
 
@@ -1118,6 +1131,155 @@ class Supervisor:
             spoken = opening(language, int(verdict.get("quoted_credits") or 0), confirm=confirm, goal=result.plan.goal)
         _AUDIT.info("supervisor plan run=%s invocation=%s plan=%s quoted=%s", run.id, invocation.id, plan.id, verdict.get("quoted_credits"))
         await message(tx, run, spoken, "plan:" + str(plan.id))
+
+    async def amend(self, tx, run, body: dict) -> dict:
+        """User edits a pending plan: delete steps (with dependents) or change
+        parameters; the amended plan goes through the same three reviewer gates."""
+        from .contracts import Plan as SupervisorPlan
+        if run.status not in {"awaiting_confirm", "paused"} or (
+                run.status == "paused" and run.pause_reason != "waiting_user"):
+            raise AmendRejected("run_not_amendable")
+        plan = await latest_plan(tx, run.id)
+        if plan is None or plan.id != run.current_plan_id or plan.stage == "obsolete":
+            raise AmendRejected("plan_not_amendable")
+        confirmed = [t for t in await tx.scalars(select(CoreTask).where(
+            CoreTask.plan_id == plan.id, CoreTask.status.in_(("succeeded", "submitted"))))]
+        if confirmed:
+            raise AmendRejected("plan_already_executing")
+        old = SupervisorPlan.model_validate(plan.proposal)
+        by_id = {step.id: step for step in old.steps}
+        deletions = {str(item) for item in (body.get("delete_steps") or [])}
+        changes = body.get("parameter_changes") or {}
+        unknown = sorted((deletions | set(changes)) - set(by_id))
+        if unknown:
+            raise AmendRejected("unknown_step")
+        protected = {step.id for step in old.steps if step.parameters.get("plan_confirmation")}
+        if deletions & protected:
+            raise AmendRejected("confirmation_step_protected")
+        dependents: dict[str, set[str]] = {}
+        for step in old.steps:
+            for dep in step.depends_on:
+                dependents.setdefault(dep, set()).add(step.id)
+        closure: set[str] = set()
+        frontier = list(deletions)
+        while frontier:
+            for child in dependents.get(frontier.pop(), ()):  # noqa: B007
+                if child not in closure and child not in protected:
+                    closure.add(child)
+                    frontier.append(child)
+        removed = deletions | closure
+        steps = []
+        for step in old.steps:
+            if step.id in removed:
+                continue
+            patch = changes.get(step.id)
+            if patch and step.kind != "call_tool":
+                raise AmendRejected("parameter_step_not_editable")
+            parameters = {**step.parameters, **patch} if patch else step.parameters
+            steps.append(step.model_copy(update={"parameters": parameters,
+                "depends_on": [dep for dep in step.depends_on if dep not in removed]}))
+        amended = old.model_copy(update={"steps": steps, "writer": "user"})
+        view = await effective_run_view(tx, run)
+        catalog = await load_catalog(tx, run.version_lock["tool_catalog"]["version"],
+            expected_lock=VersionLock.model_validate(run.version_lock["tool_catalog"]))
+        merged = effective_invariants(run, plan)
+        account = await tx.get(HostCreditAccount, run.workspace_id)
+        extras = await run_skill_rules(tx, run) or None
+        verdict = review(amended, view, catalog, account.available if account else 0,
+            invariants=merged, intent_extensions=extras)
+        if verdict["verdict"] != "pass":
+            return {"reviewed": False, "reasons": verdict["reasons"]}
+        session = await tx.get(CoreSession, run.session_id)
+        cause = await tx.scalar(select(CoreEvent.id).where(CoreEvent.run_id == run.id)
+            .order_by(CoreEvent.run_sequence.desc()).limit(1))
+        version = (await tx.scalar(select(func.max(CorePlan.version)).where(CorePlan.run_id == run.id)) or 0) + 1
+        new_plan = CorePlan(run_id=run.id, version=version, writer="user", model_call_ref=None,
+            raw_output={"amend": body}, proposal=amended.model_dump(mode="json"),
+            content_hash=digest(amended.model_dump(mode="json")), rationale={"amended": True},
+            link_constraints={"constraints": verdict["execution_constraints"], "approved_invariants": merged},
+            result_type="generate", stage="execute", milestones=[], self_check=verdict,
+            expansion_rules=plan.expansion_rules, version_lock=run.version_lock,
+            input_revision=int(run.input_revision or 1))
+        tx.add(new_plan)
+        await tx.flush()
+        run.current_plan_id = new_plan.id
+        for task in await tx.scalars(select(CoreTask).where(CoreTask.plan_id == plan.id,
+                CoreTask.status.in_(("pending", "validated", "queued", "waiting_user")))):
+            await transition(tx, "task", task.id, task.version, "cancelled", causation_id=cause)
+        stub = SimpleNamespace(event_id=cause, id=uuid.uuid4())
+        result = PlannerResult(plan=amended, invariants=merged, confidence=1.0,
+            raw_output={"amend": body}, tokens=0)
+        await self._create_tasks(tx, run, stub, result, new_plan, verdict, merged, catalog, view,
+            session.language if session else None)
+        return {"reviewed": True, "plan_id": str(new_plan.id), "plan_version": version,
+            "removed": sorted(deletions), "removed_transitive": sorted(closure - deletions),
+            "quoted_credits": verdict.get("quoted_credits")}
+
+    async def finalize(self, tx, source_run, *, session, doc, budget, token_budget, max_rounds) -> CoreRun:
+        """Promote a completed run's previews to final tier under the same plan shape."""
+        tasks = (await tx.scalars(select(CoreTask).where(CoreTask.run_id == source_run.id)
+            .order_by(CoreTask.created_at, CoreTask.task_key))).all()
+        previews = [task for task in tasks if task.status == "succeeded"
+                    and (task.tool_ref or "").endswith("_preview")]
+        if not previews:
+            raise FinalizeRejected("no_preview_to_finalize")
+        catalog_version = source_run.version_lock["tool_catalog"]["version"]
+        catalog = await load_catalog(tx, catalog_version,
+            expected_lock=VersionLock.model_validate(source_run.version_lock["tool_catalog"]))
+        final_tools = {}
+        for task in previews:
+            name = (task.tool_ref or "")[:-len("_preview")] + "_final"
+            tool = catalog.get_tool(name, catalog.lock.version)
+            if tool is None or not tool.available:
+                raise FinalizeRejected("final_tool_unavailable")
+            final_tools[task.task_key] = tool
+        from .contracts import Plan as SupervisorPlan
+        old = None
+        plan = await latest_plan(tx, source_run.id)
+        if plan is not None and plan.proposal:
+            old = SupervisorPlan.model_validate(plan.proposal)
+        if old is None:
+            raise FinalizeRejected("plan_missing")
+        steps = []
+        for step in old.steps:
+            if step.parameters.get("plan_confirmation") or step.kind == "ask_user":
+                continue
+            if step.tool in final_tools:
+                step = step.model_copy(update={"tool": final_tools[step.tool].name})
+            kept = {item.id for item in steps}
+            steps.append(step.model_copy(update={"depends_on": [
+                dep for dep in step.depends_on if dep in kept]}))
+        final_plan = old.model_copy(update={"steps": steps, "writer": "rule", "result_type": "generate"})
+        run = await open_run(tx, session, doc, workspace_id=source_run.workspace_id,
+            user_id=source_run.user_id, request_key="finalize:" + str(source_run.id),
+            request={"message": "对草稿出正式版", "finalize_of_run_id": str(source_run.id)},
+            budget=budget, token_budget=token_budget, max_rounds=max_rounds, mode="auto",
+            persist_opening_message=False)
+        view = await effective_run_view(tx, run)
+        merged = effective_invariants(run, plan)
+        account = await tx.get(HostCreditAccount, run.workspace_id)
+        verdict = review(final_plan, view, catalog, account.available if account else 0, invariants=merged)
+        if verdict["verdict"] != "pass":
+            await stop(tx, run, "failed", "正式版计划未通过审核。", "finalize-rejected:" + str(run.id))
+            raise FinalizeRejected("final_plan_rejected")
+        cause = await tx.scalar(select(CoreEvent.id).where(CoreEvent.run_id == run.id)
+            .order_by(CoreEvent.run_sequence.desc()).limit(1))
+        version = 1
+        new_plan = CorePlan(run_id=run.id, version=version, writer="rule",
+            raw_output={"finalize_of": str(source_run.id)}, proposal=final_plan.model_dump(mode="json"),
+            content_hash=digest(final_plan.model_dump(mode="json")), rationale={"finalized": True},
+            link_constraints={"constraints": verdict["execution_constraints"], "approved_invariants": merged},
+            result_type="generate", stage="execute", milestones=[], self_check=verdict,
+            expansion_rules={}, version_lock=run.version_lock, input_revision=int(run.input_revision or 1))
+        tx.add(new_plan)
+        await tx.flush()
+        run.current_plan_id = new_plan.id
+        stub = SimpleNamespace(event_id=cause, id=uuid.uuid4())
+        result = PlannerResult(plan=final_plan, invariants=merged, confidence=1.0,
+            raw_output={"finalize_of": str(source_run.id)}, tokens=0)
+        language = (await tx.get(CoreSession, run.session_id)).language
+        await self._create_tasks(tx, run, stub, result, new_plan, verdict, merged, catalog, view, language)
+        return run
 
     async def advance(self, tx, run, invocation, tasks):
         from .subjects import handle_subjects
