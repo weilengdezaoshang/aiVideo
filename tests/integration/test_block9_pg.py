@@ -227,6 +227,9 @@ def test_pg_switch_edit_and_redo(tmp_path, natural):
                     original_message = await db.get(CoreSessionMessage, receipt.message_id)
                     assert original_message.processing_status == "processed"
                     assert original_message.run_id == run.id
+                    assert session.dispatch_at is None
+                    assert session.dispatch_lease_owner is None
+                    assert session.dispatch_lease_until is None
                 assert run.snapshot["marker"] == "live" and "old" not in run.snapshot["objects"]
                 assert run.snapshot["request"]["message"] == "兔子"
                 assert run.invariants == {}

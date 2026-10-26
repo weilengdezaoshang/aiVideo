@@ -252,6 +252,8 @@ async def dispatch_due(factory, settings=None, agent_route=None):
             if message.processing_status == "pending":
                 message.processing_status = "processed"
                 message.run_id = run.id
+        # Sessions disable autoflush; the pending query must see these updates.
+        await tx.flush()
         later = await tx.scalar(select(CoreSessionMessage.id).where(
             CoreSessionMessage.session_id == session.id, CoreSessionMessage.processing_status == "pending").limit(1))
         session.dispatch_at = None if later is None else session.dispatch_at
